@@ -124,6 +124,8 @@ def register_yaml_extensions():
 
 class Dumper(object):
     def __init__(self, datadir, language, follow=None):
+        from django.utils.translation import activate
+        activate(language)
         register_yaml_extensions()
         self.datadir = datadir
         if os.path.exists(self.datadir):
@@ -235,7 +237,9 @@ class Dumper(object):
 # LOAD
 
 class Loader(object):
-    def __init__(self):
+    def __init__(self, language):
+        from django.utils.translation import activate
+        activate(language)
         register_yaml_extensions()
 
     def syncdb(self):
@@ -280,11 +284,18 @@ class Loader(object):
         plugin_type = data.pop('plugin_type')
         relations = data.pop('-relations')
         children = data.pop('-children')
+        self.pre_process_files(data)
         plugin = add_plugin(placeholder, plugin_type, get_language(), target=parent, **data)
         for child in children:
             self.load_plugin(child, placeholder, plugin)
         for relation in relations:
             self.load_relation(relation, plugin)
+
+    def pre_process_files(self, data):
+        from django.core.files.base import File as DjangoFile
+        for key, value in data.items():
+            if isinstance(value, File):
+                data[key] = DjangoFile(open(value.path))
 
     def load_relation(self, data, plugin):
         model = data.pop('-model').load()

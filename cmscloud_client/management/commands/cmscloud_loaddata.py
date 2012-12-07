@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -*-
+import os
 from django.core.management.base import NoArgsCommand
+from cmscloud_client.serialize import Loader
 
 
 class Command(NoArgsCommand):
-    pass
+    def handle(self, infile=None, language=None, **options):
+        if infile is None:
+            print "You must specify a file to read from as first argument"
+            return
+        if language is None:
+            print "You must specify a language as second argument"
+            return
+        loader = Loader(language)
+        loader.load(infile)
