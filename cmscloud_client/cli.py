@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sys
 from cmscloud_client import __version__ as version
 from cmscloud_client.client import Client
 import docopt
@@ -9,6 +10,7 @@ __doc__ = """django CMS cloud client.
 Usage:
     cmscloud login
     cmscloud boilerplate upload
+    cmscloud boilerplate validate
 
 Options:
     -h --help                   Show this screen.
@@ -22,8 +24,12 @@ Options:
 def main():
     args = docopt.docopt(__doc__, version=version)
     client = Client(os.environ.get('CMSCLOUD_HOST', 'https://cloud.django-cms.com'))
+    retval = True
     if args['login']:
-        client.login()
+        retval = client.login()
     elif args['boilerplate']:
         if args['upload']:
-            client.upload_boilerplate()
+            retval = client.upload_boilerplate()
+        elif args['validate']:
+            retval = client.validate_boilerplate()
+    sys.exit(int(retval))

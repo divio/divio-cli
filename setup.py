@@ -7,6 +7,7 @@ from cmscloud_client import __version__
 INSTALL_REQUIRES = [
     'requests',
     'docopt',
+    'pyyaml',
 ]
 try:
     import json

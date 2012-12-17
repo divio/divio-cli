@@ -70,24 +70,40 @@ class Client(object):
             self.netrc.add(self.host, email, None, token)
             self.netrc.write()
             print "Logged in as %s" % email
+            return True
         elif response.status_code == requests.codes.forbidden:
             print "Could not log in, invalid email or password"
+            return False
         else:
             print response.content
             print "There was a problem logging in, please try again later."
+            return False
 
     def upload_boilerplate(self):
         if not os.path.exists('boilerplate.yaml'):
             print "File 'boilerplate.yaml' not found."
-            return
+            return False
+        extra_file_paths = []
         with open('boilerplate.yaml') as fobj:
             with Trackable.tracker as extra_objects:
                 config = yaml.load(fobj)
-                extra_file_paths = [f.path for f in extra_objects[File]]
+                if os.path.exists('data.yaml'):
+                    with open('data.yaml') as fobj2:
+                        data = yaml.load(fobj2)
+                else:
+                    data = {}
+                extra_file_paths.extend([f.path for f in extra_objects[File]])
         if not validate_boilerplate_config(config):
-            return
-        tarball = bundle(config, extra_file_paths, templates=filter_template_files, static=filter_static_files)
-        with open('test.tar.gz', 'wb') as fobj:
-            fobj.write(tarball.getvalue())
+            return False
+        tarball = bundle(config, data, extra_file_paths, templates=filter_template_files, static=filter_static_files)
         response = self.session.post('/api/v1/boilerplates/', files={'boilerplate': tarball})
         print response.status_code, response.content
+        return True
+
+    def validate_boilerplate(self):
+        if not os.path.exists('boilerplate.yaml'):
+            print "File 'boilerplate.yaml' not found."
+            return False
+        with open('boilerplate.yaml') as fobj:
+            config = yaml.load(fobj)
+        return validate_boilerplate_config(config)
