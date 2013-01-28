@@ -2,7 +2,7 @@
 import getpass
 import urlparse
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
-from cmscloud_client.utils import validate_boilerplate_config, bundle, filter_template_files, filter_static_files
+from cmscloud_client.utils import validate_boilerplate_config, bundle_boilerplate, filter_template_files, filter_static_files, validate_app_config, bundle_app
 import os
 import requests
 import netrc
@@ -86,16 +86,16 @@ class Client(object):
         extra_file_paths = []
         with open('boilerplate.yaml') as fobj:
             with Trackable.tracker as extra_objects:
-                config = yaml.load(fobj)
+                config = yaml.safe_load(fobj)
                 if os.path.exists('data.yaml'):
                     with open('data.yaml') as fobj2:
-                        data = yaml.load(fobj2)
+                        data = yaml.safe_load(fobj2)
                 else:
                     data = {}
                 extra_file_paths.extend([f.path for f in extra_objects[File]])
         if not validate_boilerplate_config(config):
             return False
-        tarball = bundle(config, data, extra_file_paths, templates=filter_template_files, static=filter_static_files)
+        tarball = bundle_boilerplate(config, data, extra_file_paths, templates=filter_template_files, static=filter_static_files)
         response = self.session.post('/api/v1/boilerplates/', files={'boilerplate': tarball})
         print response.status_code, response.content
         return True
@@ -105,5 +105,39 @@ class Client(object):
             print "File 'boilerplate.yaml' not found."
             return False
         with open('boilerplate.yaml') as fobj:
-            config = yaml.load(fobj)
+            config = yaml.safe_load(fobj)
         return validate_boilerplate_config(config)
+
+    def upload_app(self):
+        if not os.path.exists('setup.py'):
+            print "File 'setup.py' not found."
+            return False
+        if not os.path.exists('app.yaml'):
+            print "File 'app.yaml' not found."
+            return False
+        with open('app.yaml') as fobj:
+            config = yaml.safe_load(fobj)
+        if not validate_app_config(config):
+            return False
+        if os.path.exists('cmscloud_config.py'):
+            with open('cmscloud_config.py') as fobj:
+                script = fobj.read()
+        else:
+            script = ''
+            print "File 'cmscloud_config.py' not found, your app will not have any configurable settings."
+        tarball = bundle_app(config, script)
+        response = self.session.post('/api/v1/apps/', files={'app': tarball})
+        print response.content
+        return True
+
+    def validate_app(self):
+        if not os.path.exists('setup.py'):
+            print "File 'setup.py' not found."
+            return False
+        if not os.path.exists('app.yaml'):
+            print "File 'app.yaml' not found."
+            return False
+        with open('app.yaml') as fobj:
+            config = yaml.safe_load(fobj)
+        return validate_app_config(config)
+
