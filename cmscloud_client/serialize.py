@@ -61,7 +61,7 @@ class Model(Trackable):
 def include_constructor(loader, node):
     value = loader.construct_scalar(node).lstrip('/')
     with open(value) as fobj:
-        return yaml.load(fobj)
+        return yaml.safe_load(fobj)
 
 def include_representer(dumper, data):
     return dumper.represent_scalar(u'!include', u'%s' % data.path)
@@ -71,7 +71,7 @@ def list_include_constructor(loader, node):
     data = []
     for fname in glob.glob(value):
         with open(fname) as fobj:
-            data += yaml.load(fobj)
+            data += yaml.safe_load(fobj)
     return data
 
 def list_include_representer(dumper, data):
@@ -106,16 +106,16 @@ def register_yaml_extensions():
     if __registerered:
         return
 
-    yaml.add_constructor(u'!include', include_constructor)
-    yaml.add_constructor(u'!include-list', list_include_constructor)
-    yaml.add_constructor(u'!literal-include', literal_include_constructor)
-    yaml.add_constructor(u'!file', file_constructor)
-    yaml.add_constructor(u'!model', model_constructor)
-    yaml.add_representer(Include, include_representer)
-    yaml.add_representer(ListInclude, list_include_representer)
-    yaml.add_representer(File, file_representer)
-    yaml.add_representer(LiteralInclude, literal_include_representer)
-    yaml.add_representer(Model, model_representer)
+    yaml.add_constructor(u'!include', include_constructor, yaml.SafeLoader)
+    yaml.add_constructor(u'!include-list', list_include_constructor, yaml.SafeLoader)
+    yaml.add_constructor(u'!literal-include', literal_include_constructor, yaml.SafeLoader)
+    yaml.add_constructor(u'!file', file_constructor, yaml.SafeLoader)
+    yaml.add_constructor(u'!model', model_constructor, yaml.SafeLoader)
+    yaml.add_representer(Include, include_representer, yaml.SafeDumper)
+    yaml.add_representer(ListInclude, list_include_representer, yaml.SafeDumper)
+    yaml.add_representer(File, file_representer, yaml.SafeDumper)
+    yaml.add_representer(LiteralInclude, literal_include_representer, yaml.SafeDumper)
+    yaml.add_representer(Model, model_representer, yaml.SafeDumper)
 
     __registerered = True
 
@@ -172,7 +172,7 @@ class Dumper(object):
         filename = os.path.join(self.datadir, '%s_%s.yaml' % (placeholder.slot, page.pk))
         data = [self.serialize_plugin(plugin) for plugin in placeholder.cmsplugin_set.filter(language=self.language, parent__isnull=True).order_by('position')]
         with open(filename, 'w') as fobj:
-            yaml.dump(data, fobj)
+            yaml.safe_dump(data, fobj)
         return filename
 
     def serialize_plugin(self, plugin):
@@ -256,7 +256,7 @@ class Loader(object):
             print "Non-empty database, aborting"
             return
         with open(filename) as fobj:
-            data = yaml.load(fobj)
+            data = yaml.safe_load(fobj)
             for page in data:
                 self.load_page(page)
 

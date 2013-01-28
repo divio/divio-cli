@@ -11,19 +11,18 @@ Usage:
     cmscloud login
     cmscloud boilerplate upload
     cmscloud boilerplate validate
+    cmscloud app upload
+    cmscloud app validate
 
 Options:
     -h --help                   Show this screen.
     --version                   Show version.
-    --settings=<settings>       Settings file to use [default: settings.py].
-    --language=<lang>           Language to use [default: en].
-    --manage=<manage>           Path to manage.py [default: manage.py].
 """
 
 
 def main():
     args = docopt.docopt(__doc__, version=version)
-    client = Client(os.environ.get('CMSCLOUD_HOST', 'https://cloud.django-cms.com'))
+    client = Client(os.environ.get('CMSCLOUD_HOST', 'https://control.django-cms.com'))
     retval = True
     if args['login']:
         retval = client.login()
@@ -32,4 +31,9 @@ def main():
             retval = client.upload_boilerplate()
         elif args['validate']:
             retval = client.validate_boilerplate()
+    elif args['app']:
+        if args['upload']:
+            retval = client.upload_app()
+        elif args['validate']:
+            retval = client.validate_app()
     sys.exit(int(retval))
