@@ -6,7 +6,6 @@ from cmscloud_client.utils import validate_boilerplate_config, bundle_boilerplat
 import os
 import requests
 import netrc
-from requests.auth import AuthBase
 import yaml
 
 
@@ -29,19 +28,12 @@ class WritableNetRC(netrc.netrc):
                     fobj.write('\tpassword %s\n' % password)
 
 
-class BasicTokenAuth(AuthBase):
-    def __init__(self, token):
-        self.token = token
-
-    def __call__(self, r):
-        r.headers['Authorization'] = 'Basic %s' % self.token
-        return r
-
-
 class SingleHostSession(requests.Session):
     def __init__(self, host, **kwargs):
+        super(SingleHostSession, self).__init__()
         self.host = host.rstrip('/')
-        super(SingleHostSession, self).__init__(**kwargs)
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     def request(self, method, url, *args, **kwargs):
         url = self.host + url
@@ -55,10 +47,12 @@ class Client(object):
         self.netrc = WritableNetRC()
         auth_data = self.netrc.hosts.get(self.host)
         if auth_data:
-            auth = BasicTokenAuth(auth_data[2])
+            headers = {
+                'Authorization': 'Basic %s' % auth_data[2]
+            }
         else:
-            auth = None
-        self.session = SingleHostSession(host, auth=auth)
+            headers = {}
+        self.session = SingleHostSession(host, headers=headers, trust_env=False)
 
     def login(self):
         email = raw_input('E-Mail: ')
@@ -66,7 +60,9 @@ class Client(object):
         response = self.session.post('/api/v1/login/', data={'email': email, 'password': password})
         if response.ok:
             token = response.content
-            self.session.auth = BasicTokenAuth(token)
+            self.session.headers = {
+                'Authorization': 'Basic %s' % token
+            }
             self.netrc.add(self.host, email, None, token)
             self.netrc.write()
             print "Logged in as %s" % email
@@ -127,7 +123,7 @@ class Client(object):
             print "File 'cmscloud_config.py' not found, your app will not have any configurable settings."
         tarball = bundle_app(config, script)
         response = self.session.post('/api/v1/apps/', files={'app': tarball})
-        print response.content
+        print response.status_code, response.content
         return True
 
     def validate_app(self):
@@ -140,4 +136,3 @@ class Client(object):
         with open('app.yaml') as fobj:
             config = yaml.safe_load(fobj)
         return validate_app_config(config)
-
