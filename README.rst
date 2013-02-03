@@ -142,9 +142,9 @@ The ``boilerplate.yaml`` **must** be present to upload a boilerplate to the CMS 
 
 It requires at least the following keys:
 
-* ``name``: The name of your app
-* ``version``: The version of this app (**must** be compatible with ``LooseVersion``)
-* ``description``: A description of your app
+* ``name``: The name of your boilerplate
+* ``version``: The version of this boilerplate (**must** be compatible with ``LooseVersion``)
+* ``description``: A description of your boilerplate
 * ``author``: An object with the the following keys:
     * ``name``: Your name!
     * ``url``: URL to your website (optional)
