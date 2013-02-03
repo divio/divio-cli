@@ -118,3 +118,62 @@ Commands
 
 The client has two commands to work with your apps: ``app validate``, which checks the ``app.yaml`` config and
 ``app upload`` which uploads your app.
+
+
+************
+Boilerplates
+************
+
+Boilerplates are a set of default templates and staticfiles, optionally with initial data.
+
+To get started, create a normal Django (CMS) project and develop your boilerplate. When you're happy with how it looks
+and optionally added some default content, you can transform this into a boilerplate.
+
+In your base template (or base templates), you **must** include the variable ``{{ TEMPLATE_API_REGISTRY.render_head }}``
+in the head section of your HTML, and ``{{ TEMPLATE_API_REGISTRY.render_tail }}`` just before the closing ``</body>``
+tag. Further, your base template **must** include the ``{% cms_toolbar %}`` template tag right after th opening
+``<body>`` tag (make sure you ``{% load cms_tags %}`` first). Also, you **must** include two sekizai namespaces,
+``{% render_block 'css' %}`` in your head section and ``{% render_block 'js' %}`` just before the
+``{{ TEMPLATE_API_REGISTRY.render_tail }}`` variable.
+
+Now add a ``boilderplate.yaml`` file to the root of your project (next to the ``static`` and ``templates`` folders).
+
+The ``boilerplate.yaml`` **must** be present to upload a boilerplate to the CMS Cloud!
+
+It requires at least the following keys:
+
+* ``name``: The name of your app
+* ``version``: The version of this app (**must** be compatible with ``LooseVersion``)
+* ``description``: A description of your app
+* ``author``: An object with the the following keys:
+    * ``name``: Your name!
+    * ``url``: URL to your website (optional)
+* ``license``: An object with the following keys:
+    * ``name``: Name of your license (eg BSD)
+    * ``text``: Full text of the license (pro tip: use !literal-include <filename>)
+* ``templates``: A list of tuples in the form of ``(template_path, verbose_name)``. The ``template_path`` is the path to
+                 the template as used by Django. The verbose name is what users will see.
+
+
+Including initial data
+======================
+
+To include initial data in your boilerplate, add ``cmscloud_client`` to your installed apps in your project and call
+the management command ``cmscloud_dumpdata <outfile> <language>``. ``<outfile>`` must be a file named ``data.yaml``
+located next to your ``boilerplate.yaml`` file. ``<language>`` is the language code of the language you want to include
+('en' is a good default choice). Only one language can be included.
+
+
+Handling relations in plugins
+-----------------------------
+
+If your plugins include relationships to other models that need to be included, define a setting
+``CMSCLOUD_DUMPDATA_FOLLOW`` which is a list of strings in the form of ``PluginName.relationship_field``.
+
+
+
+Commands
+========
+
+The client has two commands to work with your boilerplates: ``boilerplate validate``, which checks the
+``boilerplate.yaml`` config and ``boilerplate upload`` which uploads your boilerplate.
