@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import getpass
 import urlparse
+import netrc
+
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
 from cmscloud_client.utils import validate_boilerplate_config, bundle_boilerplate, filter_template_files, filter_static_files, validate_app_config, bundle_app
 import os
 import requests
-import netrc
 import yaml
 
 
@@ -15,7 +16,7 @@ class WritableNetRC(netrc.netrc):
 
     def write(self, path=None):
         if path is None:
-            path =  os.path.join(os.environ['HOME'], '.netrc')
+            path = os.path.join(os.environ['HOME'], '.netrc')
         with open(path, 'w') as fobj:
             for machine, data in self.hosts.items():
                 login, account, password = data
@@ -91,7 +92,8 @@ class Client(object):
                 extra_file_paths.extend([f.path for f in extra_objects[File]])
         if not validate_boilerplate_config(config):
             return False
-        tarball = bundle_boilerplate(config, data, extra_file_paths, templates=filter_template_files, static=filter_static_files)
+        tarball = bundle_boilerplate(config, data, extra_file_paths, templates=filter_template_files,
+                                     static=filter_static_files)
         response = self.session.post('/api/v1/boilerplates/', files={'boilerplate': tarball})
         print response.status_code, response.content
         return True
@@ -136,3 +138,12 @@ class Client(object):
         with open('app.yaml') as fobj:
             config = yaml.safe_load(fobj)
         return validate_app_config(config)
+
+    def static_sync(self):
+        if not os.path.exists('.cmscloud'):
+            print "File '.cmscloud' not found."
+            return False
+        with open('.cmscloud') as fobj:
+            config = yaml.safe_load(fobj)
+        site = validate_static_config(config)
+
