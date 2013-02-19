@@ -1,16 +1,30 @@
 # -*- coding: utf-8 -*-
 import getpass
+import logging
 import urlparse
 import netrc
+import time
+import sys
 
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
+from cmscloud_client.sync import SyncEventHandler
 from cmscloud_client.utils import validate_boilerplate_config, bundle_boilerplate, filter_template_files, filter_static_files, validate_app_config, bundle_app
 import os
 import requests
+from watchdog.events import LoggingEventHandler
+from watchdog.observers import Observer
 import yaml
 
 
 class WritableNetRC(netrc.netrc):
+    def __init__(self, *args, **kwargs):
+        home = os.path.expanduser("~")
+        netrc_path = os.path.join(home, ".netrc")
+        if not os.path.exists(netrc_path):
+            open(netrc_path, 'a').close()
+            os.chmod(netrc_path, 0600)
+        netrc.netrc.__init__(self, *args, **kwargs)
+
     def add(self, host, login, account, password):
         self.hosts[host] = (login, account, password)
 
@@ -145,5 +159,38 @@ class Client(object):
             return False
         with open('.cmscloud') as fobj:
             config = yaml.safe_load(fobj)
-        site = validate_static_config(config)
+        site = config['site']
+        path = os.getcwd()
+        if not site:
+            print "site parameter in .cmscloud is missing"
+            print "example:"
+            print "site: mysite.cloud.django-cms.com"
+            return False
+        print "Syncing all static files and templates from %s." % site
+        print ""
+        print "Attention: All local files will be overwritten."
+        print ""
+        sure = raw_input('Are you sure? (enter to continue): ')
+        print "downloading files from %s to %s." % (site, path)
+        time.sleep(1)
+        print "watching directory %s for changes. Hit ctrl-c for aborting." % path
+        logging.basicConfig(level=logging.INFO,
+                            format='%(asctime)s - %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S')
+        event_handler = SyncEventHandler()
+        observer = Observer()
+        observer.schedule(event_handler, path, recursive=True)
+        observer.start()
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()
+
+
+
+
+
+
 
