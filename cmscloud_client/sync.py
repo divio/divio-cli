@@ -4,7 +4,9 @@ from watchdog.events import FileSystemEventHandler
 
 
 class SyncEventHandler(FileSystemEventHandler):
-    """Logs all the events captured."""
+    def __init__(self, session, site):
+        self.session = session
+        self.site = site
 
     def on_moved(self, event):
         super(SyncEventHandler, self).on_moved(event)
@@ -29,4 +31,5 @@ class SyncEventHandler(FileSystemEventHandler):
         super(SyncEventHandler, self).on_modified(event)
 
         what = 'directory' if event.is_directory else 'file'
+
         logging.info("Modified %s: %s", what, event.src_path)

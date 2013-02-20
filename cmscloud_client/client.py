@@ -177,7 +177,7 @@ class Client(object):
         logging.basicConfig(level=logging.INFO,
                             format='%(asctime)s - %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S')
-        event_handler = SyncEventHandler()
+        event_handler = SyncEventHandler(self.session, site)
         observer = Observer()
         observer.schedule(event_handler, path, recursive=True)
         observer.start()

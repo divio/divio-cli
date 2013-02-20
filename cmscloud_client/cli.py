@@ -41,3 +41,4 @@ def main():
         if args['sync']:
             retval = client.static_sync()
     sys.exit(int(retval))
+
