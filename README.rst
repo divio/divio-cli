@@ -71,7 +71,7 @@ The ``Form`` class may contain any number of form fields.
 Available fields are:
 
 * ``cmscloud_client.forms.CharField``
-* ``cmscloud_client.forms..CheckboxField``
+* ``cmscloud_client.forms.CheckboxField``
 * ``cmscloud_client.forms.SelectField``
 * ``cmscloud_client.forms.NumberField``
 * ``cmscloud_client.forms.StaticFileField``
