@@ -12,6 +12,8 @@ Installing
 
 Install from our internal package server using pip, or straight from git.
 
+``pip install --extra-index-url https://divio:<insert password here>@pkg.divio.ch/simple/ cmscloud-client``
+
 
 ****************
 Using the client
