@@ -13,6 +13,7 @@ Usage:
     cmscloud boilerplate validate
     cmscloud app upload
     cmscloud app validate
+    cmscloud static sync
 
 Options:
     -h --help                   Show this screen.
@@ -36,4 +37,8 @@ def main():
             retval = client.upload_app()
         elif args['validate']:
             retval = client.validate_app()
+    elif args['static']:
+        if args['sync']:
+            retval = client.static_sync()
     sys.exit(int(retval))
+

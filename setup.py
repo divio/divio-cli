@@ -32,7 +32,7 @@ setup(
     version=__version__,
     description='The command-line client for the django CMS cloud',
     author='The django CMS cloud team',
-    author_email='say@djee.se',
+    author_email='info@divio.ch',
     url='http://django-cms.com/',
     packages=find_packages(),
     license='BSD',
