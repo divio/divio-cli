@@ -12,6 +12,8 @@ Installing
 
 Install from our internal package server using pip, or straight from git.
 
+``pip install --extra-index-url https://divio:<insert password here>@pkg.divio.ch/simple/ cmscloud-client``
+
 
 ****************
 Using the client
@@ -69,7 +71,7 @@ The ``Form`` class may contain any number of form fields.
 Available fields are:
 
 * ``cmscloud_client.forms.CharField``
-* ``cmscloud_client.forms..CheckboxField``
+* ``cmscloud_client.forms.CheckboxField``
 * ``cmscloud_client.forms.SelectField``
 * ``cmscloud_client.forms.NumberField``
 * ``cmscloud_client.forms.StaticFileField``
