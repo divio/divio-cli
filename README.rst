@@ -77,8 +77,8 @@ Available fields are:
 All fields must provide a label as first argument and take a keyword argument named ``required`` to indicate whether
 this field is required or not.
 
-``CharField``s take optional ``max_length`` and ``min_length`` arguments. ``SelectField`` takes a list of tuples (Django
-style) as required second argument). ``NumberField`` has optional ``min_value`` and ``max_value`` arguments.
+``CharField`` may optionally define ``max_length`` and ``min_length`` arguments. ``SelectField`` takes a list of tuples
+(Django style) as required second argument). ``NumberField`` has optional ``min_value`` and ``max_value`` arguments.
 ``StaticFileField`` takes an optional ``extensions`` argument which is a list of valid file extensions.
 
 
