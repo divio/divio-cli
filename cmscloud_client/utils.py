@@ -9,7 +9,7 @@ import os
 import re
 import yaml
 
-FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z_]+[a-zA-Z0-9._-]*\.[a-zA-Z]{2,4}$')
+FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_]+[a-zA-Z0-9._-]*\.[a-zA-Z]{2,4}$')
 ALLOWED_EXTENSIONS = [
     '.js',
     '.css',
@@ -23,6 +23,8 @@ ALLOWED_EXTENSIONS = [
     '.rb',
     '.less',
     '.ico',
+    '.html',
+    '.htm',
 ]
 
 BOILERPLATE_REQUIRED = [
