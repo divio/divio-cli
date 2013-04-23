@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 import getpass
-import logging
+import shutil
+import tarfile
+import os
 import urlparse
 import netrc
 import time
-import sys
 
-from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
-from cmscloud_client.sync import SyncEventHandler
-from cmscloud_client.utils import validate_boilerplate_config, bundle_boilerplate, filter_template_files, filter_static_files, validate_app_config, bundle_app
-import os
 import requests
 from watchdog.events import LoggingEventHandler
 from watchdog.observers import Observer
 import yaml
+
+from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
+from cmscloud_client.sync import SyncEventHandler
+from cmscloud_client.utils import (validate_boilerplate_config, bundle_boilerplate, filter_template_files,
+    filter_static_files, validate_app_config, bundle_app)
 
 
 class WritableNetRC(netrc.netrc):
@@ -53,6 +55,7 @@ class SingleHostSession(requests.Session):
     def request(self, method, url, *args, **kwargs):
         url = self.host + url
         return super(SingleHostSession, self).request(method, url, *args, **kwargs)
+
 
 
 class Client(object):
@@ -153,44 +156,59 @@ class Client(object):
             config = yaml.safe_load(fobj)
         return validate_app_config(config)
 
-    def static_sync(self):
-        if not os.path.exists('.cmscloud'):
-            print "File '.cmscloud' not found."
+    def sync(self, sitename=None):
+        if not sitename:
+            if not os.path.exists('.cmscloud'):
+                print "Please specify a sitename using --sitename."
+                return False
+            with open('.cmscloud', 'r') as fobj:
+                sitename = fobj.read().strip()
+            if not sitename:
+                print "Please specify a sitename using --sitename."
+                return False
+        if '.' in sitename:
+            sitename = sitename.split('.')[0]
+        print "Preparing to sync %s." % sitename
+        print "This will undo all local changes."
+        while True:
+            answer = raw_input('Are you sure you want to continue? [yN]')
+            if answer.lower() == 'n' or not answer:
+                print "Aborted"
+                return True
+            elif answer.lower() == 'y':
+                break
+            else:
+                print "Invalid answer, please type either y or n"
+
+        for folder in ['static', 'templates']:
+            if os.path.exists(folder):
+                if os.path.isdir(folder):
+                    shutil.rmtree(folder)
+                else:
+                    os.remove(folder)
+        print "Updating local files..."
+        response = self.session.get('/api/v1/sync/%s/' % sitename, stream=True)
+        if response.status_code != 200:
+            print "Unexpected HTTP Response %s" % response.status_code
+            print response.content
             return False
-        with open('.cmscloud') as fobj:
-            config = yaml.safe_load(fobj)
-        site = config['site']
-        path = os.getcwd()
-        if not site:
-            print "site parameter in .cmscloud is missing"
-            print "example:"
-            print "site: mysite.cloud.django-cms.com"
-            return False
-        print "Syncing all static files and templates from %s." % site
-        print ""
-        print "Attention: All local files will be overwritten."
-        print ""
-        sure = raw_input('Are you sure? (enter to continue): ')
-        print "downloading files from %s to %s." % (site, path)
-        time.sleep(1)
-        print "watching directory %s for changes. Hit ctrl-c for aborting." % path
-        logging.basicConfig(level=logging.INFO,
-                            format='%(asctime)s - %(message)s',
-                            datefmt='%Y-%m-%d %H:%M:%S')
-        event_handler = SyncEventHandler(self.session, site)
+        tarball = tarfile.open(mode='r|gz', fileobj=response.raw)
+
+        tarball.extractall()
+        with open('.cmscloud', 'w') as fobj:
+            fobj.write(sitename)
+        print "Done, now watching for changes. You can stop the sync by hitting Ctrl-c in this shell"
+
+        event_handler = SyncEventHandler(self.session, sitename)
         observer = Observer()
-        observer.schedule(event_handler, path, recursive=True)
+        observer.schedule(event_handler, '.', recursive=True)
         observer.start()
+
         try:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
             observer.stop()
         observer.join()
-
-
-
-
-
-
-
+        print "Stopped syncing"
+        return True

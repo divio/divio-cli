@@ -8,6 +8,7 @@ INSTALL_REQUIRES = [
     'requests',
     'docopt',
     'pyyaml',
+    'watchdog',
 ]
 try:
     import json

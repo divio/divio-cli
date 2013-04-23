@@ -13,11 +13,12 @@ Usage:
     cmscloud boilerplate validate
     cmscloud app upload
     cmscloud app validate
-    cmscloud static sync
+    cmscloud sync [--sitename=<sitename>]
 
 Options:
     -h --help                   Show this screen.
     --version                   Show version.
+    --sitename=<sitename>       Domain of your site, eg example.cloud.django-cms.com.
 """
 
 
@@ -37,8 +38,6 @@ def main():
             retval = client.upload_app()
         elif args['validate']:
             retval = client.validate_app()
-    elif args['static']:
-        if args['sync']:
-            retval = client.static_sync()
+    elif args['sync']:
+        retval = client.sync(args.get('--sitename', None))
     sys.exit(int(retval))
-
