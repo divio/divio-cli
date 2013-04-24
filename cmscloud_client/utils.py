@@ -9,7 +9,7 @@ import os
 import re
 import yaml
 
-FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z_]+[a-zA-Z0-9._-]*\.[a-zA-Z]{2,4}$')
+FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_]+[a-zA-Z0-9._-]*\.[a-zA-Z]{2,4}$')
 ALLOWED_EXTENSIONS = [
     '.js',
     '.css',
@@ -23,7 +23,9 @@ ALLOWED_EXTENSIONS = [
     '.rb',
     '.less',
     '.ico',
-    ]
+    '.html',
+    '.htm',
+]
 
 BOILERPLATE_REQUIRED = [
     'name',
@@ -42,7 +44,7 @@ BOILERPLATE_REQUIRED = [
 APP_REQUIRED = [
     'name',
     ('author', [
-       'name',
+        'name',
     ]),
     'version',
     'package-name',
@@ -56,6 +58,7 @@ APP_REQUIRED = [
 
 
 def _print(stuff): print stuff
+
 
 def _validate(config, required, errors):
     valid = True
@@ -74,6 +77,7 @@ def _validate(config, required, errors):
                 errors("Required sub key %r in %r not found in config" % (subkey, key))
                 valid = False
     return valid
+
 
 def validate_app_config(config, errors=_print):
     return _validate(config, APP_REQUIRED, errors)
@@ -96,12 +100,14 @@ def validate_boilerplate_config(config, errors=_print):
                 valid = False
     return valid
 
+
 def tar_add_stringio(tar, string_io, name):
     info = tarfile.TarInfo(name=name)
     string_io.seek(0, os.SEEK_END)
     info.size = string_io.tell()
     string_io.seek(0)
     tar.addfile(tarinfo=info, fileobj=string_io)
+
 
 def is_valid_file_name(name, printer=None):
     always_print = printer.always if printer else lambda x: None
@@ -114,6 +120,7 @@ def is_valid_file_name(name, printer=None):
         return False
     return True
 
+
 def filter_static_files(tarinfo):
     if not tarinfo.isfile():
         return tarinfo
@@ -122,6 +129,7 @@ def filter_static_files(tarinfo):
         return tarinfo
     else:
         return None
+
 
 def filter_template_files(tarinfo):
     if not tarinfo.isfile():
@@ -132,6 +140,7 @@ def filter_template_files(tarinfo):
         return tarinfo
     else:
         return None
+
 
 def bundle_boilerplate(config, data, extra_file_paths, **complex_extra):
     register_yaml_extensions()
@@ -151,6 +160,7 @@ def bundle_boilerplate(config, data, extra_file_paths, **complex_extra):
     fileobj.seek(0)
     return fileobj
 
+
 def bundle_package(workspace, tar):
     devnull = open(os.devnull, 'w')
     try:
@@ -159,6 +169,7 @@ def bundle_package(workspace, tar):
         devnull.close()
     egg_file = os.path.join(workspace, os.listdir(workspace)[0])
     tar.add(egg_file, arcname='package.tar.gz')
+
 
 def bundle_app(config, script):
     register_yaml_extensions()
@@ -170,7 +181,7 @@ def bundle_app(config, script):
     script_fileobj = StringIO(script)
     if os.path.exists('cmscloud_config.py'):
         tar_add_stringio(tar, script_fileobj, 'cmscloud_config.py')
-    # add actual package
+        # add actual package
     distdir = tempfile.mkdtemp(prefix='cmscloud-client')
     try:
         bundle_package(distdir, tar)

@@ -179,3 +179,17 @@ Commands
 
 The client has two commands to work with your boilerplates: ``boilerplate validate``, which checks the
 ``boilerplate.yaml`` config and ``boilerplate upload`` which uploads your boilerplate.
+
+
+
+***************
+Local File Sync
+***************
+
+You can sync your files locally using the ``sync`` command. This command optionally takes an argument
+``--sitename=<sitename>`` to specify which site to sync. This argument must be set the first time you use the command,
+on subsequent calls in the same directory, it will use the same site.
+
+.. warning::
+
+    This command will **delete** the folders ``static/`` and ``templates/`` locally if they exist.

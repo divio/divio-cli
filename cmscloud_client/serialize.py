@@ -2,9 +2,11 @@
 from collections import defaultdict
 import hashlib
 import shutil
+import glob
+
 import os
 import yaml
-import glob
+
 
 # YAML STUFF
 class Tracker(object):
@@ -31,7 +33,6 @@ class Trackable(object):
         self.tracker.push(self)
 
 
-
 class Include(Trackable):
     def __init__(self, path):
         super(Include, self).__init__()
@@ -55,6 +56,7 @@ class Model(Trackable):
 
     def load(self):
         from django.db.models.loading import get_model
+
         return get_model(self.app_label, self.model_name)
 
 
@@ -63,8 +65,10 @@ def include_constructor(loader, node):
     with open(value) as fobj:
         return yaml.safe_load(fobj)
 
+
 def include_representer(dumper, data):
     return dumper.represent_scalar(u'!include', u'%s' % data.path)
+
 
 def list_include_constructor(loader, node):
     value = loader.construct_scalar(node).lstrip('/')
@@ -74,32 +78,41 @@ def list_include_constructor(loader, node):
             data += yaml.safe_load(fobj)
     return data
 
+
 def list_include_representer(dumper, data):
     return dumper.represent_scalar(u'!list-include', data.path)
+
 
 def file_constructor(loader, node):
     path = loader.construct_scalar(node)
     return File(path)
 
+
 def file_representer(dumper, data):
     return dumper.represent_scalar(u'!file', data.path)
+
 
 def literal_include_constructor(loader, node):
     with open(loader.construct_scalar(node).lstrip('/')) as fobj:
         return fobj.read()
 
+
 def literal_include_representer(dumper, data):
     return dumper.represent_scalar(u'!literal-include', data.path)
 
+
 def model_representer(dumper, data):
     return dumper.represent_scalar(u'!model', '%s.%s' % (data.app_label, data.model_name))
+
 
 def model_constructor(loader, node):
     name_string = loader.construct_scalar(node)
     app_label, model_name = name_string.split('.')
     return Model(app_label, model_name)
 
+
 __registerered = False
+
 
 def register_yaml_extensions():
     global __registerered
@@ -125,6 +138,7 @@ def register_yaml_extensions():
 class Dumper(object):
     def __init__(self, datadir, language, follow=None):
         from django.utils.translation import activate
+
         activate(language)
         register_yaml_extensions()
         self.datadir = datadir
@@ -138,6 +152,7 @@ class Dumper(object):
             for key, value in (thing.split('.', 1) for thing in follow):
                 self.follow[key].append(value)
         from cms import models
+
         self.cms_models = models
         self.file_cache = {}
 
@@ -159,7 +174,7 @@ class Dumper(object):
             'template': page.template,
             'placeholders': [self.serialize_placeholder(page, ph) for ph in page.placeholders.all()],
             'children': [self.serialize_page(child) for child in page.get_children()],
-            }
+        }
 
     def serialize_placeholder(self, page, placeholder):
         plugins = self.dump_plugins(page, placeholder)
@@ -170,13 +185,15 @@ class Dumper(object):
 
     def dump_plugins(self, page, placeholder):
         filename = os.path.join(self.datadir, '%s_%s.yaml' % (placeholder.slot, page.pk))
-        data = [self.serialize_plugin(plugin) for plugin in placeholder.cmsplugin_set.filter(language=self.language, parent__isnull=True).order_by('position')]
+        data = [self.serialize_plugin(plugin) for plugin in
+                placeholder.cmsplugin_set.filter(language=self.language, parent__isnull=True).order_by('position')]
         with open(filename, 'w') as fobj:
             yaml.safe_dump(data, fobj)
         return filename
 
     def serialize_plugin(self, plugin):
         from django.forms.models import model_to_dict
+
         instance = plugin.get_plugin_instance()[0]
         raw_data = model_to_dict(instance)
         raw_data.pop('cmsplugin_ptr', None)
@@ -191,6 +208,7 @@ class Dumper(object):
 
     def post_process_files(self, raw_data):
         from django.db.models.fields.files import FieldFile, ImageFieldFile
+
         for key, value in raw_data.items():
             if isinstance(value, (FieldFile, ImageFieldFile)):
                 if value:
@@ -217,6 +235,7 @@ class Dumper(object):
     def serialize_plugin_relation(self, plugin, obj):
         from django.forms.models import model_to_dict
         from django.db.models.fields.related import ForeignKey
+
         data = model_to_dict(obj, fields=obj._meta.get_all_field_names())
         for field_name in obj._meta.get_all_field_names():
             field = obj._meta.get_field_by_name(field_name)[0]
@@ -239,12 +258,14 @@ class Dumper(object):
 class Loader(object):
     def __init__(self, language):
         from django.utils.translation import activate
+
         activate(language)
         register_yaml_extensions()
 
     def syncdb(self):
         from django.core.management import call_command
         from django.conf import settings
+
         call_command('syncdb', interactive=False)
         if 'south' in settings.INSTALLED_APPS:
             call_command('migrate', interactive=False)
@@ -252,6 +273,7 @@ class Loader(object):
     def load(self, filename):
         self.syncdb()
         from cms.models import Page
+
         if Page.objects.exists():
             print "Non-empty database, aborting"
             return
@@ -264,10 +286,11 @@ class Loader(object):
         from cms.api import create_page
         from cms.models import Page
         from django.utils.translation import get_language
+
         if parent:
             parent = Page.objects.get(pk=parent.pk)
         page = create_page(data['name'], data['template'], get_language(), parent=parent,
-            in_navigation=True, published=True)
+                           in_navigation=True, published=True)
         for placeholder in data['placeholders']:
             self.load_placeholder(placeholder, page)
         for child in data['children']:
@@ -281,6 +304,7 @@ class Loader(object):
     def load_plugin(self, data, placeholder, parent=None):
         from cms.api import add_plugin
         from django.utils.translation import get_language
+
         plugin_type = data.pop('plugin_type')
         relations = data.pop('-relations')
         children = data.pop('-children')
@@ -293,6 +317,7 @@ class Loader(object):
 
     def pre_process_files(self, data):
         from django.core.files.base import File as DjangoFile
+
         for key, value in data.items():
             if isinstance(value, File):
                 data[key] = DjangoFile(open(value.path))
