@@ -9,7 +9,10 @@ import time
 
 import requests
 from watchdog.events import LoggingEventHandler
-from watchdog.observers import Observer
+try:
+    from watchdog.observers.kqueue import KqueueObserver as Observer
+except ImportError:
+    from watchdog.observers import Observer
 import yaml
 
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File

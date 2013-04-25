@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, FileCreatedEvent, DirCreatedEvent
 from cmscloud_client.utils import is_valid_file_name
 import os
 
@@ -13,6 +13,21 @@ class SyncEventHandler(FileSystemEventHandler):
         self.session = session
         self.sitename = sitename
 
+    def dispatch(self, event):
+        for attr in ['src', 'dest']:
+            if hasattr(event, '%s_path' % attr):
+                event_rel_path = relpath(getattr(event, '%s_path' % attr))
+                setattr(event, 'rel_%s_path' % attr, event_rel_path)
+                event_base_path = os.path.basename(getattr(event, '%s_path' % attr))
+                setattr(event, 'base_%s_path' % attr, event_base_path)
+                sync_dir = event_rel_path.startswith(('templates/', 'static/'))
+                if event.is_directory:
+                    syncable = sync_dir and not event_base_path.startswith('.')
+                else:
+                    syncable = sync_dir and is_valid_file_name(event_base_path)
+                setattr(event, 'sync_%s' % attr, syncable)
+        super(SyncEventHandler, self).dispatch(event)
+
     def _send_request(self, method, *args, **kwargs):
         response = self.session.request(method, '/api/v1/sync/%s/' % self.sitename, *args, **kwargs)
         if not response.ok:
@@ -23,39 +38,62 @@ class SyncEventHandler(FileSystemEventHandler):
                 print response.content
 
     def on_moved(self, event):
-        base_dest = os.path.basename(event.dest_path)
         if event.is_directory:
-            if base_dest.startswith('.'):
-                return
-            print "Syncing directory move from %s to %s" % (event.src_path, event.dest_path)
-            self._send_request('PUT', data={'source': relpath(event.src_path), 'path': relpath(event.dest_path)})
+            self.on_dir_moved(event)
         else:
-            if is_valid_file_name(base_dest):
+            self.on_file_moved(event)
+
+    def on_dir_moved(self, event):
+        if event.sync_src:
+            if event.sync_dest:
+                print "Syncing directory move from %s to %s" % (event.src_path, event.dest_path)
+                self._send_request('PUT', data={'source': event.rel_src_path, 'path': event.rel_dest_path})
+            else:
+                # moved OUTSIDE syncable areas, remove!
+                self.on_deleted(event)
+        elif event.sync_dest:
+            # source isn't in sync area, but dest is, so create the stuff
+            create_event = DirCreatedEvent(event.dest_path)
+            self.on_created(create_event)
+
+    def on_file_moved(self, event):
+        if event.sync_src:
+            if event.sync_dest:
                 print "Syncing file move from %s to %s" % (event.src_path, event.dest_path)
-                self._send_request('PUT', data={'source': relpath(event.src_path), 'path': relpath(event.dest_path)})
+                self._send_request('PUT', data={'source': event.rel_src_path, 'path': event.rel_dest_path})
+            else:
+                # moved outside sync, remove
+                self.on_deleted(event)
+        elif event.sync_dest:
+            # moved inside sync, create
+            create_event = FileCreatedEvent(event.dest_path)
+            self.dispatch(create_event)
 
     def on_created(self, event):
         if event.is_directory:
-            return
-        if is_valid_file_name(os.path.basename(event.src_path)):
+            # check if it has content, if so create stuff
+            for thing in os.listdir(event.src_path):
+                create_event = FileCreatedEvent(os.path.join(event.src_path, thing))
+                self.dispatch(create_event)
+        elif event.sync_src:
             print "Syncing file creation %s" % event.src_path
-            self._send_request('POST', data={'path': relpath(event.src_path)}, files={'content': open(event.src_path)})
+            self._send_request('POST', data={'path': event.rel_src_path}, files={'content': open(event.src_path)})
 
     def on_deleted(self, event):
-        base_src = os.path.basename(event.src_path)
+        if os.path.exists(event.src_path): # hack for OSX
+            return self.on_modified(event)
+        if not event.sync_src:
+            return
         if event.is_directory:
-            if base_src.startswith('.'):
-                return
             print "Syncing directory deletion %s" % event.src_path
-            self._send_request('DELETE', data={'path': relpath(event.src_path)})
+            self._send_request('DELETE', data={'path': event.rel_src_path})
         else:
-            if is_valid_file_name(base_src):
-                print "Syncing file deletion %s" % event.src_path
-                self._send_request('DELETE', params={'path': relpath(event.src_path)})
+            print "Syncing file deletion %s" % event.src_path
+            self._send_request('DELETE', params={'path': event.rel_src_path})
 
     def on_modified(self, event):
         if event.is_directory:
             return
-        if is_valid_file_name(os.path.basename(event.src_path)):
+        if event.sync_src:
             print "Syncing file modification %s" % event.src_path
-            self._send_request('PUT', data={'path': relpath(event.src_path)}, files={'content': open(event.src_path)})
+            self._send_request('PUT', data={'path': event.rel_src_path}, files={'content': open(event.src_path)})
