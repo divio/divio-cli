@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
+from distutils.version import StrictVersion
 import hashlib
 import shutil
 import glob
@@ -153,7 +154,7 @@ class Dumper(object):
                 self.follow[key].append(value)
         from cms import models
 
-        self.cms_models = models
+        self.queryset = models.Page.objects.root().public()
         self.file_cache = {}
 
     def dump(self, filename):
@@ -163,7 +164,7 @@ class Dumper(object):
 
     def get_pages(self):
         data = []
-        for page in self.cms_models.Page.objects.root():
+        for page in self.queryset:
             data.append(self.serialize_page(page))
         return data
 
@@ -295,6 +296,7 @@ class Loader(object):
             self.load_placeholder(placeholder, page)
         for child in data['children']:
             self.load_page(child, page)
+        page.publish()
 
     def load_placeholder(self, data, page):
         placeholder = page.placeholders.get(slot=data['name'])
