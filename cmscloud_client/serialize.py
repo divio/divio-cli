@@ -273,7 +273,8 @@ class Loader(object):
 
     def load(self, filename):
         self.syncdb()
-        from cms.models import Page
+        from cms.models import Page, Placeholder
+        self.placeholder_does_not_exist = Placeholder.DoesNotExist
 
         if Page.objects.exists():
             print "Non-empty database, aborting"
@@ -299,7 +300,10 @@ class Loader(object):
         page.publish()
 
     def load_placeholder(self, data, page):
-        placeholder = page.placeholders.get(slot=data['name'])
+        try:
+            placeholder = page.placeholders.get(slot=data['name'])
+        except self.placeholder_does_not_exist:
+            placeholder = page.placeholders.create(slot=data['name'])
         for plugin in data['plugins']:
             self.load_plugin(plugin, placeholder)
 
