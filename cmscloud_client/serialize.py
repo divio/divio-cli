@@ -159,7 +159,7 @@ class Dumper(object):
     def dump(self, filename):
         data = self.get_pages()
         with open(filename, 'w') as fobj:
-            yaml.dump(data, fobj)
+            yaml.safe_dump(data, fobj)
 
     def get_pages(self):
         data = []
