@@ -1,0 +1,9 @@
+.*
+!.gitignore
+*.pyc
+*.pyo
+
+build/
+cmscloud_client.egg-info/
+dist/
+env/
