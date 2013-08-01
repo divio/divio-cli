@@ -57,11 +57,8 @@ APP_REQUIRED = [
 ]
 
 
-def _print(stuff): print stuff
-
-
-def _validate(config, required, errors):
-    valid = True
+def _validate(config, required):
+    valid = (True, "Configuration file is valid")
     for thing in required:
         if isinstance(thing, tuple):
             key, values = thing
@@ -69,36 +66,36 @@ def _validate(config, required, errors):
             key, values = thing, []
 
         if key not in config:
-            errors("Required key %r not found in config" % key)
-            valid = False
+            valid = (False, "Required key %r not found in config" % key)
 
         for subkey in values:
             if subkey not in config[key]:
-                errors("Required sub key %r in %r not found in config" % (subkey, key))
-                valid = False
+                valid = (False, "Required sub key %r in %r not found in config" % (subkey, key))
     return valid
 
 
-def validate_app_config(config, errors=_print):
-    return _validate(config, APP_REQUIRED, errors)
+def validate_app_config(config):
+    return _validate(config, APP_REQUIRED)
 
 
-def validate_boilerplate_config(config, errors=_print):
-    valid = _validate(config, BOILERPLATE_REQUIRED, errors)
+def validate_boilerplate_config(config):
+    (valid, msg) = _validate(config, BOILERPLATE_REQUIRED)
+    if not valid:
+        return (False, msg)
     # check templates
     data = config.get('templates', [])
+    template_valid = True
     if not isinstance(data, list):
-        errors("Templates must be a list of lists of two items")
-        valid = False
+        template_valid = False
     else:
         for template in data:
             if not isinstance(template, list):
-                errors("Templates must be a list of lists of two items")
-                valid = False
+                template_valid = False
             elif len(template) != 2:
-                errors("Templates must be a list of lists of two items")
-                valid = False
-    return valid
+                template_valid = False
+    if not template_valid:
+        msg = "Templates must be a list of lists of two items"
+    return (template_valid, msg)
 
 
 def tar_add_stringio(tar, string_io, name):

@@ -8,7 +8,6 @@ import netrc
 import time
 
 import requests
-from watchdog.events import LoggingEventHandler
 try:
     from watchdog.observers.kqueue import KqueueObserver as Observer
 except ImportError:
@@ -18,7 +17,7 @@ import yaml
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
 from cmscloud_client.sync import SyncEventHandler
 from cmscloud_client.utils import (validate_boilerplate_config, bundle_boilerplate, filter_template_files,
-    filter_static_files, validate_app_config, bundle_app)
+                                   filter_static_files, validate_app_config, bundle_app)
 
 
 class WritableNetRC(netrc.netrc):
@@ -60,8 +59,16 @@ class SingleHostSession(requests.Session):
         return super(SingleHostSession, self).request(method, url, *args, **kwargs)
 
 
-
 class Client(object):
+    APP_FILENAME = 'app.yaml'
+    BOILERPLATE_FILENAME = 'boilerplate.yaml'
+    CMSCLOUD_CONFIG_FILENAME = 'cmscloud_config.py'
+    CMSCLOUD_DOT_FILENAME = '.cmscloud'
+    CMSCLOUD_HOST_DEFAULT = 'https://control.django-cms.com'
+    CMSCLOUD_HOST_KEY = 'CMSCLOUD_HOST'
+    DATA_FILENAME = 'data.yaml'
+    SETUP_FILENAME = 'setup.py'
+
     def __init__(self, host):
         register_yaml_extensions()
         self.host = urlparse.urlparse(host)[1]
@@ -86,26 +93,31 @@ class Client(object):
             }
             self.netrc.add(self.host, email, None, token)
             self.netrc.write()
-            print "Logged in as %s" % email
-            return True
+            msg = "Logged in as %s" % email
+            return (True, msg)
         elif response.status_code == requests.codes.forbidden:
-            print "Could not log in, invalid email or password"
-            return False
+            msg = "Could not log in, invalid email or password"
+            return (False, msg)
         else:
-            print response.content
-            print "There was a problem logging in, please try again later."
-            return False
+            msg = ''
+            if response.content:
+                msg += response.content + '\n'
+            msg += "There was a problem logging in, please try again later."
+            return (False, msg)
 
-    def upload_boilerplate(self):
-        if not os.path.exists('boilerplate.yaml'):
-            print "File 'boilerplate.yaml' not found."
-            return False
+    def upload_boilerplate(self, path=''):
+        boilerplate_filename = os.path.join(path, Client.BOILERPLATE_FILENAME)
+        data_filename = os.path.join(path, Client.DATA_FILENAME)
+
+        if not os.path.exists(boilerplate_filename):
+            msg = "File '%s' not found." % boilerplate_filename
+            return (False, msg)
         extra_file_paths = []
-        with open('boilerplate.yaml') as fobj:
+        with open(boilerplate_filename) as fobj:
             with Trackable.tracker as extra_objects:
                 config = yaml.safe_load(fobj)
-                if os.path.exists('data.yaml'):
-                    with open('data.yaml') as fobj2:
+                if os.path.exists(data_filename):
+                    with open(data_filename) as fobj2:
                         data = yaml.safe_load(fobj2)
                 else:
                     data = {}
@@ -115,65 +127,74 @@ class Client(object):
         tarball = bundle_boilerplate(config, data, extra_file_paths, templates=filter_template_files,
                                      static=filter_static_files)
         response = self.session.post('/api/v1/boilerplates/', files={'boilerplate': tarball})
-        print response.status_code, response.content
-        return True
+        msg = '\t'.join([str(response.status_code), response.content])
+        return (True, msg)
 
-    def validate_boilerplate(self):
-        if not os.path.exists('boilerplate.yaml'):
-            print "File 'boilerplate.yaml' not found."
-            return False
-        with open('boilerplate.yaml') as fobj:
+    def validate_boilerplate(self, path=''):
+        boilerplate_filename = os.path.join(path, Client.BOILERPLATE_FILENAME)
+
+        if not os.path.exists(boilerplate_filename):
+            msg = "File '%s' not found." % boilerplate_filename
+            return (False, msg)
+        with open(boilerplate_filename) as fobj:
             config = yaml.safe_load(fobj)
         return validate_boilerplate_config(config)
 
-    def upload_app(self):
-        if not os.path.exists('setup.py'):
-            print "File 'setup.py' not found."
-            return False
-        if not os.path.exists('app.yaml'):
-            print "File 'app.yaml' not found."
-            return False
-        with open('app.yaml') as fobj:
+    def upload_app(self, path=''):
+        app_filename = os.path.join(path, Client.APP_FILENAME)
+        cmscloud_config_filename = os.path.join(path, Client.CMSCLOUD_CONFIG_FILENAME)
+        setup_filename = os.path.join(path, Client.SETUP_FILENAME)
+        msgs = []
+        if not os.path.exists(setup_filename):
+            msg = "File '%' not found." % Client.SETUP_FILENAME
+            return (False, msg)
+        if not os.path.exists(app_filename):
+            msg = "File '%s' not found." % app_filename
+            return (False, msg)
+        with open(app_filename) as fobj:
             config = yaml.safe_load(fobj)
-        if not validate_app_config(config):
-            return False
-        if os.path.exists('cmscloud_config.py'):
-            with open('cmscloud_config.py') as fobj:
+        (valid, msg) = validate_app_config(config)
+        if not valid:
+            return (False, msg)
+        if os.path.exists(cmscloud_config_filename):
+            with open(cmscloud_config_filename) as fobj:
                 script = fobj.read()
         else:
             script = ''
-            print "File 'cmscloud_config.py' not found, your app will not have any configurable settings."
+            msgs.append("File '%s' not found, your app will not have any configurable settings." %
+                        Client.CMSCLOUD_CONFIG_FILENAME)
         tarball = bundle_app(config, script)
         response = self.session.post('/api/v1/apps/', files={'app': tarball})
-        print response.status_code, response.content
-        return True
+        msgs.append('\t'.join([str(response.status_code), response.content]))
+        return (True, '\n'.join(msgs))
 
-    def validate_app(self):
-        if not os.path.exists('setup.py'):
-            print "File 'setup.py' not found."
-            return False
-        if not os.path.exists('app.yaml'):
-            print "File 'app.yaml' not found."
-            return False
-        with open('app.yaml') as fobj:
+    def validate_app(self, path=''):
+        app_filename = os.path.join(path, Client.APP_FILENAME)
+        setup_filename = os.path.join(path, Client.SETUP_FILENAME)
+        if not os.path.exists(setup_filename):
+            msg = "File '%s' not found." % Client.SETUP_FILENAME
+            return (False, msg)
+        if not os.path.exists(app_filename):
+            msg = "File '%s' not found." % Client.APP_FILENAME
+            return (False, msg)
+        with open(app_filename) as fobj:
             config = yaml.safe_load(fobj)
         return validate_app_config(config)
 
-    def sync(self, sitename=None):
+    def sync(self, sitename=None, path='', interactive=True):
+        cmscloud_dot_filename = os.path.join(path, Client.CMSCLOUD_DOT_FILENAME)
         if not sitename:
-            if not os.path.exists('.cmscloud'):
-                print "Please specify a sitename using --sitename."
-                return False
-            with open('.cmscloud', 'r') as fobj:
-                sitename = fobj.read().strip()
+            if os.path.exists(cmscloud_dot_filename):
+                with open('.cmscloud', 'r') as fobj:
+                    sitename = fobj.read().strip()
             if not sitename:
-                print "Please specify a sitename using --sitename."
-                return False
+                msg = "Please specify a sitename using --sitename."
+                return (False, msg)
         if '.' in sitename:
             sitename = sitename.split('.')[0]
         print "Preparing to sync %s." % sitename
         print "This will undo all local changes."
-        while True:
+        while interactive:
             answer = raw_input('Are you sure you want to continue? [yN]')
             if answer.lower() == 'n' or not answer:
                 print "Aborted"
@@ -192,26 +213,31 @@ class Client(object):
         print "Updating local files..."
         response = self.session.get('/api/v1/sync/%s/' % sitename, stream=True)
         if response.status_code != 200:
-            print "Unexpected HTTP Response %s" % response.status_code
-            print response.content
-            return False
+            msgs = []
+            msgs.append("Unexpected HTTP Response %s" % response.status_code)
+            msgs.append(response.content)
+            return (False, '\n'.join(msgs))
         tarball = tarfile.open(mode='r|gz', fileobj=response.raw)
-
         tarball.extractall()
-        with open('.cmscloud', 'w') as fobj:
+        with open(cmscloud_dot_filename, 'w') as fobj:
             fobj.write(sitename)
-        print "Done, now watching for changes. You can stop the sync by hitting Ctrl-c in this shell"
 
-        event_handler = SyncEventHandler(self.session, sitename)
-        observer = Observer()
-        observer.schedule(event_handler, '.', recursive=True)
-        observer.start()
+        if interactive:
+            print "Done, now watching for changes. You can stop the sync by hitting Ctrl-c in this shell"
 
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            observer.stop()
-        observer.join()
-        print "Stopped syncing"
-        return True
+            event_handler = SyncEventHandler(self.session, sitename)
+            observer = Observer()
+            observer.schedule(event_handler, '.', recursive=True)
+            observer.start()
+
+            try:
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                observer.stop()
+            observer.join()
+            msg = "Stopped syncing"
+            return (True, msg)
+        else:
+            msg = "Successfully synced application"
+            return (True, msg)

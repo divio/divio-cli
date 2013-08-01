@@ -24,20 +24,23 @@ Options:
 
 def main():
     args = docopt.docopt(__doc__, version=version)
-    client = Client(os.environ.get('CMSCLOUD_HOST', 'https://control.django-cms.com'))
+    client = Client(os.environ.get(Client.CMSCLOUD_HOST_KEY, Client.CMSCLOUD_HOST_DEFAULT))
     retval = True
+    msg = None
     if args['login']:
-        retval = client.login()
+        retval, msg = client.login()
     elif args['boilerplate']:
         if args['upload']:
-            retval = client.upload_boilerplate()
+            retval, msg = client.upload_boilerplate()
         elif args['validate']:
-            retval = client.validate_boilerplate()
+            retval, msg = client.validate_boilerplate()
     elif args['app']:
         if args['upload']:
-            retval = client.upload_app()
+            retval, msg = client.upload_app()
         elif args['validate']:
-            retval = client.validate_app()
+            retval, msg = client.validate_app()
     elif args['sync']:
-        retval = client.sync(args.get('--sitename', None))
+        retval, msg = client.sync(args.get('--sitename', None))
+    if msg:
+        print msg
     sys.exit(int(retval))
