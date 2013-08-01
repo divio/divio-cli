@@ -1,0 +1,4 @@
+Cython==0.19.1
+Kivy==1.7.1
+Pygame
+Pygments==1.6
