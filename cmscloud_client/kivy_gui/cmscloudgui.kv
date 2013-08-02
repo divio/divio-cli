@@ -1,0 +1,222 @@
+#:kivy 1.7.1
+
+
+<Root>:
+    file_chooser: file_chooser_id
+    content: content_id
+    preview: preview_id
+    no_app_view: no_app_view_id
+    logged_as: logged_as_id
+    login_button: login_button_id
+
+    BoxLayout:
+        orientation: 'vertical'
+
+        AnchorLayout:
+            anchor_x: 'right'
+            anchor_y: 'center'
+            size_hint: 1, None
+            height: 40
+            padding: 10
+
+            Label:
+                id: logged_as_id
+
+            Button:
+                id: login_button_id
+                size_hint: None, None
+                size: 100, 30
+
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint: 1, 1
+
+            BoxLayout:
+                size_hint: None, 1 
+                width: 400
+                FileChooserListView:
+                    id: file_chooser_id
+
+            BoxLayout:
+                id: content_id
+                size_hint: 1, 1 
+
+                Preview:
+                    id: preview_id
+
+                NoAppDetected:
+                    id: no_app_view_id
+
+
+<DialogField>:
+    input: input_id
+    label: 'Field'
+    password: False
+    orientation: 'horizontal'
+    size_hint: 1, None
+    height: 30
+
+    Label:
+        size_hint: 0.5, 1
+        text: self.parent.label
+    TextInput:
+        id: input_id
+        size_hint: 0.5, 1
+        multiline: False
+        password: self.parent.password
+
+
+<LoginDialog>:
+    size_hint: 1, 1
+    orientation: 'vertical'
+    padding: 0, 10
+    spacing: 10
+
+    DialogField:
+        id: email_id
+        label: 'E-mail'
+        password: False
+
+    DialogField:
+        id: password_id
+        label: 'Password'
+        password: True
+
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: None
+        height: 30
+        padding: 0, 0
+        spacing: 10
+        Button:
+            text: 'Cancel'
+            on_release: root.cancel()
+
+        Button:
+            text: 'Login'
+            on_release: root.login(email_id.input.text, password_id.input.text)
+
+
+<InfoDialog>:
+    size_hint: 1, 1
+    orientation: 'vertical'
+    padding: 0, 10
+    spacing: 10
+    message_label: message_label_id
+
+    Label:
+        id: message_label_id
+
+    FloatLayout:
+        size_hint: 1, None
+        height: 40
+
+        Button:
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+            size_hint: None, 1
+            width: 100
+            text: 'Close'
+            on_release: root.close()
+
+
+<NoAppDetected>:
+    message_label: message_label_id
+    size_hint: 1, 1
+
+    canvas:
+        Color:
+            rgba: 0.9, 0.9, 0.9, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    Label:
+        id: message_label_id
+        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+        size_hint: None, None
+        size: self.texture_size
+        padding: 20, 10
+        halign: 'center'
+        valign: 'middle'
+        text: 'No applications detected'
+
+        canvas.before:
+            Color:
+                rgba: .6, .6, .6, 1
+            Rectangle:
+                pos: self.pos
+                size: self.texture_size
+
+
+<Preview>:
+    panel: panel_id
+    orientation: 'vertical'
+
+    TabbedPanel:
+        id: panel_id
+        do_default_tab: False
+        orientation: 'horizontal'
+        tab_width: None
+
+    BoxLayout:
+        anchor_x: 'right'
+        anchor_y: 'center'
+        size_hint: 1, None
+        height: 50
+        padding: 10
+        spacing: 5
+
+        Button:
+            id: login_button_id
+            size_hint: None, None
+            size: self.texture_size[0] + 10, self.texture_size[1] + 10
+            text: 'Validate app'
+            on_release: app.validate_app()
+
+        Button:
+            id: login_button_id
+            size_hint: None, None
+            size: self.texture_size[0] + 10, self.texture_size[1] + 10
+            text: 'Upload app'
+            on_release: app.upload_app()
+
+        Button:
+            id: login_button_id
+            size_hint: None, None
+            size: self.texture_size[0] + 10, self.texture_size[1] + 10
+            text: 'Validate boilerplate'
+            on_release: app.validate_boilerplate()
+
+        Button:
+            id: login_button_id
+            size_hint: None, None
+            size: self.texture_size[0] + 10, self.texture_size[1] + 10
+            text: 'Upload boilerplate'
+            on_release: app.upload_boilerplate()
+
+        Button:
+            id: login_button_id
+            size_hint: None, None
+            size: self.texture_size[0] + 10, self.texture_size[1] + 10
+            text: 'Sync'
+            on_release: app.sync()
+
+
+<PreviewPanelHeader>:
+    size_hint_x: None
+    width: self.texture_size[0] + 40
+
+
+<CodePreview>:
+    code_input: code_input_id
+
+    ScrollView:
+        id: scroll_id
+        bar_color: .4, .5, .7, .9
+        bar_width: 5
+        CodeInput:
+            id: code_input_id
+            multiline: True
+            readonly: True
+            size_hint: 1, None
+            height: max((len(self._lines) + 1) * (self.line_height + 2), scroll_id.height)

@@ -22,19 +22,26 @@ from cmscloud_client.utils import (validate_boilerplate_config, bundle_boilerpla
 
 class WritableNetRC(netrc.netrc):
     def __init__(self, *args, **kwargs):
-        home = os.path.expanduser("~")
-        netrc_path = os.path.join(home, ".netrc")
+        netrc_path = self.get_netrc_path()
         if not os.path.exists(netrc_path):
             open(netrc_path, 'a').close()
             os.chmod(netrc_path, 0600)
         netrc.netrc.__init__(self, *args, **kwargs)
 
+    def get_netrc_path(self):
+        home = os.path.expanduser('~')
+        return os.path.join(home, '.netrc')
+
     def add(self, host, login, account, password):
         self.hosts[host] = (login, account, password)
 
+    def remove(self, host):
+        if host in self.hosts:
+            del self.hosts[host]
+
     def write(self, path=None):
         if path is None:
-            path = os.path.join(os.environ['HOME'], '.netrc')
+            path = self.get_netrc_path()
         with open(path, 'w') as fobj:
             for machine, data in self.hosts.items():
                 login, account, password = data
@@ -69,11 +76,13 @@ class Client(object):
     DATA_FILENAME = 'data.yaml'
     SETUP_FILENAME = 'setup.py'
 
+    ALL_CONFIG_FILES = [APP_FILENAME, BOILERPLATE_FILENAME, CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
+
     def __init__(self, host):
         register_yaml_extensions()
         self.host = urlparse.urlparse(host)[1]
         self.netrc = WritableNetRC()
-        auth_data = self.netrc.hosts.get(self.host)
+        auth_data = self.get_auth_data()
         if auth_data:
             headers = {
                 'Authorization': 'Basic %s' % auth_data[2]
@@ -82,9 +91,36 @@ class Client(object):
             headers = {}
         self.session = SingleHostSession(host, headers=headers, trust_env=False)
 
-    def login(self):
-        email = raw_input('E-Mail: ')
-        password = getpass.getpass('Password: ')
+    def get_auth_data(self):
+        return self.netrc.hosts.get(self.host)
+
+    def is_logged_in(self):
+        auth_data = self.get_auth_data()
+        return bool(auth_data)
+
+    def get_login(self):
+        if self.is_logged_in():
+            auth_data = self.get_auth_data()
+            return auth_data[0]
+
+    def logout(self, interactive=True):
+        while interactive:
+            answer = raw_input('Are you sure you want to continue? [yN]')
+            if answer.lower() == 'n' or not answer:
+                print "Aborted"
+                return True
+            elif answer.lower() == 'y':
+                break
+            else:
+                print "Invalid answer, please type either y or n"
+        self.netrc.remove(self.host)
+        self.netrc.write()
+
+    def login(self, email=None, password=None):
+        if email is None:
+            email = raw_input('E-Mail: ')
+        if password is None:
+            password = getpass.getpass('Password: ')
         response = self.session.post('/api/v1/login/', data={'email': email, 'password': password})
         if response.ok:
             token = response.content
@@ -99,11 +135,11 @@ class Client(object):
             msg = "Could not log in, invalid email or password"
             return (False, msg)
         else:
-            msg = ''
+            msgs = []
             if response.content:
-                msg += response.content + '\n'
-            msg += "There was a problem logging in, please try again later."
-            return (False, msg)
+                msgs.append(response.content)
+            msgs.append("There was a problem logging in, please try again later.")
+            return (False, '\n'.join(msgs))
 
     def upload_boilerplate(self, path=''):
         boilerplate_filename = os.path.join(path, Client.BOILERPLATE_FILENAME)
@@ -185,7 +221,7 @@ class Client(object):
         cmscloud_dot_filename = os.path.join(path, Client.CMSCLOUD_DOT_FILENAME)
         if not sitename:
             if os.path.exists(cmscloud_dot_filename):
-                with open('.cmscloud', 'r') as fobj:
+                with open(cmscloud_dot_filename, 'r') as fobj:
                     sitename = fobj.read().strip()
             if not sitename:
                 msg = "Please specify a sitename using --sitename."
