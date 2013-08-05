@@ -8,9 +8,11 @@ from kivy.app import App
 from kivy.config import Config
 from kivy.properties import ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.popup import Popup
 from kivy.uix.tabbedpanel import TabbedPanelHeader
+from kivy.uix.textinput import TextInput
 from pygments.lexers import PythonLexer, YamlLexer
 
 from client import Client
@@ -25,7 +27,27 @@ USER_SETTINGS_SECTION = 'user_settings'
 
 
 class DialogField(BoxLayout):
-    pass
+    label = ObjectProperty(None)
+    password = ObjectProperty(None)
+    next = ObjectProperty(None)
+    focus = ObjectProperty(None)
+
+
+class TabTextInput(TextInput):
+    next = ObjectProperty(None)
+
+    def _keyboard_on_key_down(self, window, keycode, text, modifiers):
+        key, key_str = keycode
+        if key in (9, 13) and self.next is not None:
+            if isinstance(self.next, TextInput):
+                self.next.focus = True
+                self.next.select_all()
+            if isinstance(self.next, Button):
+                self.focus = False
+                self.next.dispatch('on_press')
+                self.next.dispatch('on_release')
+        else:
+            super(TabTextInput, self)._keyboard_on_key_down(window, keycode, text, modifiers)
 
 
 class LoginDialog(BoxLayout):
@@ -38,6 +60,14 @@ class LoginDialog(BoxLayout):
 class InfoDialog(BoxLayout):
     close = ObjectProperty(None)
     message_label = ObjectProperty(None)
+
+
+class LoadingDialog(BoxLayout):
+    pass
+
+
+class ConfirmDialog(BoxLayout):
+    pass
 
 
 class Preview(BoxLayout):
@@ -169,7 +199,6 @@ class CMSCloudGUIApp(App):
             self.show_dialog('Error', msg)
 
     def sync(self):
-        print 'syncing'
         status, msg = self.client.sync(path=self.get_current_dir(), interactive=False)
         if status:
             self.show_dialog('Result', msg)

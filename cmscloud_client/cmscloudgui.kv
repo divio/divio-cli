@@ -52,6 +52,8 @@
     input: input_id
     label: 'Field'
     password: False
+    next: None
+    focus: False
     orientation: 'horizontal'
     size_hint: 1, None
     height: 30
@@ -59,8 +61,10 @@
     Label:
         size_hint: 0.5, 1
         text: self.parent.label
-    TextInput:
+    TabTextInput:
         id: input_id
+        next: self.parent.next
+        focus: self.parent.focus
         size_hint: 0.5, 1
         multiline: False
         password: self.parent.password
@@ -76,11 +80,14 @@
         id: email_id
         label: 'E-mail'
         password: False
+        next: password_id.input
+        focus: True
 
     DialogField:
         id: password_id
         label: 'Password'
         password: True
+        next: login_btn_id
 
     BoxLayout:
         orientation: 'horizontal'
@@ -93,6 +100,7 @@
             on_release: root.cancel()
 
         Button:
+            id: login_btn_id
             text: 'Login'
             on_release: root.login(email_id.input.text, password_id.input.text)
 
