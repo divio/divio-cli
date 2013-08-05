@@ -1,4 +1,7 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import kivy
+kivy.require('1.7.1')
+
 import os
 
 from kivy.app import App
@@ -10,7 +13,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.tabbedpanel import TabbedPanelHeader
 from pygments.lexers import PythonLexer, YamlLexer
 
-from cmscloud_client.client import Client
+from client import Client
 
 
 DEFAULT_DIR = os.path.expanduser('~')
