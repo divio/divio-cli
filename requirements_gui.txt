@@ -1,4 +1,4 @@
 Cython==0.19.1
 Kivy==1.7.1
-Pygame
+hg+http://bitbucket.org/pygame/pygame/get/62f61425b394.zip#egg=pygame
 Pygments==1.6
