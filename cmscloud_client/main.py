@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import kivy
-kivy.require('1.7.1')
+kivy.require('1.7.2')
 
 import os
 
