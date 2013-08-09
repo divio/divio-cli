@@ -14,6 +14,7 @@ Usage:
     cmscloud app upload
     cmscloud app validate
     cmscloud sync [--sitename=<sitename>]
+    cmscloud sites
 
 Options:
     -h --help                   Show this screen.
@@ -41,6 +42,8 @@ def main():
             retval, msg = client.validate_app()
     elif args['sync']:
         retval, msg = client.sync(args.get('--sitename', None))
+    elif args['sites']:
+        retval, msg = client.sites()
     if msg:
         print msg
     sys.exit(int(retval))

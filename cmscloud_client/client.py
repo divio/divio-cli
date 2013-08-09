@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import getpass
+import json
+import netrc
+import os
 import shutil
 import tarfile
-import os
-import urlparse
-import netrc
 import time
+import urlparse
 
 import requests
 try:
@@ -217,7 +218,7 @@ class Client(object):
             config = yaml.safe_load(fobj)
         return validate_app_config(config)
 
-    def sync(self, sitename=None, path='', interactive=True):
+    def sync(self, sitename=None, path='.', interactive=True):
         cmscloud_dot_filename = os.path.join(path, Client.CMSCLOUD_DOT_FILENAME)
         if not sitename:
             if os.path.exists(cmscloud_dot_filename):
@@ -233,8 +234,8 @@ class Client(object):
         while interactive:
             answer = raw_input('Are you sure you want to continue? [yN]')
             if answer.lower() == 'n' or not answer:
-                print "Aborted"
-                return True
+                msg = "Aborted"
+                return (True, msg)
             elif answer.lower() == 'y':
                 break
             else:
@@ -254,17 +255,17 @@ class Client(object):
             msgs.append(response.content)
             return (False, '\n'.join(msgs))
         tarball = tarfile.open(mode='r|gz', fileobj=response.raw)
-        tarball.extractall()
+        tarball.extractall(path=path)
         with open(cmscloud_dot_filename, 'w') as fobj:
             fobj.write(sitename)
 
+        event_handler = SyncEventHandler(self.session, sitename, relpath=path)
+        observer = Observer()
+        observer.schedule(event_handler, path, recursive=True)
+        observer.start()
+
         if interactive:
             print "Done, now watching for changes. You can stop the sync by hitting Ctrl-c in this shell"
-
-            event_handler = SyncEventHandler(self.session, sitename)
-            observer = Observer()
-            observer.schedule(event_handler, '.', recursive=True)
-            observer.start()
 
             try:
                 while True:
@@ -275,5 +276,20 @@ class Client(object):
             msg = "Stopped syncing"
             return (True, msg)
         else:
-            msg = "Successfully synced application"
-            return (True, msg)
+            return (True, observer)
+
+    def sites(self, interactive=True):
+        return (True, [{u'domain': u'and-now-sth-totally-new', u'name': u'And now sth totally new!', u'custom_domain': u''}, {u'domain': u'once-again', u'name': u'once again', u'custom_domain': u''}, {u'domain': u'test', u'name': u'test', u'custom_domain': u''}])
+        response = self.session.get('/api/v1/sites/', stream=True)
+        if response.status_code != 200:
+            msgs = []
+            msgs.append("Unexpected HTTP Response %s" % response.status_code)
+            msgs.append(response.content)
+            return (False, '\n'.join(msgs))
+        else:
+            sites = json.loads(response.content)
+            if interactive:
+                data = json.dumps(sites, sort_keys=True, indent=4, separators=(',', ': '))
+            else:
+                data = sites
+            return (True, data)
