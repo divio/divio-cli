@@ -4,19 +4,20 @@ from cmscloud_client.utils import is_valid_file_name
 import os
 
 
-def relpath(path):
-    return os.path.relpath(path, '.')
+def relpath(path, relpath):
+    return os.path.relpath(path, relpath)
 
 
 class SyncEventHandler(FileSystemEventHandler):
-    def __init__(self, session, sitename):
+    def __init__(self, session, sitename, relpath='.'):
         self.session = session
         self.sitename = sitename
+        self.relpath = relpath
 
     def dispatch(self, event):
         for attr in ['src', 'dest']:
             if hasattr(event, '%s_path' % attr):
-                event_rel_path = relpath(getattr(event, '%s_path' % attr))
+                event_rel_path = relpath(getattr(event, '%s_path' % attr), relpath=self.relpath)
                 setattr(event, 'rel_%s_path' % attr, event_rel_path)
                 event_base_path = os.path.basename(getattr(event, '%s_path' % attr))
                 setattr(event, 'base_%s_path' % attr, event_base_path)
@@ -80,6 +81,7 @@ class SyncEventHandler(FileSystemEventHandler):
             self._send_request('POST', data={'path': event.rel_src_path}, files={'content': open(event.src_path)})
 
     def on_deleted(self, event):
+        # TODO fix race condition
         if os.path.exists(event.src_path): # hack for OSX
             return self.on_modified(event)
         if not event.sync_src:
