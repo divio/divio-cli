@@ -1,109 +1,229 @@
 #:kivy 1.7.2
 
 
-<Root>:
-    file_chooser: file_chooser_id
-    content: content_id
-    preview: preview_id.__self__
-    no_app_view: no_app_view_id.__self__
-    logged_as: logged_as_id
-    login_button: login_button_id
+#########################
+# Main Screen's layouts #
+#########################
+
+<BaseScreen>:
+    canvas:
+        Color:
+            rgb: 0.2627, 0.2627, 0.2627
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+
+<LoginScreen>:
+    login_btn: login_btn_id
+    trouble_btn: trouble_btn_id
+    create_aldryn_id_btn: create_aldryn_id_btn_id
+    email: email_id
+    password: password_id
 
     BoxLayout:
         orientation: 'vertical'
-
-        AnchorLayout:
-            anchor_x: 'right'
-            anchor_y: 'center'
-            size_hint: 1, None
-            height: 40
-            padding: 10
-
-            Label:
-                id: logged_as_id
-
-            Button:
-                id: login_button_id
-                size_hint: None, None
-                size: 100, 30
+        spacing: 10
 
         BoxLayout:
-            orientation: 'horizontal'
-            size_hint: 1, 1
+            orientation: 'vertical'
+            padding: 40, 20, 40, 0
+            spacing: 10
 
-            BoxLayout:
-                size_hint: None, 1 
-                width: 400
-                FileChooserListView:
-                    id: file_chooser_id
+            Image:
+                size_hint: 1, 0.2
+                source: 'img/aldryn_logo_white.png'
 
-            BoxLayout:
-                id: content_id
-                size_hint: 1, 1 
+            Label:
+                size_hint: 1, 0.1
+                text: 'Login with your Aldryn ID'
 
-                Preview:
-                    id: preview_id
+            Label:
+                size_hint: 1, 0.1
+                text: 'E-mail'
 
-                NoAppDetected:
-                    id: no_app_view_id
+            TabTextInput
+                id: email_id
+                #background_color: 0.22, 0.22, 0.22, 1
+                #background_active: ''
+                #background_normal: ''
+                #border: 0, 0, 0, 0
+                focus: True
+                next: password_id
+                size_hint: 1, 0.1
+                text: 'mateusz@mirumee.com'
+
+            Label:
+                size_hint: 1, 0.1
+                text: 'Password'
+
+            TabTextInput
+                id: password_id
+                next: login_btn_id
+                password: True
+                size_hint: 1, 0.1
+                text: 'testingaldrynapp'
+
+            Button:
+                id: login_btn_id
+                background_color: 0.33, 0.66, 0.9, 1
+                background_down: ''
+                background_normal: ''
+                on_release: app.login(email_id.text, password_id.text)
+                size_hint: 1, 0.1
+                text: 'Login'
+
+            Button:
+                id: trouble_btn_id
+                size_hint: 1, 0.1
+                text: 'Trouble signing in?'
+                background_normal: ''
+                background_down: ''
+                background_color: 0, 0, 0, 0
+                on_release: app.browser_open_trouble_signing_in()
+
+        Button:
+            id: create_aldryn_id_btn_id
+            size_hint: 1, 0.1
+            text: 'Create an Aldryn ID'
+            background_normal: ''
+            background_down: ''
+            background_color: 0, 0, 0, 0
+            on_release: app.browser_open_account_creation()
+
+            canvas:
+                Color:
+                    rgb: 0.06, 0.06, 0.06, 1
+                Rectangle:
+                    pos: self.pos[0], self.pos[1] + self.height - 1
+                    size: self.width, 1
+                Color:
+                    rgb: 0.38, 0.38, 0.38, 1
+                Rectangle:
+                    pos: self.pos[0], self.pos[1] + self.height - 2
+                    size: self.width, 1
 
 
-<DialogField>:
-    input: input_id
-    label: 'Field'
-    password: False
-    next: None
-    focus: False
-    orientation: 'horizontal'
-    size_hint: 1, None
-    height: 30
-
-    Label:
-        size_hint: 0.5, 1
-        text: self.parent.label
-    TabTextInput:
-        id: input_id
-        next: self.parent.next
-        focus: self.parent.focus
-        size_hint: 0.5, 1
-        multiline: False
-        password: self.parent.password
+<EmptyScreen>:
+    AnchorLayout:
+        anchor_x: 'center'
+        anchor_y: 'center'
+        Image:
+            size_hint: None, None
+            size: (100, 100)
+            source: 'img/aldryn_logo.png'
 
 
-<LoginDialog>:
-    size_hint: 1, 1
-    orientation: 'vertical'
-    padding: 0, 10
-    spacing: 10
+<SyncScreen>:
+    sites_list_view: sites_list_view_id
 
-    DialogField:
-        id: email_id
-        label: 'E-mail'
-        password: False
-        next: password_id.input
-        focus: True
-
-    DialogField:
-        id: password_id
-        label: 'Password'
-        password: True
-        next: login_btn_id
+    AnchorLayout:
+        size_hint: 1, 1
+        pos_hin: {'x': 0, 'y': 0}
+        anchor_x: 'center'
+        anchor_y: 'center'
+        Image:
+            size_hint: None, None
+            size: (100, 100)
+            source: 'img/aldryn_logo.png'
 
     BoxLayout:
-        orientation: 'horizontal'
-        size_hint_y: None
-        height: 30
-        padding: 0, 0
-        spacing: 10
-        Button:
-            text: 'Cancel'
-            on_release: root.cancel()
+        size_hint: 1, 1
+        orientation: 'vertical'
 
-        Button:
-            id: login_btn_id
-            text: 'Login'
-            on_release: root.login(email_id.input.text, password_id.input.text)
+        RelativeLayout:
+            id: top_buttons_id
 
+            height: max(top_left_buttons_id.height, top_right_buttons_id.height)
+            size_hint: 1, None
+
+            canvas:
+                Color:
+                    rgb: 0.2, 0.2, 0.2
+                Rectangle:
+                    size: self.size
+                Color:
+                    rgb: 0.06, 0.06, 0.06, 1
+                Rectangle:
+                    pos: 0, self.height - 1
+                    size: self.width, 1
+                Color:
+                    rgb: 0.38, 0.38, 0.38, 1
+                Rectangle:
+                    pos: 0, self.height - 2
+                    size: self.width, 1
+                Color:
+                    rgb: 0.06, 0.06, 0.06, 1
+                Rectangle:
+                    size: self.width, 1
+
+            StackLayout:
+                id: top_left_buttons_id
+                height: max(open_control_panel_btn_id.height, add_new_site_btn_id.height) + self.padding[1] + self.padding[3]
+                orientation: 'lr-tb'
+                padding: 10
+                pos_hint: {'x': 0, 'center_y': 0.5}
+                size_hint: 0.5, None
+                spacing: 10
+
+                PaddedButton:
+                    id: open_control_panel_btn_id
+                    on_release: app.browser_open_control_panel()
+                    text: 'Open Control Panel'
+
+                PaddedButton:
+                    id: add_new_site_btn_id
+                    on_release: app.browser_open_add_new_site()
+                    text: 'Add new site'
+
+                PaddedButton:
+                    id: refresh_sites_list_btn_id
+                    on_release: app.load_sites_list()
+                    text: 'Refresh sites list'
+
+            StackLayout:
+                id: top_right_buttons_id
+                height: logout_btn_id.height + self.padding[1] + self.padding[3]
+                orientation: 'rl-tb'
+                padding: 10
+                pos_hint: {'right': 1, 'center_y': 0.5}
+                size_hint: 0.5, None
+                spacing: 10
+
+                PaddedButton:
+                    id: logout_btn_id
+                    on_release: app.logout()
+                    text: 'Logout'
+
+        ScrollView:
+
+            size_hint: 1, None
+            height: self.parent.height - top_buttons_id.height - self.parent.spacing
+
+            canvas:
+                Color:
+                    rgba: 0.0, 0.5, 0.5, 0.0
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+            StackLayout:
+                id: sites_list_view_id
+
+                orientation: 'tb-lr'
+                size_hint: 1, None
+                height: self.parent.height - 1
+
+                canvas:
+                    Color:
+                        rgb: 0.06, 0.06, 0.06, 1
+                    Rectangle:
+                        size: self.width, 1
+
+
+##################
+# Dialog layouts #
+##################
 
 <InfoDialog>:
     size_hint: 1, 1
@@ -127,104 +247,141 @@
             on_release: root.close()
 
 
-<NoAppDetected>:
-    message_label: message_label_id
+<LoadingDialog>:
     size_hint: 1, 1
-
-    canvas:
-        Color:
-            rgba: 0.9, 0.9, 0.9, 1
-        Rectangle:
-            pos: self.pos
-            size: self.size
+    orientation: 'vertical'
+    padding: 0, 10
+    spacing: 10
+    message_label: message_label_id
 
     Label:
         id: message_label_id
-        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-        size_hint: None, None
-        size: self.texture_size
-        padding: 20, 10
-        halign: 'center'
-        valign: 'middle'
-        text: 'No applications detected'
-
-        canvas.before:
-            Color:
-                rgba: .6, .6, .6, 1
-            Rectangle:
-                pos: self.pos
-                size: self.texture_size
+        text: 'Loading ...'
 
 
-<Preview>:
-    panel: panel_id
-    orientation: 'vertical'
+<DirChooserDialog>:
+    size: root.size
+    pos: root.pos
+    orientation: "vertical"
+    FileChooserListView:
+        id: filechooser
 
-    TabbedPanel:
-        id: panel_id
-        do_default_tab: False
-        orientation: 'horizontal'
-        tab_width: None
+        dirselect: True
+        filters: ['']
 
     BoxLayout:
-        anchor_x: 'right'
-        anchor_y: 'center'
-        size_hint: 1, None
-        height: 50
+        size_hint_y: None
+        height: 30
+        Button:
+            text: "Cancel"
+            on_release: root.cancel()
+
+        Button:
+            text: "Select"
+            on_release: root.select(filechooser.path, filechooser.selection)
+
+
+##################
+# Custom widgets #
+##################
+
+<TabTextInput>:
+    multiline: False
+    halign: 'center'
+    valign: 'middle'
+    font_size: self.height - 4 * max(self.padding)
+
+
+<PaddedButton@Button>:
+    halign: 'center'
+    padding: 10, 5
+    size: self.texture_size
+    size_hint: None, None
+    valign: 'middle'
+
+
+<PaddedLabel@Label>:
+    halign: 'center'
+    padding: 10, 5
+    size: self.texture_size
+    size_hint: None, None
+    valign: 'middle'
+
+
+<Website>:
+    name_label: name_label_id
+    dir_label: dir_label_id
+    change_or_set_dir_btn: change_or_set_dir_btn_id
+    sync_btn: sync_btn_id
+
+    height: 50
+    padding: 10
+    size_hint: 1, None
+    spacing: 10
+
+    canvas:
+        Color:
+            rgb: 0.26, 0.26, 0.26
+        Rectangle:
+            size: self.size
+        Color:
+            rgb: 0.38, 0.38, 0.38, 1
+        Rectangle:
+            pos: 0, self.height - 1
+            size: self.width, 1
+        Color:
+            rgb: 0.06, 0.06, 0.06, 1
+        Rectangle:
+            size: self.width, 1
+
+    StackLayout:
+        orientation: 'lr-tb'
         padding: 10
-        spacing: 5
+        pos_hint: {'x': 0, 'center_y': 0.5}
+        size_hint: 0.7, 1
+        spacing: 10
 
-        Button:
-            id: login_button_id
+        BoxLayout:
+            size_hint: 0.3, 1
+
+            Label:
+                id: name_label_id
+
+                halign: 'left'
+                pos_hint: {'x': 0, 'center_y': .5}
+                shorten: True
+                text_size: self.parent.size
+                valign: 'middle'
+
+        PaddedLabel:
+            id: dir_label_id
+
+            color: .85, .85, .85, .85
+
+        PaddedButton:
+            id: change_or_set_dir_btn_id
+
+            background_color: 0, 0, 0, 0
+            background_down: ''
+            background_normal: ''
+            on_release: app.set_site_dir(self, dir_label_id, name_label_id.text)
+
+            canvas:
+                Color:
+                    rgb: 1, 1, 1
+                Rectangle:
+                    pos: self.pos[0] + self.padding_x, self.pos[1]
+                    size: self.texture_size[0] - 2 * self.padding_x, 1
+
+    StackLayout:
+        orientation: 'rl-tb'
+        padding: 10
+        pos_hint: {'right': 1, 'center_y': 0.5}
+        size_hint: 0.3, 1
+        spacing: 10
+
+        PaddedButton:
+            id: sync_btn_id
+
             size_hint: None, None
-            size: self.texture_size[0] + 10, self.texture_size[1] + 10
-            text: 'Validate app'
-            on_release: app.validate_app()
-
-        Button:
-            id: login_button_id
-            size_hint: None, None
-            size: self.texture_size[0] + 10, self.texture_size[1] + 10
-            text: 'Upload app'
-            on_release: app.upload_app()
-
-        Button:
-            id: login_button_id
-            size_hint: None, None
-            size: self.texture_size[0] + 10, self.texture_size[1] + 10
-            text: 'Validate boilerplate'
-            on_release: app.validate_boilerplate()
-
-        Button:
-            id: login_button_id
-            size_hint: None, None
-            size: self.texture_size[0] + 10, self.texture_size[1] + 10
-            text: 'Upload boilerplate'
-            on_release: app.upload_boilerplate()
-
-        Button:
-            id: login_button_id
-            size_hint: None, None
-            size: self.texture_size[0] + 10, self.texture_size[1] + 10
-            text: 'Sync'
-            on_release: app.sync()
-
-
-<PreviewPanelHeader>:
-    size_hint_x: None
-    width: self.texture_size[0] + 40
-
-
-<CodePreview>:
-    code_input: code_input_id
-
-    ScrollView:
-        id: scroll_id
-        bar_color: .4, .5, .7, .9
-        bar_width: 5
-        CodeInput:
-            id: code_input_id
-            multiline: True
-            readonly: True
-            size_hint: 1, None
-            height: max((len(self._lines) + 1) * (self.line_height + 2), scroll_id.height)
+            on_release: app.sync(self, name_label_id.text)
