@@ -18,10 +18,22 @@ import yaml
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
 from cmscloud_client.sync import SyncEventHandler
 from cmscloud_client.utils import (validate_boilerplate_config, bundle_boilerplate, filter_template_files,
-                                   filter_static_files, validate_app_config, bundle_app, resource_path)
+                                   filter_static_files, validate_app_config, bundle_app)
 
 
-CACERT_PEM_PATH = 'cacert.pem'
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = os.sys._MEIPASS
+    except Exception:
+        base_path = os.path.dirname(__file__)
+
+    return os.path.join(base_path, relative_path)
+
+CACERT_PEM_PATH = resource_path('cacert.pem')
+
 
 
 class WritableNetRC(netrc.netrc):
@@ -68,7 +80,7 @@ class SingleHostSession(requests.Session):
     def request(self, method, url, *args, **kwargs):
         url = self.host + url
         # Use local copy of 'cacert.pem' for easier packaging
-        kwargs['verify'] = resource_path(CACERT_PEM_PATH)
+        kwargs['verify'] = CACERT_PEM_PATH
         return super(SingleHostSession, self).request(method, url, *args, **kwargs)
 
 
