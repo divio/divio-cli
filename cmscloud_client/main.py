@@ -155,10 +155,21 @@ class CMSCloudGUIApp(App):
     def __init__(self, *args, **kwargs):
         super(CMSCloudGUIApp, self).__init__(*args, **kwargs)
         self.client = Client(os.environ.get(Client.CMSCLOUD_HOST_KEY, Client.CMSCLOUD_HOST_DEFAULT))
-
         sites_database_file_path = os.path.join(self.user_data_dir, SITES_DATABASE_FILENAME)
         self.sites_database = shelve.open(sites_database_file_path, writeback=True)
+
         self.site_views_cache = {}
+        self.site_sync_threads = {}
+
+    def _clear_data(self):
+        sites_list_view = self._get_sites_list_view()
+        for view in self.site_views_cache.values():
+            sites_list_view.remove_widget(view)
+        self.site_views_cache = {}
+
+        for t in self.site_sync_threads.values():
+            t.stop()
+            t.join()
         self.site_sync_threads = {}
 
     def build(self):
@@ -253,6 +264,7 @@ class CMSCloudGUIApp(App):
         if status:
 
             def callback():  # change screen to sync after the animation
+                self.root.get_screen('sync').on_enter = self.load_sites_list
                 self.root.current = 'sync'
             # start the animation after the empty screen is loaded
             animate_window_resize = partial(self._resize_window, WIDTH_SYNC, HEIGHT_SYNC, callback=callback)
@@ -263,6 +275,7 @@ class CMSCloudGUIApp(App):
 
     def logout(self):
         self.client.logout(interactive=False)
+        self._clear_data()
 
         def callback():  # change screen from empty to sync after the animation
             self.root.current = 'login'
