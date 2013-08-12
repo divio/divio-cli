@@ -157,11 +157,13 @@
 
             StackLayout:
                 id: top_left_buttons_id
+
                 height: max(open_control_panel_btn_id.height, add_new_site_btn_id.height) + self.padding[1] + self.padding[3]
+                minimum_width: 300
                 orientation: 'lr-tb'
                 padding: 10
                 pos_hint: {'x': 0, 'center_y': 0.5}
-                size_hint: 0.5, None
+                size_hint: 0.75, None
                 spacing: 10
 
                 PaddedButton:
@@ -181,11 +183,13 @@
 
             StackLayout:
                 id: top_right_buttons_id
+
                 height: logout_btn_id.height + self.padding[1] + self.padding[3]
+                minimum_width: 100
                 orientation: 'rl-tb'
                 padding: 10
                 pos_hint: {'right': 1, 'center_y': 0.5}
-                size_hint: 0.5, None
+                size_hint: 0.25, None
                 spacing: 10
 
                 PaddedButton:
@@ -307,10 +311,10 @@
 
 
 <Website>:
-    name_label: name_label_id
-    dir_label: dir_label_id
-    change_or_set_dir_btn: change_or_set_dir_btn_id
-    sync_btn: sync_btn_id
+    name_label: name_label_id.__self__
+    dir_label: dir_label_id.__self__
+    change_or_set_dir_btn: change_or_set_dir_btn_id.__self__
+    sync_btn: sync_btn_id.__self__
 
     height: 50
     padding: 10
@@ -347,7 +351,6 @@
 
                 halign: 'left'
                 pos_hint: {'x': 0, 'center_y': .5}
-                shorten: True
                 text_size: self.parent.size
                 valign: 'middle'
 

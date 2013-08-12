@@ -43,13 +43,13 @@ SITES_DATABASE_FILENAME = 'sites_database'
 WINDOW_TITLE = 'Aldryn App'
 
 # window resizing parameters
-RESIZING_DURATION = 0.5
+RESIZING_DURATION = 0.0
 RESIZING_EASING = 7
-RESIZING_STEPS = 10.0
+RESIZING_STEPS = 1
 
 # urls
-ACCOUNT_CREATION_URL = 'https://www.django-cms.com/login/'
-TROUBLE_SIGNING_IN_URL = 'https://www.django-cms.com/login/'
+ACCOUNT_CREATION_URL = 'https://login.django-cms.com/login/'
+TROUBLE_SIGNING_IN_URL = 'https://login.django-cms.com/account/reset-password/'
 CONTROL_PANEL_URL = 'https://control.django-cms.com/control/'
 ADD_NEW_SITE_URL = 'https://control.django-cms.com/control/new/'
 
@@ -230,12 +230,12 @@ class CMSCloudGUIApp(App):
         step_duration = RESIZING_DURATION / RESIZING_STEPS
 
         def set_size(steps_left, dt):
+            steps_left = steps_left - 1 if steps_left > 0 else 0
             ratio = steps_left * 1.0 / RESIZING_STEPS
             ratio **= RESIZING_EASING
             width = int(current_width * ratio + target_width * (1.0 - ratio))
             height = int(current_height * ratio + target_height * (1.0 - ratio))
             Window.size = width, height
-            steps_left -= 1
             if steps_left > 0:
                 Clock.schedule_once(partial(set_size, steps_left), step_duration)
             elif callback:
@@ -291,7 +291,7 @@ class CMSCloudGUIApp(App):
                     site_view = self.site_views_cache[name]
                 else:
                     site_view = Website()
-                    site_view.name_label.text = site_data['name']
+                    site_view.name_label.text = name
 
                 site_dir = None
                 if name in self.sites_database:
