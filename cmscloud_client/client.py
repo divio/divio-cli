@@ -284,7 +284,6 @@ class Client(object):
             return (True, observer)
 
     def sites(self, interactive=True):
-        return (True, [{u'domain': u'and-now-sth-totally-new', u'name': u'And now sth totally new!', u'custom_domain': u''}, {u'domain': u'once-again', u'name': u'once again', u'custom_domain': u''}, {u'domain': u'test', u'name': u'test', u'custom_domain': u''}])
         response = self.session.get('/api/v1/sites/', stream=True)
         if response.status_code != 200:
             msgs = []
