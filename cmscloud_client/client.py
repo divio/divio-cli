@@ -18,7 +18,10 @@ import yaml
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
 from cmscloud_client.sync import SyncEventHandler
 from cmscloud_client.utils import (validate_boilerplate_config, bundle_boilerplate, filter_template_files,
-                                   filter_static_files, validate_app_config, bundle_app)
+                                   filter_static_files, validate_app_config, bundle_app, resource_path)
+
+
+CACERT_PEM_PATH = 'cacert.pem'
 
 
 class WritableNetRC(netrc.netrc):
@@ -64,6 +67,8 @@ class SingleHostSession(requests.Session):
 
     def request(self, method, url, *args, **kwargs):
         url = self.host + url
+        # Use local copy of 'cacert.pem' for easier packaging
+        kwargs['verify'] = resource_path(CACERT_PEM_PATH)
         return super(SingleHostSession, self).request(method, url, *args, **kwargs)
 
 
