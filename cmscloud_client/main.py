@@ -40,7 +40,7 @@ from utils_kivy import TabTextInput
 HOME_DIR = os.path.expanduser('~')
 KNOWN_CONFIG_FILES_FILTERS = ['*.yaml', '*.py']
 SITES_DATABASE_FILENAME = 'sites_database'
-WINDOW_TITLE = 'Aldryn App'
+WINDOW_TITLE = 'Aldryn Cloud'
 
 # window resizing parameters
 RESIZING_DURATION = 0.5
@@ -151,6 +151,7 @@ class LoadSitesListThread(threading.Thread):
 class CMSCloudGUIApp(App):
 
     title = WINDOW_TITLE
+    icon = 'resources/appIcon.icns'
 
     def __init__(self, *args, **kwargs):
         super(CMSCloudGUIApp, self).__init__(*args, **kwargs)
