@@ -3,6 +3,7 @@
 *.pyc
 *.pyo
 
+cmscloudgui.ini
 build/
 cmscloud_client.egg-info/
 dist/
