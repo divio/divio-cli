@@ -118,6 +118,18 @@ class Website(RelativeLayout):
     change_or_set_dir_btn = ObjectProperty(None)
     sync_btn = ObjectProperty(None)
 
+    def set_dir_btn_text_to_change(self):
+        self.change_or_set_dir_btn.text = 'change'
+
+    def set_dir_btn_text_to_set(self):
+        self.change_or_set_dir_btn.text = 'Set sync destination folder'
+
+    def set_sync_btn_text_to_stop(self):
+        self.sync_btn.text = 'Stop Sync'
+
+    def set_sync_btn_text_to_sync(self):
+        self.sync_btn.text = 'Sync Files'
+
 
 ######################
 # Asynchronous tasks #
@@ -356,14 +368,14 @@ class CMSCloudGUIApp(App):
 
                 if site_dir:
                     site_view.dir_label.text = site_dir
-                    site_view.change_or_set_dir_btn.text = 'change'
+                    site_view.set_dir_btn_text_to_change()
                 else:
-                    site_view.change_or_set_dir_btn.text = 'Set sync destination folder'
+                    site_view.set_dir_btn_text_to_set()
 
                 if name in self.site_sync_threads:
-                    site_view.sync_btn.text = 'Stop Sync'
+                    site_view.set_sync_btn_text_to_stop()
                 else:
-                    site_view.sync_btn.text = 'Sync Files'
+                    site_view.set_sync_btn_text_to_sync()
 
                 if name not in self.site_views_cache:
                     sites_list_view.add_widget(site_view)
@@ -386,7 +398,7 @@ class CMSCloudGUIApp(App):
         self.sites_database.sync()
         site_view = self.site_views_cache[site_name]
         site_view.dir_label.text = site_dir
-        site_view.change_or_set_dir_btn.text = 'change'
+        site_view.set_dir_btn_text_to_change()
 
     def sync(self, site_name):
         observer = self.site_sync_threads.get(site_name, None)
@@ -395,7 +407,7 @@ class CMSCloudGUIApp(App):
             observer.join()
             del self.site_sync_threads[site_name]
             site_view = self.site_views_cache[site_name]
-            site_view.sync_btn.text = 'Sync Files'
+            site_view.set_sync_btn_to_sync()
         else:
             site_dir = self.sites_database[site_name].get('dir', None)
             if site_dir:
@@ -417,7 +429,7 @@ class CMSCloudGUIApp(App):
             if status:  # observer
                 self.site_sync_threads[site_name] = msg_or_observer
                 site_view = self.site_views_cache[site_name]
-                site_view.sync_btn.text = 'Stop Sync'
+                site_view.set_sync_btn_to_stop()
             else:  # msg
                 self.show_info_dialog('Error', msg_or_observer)
 
