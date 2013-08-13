@@ -394,7 +394,7 @@ class CMSCloudGUIApp(App):
             site_dir = selection[0]
         else:
             site_dir = path
-        self.sites_database[site_name]['dir'] = site_dir
+        self._set_site_dir(site_name, site_dir)
         self.sites_database.sync()
         site_view = self.site_views_cache[site_name]
         site_view.dir_label.text = site_dir
@@ -407,9 +407,9 @@ class CMSCloudGUIApp(App):
             observer.join()
             del self.site_sync_threads[site_name]
             site_view = self.site_views_cache[site_name]
-            site_view.set_sync_btn_to_sync()
+            site_view.set_sync_btn_text_to_sync()
         else:
-            site_dir = self.sites_database[site_name].get('dir', None)
+            site_dir = self._get_site_dir(site_name)
             if site_dir:
                 on_confirm = partial(self._sync_callback, site_name, site_dir)
                 title = 'Confirm sync'
@@ -429,7 +429,7 @@ class CMSCloudGUIApp(App):
             if status:  # observer
                 self.site_sync_threads[site_name] = msg_or_observer
                 site_view = self.site_views_cache[site_name]
-                site_view.set_sync_btn_to_stop()
+                site_view.set_sync_btn_text_to_stop()
             else:  # msg
                 self.show_info_dialog('Error', msg_or_observer)
 
