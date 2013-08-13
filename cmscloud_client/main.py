@@ -357,7 +357,7 @@ class CMSCloudGUIApp(App):
         if site_dir:
             # TODO confirmation
             path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
-            sitename = site_name.encode('utf-8')
+            sitename = self.sites_database[site_name]['domain'].encode('utf-8')
             status, msg_or_observer = self.client.sync(sitename=sitename, path=path, interactive=False)
             if status:  # observer
                 self.site_sync_threads[site_name] = msg_or_observer
