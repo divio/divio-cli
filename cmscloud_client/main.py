@@ -376,6 +376,7 @@ class CMSCloudGUIApp(App):
 
     def _set_site_dir(self, site_name, site_dir):
         self.sites_database[site_name]['dir'] = site_dir
+        self.sites_database.sync()
 
     def load_sites_list(self):
         self.show_loading_dialog()
@@ -432,7 +433,6 @@ class CMSCloudGUIApp(App):
         else:
             site_dir = path
         self._set_site_dir(site_name, site_dir)
-        self.sites_database.sync()
         site_view = self.site_views_cache[site_name]
         site_view.dir_label.text = site_dir
         site_view.set_dir_btn_text_to_change()
@@ -472,6 +472,7 @@ class CMSCloudGUIApp(App):
 
     def _set_last_dir(self, path):
         self.config.set(USER_SETTINGS_SECTION, LAST_DIR_KEY, path)
+        self.config.write()
 
     def _get_last_dir(self):
         return self.config.getdefault(USER_SETTINGS_SECTION, LAST_DIR_KEY, HOME_DIR)
