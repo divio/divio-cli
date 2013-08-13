@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 WORKSPACE_FOLDER="/Users/christianbertschy/Documents/workspace"
 PYINSTALLER_FOLDER="$WORKSPACE_FOLDER/pyinstaller"
@@ -19,7 +18,7 @@ echo 'install_hooks(globals())' | cat - "$DEPLOY_NAME.spec" > temp && mv temp "$
 echo 'from kivy.tools.packaging.pyinstaller_hooks import install_hooks' | cat - "$DEPLOY_NAME.spec" > temp && mv temp "$DEPLOY_NAME.spec"
 
 #set hiddenimports
-perl -i -pe 'BEGIN{undef $/;} s/hiddenimports=\[\],/hiddenimports=\['\"certifi\"'],/smg' "$DEPLOY_NAME.spec"
+perl -i -pe 'BEGIN{undef $/;} s/hiddenimports=\[\],/hiddenimports=\['\"certifi\"'], hookspath=None,/smg' "$DEPLOY_NAME.spec"
 
 #set hookspath to none, otherwise kivy breaks
 perl -i -pe 'BEGIN{undef $/;} s/,\n\s+hookspath=None//smg' "$DEPLOY_NAME.spec"
@@ -50,11 +49,11 @@ hdiutil create ./$DEPLOY_NAME.dmg -srcfolder $DEPLOY_NAME.app -ov
 popd 
 
 #Move created files to packaging folder
-#mv -f $DIST_FOLDER/$DEPLOY_NAME.app $PACKAGING_FOLDER/
-#mv -f $DIST_FOLDER/$DEPLOY_NAME.dmg $PACKAGING_FOLDER/
+mv -f $DIST_FOLDER/$DEPLOY_NAME.app $PACKAGING_FOLDER/
+mv -f $DIST_FOLDER/$DEPLOY_NAME.dmg $PACKAGING_FOLDER/
 
-#cd $PYINSTALLER_FOLDER
-#rm -rf $DEPLOY_NAME
+cd $PYINSTALLER_FOLDER
+rm -rf $DEPLOY_NAME
 
-#open $PACKAGING_FOLDER
+open $PACKAGING_FOLDER
  
