@@ -39,7 +39,9 @@ from utils_kivy import TabTextInput
 
 HOME_DIR = os.path.expanduser('~')
 KNOWN_CONFIG_FILES_FILTERS = ['*.yaml', '*.py']
+LAST_DIR_KEY = 'last_dir'
 SITES_DATABASE_FILENAME = 'sites_database'
+USER_SETTINGS_SECTION = 'user_settings'
 WINDOW_TITLE = 'Aldryn App'
 
 # window resizing parameters
@@ -90,16 +92,19 @@ class InfoDialog(BoxLayout):
     message_label = ObjectProperty(None)
 
 
-class LoadingDialog(BoxLayout):
-    pass
-
-
 class ConfirmDialog(BoxLayout):
+    cancel = ObjectProperty(None)
+    confirm = ObjectProperty(None)
+    message_label = ObjectProperty(None)
+
+
+class LoadingDialog(BoxLayout):
     pass
 
 
 class DirChooserDialog(BoxLayout):
     cancel = ObjectProperty(None)
+    file_chooser = ObjectProperty(None)
     select = ObjectProperty(None)
 
 
@@ -172,6 +177,11 @@ class CMSCloudGUIApp(App):
             t.join()
         self.site_sync_threads = {}
 
+    def build_config(self, config):
+        config.setdefaults(USER_SETTINGS_SECTION, {
+            LAST_DIR_KEY: HOME_DIR
+        })
+
     def build(self):
         sm = ScreenManager(transition=TransitionBase(duration=0.1))
         sm.add_widget(LoginScreen(name='login'))
@@ -188,6 +198,7 @@ class CMSCloudGUIApp(App):
 
     def on_stop(self):
         self.sites_database.close()
+        self.config.write()
         super(CMSCloudGUIApp, self).on_stop()
 
     def set_screen_to_sync(self):
@@ -212,13 +223,30 @@ class CMSCloudGUIApp(App):
             self._info_popup.on_open = on_open
         self._info_popup.open()
 
+    def dismiss_confirm_dialog(self):
+        if hasattr(self, '_confirm_popup') and self._confirm_popup:
+            self._confirm_popup.dismiss()
+            del self._confirm_popup
+
+    def show_confirm_dialog(self, title, msg, on_confirm, on_open=None):
+
+        def on_confirm_wrapper():
+            self.dismiss_confirm_dialog()
+            on_confirm()
+        content = ConfirmDialog(confirm=on_confirm_wrapper, cancel=self.dismiss_confirm_dialog)
+        content.message_label.text = msg
+        self._confirm_popup = Popup(title="Confirm", auto_dismiss=False, content=content, size_hint=(0.9, None), height=200)
+        if on_open:
+            self._confirm_popup.on_open = on_open
+        self._confirm_popup.open()
+
     def dismiss_loading_dialog(self):
         if hasattr(self, '_loading_popup') and self._loading_popup:
             self._loading_popup.dismiss()
             del self._loading_popup
 
     def show_loading_dialog(self, on_open=None):
-        content = LoadingDialog(close=self.dismiss_loading_dialog)
+        content = LoadingDialog()
         self._loading_popup = Popup(title='', auto_dismiss=False, content=content, size_hint=(0.9, None), height=200)
         if on_open:
             self._loading_popup.on_open = on_open
@@ -229,8 +257,15 @@ class CMSCloudGUIApp(App):
             self._dir_chooser_popup.dismiss()
             del self._dir_chooser_popup
 
-    def show_dir_chooser_dialog(self, on_selection, on_open=None):
-        content = DirChooserDialog(select=on_selection, cancel=self.dismiss_dir_chooser_dialog)
+    def show_dir_chooser_dialog(self, on_selection, path=None, on_open=None):
+
+        def on_selection_wrapper(path, selection):
+            self.dismiss_dir_chooser_dialog()
+            on_selection(path, selection)
+        content = DirChooserDialog(select=on_selection_wrapper, cancel=self.dismiss_dir_chooser_dialog)
+        file_chooser = content.file_chooser
+        file_chooser.path = path or self._get_last_dir()
+        file_chooser.bind(path=lambda instance, path: self._set_last_dir(path))
         self._dir_chooser_popup = Popup(title="Choose directory", content=content, size_hint=(0.9, 0.9))
         if on_open:
             self._dir_chooser_popup.on_open = on_open
@@ -287,6 +322,12 @@ class CMSCloudGUIApp(App):
     def _get_sites_list_view(self):
         return self.root.get_screen('sync').sites_list_view
 
+    def _get_site_dir(self, site_name):
+        return self.sites_database[site_name].get('dir', None)
+
+    def _set_site_dir(self, site_name, site_dir):
+        self.sites_database[site_name]['dir'] = site_dir
+
     def load_sites_list(self):
         self.show_loading_dialog()
         self._load_sites_list_thread = LoadSitesListThread(self.client, self._load_sites_list_callback)
@@ -308,10 +349,11 @@ class CMSCloudGUIApp(App):
 
                 site_dir = None
                 if name in self.sites_database:
-                    d = self.sites_database[name]
-                    site_dir = d.get('dir', '')
+                    site_dir = self._get_site_dir(name)
                 else:
-                    self.sites_database[name] = site_data
+                    self.sites_database[name] = {}
+                self.sites_database[name].update(site_data)
+
                 if site_dir:
                     site_view.dir_label.text = site_dir
                     site_view.change_or_set_dir_btn.text = 'change'
@@ -330,12 +372,12 @@ class CMSCloudGUIApp(App):
             msg = unicode(data)
             self.show_info_dialog('Error', msg)
 
-    def set_site_dir(self, site_name):
-        on_selection = partial(self._set_site_dir_callback, site_name)
-        self.show_dir_chooser_dialog(on_selection)
+    def select_site_dir(self, site_name):
+        on_selection = partial(self._select_site_dir_callback, site_name)
+        site_dir = self._get_site_dir(site_name)
+        self.show_dir_chooser_dialog(on_selection, path=site_dir)
 
-    def _set_site_dir_callback(self, site_name, path, selection):
-        self.dismiss_dir_chooser_dialog()
+    def _select_site_dir_callback(self, site_name, path, selection):
         if selection:
             site_dir = selection[0]
         else:
@@ -346,31 +388,44 @@ class CMSCloudGUIApp(App):
         site_view.dir_label.text = site_dir
         site_view.change_or_set_dir_btn.text = 'change'
 
-    def sync(self, sync_btn, site_name):
+    def sync(self, site_name):
         observer = self.site_sync_threads.get(site_name, None)
         if observer:
             observer.stop()
             observer.join()
             del self.site_sync_threads[site_name]
-            sync_btn.text = 'Sync Files'
+            site_view = self.site_views_cache[site_name]
+            site_view.sync_btn.text = 'Sync Files'
         else:
             site_dir = self.sites_database[site_name].get('dir', None)
             if site_dir:
-                # TODO confirmation
-                path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
-                sitename = self.sites_database[site_name]['domain'].encode('utf-8')
-                try:
-                    status, msg_or_observer = self.client.sync(sitename=sitename, path=path, interactive=False)
-                except OSError as e:
-                    self.show_info_dialog('Filesystem Error', str(e))
-                else:
-                    if status:  # observer
-                        self.site_sync_threads[site_name] = msg_or_observer
-                        sync_btn.text = 'Stop Sync'
-                    else:  # msg
-                        self.show_info_dialog('Error', msg_or_observer)
+                on_confirm = partial(self._sync_callback, site_name, site_dir)
+                title = 'Confirm sync'
+                msg = 'All local changes to the boilerplate of "%s" will be undone. Continue?' % site_name
+                self.show_confirm_dialog(title, msg, on_confirm)
             else:
-                self.set_site_dir(site_name)
+                self.select_site_dir(site_name)
+
+    def _sync_callback(self, site_name, site_dir):
+        path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
+        sitename = self.sites_database[site_name]['domain'].encode('utf-8')
+        try:
+            status, msg_or_observer = self.client.sync(sitename=sitename, path=path, interactive=False)
+        except OSError as e:
+            self.show_info_dialog('Filesystem Error', str(e))
+        else:
+            if status:  # observer
+                self.site_sync_threads[site_name] = msg_or_observer
+                site_view = self.site_views_cache[site_name]
+                site_view.sync_btn.text = 'Stop Sync'
+            else:  # msg
+                self.show_info_dialog('Error', msg_or_observer)
+
+    def _set_last_dir(self, path):
+        self.config.set(USER_SETTINGS_SECTION, LAST_DIR_KEY, path)
+
+    def _get_last_dir(self):
+        return self.config.getdefault(USER_SETTINGS_SECTION, LAST_DIR_KEY, HOME_DIR)
 
     def browser_open_account_creation(self):
         webbrowser.open(ACCOUNT_CREATION_URL)

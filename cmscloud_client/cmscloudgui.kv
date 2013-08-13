@@ -228,11 +228,12 @@
 ##################
 
 <InfoDialog>:
-    size_hint: 1, 1
+    message_label: message_label_id
+
     orientation: 'vertical'
     padding: 0, 10
+    size_hint: 1, 1
     spacing: 10
-    message_label: message_label_id
 
     Label:
         id: message_label_id
@@ -249,12 +250,36 @@
             on_release: root.close()
 
 
-<LoadingDialog>:
-    size_hint: 1, 1
+<ConfirmDialog>:
+    message_label: message_label_id.__self__
+
     orientation: 'vertical'
     padding: 0, 10
+    size_hint: 1, 1
     spacing: 10
+
+    Label:
+        id: message_label_id
+
+    BoxLayout:
+        size_hint_y: None
+        height: 30
+        Button:
+            text: "Cancel"
+            on_release: root.cancel()
+
+        Button:
+            text: "Confirm"
+            on_release: root.confirm()
+
+
+<LoadingDialog>:
     message_label: message_label_id
+
+    orientation: 'vertical'
+    padding: 0, 10
+    size_hint: 1, 1
+    spacing: 10
 
     Label:
         id: message_label_id
@@ -262,11 +287,24 @@
 
 
 <DirChooserDialog>:
-    size: root.size
-    pos: root.pos
-    orientation: "vertical"
+    current_path_label: current_path_label_id
+    file_chooser: file_chooser_id.__self__
+
+    orientation: 'vertical'
+    padding: 0, 10
+    size_hint: 1, 1
+    spacing: 10
+
+    Label:
+        id: current_path_label_id
+        text: file_chooser_id.path
+
+        height: 40
+        size_hint: 1, None
+        text_size: self.size
+
     FileChooserListView:
-        id: filechooser
+        id: file_chooser_id
 
         dirselect: True
         filters: ['']
@@ -280,7 +318,7 @@
 
         Button:
             text: "Select"
-            on_release: root.select(filechooser.path, filechooser.selection)
+            on_release: root.select(file_chooser_id.path, file_chooser_id.selection)
 
 
 ##################
@@ -365,7 +403,7 @@
             background_color: 0, 0, 0, 0
             background_down: ''
             background_normal: ''
-            on_release: app.set_site_dir(name_label_id.text)
+            on_release: app.select_site_dir(name_label_id.text)
 
             canvas:
                 Color:
@@ -385,4 +423,4 @@
             id: sync_btn_id
 
             size_hint: None, None
-            on_release: app.sync(self, name_label_id.text)
+            on_release: app.sync(name_label_id.text)
