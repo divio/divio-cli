@@ -21,7 +21,6 @@ from cmscloud_client.utils import (validate_boilerplate_config, bundle_boilerpla
                                    filter_static_files, validate_app_config, bundle_app)
 
 
-
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
@@ -33,7 +32,6 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 CACERT_PEM_PATH = resource_path('cacert.pem')
-
 
 
 class WritableNetRC(netrc.netrc):
