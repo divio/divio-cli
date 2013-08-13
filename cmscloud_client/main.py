@@ -330,19 +330,21 @@ class CMSCloudGUIApp(App):
             msg = unicode(data)
             self.show_info_dialog('Error', msg)
 
-    def set_site_dir(self, dir_btn, dir_label, site_name):
-        on_selection = partial(self._set_site_dir_callback, dir_btn, dir_label, site_name)
+    def set_site_dir(self, site_name):
+        on_selection = partial(self._set_site_dir_callback, site_name)
         self.show_dir_chooser_dialog(on_selection)
 
-    def _set_site_dir_callback(self, dir_btn, dir_label, site_name, path, selection):
+    def _set_site_dir_callback(self, site_name, path, selection):
         self.dismiss_dir_chooser_dialog()
         if selection:
             site_dir = selection[0]
         else:
             site_dir = path
         self.sites_database[site_name]['dir'] = site_dir
-        dir_label.text = site_dir
-        dir_btn.text = 'change'
+        self.sites_database.sync()
+        site_view = self.site_views_cache[site_name]
+        site_view.dir_label.text = site_dir
+        site_view.change_or_set_dir_btn.text = 'change'
 
     def sync(self, sync_btn, site_name):
         observer = self.site_sync_threads.get(site_name, None)
@@ -351,19 +353,24 @@ class CMSCloudGUIApp(App):
             observer.join()
             del self.site_sync_threads[site_name]
             sync_btn.text = 'Sync Files'
-            return
-
-        site_dir = self.sites_database[site_name].get('dir', None)
-        if site_dir:
-            # TODO confirmation
-            path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
-            sitename = self.sites_database[site_name]['domain'].encode('utf-8')
-            status, msg_or_observer = self.client.sync(sitename=sitename, path=path, interactive=False)
-            if status:  # observer
-                self.site_sync_threads[site_name] = msg_or_observer
-                sync_btn.text = 'Stop Sync'
-            else:  # msg
-                self.show_info_dialog('Error', msg_or_observer)
+        else:
+            site_dir = self.sites_database[site_name].get('dir', None)
+            if site_dir:
+                # TODO confirmation
+                path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
+                sitename = self.sites_database[site_name]['domain'].encode('utf-8')
+                try:
+                    status, msg_or_observer = self.client.sync(sitename=sitename, path=path, interactive=False)
+                except OSError as e:
+                    self.show_info_dialog('Filesystem Error', str(e))
+                else:
+                    if status:  # observer
+                        self.site_sync_threads[site_name] = msg_or_observer
+                        sync_btn.text = 'Stop Sync'
+                    else:  # msg
+                        self.show_info_dialog('Error', msg_or_observer)
+            else:
+                self.set_site_dir(site_name)
 
     def browser_open_account_creation(self):
         webbrowser.open(ACCOUNT_CREATION_URL)
