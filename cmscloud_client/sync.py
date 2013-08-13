@@ -4,8 +4,8 @@ from cmscloud_client.utils import is_valid_file_name
 import os
 
 
-def relpath(path, relpath):
-    return os.path.relpath(path, relpath)
+def relpath(path, start):
+    return os.path.relpath(path, start)
 
 
 class SyncEventHandler(FileSystemEventHandler):
@@ -17,7 +17,7 @@ class SyncEventHandler(FileSystemEventHandler):
     def dispatch(self, event):
         for attr in ['src', 'dest']:
             if hasattr(event, '%s_path' % attr):
-                event_rel_path = relpath(getattr(event, '%s_path' % attr), relpath=self.relpath)
+                event_rel_path = relpath(getattr(event, '%s_path' % attr), self.relpath)
                 setattr(event, 'rel_%s_path' % attr, event_rel_path)
                 event_base_path = os.path.basename(getattr(event, '%s_path' % attr))
                 setattr(event, 'base_%s_path' % attr, event_base_path)
