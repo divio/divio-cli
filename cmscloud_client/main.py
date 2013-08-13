@@ -98,7 +98,7 @@ class ConfirmDialog(BoxLayout):
     message_label = ObjectProperty(None)
 
 
-class LoadingDialog(BoxLayout):
+class LoadingDialog(RelativeLayout):
     pass
 
 

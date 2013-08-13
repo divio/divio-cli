@@ -276,14 +276,25 @@
 <LoadingDialog>:
     message_label: message_label_id
 
-    orientation: 'vertical'
-    padding: 0, 10
     size_hint: 1, 1
-    spacing: 10
 
     Label:
         id: message_label_id
-        text: 'Loading ...'
+
+        font_size: 20
+        pos_hint: {'right': 0.5, 'center_y': 0.5}
+        size: self.texture_size
+        size_hint: None, None
+        text: 'Loading'
+
+    Image:
+        anim_delay: 0.08
+        pos_hint: {'x': 0.51, 'center_y': 0.5}
+        size: 25, 25
+        size_hint: None, None
+        source: 'img/loader.gif'
+
+
 
 
 <DirChooserDialog>:
