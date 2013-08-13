@@ -125,9 +125,26 @@ class Website(RelativeLayout):
         self.change_or_set_dir_btn.text = 'Set sync destination folder'
 
     def set_sync_btn_text_to_stop(self):
+        if not hasattr(self, '_background_color_orig'):
+            self._background_color_orig = self.sync_btn.background_color
+        if not hasattr(self, '_background_down_orig'):
+            self._background_down_orig = self.sync_btn.background_down
+        if not hasattr(self, '_background_normal_orig'):
+            self._background_normal_orig = self.sync_btn.background_normal
+
+        self.sync_btn.background_color = (0.33, 0.66, 0.9, 1)
+        self.sync_btn.background_down = ''
+        self.sync_btn.background_normal = ''
         self.sync_btn.text = 'Stop Sync'
 
     def set_sync_btn_text_to_sync(self):
+        if hasattr(self, '_background_color_orig'):
+            self.sync_btn.background_color = self._background_color_orig
+        if hasattr(self, '_background_down_orig'):
+            self.sync_btn.background_down = self._background_down_orig
+        if hasattr(self, '_background_normal_orig'):
+            self.sync_btn.background_normal = self._background_normal_orig
+
         self.sync_btn.text = 'Sync Files'
 
 
@@ -159,6 +176,26 @@ class LoadSitesListThread(threading.Thread):
     def run(self):
         status, data = self.client.sites(interactive=False)
         Clock.schedule_once(lambda dt: self.callback(status, data), 0)
+
+
+class SyncDirThread(threading.Thread):
+
+    def __init__(self, site_name, path, client, callback):
+        super(SyncDirThread, self).__init__()
+        self.site_name = site_name
+        self.path = path
+        self.client = client
+        self.callback = callback
+
+    def run(self):
+        app = App.get_running_app()
+        domain = app.sites_database[self.site_name]['domain'].encode('utf-8')
+        try:
+            status, msg_or_observer = self.client.sync(sitename=domain, path=self.path, interactive=False)
+        except OSError as e:
+            Clock.schedule_once(lambda dt: app.show_info_dialog('Filesystem Error', str(e)), 0)
+        else:
+            Clock.schedule_once(lambda dt: self.callback(self.site_name, status, msg_or_observer), 0)
 
 
 #############
@@ -411,27 +448,27 @@ class CMSCloudGUIApp(App):
         else:
             site_dir = self._get_site_dir(site_name)
             if site_dir:
-                on_confirm = partial(self._sync_callback, site_name, site_dir)
+                on_confirm = partial(self._sync_confirmed, site_name, site_dir)
                 title = 'Confirm sync'
                 msg = 'All local changes to the boilerplate of "%s" will be undone. Continue?' % site_name
                 self.show_confirm_dialog(title, msg, on_confirm)
             else:
                 self.select_site_dir(site_name)
 
-    def _sync_callback(self, site_name, site_dir):
+    def _sync_confirmed(self, site_name, site_dir):
+        self.show_loading_dialog()
         path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
-        sitename = self.sites_database[site_name]['domain'].encode('utf-8')
-        try:
-            status, msg_or_observer = self.client.sync(sitename=sitename, path=path, interactive=False)
-        except OSError as e:
-            self.show_info_dialog('Filesystem Error', str(e))
-        else:
-            if status:  # observer
-                self.site_sync_threads[site_name] = msg_or_observer
-                site_view = self.site_views_cache[site_name]
-                site_view.set_sync_btn_text_to_stop()
-            else:  # msg
-                self.show_info_dialog('Error', msg_or_observer)
+        sync_dir_thread = SyncDirThread(site_name, path, self.client, self._sync_callback)
+        sync_dir_thread.start()
+
+    def _sync_callback(self, site_name, status, msg_or_observer):
+        self.dismiss_loading_dialog()
+        if status:  # observer
+            self.site_sync_threads[site_name] = msg_or_observer
+            site_view = self.site_views_cache[site_name]
+            site_view.set_sync_btn_text_to_stop()
+        else:  # msg
+            self.show_info_dialog('Error', msg_or_observer)
 
     def _set_last_dir(self, path):
         self.config.set(USER_SETTINGS_SECTION, LAST_DIR_KEY, path)
