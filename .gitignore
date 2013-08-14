@@ -10,3 +10,4 @@ dist/
 env/
 
 /cmscloud_client/packaging/
+/cmscloud_client/temp

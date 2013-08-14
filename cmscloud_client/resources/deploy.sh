@@ -15,16 +15,17 @@ rm -rf $PACKAGING_FOLDER/$DEPLOY_NAME.dmg
 
 cd $PYINSTALLER_FOLDER
 rm -rf $DEPLOY_NAME
-python pyinstaller.py --name $DEPLOY_NAME $MAIN_PYTHON_SCRIPT
+python pyinstaller.py -n $DEPLOY_NAME $MAIN_PYTHON_SCRIPT
 cd $DEPLOY_NAME
 echo 'install_hooks(globals())' | cat - "$DEPLOY_NAME.spec" > temp && mv temp "$DEPLOY_NAME.spec"
 echo 'from kivy.tools.packaging.pyinstaller_hooks import install_hooks' | cat - "$DEPLOY_NAME.spec" > temp && mv temp "$DEPLOY_NAME.spec"
 
 #set hiddenimports
-perl -i -pe 'BEGIN{undef $/;} s/hiddenimports=\[\],/hiddenimports=\['\"certifi\"'], hookspath=None,/smg' "$DEPLOY_NAME.spec"
+perl -i -pe 'BEGIN{undef $/;} s/hiddenimports=\[\],/hiddenimports=\['\"setuptools\"', '\"distutils\"', '\"cython\"', '\"requests\"', '\"watchdog\"', '\"certifi\"'],/smg' "$DEPLOY_NAME.spec"
 
 #set hookspath to none, otherwise kivy breaks
 perl -i -pe 'BEGIN{undef $/;} s/,\n\s+hookspath=None//smg' "$DEPLOY_NAME.spec"
+perl -i -pe 'BEGIN{undef $/;} s/,\n\s+runtime_hooks=None//smg' "$DEPLOY_NAME.spec"
 
 #Certifi
 perl -ni -e 'print; print "import requests.utils\n" if $. ==7' "$DEPLOY_NAME.spec"
@@ -39,7 +40,8 @@ rm -rf "./$DEPLOY_NAME/dist/$DEPLOY_NAME"
 python pyinstaller.py "./$DEPLOY_NAME/$DEPLOY_NAME.spec"
 
 cd $DIST_FOLDER
-mv "$DEPLOY_NAME" "$DEPLOY_NAME.app"
+#mv "$DEPLOY_NAME" "$DEPLOY_NAME.app"
+
 
 #Add plist and icon manually, not yet supported by pyinstaller automatically
 cd $CONTENTS_FOLDER
