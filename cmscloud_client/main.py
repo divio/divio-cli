@@ -189,13 +189,115 @@ class SyncDirThread(threading.Thread):
 
     def run(self):
         app = App.get_running_app()
-        domain = app.sites_database[self.site_name]['domain'].encode('utf-8')
+        domain = app.sites_dir_database[self.site_name]['domain'].encode('utf-8')
         try:
             status, msg_or_observer = self.client.sync(sitename=domain, path=self.path, interactive=False)
         except OSError as e:
             Clock.schedule_once(lambda dt: app.show_info_dialog('Filesystem Error', str(e)), 0)
         else:
             Clock.schedule_once(lambda dt: self.callback(self.site_name, status, msg_or_observer), 0)
+
+
+###########
+# Helpers #
+###########
+
+class WebsitesManager(object):
+
+    def __init__(self, sites_dir_database, sites_list_view):
+        self._sites_dir_database = sites_dir_database
+        self._sites_list_view = sites_list_view
+        self._site_views_cache = {}
+        self._site_sync_threads = {}
+
+    def add_website(self, name, site_data):
+        site_view = None
+        if name in self._site_views_cache:
+            site_view = self._site_views_cache[name]
+        else:
+            site_view = Website()
+            site_view.name_label.text = name
+
+        site_dir = None
+        if name in self._sites_dir_database:
+            site_dir = self.get_site_dir(name)
+        else:
+            self._sites_dir_database[name] = {}
+        self._sites_dir_database[name].update(site_data)
+
+        if site_dir:
+            site_view.dir_label.text = site_dir
+            site_view.set_dir_btn_text_to_change()
+        else:
+            site_view.set_dir_btn_text_to_set()
+
+        if name in self._site_sync_threads:
+            site_view.set_sync_btn_text_to_stop()
+        else:
+            site_view.set_sync_btn_text_to_sync()
+
+        if name not in self._site_views_cache:
+            self._sites_list_view.add_widget(site_view)
+            self._site_views_cache[name] = site_view
+
+    def remove_website(self, name):
+        site_view = self._site_views_cache[name]
+        self._sites_list_view.remove_widget(site_view)
+        del self._site_views_cache[name]
+
+        if name in self._site_sync_threads:
+            site_sync_thread = self._site_sync_threads[name]
+            site_sync_thread.stop()
+            del self._site_sync_threads[name]
+
+    def clear_websites(self):
+        self._sites_list_view.clear_widgets()
+        self._site_views_cache.clear()
+
+        for t in self._site_sync_threads.values():
+            t.stop()
+            t.join()
+        self._site_sync_threads.clear()
+
+    def get_sites_names(self):
+        return self._site_views_cache.keys()
+
+    ### Site's sync observer ###
+
+    def _delete_site_sync_observer(self, site_name):
+        observer = self.get_site_sync_observer(site_name)
+        if observer:
+            observer.stop()
+            observer.join()
+            del self._site_sync_threads[site_name]
+            site_view = self._site_views_cache[site_name]
+            site_view.set_sync_btn_text_to_sync()
+
+    def set_site_sync_observer(self, site_name, observer):
+        # stopping and removing any older syncing observer
+        self._delete_site_sync_observer(site_name)
+
+        self._site_sync_threads[site_name] = observer
+        site_view = self._site_views_cache[site_name]
+        site_view.set_sync_btn_text_to_stop()
+
+    def get_site_sync_observer(self, site_name):
+        return self._site_sync_threads.get(site_name, None)
+
+    def stop_site_sync_observer(self, site_name):
+        self._delete_site_sync_observer(site_name)
+
+    ### Site's sync directory ###
+
+    def get_site_dir(self, site_name):
+        return self._sites_dir_database[site_name].get('dir', None)
+
+    def set_site_dir(self, site_name, site_dir):
+        self._sites_dir_database[site_name]['dir'] = site_dir
+        self._sites_dir_database.sync()
+        site_view = self._site_views_cache[site_name]
+        site_view.dir_label.text = site_dir
+        site_view.set_dir_btn_text_to_change()
 
 
 #############
@@ -209,22 +311,8 @@ class CMSCloudGUIApp(App):
     def __init__(self, *args, **kwargs):
         super(CMSCloudGUIApp, self).__init__(*args, **kwargs)
         self.client = Client(os.environ.get(Client.CMSCLOUD_HOST_KEY, Client.CMSCLOUD_HOST_DEFAULT))
-        sites_database_file_path = os.path.join(self.user_data_dir, SITES_DATABASE_FILENAME)
-        self.sites_database = shelve.open(sites_database_file_path, writeback=True)
-
-        self.site_views_cache = {}
-        self.site_sync_threads = {}
-
-    def _clear_data(self):
-        sites_list_view = self._get_sites_list_view()
-        for view in self.site_views_cache.values():
-            sites_list_view.remove_widget(view)
-        self.site_views_cache = {}
-
-        for t in self.site_sync_threads.values():
-            t.stop()
-            t.join()
-        self.site_sync_threads = {}
+        sites_dir_database_file_path = os.path.join(self.user_data_dir, SITES_DATABASE_FILENAME)
+        self.sites_dir_database = shelve.open(sites_dir_database_file_path, writeback=True)
 
     def build_config(self, config):
         config.setdefaults(USER_SETTINGS_SECTION, {
@@ -240,13 +328,17 @@ class CMSCloudGUIApp(App):
 
     def on_start(self):
         super(CMSCloudGUIApp, self).on_start()
+
+        sites_list_view = self._get_sites_list_view()
+        self._websites_manager = WebsitesManager(self.sites_dir_database, sites_list_view)
+
         if self.client.is_logged_in():
             self.set_screen_to_sync()
         else:
             self.set_screen_to_login()
 
     def on_stop(self):
-        self.sites_database.close()
+        self.sites_dir_database.close()
         self.config.write()
         super(CMSCloudGUIApp, self).on_stop()
 
@@ -258,6 +350,8 @@ class CMSCloudGUIApp(App):
     def set_screen_to_login(self):
         Window.size = WIDTH_LOGIN, HEIGHT_LOGIN
         self.root.current = 'login'
+
+    ### DIALOGS ###
 
     def dismiss_info_dialog(self):
         if hasattr(self, '_info_popup') and self._info_popup:
@@ -320,6 +414,8 @@ class CMSCloudGUIApp(App):
             self._dir_chooser_popup.on_open = on_open
         self._dir_chooser_popup.open()
 
+    ### END OF DIALOGS ###
+
     def _resize_window(self, target_width, target_height, callback=None):
         current_width, current_height = Window.size
         step_duration = RESIZING_DURATION / RESIZING_STEPS
@@ -359,7 +455,7 @@ class CMSCloudGUIApp(App):
 
     def logout(self):
         self.client.logout(interactive=False)
-        self._clear_data()
+        self._websites_manager.clear_websites()
 
         def callback():  # change screen from empty to sync after the animation
             self.root.current = 'login'
@@ -371,13 +467,6 @@ class CMSCloudGUIApp(App):
     def _get_sites_list_view(self):
         return self.root.get_screen('sync').sites_list_view
 
-    def _get_site_dir(self, site_name):
-        return self.sites_database[site_name].get('dir', None)
-
-    def _set_site_dir(self, site_name, site_dir):
-        self.sites_database[site_name]['dir'] = site_dir
-        self.sites_database.sync()
-
     def load_sites_list(self):
         self.show_loading_dialog()
         self._load_sites_list_thread = LoadSitesListThread(self.client, self._load_sites_list_callback)
@@ -386,45 +475,23 @@ class CMSCloudGUIApp(App):
     def _load_sites_list_callback(self, status, data):
         self.dismiss_loading_dialog()
         if status:
-            sites_list_view = self._get_sites_list_view()
+            new_sites_names = set()
+            old_sites_names = set(self._websites_manager.get_sites_names())
             for site_data in data:
                 name = site_data['name'].encode('utf-8')
+                new_sites_names.add(name)
+                self._websites_manager.add_website(name, site_data)
 
-                site_view = None
-                if name in self.site_views_cache:
-                    site_view = self.site_views_cache[name]
-                else:
-                    site_view = Website()
-                    site_view.name_label.text = name
-
-                site_dir = None
-                if name in self.sites_database:
-                    site_dir = self._get_site_dir(name)
-                else:
-                    self.sites_database[name] = {}
-                self.sites_database[name].update(site_data)
-
-                if site_dir:
-                    site_view.dir_label.text = site_dir
-                    site_view.set_dir_btn_text_to_change()
-                else:
-                    site_view.set_dir_btn_text_to_set()
-
-                if name in self.site_sync_threads:
-                    site_view.set_sync_btn_text_to_stop()
-                else:
-                    site_view.set_sync_btn_text_to_sync()
-
-                if name not in self.site_views_cache:
-                    sites_list_view.add_widget(site_view)
-                    self.site_views_cache[name] = site_view
+            removed_sites_names = old_sites_names - new_sites_names
+            for removed_site_name in removed_sites_names:
+                self._websites_manager.remove_website(name)
         else:
             msg = unicode(data)
             self.show_info_dialog('Error', msg)
 
     def select_site_dir(self, site_name):
         on_selection = partial(self._select_site_dir_callback, site_name)
-        site_dir = self._get_site_dir(site_name)
+        site_dir = self._websites_manager.get_site_dir(site_name)
         self.show_dir_chooser_dialog(on_selection, path=site_dir)
 
     def _select_site_dir_callback(self, site_name, path, selection):
@@ -432,21 +499,14 @@ class CMSCloudGUIApp(App):
             site_dir = selection[0]
         else:
             site_dir = path
-        self._set_site_dir(site_name, site_dir)
-        site_view = self.site_views_cache[site_name]
-        site_view.dir_label.text = site_dir
-        site_view.set_dir_btn_text_to_change()
+        self._websites_manager.set_site_dir(site_name, site_dir)
 
     def sync(self, site_name):
-        observer = self.site_sync_threads.get(site_name, None)
+        observer = self._websites_manager.get_site_sync_observer(site_name)
         if observer:
-            observer.stop()
-            observer.join()
-            del self.site_sync_threads[site_name]
-            site_view = self.site_views_cache[site_name]
-            site_view.set_sync_btn_text_to_sync()
+            self._websites_manager.stop_site_sync_observer(site_name)
         else:
-            site_dir = self._get_site_dir(site_name)
+            site_dir = self._websites_manager.get_site_dir(site_name)
             if site_dir:
                 on_confirm = partial(self._sync_confirmed, site_name, site_dir)
                 title = 'Confirm sync'
@@ -464,9 +524,7 @@ class CMSCloudGUIApp(App):
     def _sync_callback(self, site_name, status, msg_or_observer):
         self.dismiss_loading_dialog()
         if status:  # observer
-            self.site_sync_threads[site_name] = msg_or_observer
-            site_view = self.site_views_cache[site_name]
-            site_view.set_sync_btn_text_to_stop()
+            self._websites_manager.set_site_sync_observer(site_name, msg_or_observer)
         else:  # msg
             self.show_info_dialog('Error', msg_or_observer)
 
