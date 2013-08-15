@@ -30,12 +30,13 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.properties import ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.popup import Popup
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.screenmanager import Screen, ScreenManager, TransitionBase
 
 from client import Client
-from utils_kivy import TabTextInput
+from utils_kivy import TabTextInput, open_in_file_manager
 
 HOME_DIR = os.path.expanduser('~')
 KNOWN_CONFIG_FILES_FILTERS = ['*.yaml', '*.py']
@@ -112,17 +113,46 @@ class DirChooserDialog(BoxLayout):
 # Custom widgets #
 ##################
 
-class Website(RelativeLayout):
+class PaddedButton(Button):
+    pass
+
+
+class LinkButton(PaddedButton):
+    pass
+
+
+class OpenButton(Button):
+    pass
+
+
+class WebsiteView(RelativeLayout):
     name_label = ObjectProperty(None)
     dir_label = ObjectProperty(None)
     change_or_set_dir_btn = ObjectProperty(None)
+    open_dir_btn = ObjectProperty(None)
     sync_btn = ObjectProperty(None)
 
-    def set_dir_btn_text_to_change(self):
+    def __init__(self, name):
+        super(WebsiteView, self).__init__()
+        self.name_label.text = name
+
+    def _set_dir_btn_text_to_change(self):
         self.change_or_set_dir_btn.text = 'change'
 
-    def set_dir_btn_text_to_set(self):
+    def _set_dir_btn_text_to_set(self):
         self.change_or_set_dir_btn.text = 'Set sync destination folder'
+
+    def set_site_dir_widgets(self, site_dir):
+        if site_dir:
+            self.dir_label.text = site_dir
+            self._set_dir_btn_text_to_change()
+            if not self.open_dir_btn:
+                open_dir_btn = OpenButton()
+                self.change_or_set_dir_btn.parent.add_widget(open_dir_btn)
+                self.open_dir_btn = open_dir_btn
+            self.open_dir_btn.on_release = lambda: open_in_file_manager(site_dir)
+        else:
+            self._set_dir_btn_text_to_set()
 
     def set_sync_btn_text_to_stop(self):
         if not hasattr(self, '_background_color_orig'):
@@ -215,8 +245,7 @@ class WebsitesManager(object):
         if name in self._site_views_cache:
             site_view = self._site_views_cache[name]
         else:
-            site_view = Website()
-            site_view.name_label.text = name
+            site_view = WebsiteView(name)
 
         site_dir = None
         if name in self._sites_dir_database:
@@ -225,11 +254,7 @@ class WebsitesManager(object):
             self._sites_dir_database[name] = {}
         self._sites_dir_database[name].update(site_data)
 
-        if site_dir:
-            site_view.dir_label.text = site_dir
-            site_view.set_dir_btn_text_to_change()
-        else:
-            site_view.set_dir_btn_text_to_set()
+        site_view.set_site_dir_widgets(site_dir)
 
         if name in self._site_sync_threads:
             site_view.set_sync_btn_text_to_stop()
@@ -296,8 +321,7 @@ class WebsitesManager(object):
         self._sites_dir_database[site_name]['dir'] = site_dir
         self._sites_dir_database.sync()
         site_view = self._site_views_cache[site_name]
-        site_view.dir_label.text = site_dir
-        site_view.set_dir_btn_text_to_change()
+        site_view.set_site_dir_widgets(site_dir)
 
 
 #############

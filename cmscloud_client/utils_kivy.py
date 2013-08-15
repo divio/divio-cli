@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
-from kivy.uix.textinput import TextInput
+import subprocess
+import sys
+
+from kivy.logger import Logger
 from kivy.properties import ObjectProperty
 from kivy.uix.button import Button
+from kivy.uix.textinput import TextInput
 
 
 class TabTextInput(TextInput):
@@ -19,3 +23,16 @@ class TabTextInput(TextInput):
                 self.next.dispatch('on_release')
         else:
             super(TabTextInput, self)._keyboard_on_key_down(window, keycode, text, modifiers)
+
+
+def open_in_file_manager(path):
+    platform = sys.platform
+    if platform == 'win32':
+        subprocess.Popen(['start', path], shell=True)
+    elif platform == 'darwin':
+        subprocess.Popen(['open', path])
+    else:
+        try:
+            subprocess.Popen(['xdg-open', path])
+        except OSError:
+            Logger.exception('Cannot open external file manager')
