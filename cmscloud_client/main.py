@@ -279,6 +279,9 @@ class WebsitesManager(object):
         self._sites_list_view.clear_widgets()
         self._site_views_cache.clear()
 
+        self.stop_all_threads()
+
+    def stop_all_threads(self):
         for t in self._site_sync_threads.values():
             t.stop()
             t.join()
@@ -364,6 +367,7 @@ class CMSCloudGUIApp(App):
     def on_stop(self):
         self.sites_dir_database.close()
         self.config.write()
+        self._websites_manager.stop_all_threads()
         super(CMSCloudGUIApp, self).on_stop()
 
     def set_screen_to_sync(self):
@@ -508,7 +512,7 @@ class CMSCloudGUIApp(App):
 
             removed_sites_names = old_sites_names - new_sites_names
             for removed_site_name in removed_sites_names:
-                self._websites_manager.remove_website(name)
+                self._websites_manager.remove_website(removed_site_name)
         else:
             msg = unicode(data)
             self.show_info_dialog('Error', msg)
