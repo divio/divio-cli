@@ -512,7 +512,7 @@ class CMSCloudGUIApp(App):
 
             removed_sites_names = old_sites_names - new_sites_names
             for removed_site_name in removed_sites_names:
-                self._websites_manager.remove_website(name)
+                self._websites_manager.remove_website(removed_site_name)
         else:
             msg = unicode(data)
             self.show_info_dialog('Error', msg)
