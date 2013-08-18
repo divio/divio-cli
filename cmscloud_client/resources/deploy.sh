@@ -3,7 +3,7 @@
 WORKSPACE_FOLDER="/Users/christianbertschy/Documents/workspace"
 PYINSTALLER_FOLDER="$WORKSPACE_FOLDER/pyinstaller"
 SEARCH_FOLDER="$WORKSPACE_FOLDER/cmscloud-client/cmscloud_client"
-PACKAGING_FOLDER="$WORKSPACE_FOLDER/cmscloud-client/cmscloud_client/packaging"
+PACKAGING_FOLDER="$WORKSPACE_FOLDER/packages"
 MAIN_PYTHON_SCRIPT="$WORKSPACE_FOLDER/cmscloud-client/cmscloud_client/main.py"
 CONTENTS_FOLDER="$WORKSPACE_FOLDER/cmscloud-client/cmscloud_client/resources"
 
@@ -40,7 +40,7 @@ rm -rf "./$DEPLOY_NAME/dist/$DEPLOY_NAME"
 python pyinstaller.py "./$DEPLOY_NAME/$DEPLOY_NAME.spec"
 
 cd $DIST_FOLDER
-#mv "$DEPLOY_NAME" "$DEPLOY_NAME.app"
+mv "$DEPLOY_NAME" "$DEPLOY_NAME.app"
 
 
 #Add plist and icon manually, not yet supported by pyinstaller automatically
