@@ -194,6 +194,10 @@
 
                 PaddedButton:
                     id: logout_btn_id
+
+                    background_color: 0.33, 0.66, 0.9, 1
+                    background_down: ''
+                    background_normal: ''
                     on_release: app.logout()
                     text: 'Logout'
 
@@ -353,7 +357,7 @@
 
 <PaddedButton@Button>:
     halign: 'center'
-    padding: 5, 5
+    padding: 10, 5
     size: self.texture_size
     size_hint: None, None
     valign: 'middle'
@@ -363,6 +367,7 @@
     background_color: 0, 0, 0, 0
     background_down: ''
     background_normal: ''
+    padding: 5, 5
 
     canvas:
         Color:
