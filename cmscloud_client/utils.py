@@ -131,6 +131,19 @@ def filter_static_files(tarinfo):
         return None
 
 
+def filter_sass_files(tarinfo):
+    basename = os.path.basename(tarinfo.name)
+    if tarinfo.isfile():
+        if is_valid_file_name(basename):
+            return tarinfo
+        else:
+            return None
+    elif basename.startswith('.'):
+        return None
+    else:
+        return tarinfo
+
+
 def filter_template_files(tarinfo):
     if not tarinfo.isfile():
         return tarinfo
