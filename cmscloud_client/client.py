@@ -8,7 +8,6 @@ import netrc
 import time
 
 import requests
-from watchdog.events import LoggingEventHandler
 try:
     from watchdog.observers.kqueue import KqueueObserver as Observer
 except ImportError:
@@ -183,7 +182,7 @@ class Client(object):
             else:
                 print "Invalid answer, please type either y or n"
 
-        for folder in ['static', 'templates']:
+        for folder in ['static', 'templates', 'private']:
             if os.path.exists(folder):
                 if os.path.isdir(folder):
                     shutil.rmtree(folder)
