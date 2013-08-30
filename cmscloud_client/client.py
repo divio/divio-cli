@@ -18,7 +18,7 @@ import yaml
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
 from cmscloud_client.sync import SyncEventHandler
 from cmscloud_client.utils import (validate_boilerplate_config, bundle_boilerplate, filter_template_files,
-                                   filter_static_files, validate_app_config, bundle_app)
+    filter_static_files, validate_app_config, bundle_app, filter_sass_files)
 
 
 def resource_path(relative_path):
@@ -177,7 +177,7 @@ class Client(object):
         if not validate_boilerplate_config(config):
             return False
         tarball = bundle_boilerplate(config, data, extra_file_paths, templates=filter_template_files,
-                                     static=filter_static_files)
+                                     static=filter_static_files, private=filter_sass_files)
         response = self.session.post('/api/v1/boilerplates/', files={'boilerplate': tarball})
         msg = '\t'.join([str(response.status_code), response.content])
         return (True, msg)
@@ -256,7 +256,7 @@ class Client(object):
             else:
                 print "Invalid answer, please type either y or n"
 
-        for folder in ['static', 'templates']:
+        for folder in ['static', 'templates', 'private']:
             if os.path.exists(folder):
                 if os.path.isdir(folder):
                     shutil.rmtree(folder)

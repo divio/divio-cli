@@ -21,7 +21,7 @@ class SyncEventHandler(FileSystemEventHandler):
                 setattr(event, 'rel_%s_path' % attr, event_rel_path)
                 event_base_path = os.path.basename(getattr(event, '%s_path' % attr))
                 setattr(event, 'base_%s_path' % attr, event_base_path)
-                sync_dir = event_rel_path.startswith(('templates/', 'static/'))
+                sync_dir = event_rel_path.startswith(('templates/', 'static/', 'private/'))
                 if event.is_directory:
                     syncable = sync_dir and not event_base_path.startswith('.')
                 else:
