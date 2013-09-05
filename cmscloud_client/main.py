@@ -13,6 +13,7 @@ POSITION_LEFT = 200
 
 from kivy.config import Config
 Config.set('kivy', 'desktop', 1)
+Config.set('input', 'mouse', 'disable_multitouch')
 # app's default window's position
 #Config.set('graphics', 'position', 'custom')
 #Config.set('graphics', 'top', POSITION_TOP)
