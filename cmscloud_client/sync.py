@@ -1,18 +1,41 @@
 # -*- coding: utf-8 -*-
-from watchdog.events import FileSystemEventHandler, FileCreatedEvent, DirCreatedEvent
-from cmscloud_client.utils import is_valid_file_name
+from threading import Lock, Thread
+import datetime
 import os
+import time
+
+from watchdog.events import FileSystemEventHandler, FileCreatedEvent, DirCreatedEvent
+from cmscloud_client.utils import hashfile, is_valid_file_name
 
 
 def relpath(path, start):
     return os.path.relpath(path, start)
 
 
+# Amount of seconds for which the 'on_deleted' event is postponed to wait for
+# eventual 'on_created' event (some editors create a new file before saving
+# and just remove the old one and rename the new, which we want to treat as
+# a 'modified' event.
+DELETE_DELAY = 1.0  # seconds
+
+# Amount of time during which we assume that if the newly created file was
+# was deleted it was in fact the "rename saving strategy"
+TIME_DELTA = datetime.timedelta(0, 1)  # 1 second
+
+
 class SyncEventHandler(FileSystemEventHandler):
+
     def __init__(self, session, sitename, relpath='.'):
         self.session = session
         self.sitename = sitename
         self.relpath = relpath
+
+        self._recently_created = {}
+        self._recently_deleted = {}
+        self._timestamps_lock = Lock()
+
+        self._recently_modified_file_hashes = {}
+        self._hashes_lock = Lock()
 
     def dispatch(self, event):
         for attr in ['src', 'dest']:
@@ -37,6 +60,30 @@ class SyncEventHandler(FileSystemEventHandler):
             else:
                 print "Sync failed! Unexpected status code %s" % response.status_code
                 print response.content
+
+    def _is_created_since(self, filepath, since_timestamp):
+        with self._timestamps_lock:
+            recently_timestamp = self._recently_created.get(filepath, None)
+            if recently_timestamp and recently_timestamp - since_timestamp > datetime.timedelta(0):
+                return True
+            else:
+                return False
+
+    def _is_recently_deleted(self, filepath, now_timestamp):
+        with self._timestamps_lock:
+            recently_timestamp = self._recently_deleted.get(filepath, None)
+            if recently_timestamp and now_timestamp - recently_timestamp < TIME_DELTA:
+                return True
+            else:
+                return False
+
+    def _set_recently_created(self, filepath, timestamp):
+        with self._timestamps_lock:
+            self._recently_created[filepath] = timestamp
+
+    def _set_recently_deleted(self, filepath, timestamp):
+        with self._timestamps_lock:
+            self._recently_deleted[filepath] = timestamp
 
     def on_moved(self, event):
         if event.is_directory:
@@ -77,13 +124,31 @@ class SyncEventHandler(FileSystemEventHandler):
                 create_event = FileCreatedEvent(os.path.join(event.src_path, thing))
                 self.dispatch(create_event)
         elif event.sync_src:
-            print "Syncing file creation %s" % event.src_path
-            self._send_request('POST', data={'path': event.rel_src_path}, files={'content': open(event.src_path)})
+            now_timestamp = datetime.datetime.now()
+            filepath = event.src_path
+            self._set_recently_created(filepath, now_timestamp)
+            if self._is_recently_deleted(filepath, now_timestamp):
+                return self.on_modified(event)
+            else:
+                print "Syncing file creation %s" % event.src_path
+                self._send_request('POST', data={'path': event.rel_src_path}, files={'content': open(event.src_path)})
 
     def on_deleted(self, event):
-        # TODO fix race condition
-        if os.path.exists(event.src_path): # hack for OSX
-            return self.on_modified(event)
+        now_timestamp = datetime.datetime.now()
+        self._set_recently_deleted(event.src_path, now_timestamp)
+        on_deleted_thread = Thread(target=self._on_deleted_callback, args=(event, now_timestamp))
+        on_deleted_thread.start()
+
+    def _on_deleted_callback(self, event, timestamp):
+        # Wait for eventual process of renaming after saving (performed by
+        # some editors) to be finished.
+        time.sleep(DELETE_DELAY)
+
+        if os.path.exists(event.src_path):
+            if self._is_created_since(event.src_path, timestamp):
+                return  # the create event already sent the 'modified' callback
+            else:
+                return self.on_modified(event)
         if not event.sync_src:
             return
         if event.is_directory:
@@ -97,5 +162,12 @@ class SyncEventHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         if event.sync_src:
-            print "Syncing file modification %s" % event.src_path
-            self._send_request('PUT', data={'path': event.rel_src_path}, files={'content': open(event.src_path)})
+            fd = open(event.src_path)
+            file_hash = hashfile(fd)
+            fd.seek(0)
+            with self._hashes_lock:
+                previous_file_hash = self._recently_modified_file_hashes.get(event.src_path, None)
+                if file_hash != previous_file_hash:
+                    self._recently_modified_file_hashes[event.src_path] = file_hash
+                    print "Syncing file modification %s" % event.src_path
+                    self._send_request('PUT', data={'path': event.rel_src_path}, files={'content': fd})

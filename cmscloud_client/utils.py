@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from cStringIO import StringIO
+import hashlib
 import shutil
 import subprocess
 import tarfile
@@ -200,3 +201,12 @@ def bundle_app(config, script):
     tar.close()
     fileobj.seek(0)
     return fileobj
+
+
+def hashfile(fd, blocksize=65536):
+    hasher = hashlib.sha256()
+    buf = fd.read(blocksize)
+    while len(buf) > 0:
+        hasher.update(buf)
+        buf = fd.read(blocksize)
+    return hasher.digest()
