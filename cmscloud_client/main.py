@@ -335,6 +335,7 @@ class WebsitesManager(object):
 class CMSCloudGUIApp(App):
 
     title = WINDOW_TITLE
+    icon = "resources/appIcon.icns"
 
     def __init__(self, *args, **kwargs):
         super(CMSCloudGUIApp, self).__init__(*args, **kwargs)
