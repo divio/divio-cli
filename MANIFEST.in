@@ -1,0 +1,5 @@
+include *.txt deploy.sh
+include cmscloud_client/cacert.pem cmscloud_client/cmscloudgui.kv
+recursive-include cmscloud_client/resources *.*
+recursive-include cmscloud_client/img *.*
+
