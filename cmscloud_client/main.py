@@ -37,6 +37,7 @@ from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.screenmanager import Screen, ScreenManager, TransitionBase
 
 from client import Client
+from http_server import get_static_server
 from utils_kivy import TabTextInput, open_in_file_manager
 
 HOME_DIR = os.path.expanduser('~')
@@ -56,6 +57,9 @@ ACCOUNT_CREATION_URL = 'https://login.django-cms.com/login/'
 TROUBLE_SIGNING_IN_URL = 'https://login.django-cms.com/account/reset-password/'
 CONTROL_PANEL_URL = 'https://control.django-cms.com/control/'
 ADD_NEW_SITE_URL = 'https://control.django-cms.com/control/new/'
+
+# localhost static server
+STATIC_SERVER_PORT = 59687
 
 
 ################
@@ -229,6 +233,20 @@ class SyncDirThread(threading.Thread):
             Clock.schedule_once(lambda dt: self.callback(self.site_name, status, msg_or_observer), 0)
 
 
+class HTTPStaticServerThread(threading.Thread):
+
+    def __init__(self, directory_mapping):
+        super(HTTPStaticServerThread, self).__init__()
+        self.directory_mapping = directory_mapping
+
+    def run(self):
+        self.httpd = get_static_server(STATIC_SERVER_PORT, self.directory_mapping)
+        self.httpd.serve_forever()
+
+    def shutdown(self):
+        self.httpd.shutdown()
+
+
 ###########
 # Helpers #
 ###########
@@ -363,6 +381,8 @@ class CMSCloudGUIApp(App):
 
         sites_list_view = self._get_sites_list_view()
         self._websites_manager = WebsitesManager(self.sites_dir_database, sites_list_view)
+        self.httpd_thread = HTTPStaticServerThread(self.sites_dir_database)
+        self.httpd_thread.start()
 
         if self.client.is_logged_in():
             self.set_screen_to_sync()
@@ -373,6 +393,7 @@ class CMSCloudGUIApp(App):
         self.sites_dir_database.close()
         self.config.write()
         self._websites_manager.stop_all_threads()
+        self.httpd_thread.shutdown()
         super(CMSCloudGUIApp, self).on_stop()
 
     def set_screen_to_sync(self):
