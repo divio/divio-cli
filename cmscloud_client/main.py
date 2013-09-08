@@ -127,7 +127,7 @@ class OpenButton(Button):
 
 
 class WebsiteView(RelativeLayout):
-    name_label = ObjectProperty(None)
+    name_btn = ObjectProperty(None)
     dir_label = ObjectProperty(None)
     change_or_set_dir_btn = ObjectProperty(None)
     open_dir_btn = ObjectProperty(None)
@@ -135,7 +135,7 @@ class WebsiteView(RelativeLayout):
 
     def __init__(self, name):
         super(WebsiteView, self).__init__()
-        self.name_label.text = name
+        self.name_btn.text = name
 
     def _set_dir_btn_text_to_change(self):
         self.change_or_set_dir_btn.text = 'change'
@@ -290,6 +290,9 @@ class WebsitesManager(object):
 
     def get_sites_names(self):
         return self._site_views_cache.keys()
+
+    def get_site_dashboard_url(self, name):
+        return self._sites_dir_database[name].get('dashboard_url', CONTROL_PANEL_URL)
 
     ### Site's sync observer ###
 
@@ -576,6 +579,9 @@ class CMSCloudGUIApp(App):
 
     def browser_open_add_new_site(self):
         webbrowser.open(ADD_NEW_SITE_URL)
+
+    def browser_open_site_dashboard(self, site_name):
+        webbrowser.open(self._websites_manager.get_site_dashboard_url(site_name))
 
 
 if __name__ == '__main__':

@@ -394,7 +394,7 @@
 
 
 <WebsiteView>:
-    name_label: name_label_id.__self__
+    name_btn: name_btn_id.__self__
     dir_label: dir_label_id.__self__
     change_or_set_dir_btn: change_or_set_dir_btn_id.__self__
     sync_btn: sync_btn_id.__self__
@@ -429,10 +429,14 @@
         BoxLayout:
             size_hint: 0.3, 1
 
-            Label:
-                id: name_label_id
+            PaddedButton:
+                id: name_btn_id
 
+                background_color: 0, 0, 0, 0
+                background_down: ''
+                background_normal: ''
                 halign: 'left'
+                on_release: app.browser_open_site_dashboard(self.text)
                 pos_hint: {'x': 0, 'center_y': .5}
                 text_size: self.parent.size
                 valign: 'middle'
@@ -445,7 +449,7 @@
         LinkButton:
             id: change_or_set_dir_btn_id
 
-            on_release: app.select_site_dir(name_label_id.text)
+            on_release: app.select_site_dir(name_btn_id.text)
 
     StackLayout:
         orientation: 'rl-tb'
@@ -458,4 +462,4 @@
             id: sync_btn_id
 
             size_hint: None, None
-            on_release: app.sync(name_label_id.text)
+            on_release: app.sync(name_btn_id.text)
