@@ -4,7 +4,7 @@ django CMS Cloud Client
 
 
 **Currently for internal use only!**
-
+For packaging see the bottom
 
 **********
 Installing
@@ -193,3 +193,17 @@ on subsequent calls in the same directory, it will use the same site.
 .. warning::
 
     This command will **delete** the folders ``static/`` and ``templates/`` locally if they exist.
+
+******************
+Packaging OS X App
+******************
+
+::
+
+   #!/bin/bash
+   VM_IP=192.168.3.73
+   ssh kim@$VM_IP './deploy/make_app.sh'
+   scp kim@$VM_IP:deploy/packages/AldrynCloud.dmg ~/Desktop/
+
+Workflow: This script calls  make_app.sh on the vm, which updates the repo & then calls the deploy.sh from the repo.
+In the end, the .dmg file gets copied to your local desktop
