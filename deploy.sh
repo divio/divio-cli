@@ -47,7 +47,7 @@ perl -i -pe 'BEGIN{undef $/;} s/BUNDLE\(coll,/BUNDLE\(coll, icon='\"$ICON_FILE\"
 cd ..
 rm -rf "./$DEPLOY_NAME/dist/$DEPLOY_NAME"
 rm -rf "./$DEPLOY_NAME/dist/$DEPLOY_NAME.app"
-kivy pyinstaller.py "./$DEPLOY_NAME/$DEPLOY_NAME.spec"
+/usr/local/bin/kivy pyinstaller.py "./$DEPLOY_NAME/$DEPLOY_NAME.spec"
 
 #Create DMG
 pushd $DIST_FOLDER
