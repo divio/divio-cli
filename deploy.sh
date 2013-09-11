@@ -1,6 +1,7 @@
 #!/bin/bash
 
-WORKSPACE_FOLDER="$HOME/Documents/workspace"
+# Setup
+WORKSPACE_FOLDER="$HOME/deploy"
 PYINSTALLER_FOLDER="$WORKSPACE_FOLDER/pyinstaller"
 SEARCH_FOLDER="$WORKSPACE_FOLDER/cmscloud-client/cmscloud_client"
 PACKAGING_FOLDER="$WORKSPACE_FOLDER/packages"
@@ -8,12 +9,15 @@ MAIN_PYTHON_SCRIPT="$WORKSPACE_FOLDER/cmscloud-client/cmscloud_client/main.py"
 CONTENTS_FOLDER="$WORKSPACE_FOLDER/cmscloud-client/cmscloud_client/resources"
 ICON_FILE="$CONTENTS_FOLDER/appIcon.icns"
 
+# Config
 DEPLOY_NAME="AldrynCloud"
 DIST_FOLDER="$PYINSTALLER_FOLDER/$DEPLOY_NAME/dist"
 
+# Cleaning up
 rm -rf $PACKAGING_FOLDER/$DEPLOY_NAME.app
 rm -rf $PACKAGING_FOLDER/$DEPLOY_NAME.dmg
 
+# Building PyInstaller Settings
 cd $PYINSTALLER_FOLDER
 rm -rf $DEPLOY_NAME
 python pyinstaller.py --windowed -n $DEPLOY_NAME $MAIN_PYTHON_SCRIPT
@@ -57,6 +61,6 @@ mv -f $DIST_FOLDER/$DEPLOY_NAME.dmg $PACKAGING_FOLDER/
 cd $PYINSTALLER_FOLDER
 rm -rf $DEPLOY_NAME
 
-cd $PACKAGING_FOLDER
-cd ..
-open $PACKAGING_FOLDER
+#cd $PACKAGING_FOLDER
+#cd ..
+#open $PACKAGING_FOLDER
