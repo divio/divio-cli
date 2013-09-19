@@ -98,6 +98,16 @@ def validate_boilerplate_config(config, errors=_print):
             elif len(template) != 2:
                 errors("Templates must be a list of lists of two items")
                 valid = False
+    # check protected
+    protected = config.get('protected', [])
+    if not isinstance(protected, list):
+        valid = False
+        errors( "Protected files must be a list")
+    else:
+        for filename in protected:
+            if not os.path.exists(filename):
+                valid = False
+                errors("Protected file %r not found" % filename)
     return valid
 
 
