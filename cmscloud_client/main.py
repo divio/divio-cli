@@ -436,6 +436,8 @@ class CMSCloudGUIApp(App):
     def show_dir_chooser_dialog(self, on_selection, path=None, on_open=None):
 
         def on_selection_wrapper(path, selection):
+            if selection and selection[0].startswith('..'):  # disallow to select the parent directory
+                return
             self.dismiss_dir_chooser_dialog()
             on_selection(path, selection)
         content = DirChooserDialog(select=on_selection_wrapper, cancel=self.dismiss_dir_chooser_dialog)
