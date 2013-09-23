@@ -96,7 +96,23 @@ def validate_boilerplate_config(config):
                 template_valid = False
     if not template_valid:
         msg = "Templates must be a list of lists of two items"
-    return (template_valid, msg)
+        return (False, msg)
+
+    # check protected
+    protected = config.get('protected', [])
+    valid = True
+    if not isinstance(protected, list):
+        valid = False
+        msg = "Protected files must be a list"
+    else:
+        errors = []
+        for filename in protected:
+            if not os.path.exists(filename):
+                valid = False
+                errors.append("Protected file %r not found" % filename)
+        if errors:
+            msg = os.linesep.join(errors)
+    return (valid, msg)
 
 
 def tar_add_stringio(tar, string_io, name):
