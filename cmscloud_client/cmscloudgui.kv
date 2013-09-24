@@ -302,9 +302,10 @@
 
 
 <DirChooserDialog>:
-    home_directory_btn: home_directory_btn_id
     current_path_label: current_path_label_id
     file_chooser: file_chooser_id
+    home_directory_btn: home_directory_btn_id
+    new_directory: new_directory_id
 
     orientation: 'vertical'
     padding: 0, 10
@@ -328,6 +329,13 @@
             text: 'Home'
             on_release: file_chooser_id.go_to_home_dir()
 
+    TextInput:
+        id: new_directory_id
+
+        height: 30
+        multiline: False
+        size_hint_y: None
+
     CustomFileChooserListView:
         id: file_chooser_id
 
@@ -335,15 +343,16 @@
         filters: ['']
 
     BoxLayout:
-        size_hint_y: None
         height: 30
+        size_hint_y: None
+
         Button:
-            text: "Cancel"
+            text: 'Cancel'
             on_release: root.cancel()
 
         Button:
-            text: "Select"
-            on_release: root.select(file_chooser_id.path, file_chooser_id.selection)
+            text: 'Select'
+            on_release: root.select(file_chooser_id.path, file_chooser_id.selection, new_directory_id.text)
 
 
 ##################
@@ -433,7 +442,7 @@
         orientation: 'lr-tb'
         padding: 10
         pos_hint: {'x': 0, 'center_y': 0.5}
-        size_hint: 0.7, 1
+        size_hint: 0.9, 1
         spacing: 5
 
         BoxLayout:
@@ -455,6 +464,9 @@
             id: dir_label_id
 
             color: .85, .85, .85, .85
+            font_size: '12dp'
+            size: (min(self.texture_size[0], 600), self.size[1])
+            size_hint: None, 1
 
         LinkButton:
             id: change_or_set_dir_btn_id
@@ -465,7 +477,7 @@
         orientation: 'rl-tb'
         padding: 10
         pos_hint: {'right': 1, 'center_y': 0.5}
-        size_hint: 0.3, 1
+        size_hint: 0.1, 1
         spacing: 10
 
         PaddedButton:

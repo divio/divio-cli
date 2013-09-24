@@ -442,11 +442,27 @@ class CMSCloudGUIApp(App):
 
     def show_dir_chooser_dialog(self, on_selection, path=None, on_open=None):
 
-        def on_selection_wrapper(path, selection):
-            if selection and selection[0].startswith('..'):  # disallow to select the parent directory
-                return
+        def on_selection_wrapper(path, selection, new_dir_name):
+            dir_path = path
+            if new_dir_name:
+                dir_path = os.path.join(path, new_dir_name)
+                try:
+                    os.mkdir(dir_path)
+                except OSError as e:
+                    if e.errno == 17:  # File exists
+                        msg = 'Directory "%s" already exists' % new_dir_name
+                    else:
+                        msg = 'Invalid filename'
+                    self.show_info_dialog('Error', msg)
+                    return
+            elif selection:
+                if selection[0].startswith('..'):  # disallow selection of the parent directory
+                    return
+                else:
+                    dir_path = selection[0]
             self.dismiss_dir_chooser_dialog()
-            on_selection(path, selection)
+            on_selection(dir_path)
+
         content = DirChooserDialog(select=on_selection_wrapper, cancel=self.dismiss_dir_chooser_dialog)
         file_chooser = content.file_chooser
         file_chooser.path = path or self._get_last_dir()
@@ -536,11 +552,7 @@ class CMSCloudGUIApp(App):
         site_dir = self._websites_manager.get_site_dir(site_name)
         self.show_dir_chooser_dialog(on_selection, path=site_dir)
 
-    def _select_site_dir_callback(self, site_name, path, selection):
-        if selection:
-            site_dir = selection[0]
-        else:
-            site_dir = path
+    def _select_site_dir_callback(self, site_name, site_dir):
         self._websites_manager.set_site_dir(site_name, site_dir)
 
     def sync(self, site_name):
