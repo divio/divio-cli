@@ -302,23 +302,33 @@
 
 
 <DirChooserDialog>:
+    home_directory_btn: home_directory_btn_id
     current_path_label: current_path_label_id
-    file_chooser: file_chooser_id.__self__
+    file_chooser: file_chooser_id
 
     orientation: 'vertical'
     padding: 0, 10
     size_hint: 1, 1
     spacing: 10
 
-    Label:
-        id: current_path_label_id
-        text: file_chooser_id.path
+    RelativeLayout:
+        height: 30
+        size_hint_y: None
 
-        height: 40
-        size_hint: 1, None
-        text_size: self.size
+        PaddedLabel:
+            id: current_path_label_id
 
-    FileChooserListView:
+            pos_hint: {'x': 0, 'center_y': 0.5}
+            text: file_chooser_id.path
+
+        PaddedButton:
+            id: home_directory_btn_id
+
+            pos_hint: {'right': 1, 'center_y': 0.5}
+            text: 'Home'
+            on_release: file_chooser_id.go_to_home_dir()
+
+    CustomFileChooserListView:
         id: file_chooser_id
 
         dirselect: True

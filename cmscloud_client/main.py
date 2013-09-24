@@ -32,6 +32,7 @@ from kivy.core.window import Window
 from kivy.properties import ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.popup import Popup
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.screenmanager import Screen, ScreenManager, TransitionBase
@@ -124,6 +125,12 @@ class LinkButton(PaddedButton):
 
 class OpenButton(Button):
     pass
+
+
+class CustomFileChooserListView(FileChooserListView):
+
+    def go_to_home_dir(self):
+        self.path = HOME_DIR
 
 
 class WebsiteView(RelativeLayout):
