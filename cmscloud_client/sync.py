@@ -152,8 +152,11 @@ class SyncEventHandler(FileSystemEventHandler):
         if not event.sync_src:
             return
         if event.is_directory:
+            rel_src_path = event.rel_src_path
+            if not rel_src_path.endswith('/'):
+                rel_src_path += '/'
             print "Syncing directory deletion %s" % event.src_path
-            self._send_request('DELETE', data={'path': event.rel_src_path})
+            self._send_request('DELETE', params={'path': rel_src_path})
         else:
             print "Syncing file deletion %s" % event.src_path
             self._send_request('DELETE', params={'path': event.rel_src_path})
