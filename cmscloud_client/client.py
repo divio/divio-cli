@@ -259,11 +259,12 @@ class Client(object):
                 print "Invalid answer, please type either y or n"
 
         for folder in ['static', 'templates', 'private']:
-            if os.path.exists(folder):
-                if os.path.isdir(folder):
-                    shutil.rmtree(folder)
+            folder_path = os.path.join(path, folder)
+            if os.path.exists(folder_path):
+                if os.path.isdir(folder_path):
+                    shutil.rmtree(folder_path)
                 else:
-                    os.remove(folder)
+                    os.remove(folder_path)
         print "Updating local files..."
         response = self.session.get('/api/v1/sync/%s/' % sitename, stream=True)
         if response.status_code != 200:
