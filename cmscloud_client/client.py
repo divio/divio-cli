@@ -17,7 +17,8 @@ import yaml
 
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
 from cmscloud_client.sync import SyncEventHandler
-from cmscloud_client.utils import (validate_boilerplate_config, bundle_boilerplate, filter_template_files,
+from cmscloud_client.utils import (
+    validate_boilerplate_config, bundle_boilerplate, filter_template_files,
     filter_static_files, validate_app_config, bundle_app, filter_sass_files)
 
 
@@ -90,6 +91,7 @@ class Client(object):
     CMSCLOUD_HOST_DEFAULT = 'https://control.django-cms.com'
     CMSCLOUD_HOST_KEY = 'CMSCLOUD_HOST'
     DATA_FILENAME = 'data.yaml'
+    OBSERVER_TIMEOUT = 1  # in seconds
     SETUP_FILENAME = 'setup.py'
 
     ALL_CONFIG_FILES = [APP_FILENAME, BOILERPLATE_FILENAME, CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
@@ -274,8 +276,11 @@ class Client(object):
         with open(cmscloud_dot_filename, 'w') as fobj:
             fobj.write(sitename)
 
+        # waiting for the events' queue to be cleared after the tarball's extraction
+        time.sleep(Client.OBSERVER_TIMEOUT)
+
         event_handler = SyncEventHandler(self.session, sitename, relpath=path)
-        observer = Observer()
+        observer = Observer(timeout=Client.OBSERVER_TIMEOUT)
         observer.schedule(event_handler, path, recursive=True)
         observer.start()
 
