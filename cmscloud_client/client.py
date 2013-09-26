@@ -150,7 +150,10 @@ class Client(object):
             msg = "Logged in as %s" % email
             return (True, msg)
         elif response.status_code == requests.codes.forbidden:
-            msg = "Could not log in, invalid email or password"
+            if response.content:
+                msg = response.content
+            else:
+                msg = "Could not log in, invalid email or password"
             return (False, msg)
         else:
             msgs = []
