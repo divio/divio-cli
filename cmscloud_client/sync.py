@@ -28,7 +28,7 @@ class SyncEventHandler(FileSystemEventHandler):
     def __init__(self, session, sitename, relpath='.'):
         self.session = session
         self.sitename = sitename
-        self.relpath = relpath
+        self.relpath = os.path.abspath(relpath)
 
         self._recently_created = {}
         self._recently_deleted = {}
@@ -120,10 +120,21 @@ class SyncEventHandler(FileSystemEventHandler):
         filepath = event.src_path
         self._set_recently_moved(filepath, now_timestamp)
 
-        parent_dir = os.path.dirname(filepath.rstrip(os.sep))
-        # checking if the parent directory was recently moved in which case
+        # checking if the parent directories were recently moved in which case
         # this event is unnecessary
-        if not self._is_recently_moved(parent_dir, now_timestamp):
+        parent_dir_was_recently_moved = False
+        parent_dir = os.path.dirname(filepath.rstrip(os.sep))
+        max_depth = 10
+        while max_depth > 0:
+            max_depth -= 1
+            parent_dir = os.path.abspath(parent_dir)
+            if self._is_recently_moved(parent_dir, now_timestamp):
+                parent_dir_was_recently_moved = True
+                break
+            if self.relpath.startswith(parent_dir):
+                break
+            parent_dir = os.path.dirname(parent_dir.rstrip(os.sep))
+        if not parent_dir_was_recently_moved:
             if event.is_directory:
                 self.on_dir_moved(event)
             else:
