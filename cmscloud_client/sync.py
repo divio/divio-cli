@@ -32,6 +32,7 @@ class SyncEventHandler(FileSystemEventHandler):
 
         self._recently_created = {}
         self._recently_deleted = {}
+        self._recently_moved = {}
         self._timestamps_lock = Lock()
 
         self._recently_modified_file_hashes = {}
@@ -64,16 +65,36 @@ class SyncEventHandler(FileSystemEventHandler):
     def _is_created_since(self, filepath, since_timestamp):
         with self._timestamps_lock:
             recently_timestamp = self._recently_created.get(filepath, None)
-            if recently_timestamp and recently_timestamp - since_timestamp > datetime.timedelta(0):
-                return True
+            if recently_timestamp:
+                if recently_timestamp - since_timestamp > datetime.timedelta(0):
+                    return True
+                else:
+                    del self._recently_created[filepath]
+                    return False
             else:
                 return False
 
     def _is_recently_deleted(self, filepath, now_timestamp):
         with self._timestamps_lock:
             recently_timestamp = self._recently_deleted.get(filepath, None)
-            if recently_timestamp and now_timestamp - recently_timestamp < TIME_DELTA:
-                return True
+            if recently_timestamp:
+                if now_timestamp - recently_timestamp < TIME_DELTA:
+                    return True
+                else:
+                    del self._recently_deleted[filepath]
+                    return False
+            else:
+                return False
+
+    def _is_recently_moved(self, filepath, now_timestamp):
+        with self._timestamps_lock:
+            recently_timestamp = self._recently_moved.get(filepath, None)
+            if recently_timestamp:
+                if now_timestamp - recently_timestamp < TIME_DELTA:
+                    return True
+                else:
+                    del self._recently_moved[filepath]
+                    return False
             else:
                 return False
 
@@ -85,11 +106,28 @@ class SyncEventHandler(FileSystemEventHandler):
         with self._timestamps_lock:
             self._recently_deleted[filepath] = timestamp
 
+    def _set_recently_moved(self, filepath, timestamp):
+        with self._timestamps_lock:
+            self._recently_moved[filepath] = timestamp
+
     def on_moved(self, event):
-        if event.is_directory:
-            self.on_dir_moved(event)
-        else:
-            self.on_file_moved(event)
+        '''
+        Directory move causes firing of the move events of the files and
+        subdirectories within it which is unnecessary and erroneous since
+        the source directory on the server no longer exists (as it was moved).
+        '''
+        now_timestamp = datetime.datetime.now()
+        filepath = event.src_path
+        self._set_recently_moved(filepath, now_timestamp)
+
+        parent_dir = os.path.dirname(filepath.rstrip(os.sep))
+        # checking if the parent directory was recently moved in which case
+        # this event is unnecessary
+        if not self._is_recently_moved(parent_dir, now_timestamp):
+            if event.is_directory:
+                self.on_dir_moved(event)
+            else:
+                self.on_file_moved(event)
 
     def on_dir_moved(self, event):
         if event.sync_src:
