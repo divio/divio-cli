@@ -54,6 +54,10 @@ class SyncEventHandler(FileSystemEventHandler):
         super(SyncEventHandler, self).dispatch(event)
 
     def _send_request(self, method, *args, **kwargs):
+        headers = kwargs.get('headers', {})
+        if 'accept' not in headers:
+            headers['accept'] = 'text/plain'
+        kwargs['headers'] = headers
         response = self.session.request(method, '/api/v1/sync/%s/' % self.sitename, *args, **kwargs)
         if not response.ok:
             if response.status_code == 400:
