@@ -269,7 +269,8 @@ class Client(object):
                 else:
                     os.remove(folder_path)
         print "Updating local files..."
-        response = self.session.get('/api/v1/sync/%s/' % sitename, stream=True)
+        response = self.session.get('/api/v1/sync/%s/' % sitename, stream=True,
+                                    headers={'accept': 'application/octet'})
         if response.status_code != 200:
             msgs = []
             msgs.append("Unexpected HTTP Response %s" % response.status_code)
