@@ -226,3 +226,13 @@ def hashfile(fd, blocksize=65536):
         hasher.update(buf)
         buf = fd.read(blocksize)
     return hasher.digest()
+
+
+def relpath(path, start):
+    return os.path.relpath(path, start)
+
+
+def uniform_filepath(filepath):
+    filepath = os.path.abspath(filepath)
+    filepath = filepath.rstrip(os.sep)
+    return filepath

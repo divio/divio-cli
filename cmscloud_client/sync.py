@@ -1,26 +1,41 @@
 # -*- coding: utf-8 -*-
-from threading import Lock, Thread
+from collections import namedtuple
+from operator import attrgetter
+import Queue
 import datetime
+import logging
 import os
+import threading
 import time
 
-from watchdog.events import FileSystemEventHandler, FileCreatedEvent, DirCreatedEvent
-from cmscloud_client.utils import hashfile, is_valid_file_name
+from watchdog.events import (
+    DirCreatedEvent, EVENT_TYPE_CREATED, EVENT_TYPE_DELETED,
+    EVENT_TYPE_MODIFIED, EVENT_TYPE_MOVED, FileCreatedEvent, FileDeletedEvent,
+    FileModifiedEvent, FileSystemEventHandler)
 
+from cmscloud_client.utils import (
+    hashfile, is_valid_file_name, uniform_filepath, relpath)
 
-def relpath(path, start):
-    return os.path.relpath(path, start)
+LOG_FILENAME = 'sync.log'
+FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(filename=LOG_FILENAME,
+                    level=logging.DEBUG,
+                    format=FORMAT)
 
+sync_logger = logging.getLogger('cmscloud_client.sync')
 
-# Amount of seconds for which the 'on_deleted' event is postponed to wait for
-# eventual 'on_created' event (some editors create a new file before saving
-# and just remove the old one and rename the new, which we want to treat as
-# a 'modified' event.
-DELETE_DELAY = 1.0  # seconds
-
-# Amount of time during which we assume that if the newly created file was
-# was deleted it was in fact the "rename saving strategy"
+# Amount of time during which we collect events and perform heuristics
+# to reduce the number of requests
 TIME_DELTA = datetime.timedelta(0, 1)  # 1 second
+TIME_DELTA_SECONDS = TIME_DELTA.total_seconds()
+
+# Waiting twice as long as it takes to consider subsequent events
+# as a single action e.g. directory move, file save (by 'moving/renaming'),
+# to collect all actions from a single "batch"
+COLLECT_TIME_DELTA = TIME_DELTA * 2
+
+
+EventStruct = namedtuple('EventStruct', ['timestamp', 'event'])
 
 
 class SyncEventHandler(FileSystemEventHandler):
@@ -30,35 +45,231 @@ class SyncEventHandler(FileSystemEventHandler):
         self.sitename = sitename
         self.relpath = os.path.abspath(relpath)
 
-        self._recently_created = {}
-        self._recently_deleted = {}
-        self._recently_moved = {}
-        self._timestamps_lock = Lock()
-
         self._recently_modified_file_hashes = {}
-        self._hashes_lock = Lock()
+        self._hashes_lock = threading.Lock()
 
-    def dispatch(self, event):
-        for attr in ['src', 'dest']:
-            if hasattr(event, '%s_path' % attr):
-                event_rel_path = relpath(getattr(event, '%s_path' % attr), self.relpath)
-                setattr(event, 'rel_%s_path' % attr, event_rel_path)
-                event_base_path = os.path.basename(getattr(event, '%s_path' % attr))
-                setattr(event, 'base_%s_path' % attr, event_base_path)
-                sync_dir = event_rel_path.startswith(('templates/', 'static/', 'private/'))
-                if event.is_directory:
-                    syncable = sync_dir and not event_base_path.startswith('.')
-                else:
-                    syncable = sync_dir and is_valid_file_name(event_base_path)
-                setattr(event, 'sync_%s' % attr, syncable)
-        super(SyncEventHandler, self).dispatch(event)
+        self._created_events = {}
+        self._modified_events = {}
+        self._moved_events = {}
+        self._deleted_events = {}
+        self._events_lock = threading.Lock()
+
+        self._events_queue = Queue.Queue()
+
+        self._main_thread = threading.current_thread()
+
+        # Due to the asynchronous nature of the file systems events
+        # there should be only one 'sending requests worker'.
+        # (e.g. lagging create request followed by a delete one that will fail)
+        self._send_requests_thread = threading.Thread(
+            target=self._send_requests_worker)
+        self._send_requests_thread.start()
+
+        self._collect_events_thread = threading.Thread(
+            target=self._collect_events_worker)
+        self._collect_events_thread.start()
+
+    def _put_event(self, request):
+        self._events_queue.put(request)
+
+    def _get_event(self, timeout=None):
+        try:
+            event_struct = self._events_queue.get(
+                block=True, timeout=timeout)
+        except Queue.Empty:
+            return None
+        else:
+            self._events_queue.task_done()
+            return event_struct
+
+    def _events_queue_not_empty(self):
+        return not self._events_queue.empty()
+
+    def _pending_events(self):
+        return (self._created_events or self._modified_events or
+                self._moved_events or self._deleted_events)
+
+    def _collect_events_worker(self):
+        local_created_events = {}
+        local_modified_events = {}
+        local_moved_events = {}
+        local_deleted_events = {}
+        changed_filepaths = set()
+
+        while self._main_thread.isAlive() or self._pending_events():
+            start_timestamp = datetime.datetime.now()
+            local_created_events.clear()
+            local_modified_events.clear()
+            local_moved_events.clear()
+            local_deleted_events.clear()
+            changed_filepaths.clear()
+
+            # CRITICAL SECTION
+            # this should be as fast as possible
+            with self._events_lock:  # acquiring the lock, might take a while
+                now_timestamp = datetime.datetime.now()
+                for src, dest in [(self._created_events, local_created_events),
+                                  (self._modified_events,
+                                   local_modified_events),
+                                  (self._moved_events, local_moved_events),
+                                  (self._deleted_events, local_deleted_events)]:
+                    for k in src.keys():
+                        event_struct = src[k]
+                        event_timestamp = event_struct.timestamp
+                        event_age = now_timestamp - event_timestamp
+                        if event_age >= TIME_DELTA:
+                            dest[k] = event_struct
+                            changed_filepaths.add(k)
+                            del src[k]
+            # END OF CRITICAL SECTION
+
+            # reducing the number of requests by merging events
+            event_structs = []
+            for filepath in changed_filepaths:
+                created = local_created_events.get(filepath, None)
+                modified = local_modified_events.get(filepath, None)
+                moved = local_moved_events.get(filepath, None)
+                deleted = local_deleted_events.get(filepath, None)
+
+                def parent_event_exist(filepath, events_src):
+                    event_exist = False
+                    parent_dir = os.path.dirname(filepath)
+                    parent_dir = uniform_filepath(parent_dir)
+                    max_depth = 10
+                    while max_depth > 0:
+                        max_depth -= 1
+                        parent_dir = os.path.abspath(parent_dir)
+                        if parent_dir in events_src:
+                            event_exist = True
+                            break
+                        if self.relpath.startswith(parent_dir):
+                            # went beyond the syncing directory
+                            break
+                        parent_dir = os.path.dirname(parent_dir)
+                        parent_dir = uniform_filepath(parent_dir)
+                    return event_exist
+
+                if moved:
+                    # checking if any of the parent directories were moved
+                    # in which case this event is unnecessary
+                    if parent_event_exist(filepath, local_moved_events):
+                        moved = None
+
+                if created and deleted:
+                    created_timestamp = created.timestamp
+                    deleted_timestamp = deleted.timestamp
+                    if created_timestamp > deleted_timestamp:
+                        # "save to copy, delete original, rename" case
+                        # the file actually was modified, so we remove the
+                        # 'deleted' event and send only the 'modified' or
+                        # change the 'created' into one and send it instead
+                        deleted = None
+                        if modified:
+                            created = None
+                        else:
+                            raw_modified_event = FileModifiedEvent(
+                                created.event.src_path)
+                            modified_event = self._prepare_event(
+                                raw_modified_event)
+                            modified = EventStruct(timestamp=created.timestamp,
+                                                   event=modified_event)
+                            created = None
+
+                if created and modified:
+                    # the file was truly created not 'saved-by-moving-a-copy'
+                    # so the modified event is unnecessary
+                    modified = None
+
+                if deleted:
+                    # checking if any of the parent directories were deleted
+                    # in which case this event is unnecessary
+                    if parent_event_exist(filepath, local_deleted_events):
+                        deleted = None
+
+                if created:
+                    event_structs.append(created)
+                if modified:
+                    event_structs.append(modified)
+                if moved:
+                    event_structs.append(moved)
+                if deleted:
+                    event_structs.append(deleted)
+            # restoring the chronological order of the events
+            sorted_event_structs = sorted(event_structs,
+                                          key=attrgetter('timestamp'))
+
+            if local_created_events:
+                sync_logger.debug(
+                    'raw "created" events:\t' + repr(local_created_events.values()))
+            if local_modified_events:
+                sync_logger.debug(
+                    'raw "modified" events:\t' + repr(local_modified_events.values()))
+            if local_moved_events:
+                sync_logger.debug(
+                    'raw "moved" events:\t' + repr(local_moved_events.values()))
+            if local_deleted_events:
+                sync_logger.debug(
+                    'raw "deleted" events:\t' + repr(local_deleted_events.values()))
+
+            for event_struct in sorted_event_structs:
+                sync_logger.debug(
+                    'pushing event into the queue:\t' + repr(event_struct))
+                self._put_event(event_struct)
+
+            stop_timestamp = datetime.datetime.now()
+            time_elapsed_delta = stop_timestamp - start_timestamp
+            delay = (COLLECT_TIME_DELTA - time_elapsed_delta).total_seconds()
+            if delay > 0:
+                time.sleep(delay)
+
+    def _prepare_request(self, event):
+        event_type = event.event_type
+        if event_type == EVENT_TYPE_CREATED:
+            msg = "Syncing file creation %s" % event.src_path
+            method = 'POST'
+            kwargs = {'data': {'path': event.rel_src_path},
+                      'files': {'content': open(event.src_path)}}
+        elif event_type == EVENT_TYPE_MODIFIED:
+            msg = "Syncing file modification %s" % event.src_path
+            method = 'PUT'
+            kwargs = {'data': {'path': event.rel_src_path},
+                      'files': {'content': open(event.src_path)}}
+        elif event_type == EVENT_TYPE_MOVED:
+            msg = "Syncing file move from %s to %s" % (
+                event.src_path, event.dest_path)
+            method = 'PUT'
+            kwargs = {
+                'data': {'source': event.rel_src_path, 'path': event.rel_dest_path}}
+        elif event_type == EVENT_TYPE_DELETED:
+            msg = "Syncing file deletion %s" % event.src_path
+            method = 'DELETE'
+            if event.is_directory:
+                rel_src_path = event.rel_src_path
+                if not rel_src_path.endswith(os.sep):
+                    rel_src_path += os.sep
+            else:
+                rel_src_path = event.rel_src_path
+            kwargs = {'params': {'path': rel_src_path}}
+        return (msg, method, kwargs)
+
+    def _send_requests_worker(self):
+        while self._main_thread.isAlive() or self._events_queue_not_empty():
+            event_struct = self._get_event(timeout=TIME_DELTA_SECONDS)
+            if event_struct:
+                sync_logger.debug(
+                    'sending request for event:\t' + repr(event_struct))
+                event = event_struct.event
+                msg, method, kwargs = self._prepare_request(event)
+                print msg
+                self._send_request(method, **kwargs)
 
     def _send_request(self, method, *args, **kwargs):
         headers = kwargs.get('headers', {})
         if 'accept' not in headers:
             headers['accept'] = 'text/plain'
         kwargs['headers'] = headers
-        response = self.session.request(method, '/api/v1/sync/%s/' % self.sitename, *args, **kwargs)
+        response = self.session.request(
+            method, '/api/v1/sync/%s/' % self.sitename, *args, **kwargs)
         if not response.ok:
             if response.status_code == 400:
                 print "Sync failed! %s" % response.content
@@ -66,164 +277,132 @@ class SyncEventHandler(FileSystemEventHandler):
                 print "Sync failed! Unexpected status code %s" % response.status_code
                 print response.content
 
-    def _is_created_since(self, filepath, since_timestamp):
-        with self._timestamps_lock:
-            recently_timestamp = self._recently_created.get(filepath, None)
-            if recently_timestamp:
-                if recently_timestamp - since_timestamp > datetime.timedelta(0):
-                    return True
+    def _prepare_event(self, event):
+        for attr in ['src', 'dest']:
+            if hasattr(event, '%s_path' % attr):
+                event_rel_path = relpath(
+                    getattr(event, '%s_path' % attr), self.relpath)
+                setattr(event, 'rel_%s_path' % attr, event_rel_path)
+                event_base_path = os.path.basename(
+                    getattr(event, '%s_path' % attr))
+                setattr(event, 'base_%s_path' % attr, event_base_path)
+                sync_dir = event_rel_path.startswith(
+                    ('templates/', 'static/', 'private/'))
+                if event.is_directory:
+                    syncable = sync_dir and not event_base_path.startswith('.')
                 else:
-                    del self._recently_created[filepath]
-                    return False
-            else:
-                return False
+                    syncable = sync_dir and is_valid_file_name(event_base_path)
+                setattr(event, 'sync_%s' % attr, syncable)
+        return event
 
-    def _is_recently_deleted(self, filepath, now_timestamp):
-        with self._timestamps_lock:
-            recently_timestamp = self._recently_deleted.get(filepath, None)
-            if recently_timestamp:
-                if now_timestamp - recently_timestamp < TIME_DELTA:
-                    return True
-                else:
-                    del self._recently_deleted[filepath]
-                    return False
-            else:
-                return False
+    def dispatch(self, event):
+        event = self._prepare_event(event)
+        super(SyncEventHandler, self).dispatch(event)
 
-    def _is_recently_moved(self, filepath, now_timestamp):
-        with self._timestamps_lock:
-            recently_timestamp = self._recently_moved.get(filepath, None)
-            if recently_timestamp:
-                if now_timestamp - recently_timestamp < TIME_DELTA:
-                    return True
-                else:
-                    del self._recently_moved[filepath]
-                    return False
-            else:
-                return False
+    def _set_created_event(self, event_struct):
+        filepath = uniform_filepath(event_struct.event.src_path)
+        with self._events_lock:
+            self._created_events[filepath] = event_struct
 
-    def _set_recently_created(self, filepath, timestamp):
-        with self._timestamps_lock:
-            self._recently_created[filepath] = timestamp
+    def _set_modified_event(self, event_struct):
+        filepath = uniform_filepath(event_struct.event.src_path)
+        with self._events_lock:
+            self._modified_events[filepath] = event_struct
 
-    def _set_recently_deleted(self, filepath, timestamp):
-        with self._timestamps_lock:
-            self._recently_deleted[filepath] = timestamp
+    def _set_moved_event(self, event_struct):
+        filepath = uniform_filepath(event_struct.event.src_path)
+        with self._events_lock:
+            self._moved_events[filepath] = event_struct
 
-    def _set_recently_moved(self, filepath, timestamp):
-        with self._timestamps_lock:
-            self._recently_moved[filepath] = timestamp
+    def _set_deleted_event(self, event_struct):
+        filepath = uniform_filepath(event_struct.event.src_path)
+        with self._events_lock:
+            self._deleted_events[filepath] = event_struct
 
     def on_moved(self, event):
-        '''
-        Directory move causes firing of the move events of the files and
-        subdirectories within it which is unnecessary and erroneous since
-        the source directory on the server no longer exists (as it was moved).
-        '''
-        now_timestamp = datetime.datetime.now()
-        filepath = event.src_path
-        self._set_recently_moved(filepath, now_timestamp)
-
-        # checking if the parent directories were recently moved in which case
-        # this event is unnecessary
-        parent_dir_was_recently_moved = False
-        parent_dir = os.path.dirname(filepath.rstrip(os.sep))
-        max_depth = 10
-        while max_depth > 0:
-            max_depth -= 1
-            parent_dir = os.path.abspath(parent_dir)
-            if self._is_recently_moved(parent_dir, now_timestamp):
-                parent_dir_was_recently_moved = True
-                break
-            if self.relpath.startswith(parent_dir):
-                break
-            parent_dir = os.path.dirname(parent_dir.rstrip(os.sep))
-        if not parent_dir_was_recently_moved:
-            if event.is_directory:
-                self.on_dir_moved(event)
-            else:
-                self.on_file_moved(event)
+        if event.is_directory:
+            self.on_dir_moved(event)
+        else:
+            self.on_file_moved(event)
 
     def on_dir_moved(self, event):
         if event.sync_src:
             if event.sync_dest:
-                print "Syncing directory move from %s to %s" % (event.src_path, event.dest_path)
-                self._send_request('PUT', data={'source': event.rel_src_path, 'path': event.rel_dest_path})
+                now = datetime.datetime.now()
+                self._set_moved_event(EventStruct(now, event))
             else:
-                # moved OUTSIDE syncable areas, remove!
-                self.on_deleted(event)
+                # moved outside of the syncable area, removing
+                sync_logger.debug(
+                    'Event "%r" was changed into deleted one' % event)
+                raw_delete_event = FileDeletedEvent(event.src_path)
+                delete_event = self._prepare_event(raw_delete_event)
+                self.on_deleted(delete_event)
         elif event.sync_dest:
             # source isn't in sync area, but dest is, so create the stuff
-            create_event = DirCreatedEvent(event.dest_path)
+            sync_logger.debug('Event "%r" was changed into create one' % event)
+            raw_create_event = DirCreatedEvent(event.dest_path)
+            create_event = self._prepare_event(raw_create_event)
             self.on_created(create_event)
 
     def on_file_moved(self, event):
         if event.sync_src:
             if event.sync_dest:
-                print "Syncing file move from %s to %s" % (event.src_path, event.dest_path)
-                self._send_request('PUT', data={'source': event.rel_src_path, 'path': event.rel_dest_path})
+                now = datetime.datetime.now()
+                self._set_moved_event(EventStruct(now, event))
             else:
-                # moved outside sync, remove
-                self.on_deleted(event)
+                # moved outside of the syncable area, removing
+                sync_logger.debug(
+                    'Event "%r" was changed into deleted one' % event)
+                raw_delete_event = FileDeletedEvent(event.src_path)
+                delete_event = self._prepare_event(raw_delete_event)
+                self.on_deleted(delete_event)
         elif event.sync_dest:
             # moved inside sync, create
-            create_event = FileCreatedEvent(event.dest_path)
-            self.dispatch(create_event)
+            sync_logger.debug('Event "%r" was changed into create one' % event)
+            raw_create_event = FileCreatedEvent(event.dest_path)
+            create_event = self._prepare_event(raw_create_event)
+            self.on_created(create_event)
 
     def on_created(self, event):
-        if event.is_directory:
+        if not event.sync_src:
+            sync_logger.debug(
+                '"on_created" not a syncable file "%s"' % event.src_path)
+            return
+        if not os.path.exists(event.src_path):
+            sync_logger.error(
+                'Created file "%s" but it doesn\'t exist.' % event.src_path)
+        elif event.is_directory:
             # check if it has content, if so create stuff
             for thing in os.listdir(event.src_path):
-                create_event = FileCreatedEvent(os.path.join(event.src_path, thing))
-                self.dispatch(create_event)
-        elif event.sync_src:
-            now_timestamp = datetime.datetime.now()
-            filepath = event.src_path
-            self._set_recently_created(filepath, now_timestamp)
-            if self._is_recently_deleted(filepath, now_timestamp):
-                return self.on_modified(event)
-            else:
-                print "Syncing file creation %s" % event.src_path
-                self._send_request('POST', data={'path': event.rel_src_path}, files={'content': open(event.src_path)})
+                raw_create_event = FileCreatedEvent(
+                    os.path.join(event.src_path, thing))
+                create_event = self._prepare_event(raw_create_event)
+                self.on_created(create_event)
+        else:
+            now = datetime.datetime.now()
+            self._set_created_event(EventStruct(now, event))
 
     def on_deleted(self, event):
-        now_timestamp = datetime.datetime.now()
-        self._set_recently_deleted(event.src_path, now_timestamp)
-        on_deleted_thread = Thread(target=self._on_deleted_callback, args=(event, now_timestamp))
-        on_deleted_thread.start()
-
-    def _on_deleted_callback(self, event, timestamp):
-        # Wait for eventual process of renaming after saving (performed by
-        # some editors) to be finished.
-        time.sleep(DELETE_DELAY)
-
-        if os.path.exists(event.src_path):
-            if self._is_created_since(event.src_path, timestamp):
-                return  # the create event already sent the 'modified' callback
-            else:
-                return self.on_modified(event)
         if not event.sync_src:
             return
-        if event.is_directory:
-            rel_src_path = event.rel_src_path
-            if not rel_src_path.endswith('/'):
-                rel_src_path += '/'
-            print "Syncing directory deletion %s" % event.src_path
-            self._send_request('DELETE', params={'path': rel_src_path})
-        else:
-            print "Syncing file deletion %s" % event.src_path
-            self._send_request('DELETE', params={'path': event.rel_src_path})
+        now = datetime.datetime.now()
+        self._set_deleted_event(EventStruct(now, event))
+
+    def _file_changed(self, filepath):
+        filepath = uniform_filepath(filepath)
+        with open(filepath) as fd:
+            file_hash = hashfile(fd)
+            with self._hashes_lock:
+                previous_file_hash = self._recently_modified_file_hashes.get(
+                    filepath, None)
+                if file_hash != previous_file_hash:
+                    self._recently_modified_file_hashes[filepath] = file_hash
+                    return True
 
     def on_modified(self, event):
         if event.is_directory:
             return
         if event.sync_src:
-            fd = open(event.src_path)
-            file_hash = hashfile(fd)
-            fd.seek(0)
-            with self._hashes_lock:
-                previous_file_hash = self._recently_modified_file_hashes.get(event.src_path, None)
-                if file_hash != previous_file_hash:
-                    self._recently_modified_file_hashes[event.src_path] = file_hash
-                    print "Syncing file modification %s" % event.src_path
-                    self._send_request('PUT', data={'path': event.rel_src_path}, files={'content': fd})
+            if self._file_changed(event.src_path):
+                now = datetime.datetime.now()
+                self._set_modified_event(EventStruct(now, event))
