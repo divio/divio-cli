@@ -4,6 +4,7 @@
 *.pyo
 
 cmscloudgui.ini
+sync.log
 build/
 cmscloud_client.egg-info/
 dist/
