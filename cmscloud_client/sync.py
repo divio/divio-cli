@@ -15,7 +15,8 @@ from watchdog.events import (
     FileModifiedEvent, FileSystemEventHandler)
 
 from cmscloud_client.utils import (
-    hashfile, is_valid_file_name, uniform_filepath, relpath)
+    ValidationError, hashfile, is_hidden, is_valid_file_name, relpath,
+    uniform_filepath)
 
 #******************************************************************************
 # Logging configuration
@@ -46,6 +47,10 @@ TIME_DELTA_SECONDS = TIME_DELTA.total_seconds()
 # to collect all actions from a single "batch"
 COLLECT_TIME_DELTA = TIME_DELTA * 2
 
+
+IGNORED_FILES = set(['.cmscloud', '.cmscloud-folder', LOG_FILENAME])
+for i in xrange(1, BACKUP_COUNT + 1):
+    IGNORED_FILES.add(LOG_FILENAME + ('.%d' % i))
 
 EventStruct = namedtuple('EventStruct', ['timestamp', 'event'])
 
@@ -292,24 +297,36 @@ class SyncEventHandler(FileSystemEventHandler):
     def _prepare_event(self, event):
         for attr in ['src', 'dest']:
             if hasattr(event, '%s_path' % attr):
-                event_rel_path = relpath(
-                    getattr(event, '%s_path' % attr), self.relpath)
+                event_path = getattr(event, '%s_path' % attr)
+                event_rel_path = relpath(event_path, self.relpath)
                 setattr(event, 'rel_%s_path' % attr, event_rel_path)
-                event_base_path = os.path.basename(
-                    getattr(event, '%s_path' % attr))
+                event_base_path = os.path.basename(event_path)
                 setattr(event, 'base_%s_path' % attr, event_base_path)
                 sync_dir = event_rel_path.startswith(
                     ('templates/', 'static/', 'private/'))
-                if event.is_directory:
-                    syncable = sync_dir and not event_base_path.startswith('.')
+                if not sync_dir:
+                    syncable = False
+                elif is_hidden(event_base_path):
+                    syncable = False
+                    name = 'directory' if event.is_directory else 'file'
+                    error_msg = ('hidden %s %s' % (attr, name))
+                    setattr(event, 'sync_%s_error' % attr, error_msg)
+                elif event.is_directory:
+                    syncable = True
                 else:
-                    syncable = sync_dir and is_valid_file_name(event_base_path)
+                    try:
+                        syncable = is_valid_file_name(event_base_path)
+                    except ValidationError as e:
+                        syncable = False
+                        setattr(event, 'sync_%s_error' % attr, e.message)
                 setattr(event, 'sync_%s' % attr, syncable)
         return event
 
-    def dispatch(self, event):
-        event = self._prepare_event(event)
-        super(SyncEventHandler, self).dispatch(event)
+    def dispatch(self, raw_event):
+        event_base_name = os.path.basename(raw_event.src_path)
+        if event_base_name not in IGNORED_FILES:
+            event = self._prepare_event(raw_event)
+            super(SyncEventHandler, self).dispatch(event)
 
     def _set_created_event(self, event_struct):
         filepath = uniform_filepath(event_struct.event.src_path)
@@ -377,8 +394,8 @@ class SyncEventHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         if not event.sync_src:
-            sync_logger.debug(
-                '"on_created" not a syncable file "%s"' % event.src_path)
+            sync_logger.debug('"on_created" not a syncable file "%s": %s' %
+                              (event.src_path, event.sync_src_error))
             return
         if not os.path.exists(event.src_path):
             sync_logger.error(

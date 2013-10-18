@@ -58,6 +58,10 @@ APP_REQUIRED = [
 ]
 
 
+class ValidationError(Exception):
+    pass
+
+
 def _validate(config, required):
     valid = (True, "Configuration file is valid")
     for thing in required:
@@ -123,15 +127,14 @@ def tar_add_stringio(tar, string_io, name):
     tar.addfile(tarinfo=info, fileobj=string_io)
 
 
-def is_valid_file_name(name, printer=None):
-    always_print = printer.always if printer else lambda x: None
+def is_valid_file_name(name):
     if not FILENAME_BASIC_RE.match(name):
-        always_print("File name %r is not a valid file name, ignoring..." % name)
-        return False
+        raise ValidationError(
+            "File name %r is not a valid file name, ignoring..." % name)
     ext = os.path.splitext(name)[-1]
     if ext not in ALLOWED_EXTENSIONS:
-        always_print("File extension %r is not allowed, ignoring" % ext)
-        return False
+        raise ValidationError(
+            "File extension %r is not allowed, ignoring" % ext)
     return True
 
 
@@ -236,3 +239,8 @@ def uniform_filepath(filepath):
     filepath = os.path.abspath(filepath)
     filepath = filepath.rstrip(os.sep)
     return filepath
+
+
+def is_hidden(path):
+    filename = os.path.basename(path)
+    return filename.startswith('.')
