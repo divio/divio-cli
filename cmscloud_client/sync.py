@@ -73,17 +73,17 @@ class SyncEventHandler(FileSystemEventHandler):
 
         self._events_queue = Queue.Queue()
 
-        self._main_thread = threading.current_thread()
-
-        # Due to the asynchronous nature of the file systems events
+        # Due to the asynchronous nature of the file system's events
         # there should be only one 'sending requests worker'.
         # (e.g. lagging create request followed by a delete one that will fail)
         self._send_requests_thread = threading.Thread(
             target=self._send_requests_worker, name='Requests sender')
+        self._send_requests_thread.daemon = True
         self._send_requests_thread.start()
 
         self._collect_events_thread = threading.Thread(
             target=self._collect_events_worker, name='Events collector')
+        self._collect_events_thread.daemon = True
         self._collect_events_thread.start()
 
     def _put_event(self, request):
@@ -113,7 +113,7 @@ class SyncEventHandler(FileSystemEventHandler):
         local_deleted_events = {}
         changed_filepaths = set()
 
-        while self._main_thread.isAlive() or self._pending_events():
+        while True:
             start_timestamp = datetime.datetime.now()
             local_created_events.clear()
             local_modified_events.clear()
@@ -270,7 +270,7 @@ class SyncEventHandler(FileSystemEventHandler):
         return (msg, method, kwargs)
 
     def _send_requests_worker(self):
-        while self._main_thread.isAlive() or self._events_queue_not_empty():
+        while True:
             event_struct = self._get_event(timeout=TIME_DELTA_SECONDS)
             if event_struct:
                 sync_logger.debug(
