@@ -308,8 +308,8 @@ class SyncEventHandler(FileSystemEventHandler):
                     syncable = False
                 elif is_hidden(event_base_path):
                     syncable = False
-                    name = 'directory' if event.is_directory else 'file'
-                    error_msg = ('hidden %s %s' % (attr, name))
+                    name = 'directories' if event.is_directory else 'files'
+                    error_msg = 'Hidden %s aren\'t synchronized.' % name
                     setattr(event, 'sync_%s_error' % attr, error_msg)
                 elif event.is_directory:
                     syncable = True
@@ -396,6 +396,8 @@ class SyncEventHandler(FileSystemEventHandler):
         if not event.sync_src:
             sync_logger.debug('"on_created" not a syncable file "%s": %s' %
                               (event.src_path, event.sync_src_error))
+            print ('Cannot sync file "%s": %s' %
+                   (event.rel_src_path, event.sync_src_error))
             return
         if not os.path.exists(event.src_path):
             sync_logger.error(
