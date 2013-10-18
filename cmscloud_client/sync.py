@@ -4,6 +4,7 @@ from operator import attrgetter
 import Queue
 import datetime
 import logging
+import logging.handlers
 import os
 import threading
 import time
@@ -16,17 +17,28 @@ from watchdog.events import (
 from cmscloud_client.utils import (
     hashfile, is_valid_file_name, uniform_filepath, relpath)
 
-LOG_FILENAME = 'sync.log'
+#******************************************************************************
+# Logging configuration
+#******************************************************************************
+BACKUP_COUNT = 2
 FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-logging.basicConfig(filename=LOG_FILENAME,
-                    level=logging.DEBUG,
-                    format=FORMAT)
+LOG_FILENAME = '.sync.log'
+MAX_BYTES = 100 * (2 ** 10)  # 100KB
+
+rotating_handler = logging.handlers.RotatingFileHandler(
+    LOG_FILENAME, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT)
+formatter = logging.Formatter(FORMAT)
+rotating_handler.setFormatter(formatter)
+rotating_handler.setLevel(logging.DEBUG)
 
 sync_logger = logging.getLogger('cmscloud_client.sync')
+sync_logger.setLevel(logging.DEBUG)
+sync_logger.addHandler(rotating_handler)
+#******************************************************************************
 
 # Amount of time during which we collect events and perform heuristics
 # to reduce the number of requests
-TIME_DELTA = datetime.timedelta(0, 1)  # 1 second
+TIME_DELTA = datetime.timedelta(0, 0.5)  # 0.5 second
 TIME_DELTA_SECONDS = TIME_DELTA.total_seconds()
 
 # Waiting twice as long as it takes to consider subsequent events
@@ -62,11 +74,11 @@ class SyncEventHandler(FileSystemEventHandler):
         # there should be only one 'sending requests worker'.
         # (e.g. lagging create request followed by a delete one that will fail)
         self._send_requests_thread = threading.Thread(
-            target=self._send_requests_worker)
+            target=self._send_requests_worker, name='Requests sender')
         self._send_requests_thread.start()
 
         self._collect_events_thread = threading.Thread(
-            target=self._collect_events_worker)
+            target=self._collect_events_worker, name='Events collector')
         self._collect_events_thread.start()
 
     def _put_event(self, request):
