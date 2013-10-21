@@ -278,14 +278,16 @@ class Client(object):
             return (False, '\n'.join(msgs))
         tarball = tarfile.open(mode='r|gz', fileobj=response.raw)
         tarball.extractall(path=path)
+        tarball.close()
         with open(cmscloud_dot_filename, 'w') as fobj:
             fobj.write(sitename)
 
         # waiting for the events' queue to be cleared after the tarball's extraction
-        time.sleep(Client.OBSERVER_TIMEOUT)
+        time.sleep(Client.OBSERVER_TIMEOUT * 1.5)
 
         event_handler = SyncEventHandler(self.session, sitename, relpath=path)
         observer = Observer(timeout=Client.OBSERVER_TIMEOUT)
+        observer.event_queue.queue.clear()
         observer.schedule(event_handler, path, recursive=True)
         observer.start()
 
