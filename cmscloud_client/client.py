@@ -9,10 +9,7 @@ import time
 import urlparse
 
 import requests
-try:
-    from watchdog.observers.kqueue import KqueueObserver as Observer
-except ImportError:
-    from watchdog.observers import Observer
+from watchdog.observers import Observer
 import yaml
 
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
