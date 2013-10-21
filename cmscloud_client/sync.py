@@ -26,15 +26,21 @@ FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 LOG_FILENAME = '.sync.log'
 MAX_BYTES = 100 * (2 ** 10)  # 100KB
 
-rotating_handler = logging.handlers.RotatingFileHandler(
-    LOG_FILENAME, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT)
-formatter = logging.Formatter(FORMAT)
-rotating_handler.setFormatter(formatter)
-rotating_handler.setLevel(logging.DEBUG)
 
-sync_logger = logging.getLogger('cmscloud_client.sync')
-sync_logger.setLevel(logging.DEBUG)
-sync_logger.addHandler(rotating_handler)
+def get_site_specific_logger(site_dir, sitename):
+    log_filename = os.path.join(site_dir, LOG_FILENAME)
+    rotating_handler = logging.handlers.RotatingFileHandler(
+        log_filename, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT)
+    formatter = logging.Formatter(FORMAT)
+    rotating_handler.setFormatter(formatter)
+    rotating_handler.setLevel(logging.DEBUG)
+
+    sync_logger = logging.getLogger('cmscloud_client.sync-' + sitename)
+    sync_logger.setLevel(logging.DEBUG)
+    sync_logger.handlers = []
+    sync_logger.addHandler(rotating_handler)
+    return sync_logger
+
 #******************************************************************************
 
 # Amount of time during which we collect events and perform heuristics
@@ -61,6 +67,7 @@ class SyncEventHandler(FileSystemEventHandler):
         self.session = session
         self.sitename = sitename
         self.relpath = os.path.abspath(relpath)
+        self.sync_logger = get_site_specific_logger(self.relpath, sitename)
 
         self._recently_modified_file_hashes = {}
         self._hashes_lock = threading.Lock()
@@ -216,20 +223,20 @@ class SyncEventHandler(FileSystemEventHandler):
                                           key=attrgetter('timestamp'))
 
             if local_created_events:
-                sync_logger.debug(
+                self.sync_logger.debug(
                     'raw "created" events:\t' + repr(local_created_events.values()))
             if local_modified_events:
-                sync_logger.debug(
+                self.sync_logger.debug(
                     'raw "modified" events:\t' + repr(local_modified_events.values()))
             if local_moved_events:
-                sync_logger.debug(
+                self.sync_logger.debug(
                     'raw "moved" events:\t' + repr(local_moved_events.values()))
             if local_deleted_events:
-                sync_logger.debug(
+                self.sync_logger.debug(
                     'raw "deleted" events:\t' + repr(local_deleted_events.values()))
 
             for event_struct in sorted_event_structs:
-                sync_logger.debug(
+                self.sync_logger.debug(
                     'pushing event into the queue:\t' + repr(event_struct))
                 self._put_event(event_struct)
 
@@ -273,7 +280,7 @@ class SyncEventHandler(FileSystemEventHandler):
         while True:
             event_struct = self._get_event(timeout=TIME_DELTA_SECONDS)
             if event_struct:
-                sync_logger.debug(
+                self.sync_logger.debug(
                     'sending request for event:\t' + repr(event_struct))
                 event = event_struct.event
                 msg, method, kwargs = self._prepare_request(event)
@@ -306,6 +313,8 @@ class SyncEventHandler(FileSystemEventHandler):
                     ('templates/', 'static/', 'private/'))
                 if not sync_dir:
                     syncable = False
+                    error_msg = 'Not in the syncable directory: templates/, static/, private/'
+                    setattr(event, 'sync_%s_error' % attr, error_msg)
                 elif is_hidden(event_base_path):
                     syncable = False
                     name = 'directories' if event.is_directory else 'files'
@@ -361,14 +370,14 @@ class SyncEventHandler(FileSystemEventHandler):
                 self._set_moved_event(EventStruct(now, event))
             else:
                 # moved outside of the syncable area, removing
-                sync_logger.debug(
+                self.sync_logger.debug(
                     'Event "%r" was changed into deleted one' % event)
                 raw_delete_event = FileDeletedEvent(event.src_path)
                 delete_event = self._prepare_event(raw_delete_event)
                 self.on_deleted(delete_event)
         elif event.sync_dest:
             # source isn't in sync area, but dest is, so create the stuff
-            sync_logger.debug('Event "%r" was changed into create one' % event)
+            self.sync_logger.debug('Event "%r" was changed into create one' % event)
             raw_create_event = DirCreatedEvent(event.dest_path)
             create_event = self._prepare_event(raw_create_event)
             self.on_created(create_event)
@@ -380,27 +389,27 @@ class SyncEventHandler(FileSystemEventHandler):
                 self._set_moved_event(EventStruct(now, event))
             else:
                 # moved outside of the syncable area, removing
-                sync_logger.debug(
+                self.sync_logger.debug(
                     'Event "%r" was changed into deleted one' % event)
                 raw_delete_event = FileDeletedEvent(event.src_path)
                 delete_event = self._prepare_event(raw_delete_event)
                 self.on_deleted(delete_event)
         elif event.sync_dest:
             # moved inside sync, create
-            sync_logger.debug('Event "%r" was changed into create one' % event)
+            self.sync_logger.debug('Event "%r" was changed into create one' % event)
             raw_create_event = FileCreatedEvent(event.dest_path)
             create_event = self._prepare_event(raw_create_event)
             self.on_created(create_event)
 
     def on_created(self, event):
         if not event.sync_src:
-            sync_logger.debug('"on_created" not a syncable file "%s": %s' %
-                              (event.src_path, event.sync_src_error))
+            self.sync_logger.debug('"on_created" not a syncable file "%s": %s' %
+                                   (event.src_path, event.sync_src_error))
             print ('Cannot sync file "%s": %s' %
                    (event.rel_src_path, event.sync_src_error))
             return
         if not os.path.exists(event.src_path):
-            sync_logger.error(
+            self.sync_logger.error(
                 'Created file "%s" but it doesn\'t exist.' % event.src_path)
         elif event.is_directory:
             # check if it has content, if so create stuff
