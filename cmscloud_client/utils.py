@@ -130,7 +130,7 @@ def tar_add_stringio(tar, string_io, name):
 def is_valid_file_name(name):
     if not FILENAME_BASIC_RE.match(name):
         raise ValidationError(
-            "File name %r is not a valid file name, ignoring." % name)
+            "File name %r is not valid, ignoring." % name)
     ext = os.path.splitext(name)[-1]
     if ext not in ALLOWED_EXTENSIONS:
         raise ValidationError(
@@ -229,10 +229,6 @@ def hashfile(fd, blocksize=65536):
         hasher.update(buf)
         buf = fd.read(blocksize)
     return hasher.digest()
-
-
-def relpath(path, start):
-    return os.path.relpath(path, start)
 
 
 def uniform_filepath(filepath):
