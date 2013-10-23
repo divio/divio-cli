@@ -10,6 +10,9 @@ INSTALL_REQUIRES = [
     'pyyaml',
     'watchdog',
 ]
+DEPENDENCY_LINKS = [
+    'https://github.com/gorakhargosh/watchdog/archive/v0.6.1.zip#egg=watchdog-0.6.1',
+]
 try:
     import json
 except ImportError:
@@ -39,6 +42,7 @@ setup(
     license='BSD',
     platforms=['OS Independent'],
     install_requires=INSTALL_REQUIRES,
+    dependency_links=DEPENDENCY_LINKS,
     entry_points="""
     [console_scripts]
     cmscloud = cmscloud_client.cli:main
