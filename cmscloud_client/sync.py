@@ -168,9 +168,8 @@ class SyncEventHandler(FileSystemEventHandler):
 
     def _log_not_a_syncable_file(self, sync_event):
         self.sync_logger.debug(
-            'not a syncable file "%s": %s' %
-            (sync_event.src_path,
-             sync_event.not_syncable_src_path_reason))
+            'not a syncable file: "%s": %s' %
+            (sync_event, sync_event.not_syncable_src_path_reason))
         print ('Cannot sync file "%s": %s' %
                (sync_event.src_path,
                 sync_event.not_syncable_src_path_reason))
@@ -202,13 +201,13 @@ class SyncEventHandler(FileSystemEventHandler):
         self._events_buffer.set_deleted_event(sync_event)
 
     def on_modified(self, sync_event):
-        if not sync_event.is_src_path_syncable:
-            self._log_not_a_syncable_file(sync_event)
-            return
         if sync_event.is_directory:
             # Ihis doesn't mean that the directory was renamed
             # it just means that the content of it was modified
             # which we handle in their own events
-            pass
+            return
+        if not sync_event.is_src_path_syncable:
+            self._log_not_a_syncable_file(sync_event)
+            return
         else:
             self._events_buffer.set_modified_event(sync_event)
