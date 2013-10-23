@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from collections import deque
 from operator import attrgetter
 import Queue
 import datetime
@@ -333,8 +334,29 @@ class ProceededEventsQueue(Queue.Queue):
 
 
 class FileHashesCache(dict):
-    def __init__(self):
+    def __init__(self, relpath):
         self._hashes_lock = threading.Lock()
+        self.relpath = relpath
+
+    def update_hash(self, filepath, file_hash=None):
+        if file_hash is None:
+            with open(filepath) as fd:
+                file_hash = hashfile(fd)
+        self[filepath] = file_hash
+
+    def update_hashes(self):
+        with self._hashes_lock:
+            dirs_queue = deque()
+            dirs_queue.append(self.relpath)
+            while dirs_queue:
+                parent_dir = dirs_queue.popleft()
+                for filename in os.listdir(parent_dir):
+                    filepath = os.path.join(parent_dir, filename)
+                    if os.path.isdir(filepath):
+                        dirs_queue.append(filepath)
+                    else:
+                        filepath = uniform_filepath(filepath)
+                        self.update_hash(filepath)
 
     def is_file_changed(self, filepath):
         filepath = uniform_filepath(filepath)
@@ -343,7 +365,7 @@ class FileHashesCache(dict):
         with self._hashes_lock:
             previous_file_hash = self.get(filepath, None)
             if file_hash != previous_file_hash:
-                self[filepath] = file_hash
+                self.update_hash(filepath, file_hash=file_hash)
                 status = True
             else:
                 status = False

@@ -72,7 +72,8 @@ class SyncEventHandler(FileSystemEventHandler):
 
         self._proceeded_events_queue = ProceededEventsQueue()
 
-        self._file_hashes_cache = FileHashesCache()
+        self._file_hashes_cache = FileHashesCache(self.relpath)
+        self._file_hashes_cache.update_hashes()
 
         # Due to the asynchronous nature of the file system's events
         # there should be only one 'sending requests worker'.

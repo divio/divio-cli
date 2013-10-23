@@ -88,7 +88,6 @@ class Client(object):
     CMSCLOUD_HOST_DEFAULT = 'https://control.django-cms.com'
     CMSCLOUD_HOST_KEY = 'CMSCLOUD_HOST'
     DATA_FILENAME = 'data.yaml'
-    OBSERVER_TIMEOUT = 1  # in seconds
     SETUP_FILENAME = 'setup.py'
 
     ALL_CONFIG_FILES = [APP_FILENAME, BOILERPLATE_FILENAME, CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
@@ -279,11 +278,8 @@ class Client(object):
         with open(cmscloud_dot_filename, 'w') as fobj:
             fobj.write(sitename)
 
-        # waiting for the events' queue to be cleared after the tarball's extraction
-        time.sleep(Client.OBSERVER_TIMEOUT * 1.5)
-
         event_handler = SyncEventHandler(self.session, sitename, relpath=path)
-        observer = Observer(timeout=Client.OBSERVER_TIMEOUT)
+        observer = Observer()
         observer.event_queue.queue.clear()
         observer.schedule(event_handler, path, recursive=True)
         observer.start()
