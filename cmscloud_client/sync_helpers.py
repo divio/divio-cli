@@ -23,6 +23,13 @@ class SyncEvent(object):
         for attr in ['src', 'dest']:
             if hasattr(event, '%s_path' % attr):
                 event_path = getattr(event, '%s_path' % attr)
+                if event_path is None:
+                    # Some file managers don't set src_path while restoring
+                    # the file/directory from the trash
+                    setattr(self, '_sync_%s' % attr, False)
+                    error_msg = 'Invalid event: %s' % event
+                    setattr(self, '_sync_%s_error' % attr, error_msg)
+                    continue
                 event_rel_path = os.path.relpath(event_path, relpath)
                 setattr(self, '_rel_%s_path' % attr, event_rel_path)
                 event_base_path = os.path.basename(event_path)
