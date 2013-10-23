@@ -49,7 +49,7 @@ TIME_DELTA_IN_SECONDS = 0.5
 # to collect all actions from a single "batch" into (preferably) single request
 COLLECT_TIME_DELTA_IN_SECONDS = TIME_DELTA_IN_SECONDS * 2.01
 
-IGNORED_FILES = set(['.cmscloud', '.cmscloud-folder', '.DS_STORE', LOG_FILENAME])
+IGNORED_FILES = set(['.cmscloud', '.cmscloud-folder', '.DS_Store', LOG_FILENAME])
 for i in xrange(1, BACKUP_COUNT + 1):
     IGNORED_FILES.add('%s.%d' % (LOG_FILENAME, i))
 
