@@ -22,7 +22,7 @@ class SyncEvent(object):
         from cmscloud_client.sync import SYNCABLE_DIRECTORIES
         for attr in ['src', 'dest']:
             if hasattr(event, '%s_path' % attr):
-                event_path = getattr(self, '%s_path' % attr)
+                event_path = getattr(event, '%s_path' % attr)
                 event_rel_path = os.path.relpath(event_path, relpath)
                 setattr(self, '_rel_%s_path' % attr, event_rel_path)
                 event_base_path = os.path.basename(event_path)
@@ -242,7 +242,7 @@ class EventsBuffer(object):
                             created = None
                         else:
                             raw_modified_event = FileModifiedEvent(
-                                created.event.src_path)
+                                created.src_path)
                             modified = SyncEvent(
                                 raw_modified_event, created.timestamp, created.relpath)
                             created = None
