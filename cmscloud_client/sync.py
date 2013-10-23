@@ -186,7 +186,8 @@ class SyncEventHandler(FileSystemEventHandler):
                         os.path.join(sync_event.src_path, thing))
                     create_event = SyncEvent(
                         raw_create_event, sync_event.timestamp, sync_event.relpath)
-                    self.on_created(create_event)
+                    if create_event.base_src_path not in IGNORED_FILES:
+                        self.on_created(create_event)
             except os.OSError as e:
                 self.sync_logger.error(
                     'Accessing created directory "%s" raised: %r.' %
