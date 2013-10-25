@@ -413,7 +413,7 @@
         source: 'img/external.png'
 
 
-<WebsiteView>:
+<WebsiteView@RelativeView>:
     name_btn: name_btn_id.__self__
     dir_label: dir_label_id.__self__
     change_or_set_dir_btn: change_or_set_dir_btn_id.__self__
@@ -456,7 +456,7 @@
                 background_down: ''
                 background_normal: ''
                 halign: 'left'
-                on_release: app.browser_open_site_dashboard(self.text)
+                on_release: app.browser_open_site_dashboard(root.domain)
                 pos_hint: {'x': 0, 'center_y': .5}
                 text_size: self.parent.size
                 valign: 'middle'
@@ -472,7 +472,7 @@
         LinkButton:
             id: change_or_set_dir_btn_id
 
-            on_release: app.select_site_dir(name_btn_id.text)
+            on_release: app.select_site_dir(root.domain)
 
     StackLayout:
         orientation: 'rl-tb'
@@ -485,4 +485,4 @@
             id: sync_btn_id
 
             size_hint: None, None
-            on_release: app.sync(name_btn_id.text)
+            on_release: app.sync(root.domain)

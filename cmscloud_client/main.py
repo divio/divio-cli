@@ -29,7 +29,7 @@ import webbrowser
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
-from kivy.properties import ObjectProperty
+from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView
@@ -140,9 +140,17 @@ class WebsiteView(RelativeLayout):
     open_dir_btn = ObjectProperty(None)
     sync_btn = ObjectProperty(None)
 
-    def __init__(self, name):
+    domain = StringProperty(None)
+
+    def __init__(self, domain):
         super(WebsiteView, self).__init__()
+        self.domain = domain
+
+    def set_name(self, name):
         self.name_btn.text = name
+
+    def get_name(self):
+        return self.name_btn.text
 
     def _set_dir_btn_text_to_change(self):
         self.change_or_set_dir_btn.text = 'change'
@@ -218,22 +226,22 @@ class LoadSitesListThread(threading.Thread):
 
 class SyncDirThread(threading.Thread):
 
-    def __init__(self, site_name, path, client, callback):
+    def __init__(self, domain, path, client, callback):
         super(SyncDirThread, self).__init__()
-        self.site_name = site_name
+        self.domain = domain
         self.path = path
         self.client = client
         self.callback = callback
 
     def run(self):
         app = App.get_running_app()
-        domain = app.sites_dir_database[self.site_name]['domain'].encode('utf-8')
+        domain = app.sites_dir_database[self.domain]['domain'].encode('utf-8')
         try:
             status, msg_or_observer = self.client.sync(sitename=domain, path=self.path, interactive=False)
         except OSError as e:
             Clock.schedule_once(lambda dt: app.show_info_dialog('Filesystem Error', str(e)), 0)
         else:
-            Clock.schedule_once(lambda dt: self.callback(self.site_name, status, msg_or_observer), 0)
+            Clock.schedule_once(lambda dt: self.callback(self.domain, status, msg_or_observer), 0)
 
 
 ###########
@@ -248,40 +256,43 @@ class WebsitesManager(object):
         self._site_views_cache = {}
         self._site_sync_threads = {}
 
-    def add_website(self, name, site_data):
+    def add_or_update_website(self, domain, site_data):
         site_view = None
-        if name in self._site_views_cache:
-            site_view = self._site_views_cache[name]
+        if domain in self._site_views_cache:
+            site_view = self._site_views_cache[domain]
         else:
-            site_view = WebsiteView(name)
+            site_view = WebsiteView(domain)
+
+        name = site_data['name'].encode('utf-8')
+        site_view.set_name(name)
 
         site_dir = None
-        if name in self._sites_dir_database:
-            site_dir = self.get_site_dir(name)
+        if domain in self._sites_dir_database:
+            site_dir = self.get_site_dir(domain)
         else:
-            self._sites_dir_database[name] = {}
-        self._sites_dir_database[name].update(site_data)
+            self._sites_dir_database[domain] = {}
+        self._sites_dir_database[domain].update(site_data)
 
         site_view.set_site_dir_widgets(site_dir)
 
-        if name in self._site_sync_threads:
+        if domain in self._site_sync_threads:
             site_view.set_sync_btn_text_to_stop()
         else:
             site_view.set_sync_btn_text_to_sync()
 
-        if name not in self._site_views_cache:
+        if domain not in self._site_views_cache:
             self._sites_list_view.add_widget(site_view)
-            self._site_views_cache[name] = site_view
+            self._site_views_cache[domain] = site_view
 
-    def remove_website(self, name):
-        site_view = self._site_views_cache[name]
+    def remove_website(self, domain):
+        site_view = self._site_views_cache[domain]
         self._sites_list_view.remove_widget(site_view)
-        del self._site_views_cache[name]
+        del self._site_views_cache[domain]
 
-        if name in self._site_sync_threads:
-            site_sync_thread = self._site_sync_threads[name]
+        if domain in self._site_sync_threads:
+            site_sync_thread = self._site_sync_threads[domain]
             site_sync_thread.stop()
-            del self._site_sync_threads[name]
+            del self._site_sync_threads[domain]
 
     def clear_websites(self):
         self._sites_list_view.clear_widgets()
@@ -295,46 +306,50 @@ class WebsitesManager(object):
             t.join()
         self._site_sync_threads.clear()
 
-    def get_sites_names(self):
+    def get_site_name(self, domain):
+        return self._site_views_cache[domain].get_name()
+
+    def get_domain(self):
         return self._site_views_cache.keys()
 
-    def get_site_dashboard_url(self, name):
-        return self._sites_dir_database[name].get('dashboard_url', CONTROL_PANEL_URL)
+    def get_site_dashboard_url(self, domain):
+        return self._sites_dir_database[domain].get(
+            'dashboard_url', CONTROL_PANEL_URL)
 
     ### Site's sync observer ###
 
-    def _delete_site_sync_observer(self, site_name):
-        observer = self.get_site_sync_observer(site_name)
+    def _delete_site_sync_observer(self, domain):
+        observer = self.get_site_sync_observer(domain)
         if observer:
             observer.stop()
             observer.join()
-            del self._site_sync_threads[site_name]
-            site_view = self._site_views_cache[site_name]
+            del self._site_sync_threads[domain]
+            site_view = self._site_views_cache[domain]
             site_view.set_sync_btn_text_to_sync()
 
-    def set_site_sync_observer(self, site_name, observer):
+    def set_site_sync_observer(self, domain, observer):
         # stopping and removing any older syncing observer
-        self._delete_site_sync_observer(site_name)
+        self._delete_site_sync_observer(domain)
 
-        self._site_sync_threads[site_name] = observer
-        site_view = self._site_views_cache[site_name]
+        self._site_sync_threads[domain] = observer
+        site_view = self._site_views_cache[domain]
         site_view.set_sync_btn_text_to_stop()
 
-    def get_site_sync_observer(self, site_name):
-        return self._site_sync_threads.get(site_name, None)
+    def get_site_sync_observer(self, domain):
+        return self._site_sync_threads.get(domain, None)
 
-    def stop_site_sync_observer(self, site_name):
-        self._delete_site_sync_observer(site_name)
+    def stop_site_sync_observer(self, domain):
+        self._delete_site_sync_observer(domain)
 
     ### Site's sync directory ###
 
-    def get_site_dir(self, site_name):
-        return self._sites_dir_database[site_name].get('dir', None)
+    def get_site_dir(self, domain):
+        return self._sites_dir_database[domain].get('dir', None)
 
-    def set_site_dir(self, site_name, site_dir):
-        self._sites_dir_database[site_name]['dir'] = site_dir
+    def set_site_dir(self, domain, site_dir):
+        self._sites_dir_database[domain]['dir'] = site_dir
         self._sites_dir_database.sync()
-        site_view = self._site_views_cache[site_name]
+        site_view = self._site_views_cache[domain]
         site_view.set_site_dir_widgets(site_dir)
 
 
@@ -534,51 +549,52 @@ class CMSCloudGUIApp(App):
         self.dismiss_loading_dialog()
         if status:
             new_sites_names = set()
-            old_sites_names = set(self._websites_manager.get_sites_names())
+            old_sites_names = set(self._websites_manager.get_domain())
             for site_data in data:
-                name = site_data['name'].encode('utf-8')
-                new_sites_names.add(name)
-                self._websites_manager.add_website(name, site_data)
-
+                domain = site_data['domain'].encode('utf-8')
+                new_sites_names.add(domain)
+                self._websites_manager.add_or_update_website(
+                    domain, site_data)
             removed_sites_names = old_sites_names - new_sites_names
-            for removed_site_name in removed_sites_names:
-                self._websites_manager.remove_website(removed_site_name)
+            for removed_domain in removed_sites_names:
+                self._websites_manager.remove_website(removed_domain)
         else:
             msg = unicode(data)
             self.show_info_dialog('Error', msg)
 
-    def select_site_dir(self, site_name):
-        on_selection = partial(self._select_site_dir_callback, site_name)
-        site_dir = self._websites_manager.get_site_dir(site_name)
+    def select_site_dir(self, domain):
+        on_selection = partial(self._select_site_dir_callback, domain)
+        site_dir = self._websites_manager.get_site_dir(domain)
         self.show_dir_chooser_dialog(on_selection, path=site_dir)
 
-    def _select_site_dir_callback(self, site_name, site_dir):
-        self._websites_manager.set_site_dir(site_name, site_dir)
+    def _select_site_dir_callback(self, domain, site_dir):
+        self._websites_manager.set_site_dir(domain, site_dir)
 
-    def sync(self, site_name):
-        observer = self._websites_manager.get_site_sync_observer(site_name)
+    def sync(self, domain):
+        observer = self._websites_manager.get_site_sync_observer(domain)
         if observer:
-            self._websites_manager.stop_site_sync_observer(site_name)
+            self._websites_manager.stop_site_sync_observer(domain)
         else:
-            site_dir = self._websites_manager.get_site_dir(site_name)
+            site_dir = self._websites_manager.get_site_dir(domain)
             if site_dir:
-                on_confirm = partial(self._sync_confirmed, site_name, site_dir)
+                on_confirm = partial(self._sync_confirmed, domain, site_dir)
                 title = 'Confirm sync'
-                msg = 'All local changes to the boilerplate of "%s" will be undone. Continue?' % site_name
+                name = self._websites_manager.get_site_name(domain)
+                msg = 'All local changes to the boilerplate of "%s" will be undone. Continue?' % name
                 self.show_confirm_dialog(title, msg, on_confirm)
             else:
-                self.select_site_dir(site_name)
+                self.select_site_dir(domain)
 
-    def _sync_confirmed(self, site_name, site_dir):
+    def _sync_confirmed(self, domain, site_dir):
         self.show_loading_dialog()
         path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
-        sync_dir_thread = SyncDirThread(site_name, path, self.client, self._sync_callback)
+        sync_dir_thread = SyncDirThread(domain, path, self.client, self._sync_callback)
         sync_dir_thread.start()
 
-    def _sync_callback(self, site_name, status, msg_or_observer):
+    def _sync_callback(self, domain, status, msg_or_observer):
         self.dismiss_loading_dialog()
         if status:  # observer
-            self._websites_manager.set_site_sync_observer(site_name, msg_or_observer)
+            self._websites_manager.set_site_sync_observer(domain, msg_or_observer)
         else:  # msg
             self.show_info_dialog('Error', msg_or_observer)
 
@@ -601,8 +617,8 @@ class CMSCloudGUIApp(App):
     def browser_open_add_new_site(self):
         webbrowser.open(ADD_NEW_SITE_URL)
 
-    def browser_open_site_dashboard(self, site_name):
-        webbrowser.open(self._websites_manager.get_site_dashboard_url(site_name))
+    def browser_open_site_dashboard(self, domain):
+        webbrowser.open(self._websites_manager.get_site_dashboard_url(domain))
 
 
 if __name__ == '__main__':
