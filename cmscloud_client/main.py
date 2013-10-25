@@ -36,6 +36,7 @@ from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.popup import Popup
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.screenmanager import Screen, ScreenManager, TransitionBase
+from kivy.utils import get_color_from_hex
 
 from client import Client
 from utils_kivy import TabTextInput, open_in_file_manager
@@ -57,6 +58,15 @@ ACCOUNT_CREATION_URL = 'https://login.django-cms.com/login/'
 TROUBLE_SIGNING_IN_URL = 'https://login.django-cms.com/account/reset-password/'
 CONTROL_PANEL_URL = 'https://control.django-cms.com/control/'
 ADD_NEW_SITE_URL = 'https://control.django-cms.com/control/new/'
+
+# status to dot color mapping
+STATUS_TO_COLOR = {
+    0: get_color_from_hex('#4a9cf2'),  # NEW, blue
+    1: get_color_from_hex('#98ba0f'),  # DEPLOYED, green
+    2: get_color_from_hex('#4a9cf2'),  # DEPLOYING, blue
+    3: get_color_from_hex('#626262'),  # OFFLINE, grey
+    4: get_color_from_hex('#f0453b'),  # ERROR, red
+}
 
 
 ################
@@ -134,11 +144,13 @@ class CustomFileChooserListView(FileChooserListView):
 
 
 class WebsiteView(RelativeLayout):
+    status_btn = ObjectProperty(None)
     name_btn = ObjectProperty(None)
     dir_label = ObjectProperty(None)
     change_or_set_dir_btn = ObjectProperty(None)
     open_dir_btn = ObjectProperty(None)
     sync_btn = ObjectProperty(None)
+    preview_btn = ObjectProperty(None)
 
     domain = StringProperty(None)
 
@@ -149,8 +161,8 @@ class WebsiteView(RelativeLayout):
     def set_name(self, name):
         self.name_btn.text = name
 
-    def get_name(self):
-        return self.name_btn.text
+    def set_status_color(self, color):
+        self.status_btn.color = color
 
     def _set_dir_btn_text_to_change(self):
         self.change_or_set_dir_btn.text = 'change'
@@ -266,6 +278,9 @@ class WebsitesManager(object):
         name = site_data['name'].encode('utf-8')
         site_view.set_name(name)
 
+        stage_status = site_data['stage_status']
+        site_view.set_status_color(STATUS_TO_COLOR[stage_status])
+
         site_dir = None
         if domain in self._sites_dir_database:
             site_dir = self.get_site_dir(domain)
@@ -307,7 +322,7 @@ class WebsitesManager(object):
         self._site_sync_threads.clear()
 
     def get_site_name(self, domain):
-        return self._site_views_cache[domain].get_name()
+        return self._sites_dir_database[domain]['name'].encode('utf-8')
 
     def get_domain(self):
         return self._site_views_cache.keys()
@@ -315,6 +330,10 @@ class WebsitesManager(object):
     def get_site_dashboard_url(self, domain):
         return self._sites_dir_database[domain].get(
             'dashboard_url', CONTROL_PANEL_URL)
+
+    def get_site_stage_url(self, domain):
+        return self._sites_dir_database[domain].get(
+            'stage_url', CONTROL_PANEL_URL)
 
     ### Site's sync observer ###
 
@@ -619,6 +638,9 @@ class CMSCloudGUIApp(App):
 
     def browser_open_site_dashboard(self, domain):
         webbrowser.open(self._websites_manager.get_site_dashboard_url(domain))
+
+    def browser_open_stage(self, domain):
+        webbrowser.open(self._websites_manager.get_site_stage_url(domain))
 
 
 if __name__ == '__main__':

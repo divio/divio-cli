@@ -414,6 +414,7 @@
 
 
 <WebsiteView@RelativeView>:
+    status_btn: status_btn_id.__self__
     name_btn: name_btn_id.__self__
     dir_label: dir_label_id.__self__
     change_or_set_dir_btn: change_or_set_dir_btn_id.__self__
@@ -447,6 +448,29 @@
         spacing: 5
 
         BoxLayout:
+            size_hint: None, 1
+            width: 20
+
+            Button:
+                id: status_btn_id
+                color: 0, 0, 0, 0
+
+                background_color: 0, 0, 0, 0
+                background_down: ''
+                background_normal: ''
+                on_release: app.browser_open_stage(root.domain)
+                pos_hint: {'center_x': .5, 'center_y': .5}
+                size: (10, 10)
+                size_hint: (None, None)
+
+                canvas:
+                    Color:
+                        rgb: self.color
+                    Ellipse:
+                        size: self.size
+                        pos: self.pos
+
+        BoxLayout:
             size_hint: 0.3, 1
 
             PaddedButton:
@@ -475,14 +499,23 @@
             on_release: app.select_site_dir(root.domain)
 
     StackLayout:
-        orientation: 'rl-tb'
+        orientation: 'lr-tb'
         padding: 10
         pos_hint: {'right': 1, 'center_y': 0.5}
-        size_hint: 0.1, 1
+        size_hint: None, 1
+        width: preview_btn_id.width + sync_btn_id.width + self.spacing[0] + self.padding[0] + self.padding[2]
         spacing: 10
+
+        PaddedButton:
+            id: preview_btn_id
+
+            background_color: 0.33, 0.66, 0.9, 1
+            background_down: ''
+            background_normal: ''
+            on_release: app.browser_open_stage(root.domain)
+            text: 'Preview'
 
         PaddedButton:
             id: sync_btn_id
 
-            size_hint: None, None
             on_release: app.sync(root.domain)
