@@ -153,7 +153,7 @@ class Client(object):
             return (False, msg)
         else:
             msgs = []
-            if response.content:
+            if response.content and response.status_code < 500:
                 msgs.append(response.content)
             msgs.append("There was a problem logging in, please try again later.")
             return (False, '\n'.join(msgs))
@@ -270,7 +270,8 @@ class Client(object):
         if response.status_code != 200:
             msgs = []
             msgs.append("Unexpected HTTP Response %s" % response.status_code)
-            msgs.append(response.content)
+            if response.status_code < 500:
+                msgs.append(response.content)
             return (False, '\n'.join(msgs))
         tarball = tarfile.open(mode='r|gz', fileobj=response.raw)
         tarball.extractall(path=path)
@@ -303,7 +304,8 @@ class Client(object):
         if response.status_code != 200:
             msgs = []
             msgs.append("Unexpected HTTP Response %s" % response.status_code)
-            msgs.append(response.content)
+            if response.status_code < 500:
+                msgs.append(response.content)
             return (False, '\n'.join(msgs))
         else:
             sites = json.loads(response.content)
