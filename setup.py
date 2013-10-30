@@ -5,9 +5,11 @@ from cmscloud_client import __version__
 
 
 INSTALL_REQUIRES = [
+    'autobahn',
     'requests',
     'docopt',
     'pyyaml',
+    'twisted',
     'watchdog',
 ]
 DEPENDENCY_LINKS = [
