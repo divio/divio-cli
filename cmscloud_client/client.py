@@ -5,18 +5,25 @@ import netrc
 import os
 import shutil
 import tarfile
+import threading
 import time
 import urlparse
 
-import requests
+from autobahn.wamp import WampClientFactory
+from autobahn.websocket import connectWS
+from twisted.internet import reactor, threads
 from watchdog.observers import Observer
+import requests
 import yaml
 
 from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
 from cmscloud_client.sync import SyncEventHandler
+from cmscloud_client.sync_helpers import (
+    get_site_specific_logger, sync_back_protocol_factory)
 from cmscloud_client.utils import (
     validate_boilerplate_config, bundle_boilerplate, filter_template_files,
-    filter_static_files, validate_app_config, bundle_app, filter_sass_files)
+    filter_static_files, filter_bad_paths, validate_app_config, bundle_app,
+    filter_sass_files)
 
 
 def resource_path(relative_path):
@@ -92,9 +99,10 @@ class Client(object):
 
     ALL_CONFIG_FILES = [APP_FILENAME, BOILERPLATE_FILENAME, CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
 
-    def __init__(self, host):
+    def __init__(self, host, interactive=True):
         register_yaml_extensions()
         self.host = urlparse.urlparse(host)[1]
+        self.interactive = interactive
         self.netrc = WritableNetRC()
         auth_data = self.get_auth_data()
         if auth_data:
@@ -104,6 +112,13 @@ class Client(object):
         else:
             headers = {}
         self.session = SingleHostSession(host, headers=headers, trust_env=False)
+
+        self._observers_cache = {}
+
+        self._twisted_reactor_thread = threading.Thread(
+            target=reactor.run, args=(False,))
+        self._twisted_reactor_thread.daemon = True
+        self._twisted_reactor_thread.start()
 
     def get_auth_data(self):
         return self.netrc.hosts.get(self.host)
@@ -117,8 +132,8 @@ class Client(object):
             auth_data = self.get_auth_data()
             return auth_data[0]
 
-    def logout(self, interactive=True):
-        while interactive:
+    def logout(self):
+        while self.interactive:
             answer = raw_input('Are you sure you want to continue? [yN]')
             if answer.lower() == 'n' or not answer:
                 print "Aborted"
@@ -234,7 +249,7 @@ class Client(object):
             config = yaml.safe_load(fobj)
         return validate_app_config(config)
 
-    def sync(self, sitename=None, path='.', interactive=True):
+    def sync(self, sitename=None, path='.', stop_sync_callback=None):
         cmscloud_dot_filename = os.path.join(path, Client.CMSCLOUD_DOT_FILENAME)
         if not sitename:
             if os.path.exists(cmscloud_dot_filename):
@@ -247,7 +262,7 @@ class Client(object):
             sitename = sitename.split('.')[0]
         print "Preparing to sync %s." % sitename
         print "This will undo all local changes."
-        while interactive:
+        while self.interactive:
             answer = raw_input('Are you sure you want to continue? [yN]')
             if answer.lower() == 'n' or not answer:
                 msg = "Aborted"
@@ -279,27 +294,113 @@ class Client(object):
         with open(cmscloud_dot_filename, 'w') as fobj:
             fobj.write(sitename)
 
+        sync_back_conn = self._start_sync_back_listener(
+            sitename, path, stop_sync_callback=stop_sync_callback)
+
+        class SyncObserver(Observer):
+
+            def on_thread_stop(self):
+                Observer.on_thread_stop(self)
+                sync_back_conn.disconnect()
+
         event_handler = SyncEventHandler(self.session, sitename, relpath=path)
-        observer = Observer()
+        observer = SyncObserver()
         observer.event_queue.queue.clear()
         observer.schedule(event_handler, path, recursive=True)
         observer.start()
 
-        if interactive:
+        self._observers_cache[sitename] = observer
+
+        if self.interactive:
             print "Done, now watching for changes. You can stop the sync by hitting Ctrl-c in this shell"
 
             try:
-                while True:
+                while self._is_syncing(sitename):
                     time.sleep(1)
             except KeyboardInterrupt:
-                observer.stop()
-            observer.join()
+                self._stop_sync(sitename)
             msg = "Stopped syncing"
             return (True, msg)
         else:
             return (True, observer)
 
-    def sites(self, interactive=True):
+    def _is_syncing(self, sitename):
+        return sitename in self._observers_cache
+
+    def _stop_sync(self, sitename):
+        observer = self._observers_cache.get(sitename, None)
+        if observer:
+            observer.stop()
+            observer.join()
+            del self._observers_cache[sitename]
+
+    def _sync_back_file(self, sitename, filepath, path='.'):
+        params = {'filepath': filepath}
+        response = self.session.get(
+            '/api/v1/sync/%s/sync-back-file/' % sitename, params=params, stream=True,
+            headers={'accept': 'application/octet'})
+        if response.status_code != 200:
+            msgs = []
+            msgs.append("Unexpected HTTP Response %s" % response.status_code)
+            if response.status_code < 500:
+                msgs.append(response.content)
+            return (False, '\n'.join(msgs))
+        tarball = tarfile.open(mode='r|gz', fileobj=response.raw)
+        tarball.extractall(
+            path=path, members=filter_bad_paths(tarball.members, path))
+        tarball.close()
+        return (True, 'Synced back file %s' % filepath)
+
+    def _get_sync_back_credentials(self, sitename):
+        response = self.session.get('/api/v1/sync/%s/sync-back-credentials/' % sitename, stream=True)
+        data = json.loads(response.content)
+        return (data['uri'], data['key'], data['channel'])
+
+    def _start_sync_back_listener(self, sitename, path='.',
+                                  stop_sync_callback=None):
+        uri, key, channel = self._get_sync_back_credentials(sitename)
+        factory = WampClientFactory(uri, debugWamp=True)
+
+        def event_callback(event):
+            updaters_email = event['updaters_email']
+            if updaters_email == self.get_login():
+                # it's our change
+                return
+            filepath = event['purge']
+            if updaters_email:
+                user_str = 'User "%s"' % updaters_email
+            else:
+                user_str = 'Someone'
+            if self.interactive:
+                print '\n'.join([
+                    '\n!!!',
+                    '%s just changed "%s".' % (user_str, filepath),
+                    'If you continue you can override it!',
+                    '!!!\n'])
+                while True:
+                    answer = raw_input(
+                        'Do you want to stop syncing? [y/n]')
+                    if answer.lower() == 'y':
+                        self._stop_sync(sitename)
+                        break
+                    elif answer.lower() == 'n':
+                        break
+                    else:
+                        print "Invalid answer, please type either y or n"
+            elif stop_sync_callback:
+                msg = '\n'.join([
+                    '%s just edited "%s".' % (user_str, filepath),
+                    ' If you continue you can override it!',
+                    ' Do you want to stop syncing?'])
+                stop_sync_callback(msg)
+
+        logger = get_site_specific_logger(sitename, path)
+        factory.protocol = sync_back_protocol_factory(
+            key, channel, event_callback, logger=logger)
+        conn = threads.blockingCallFromThread(reactor, connectWS, factory)
+        return conn
+
+    def sites(self):
         response = self.session.get('/api/v1/sites/', stream=True)
         if response.status_code != 200:
             msgs = []
@@ -309,7 +410,7 @@ class Client(object):
             return (False, '\n'.join(msgs))
         else:
             sites = json.loads(response.content)
-            if interactive:
+            if self.interactive:
                 data = json.dumps(sites, sort_keys=True, indent=4, separators=(',', ': '))
             else:
                 data = sites

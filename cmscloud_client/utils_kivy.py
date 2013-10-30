@@ -6,6 +6,7 @@ from kivy.logger import Logger
 from kivy.properties import ObjectProperty
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
+from pync import Notifier
 
 
 class TabTextInput(TextInput):
@@ -34,5 +35,16 @@ def open_in_file_manager(path):
     else:
         try:
             subprocess.Popen(['xdg-open', path])
+        except OSError:
+            Logger.exception('Cannot open external file manager')
+
+
+def notify(title, message):
+    platform = sys.platform
+    if platform == 'darwin':
+        Notifier.notify(message, title=title)
+    else:
+        try:
+            subprocess.Popen(['notify-send', title, message, '-t', '10000'])
         except OSError:
             Logger.exception('Cannot open external file manager')

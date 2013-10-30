@@ -269,12 +269,12 @@
         size_hint_y: None
         height: 30
         Button:
-            text: "Cancel"
-            on_release: root.cancel()
+            text: root.cancel_btn_text
+            on_release: root.cancel_callback()
 
         Button:
-            text: "Confirm"
-            on_release: root.confirm()
+            text: root.confirm_btn_text
+            on_release: root.confirm_callback()
 
 
 <LoadingDialog>:
@@ -518,4 +518,4 @@
         PaddedButton:
             id: sync_btn_id
 
-            on_release: app.sync(root.domain)
+            on_release: app.sync_toggle(root.domain)

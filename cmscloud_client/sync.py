@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 import datetime
-import logging
-import logging.handlers
 import os
 import threading
 import time
@@ -12,31 +10,8 @@ from watchdog.events import (
 
 from cmscloud_client.utils import uniform_filepath
 from cmscloud_client.sync_helpers import (
-    EventsBuffer, FileHashesCache, ProceededEventsQueue, SyncEvent)
-
-###############################################################################
-# Logging configuration
-###############################################################################
-BACKUP_COUNT = 2
-FORMAT = '%(asctime)s|%(name)s|%(levelname)s: %(message)s'
-LOG_FILENAME = '.sync.log'
-MAX_BYTES = 100 * (2 ** 10)  # 100KB
-
-
-def get_site_specific_logger(site_dir, sitename):
-    log_filename = os.path.join(site_dir, LOG_FILENAME)
-    rotating_handler = logging.handlers.RotatingFileHandler(
-        log_filename, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT)
-    formatter = logging.Formatter(FORMAT)
-    rotating_handler.setFormatter(formatter)
-    rotating_handler.setLevel(logging.DEBUG)
-
-    sync_logger = logging.getLogger(sitename)
-    sync_logger.setLevel(logging.DEBUG)
-    sync_logger.handlers = []
-    sync_logger.addHandler(rotating_handler)
-    return sync_logger
-###############################################################################
+    EventsBuffer, FileHashesCache, ProceededEventsQueue, SyncEvent,
+    get_site_specific_logger, BACKUP_COUNT, LOG_FILENAME)
 
 SYNCABLE_DIRECTORIES = ('templates/', 'static/', 'private/')
 
@@ -64,7 +39,7 @@ class SyncEventHandler(FileSystemEventHandler):
         self.session = session
         self.sitename = sitename
         self.relpath = uniform_filepath(relpath)
-        self.sync_logger = get_site_specific_logger(self.relpath, sitename)
+        self.sync_logger = get_site_specific_logger(sitename, self.relpath)
 
         self._recently_modified_file_hashes = {}
 

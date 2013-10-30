@@ -3,15 +3,42 @@ from collections import deque
 from operator import attrgetter
 import Queue
 import datetime
+import logging
+import logging.handlers
 import os
 import threading
 
+from autobahn.wamp import WampClientProtocol
 from watchdog.events import (
     EVENT_TYPE_CREATED, EVENT_TYPE_DELETED, EVENT_TYPE_MODIFIED,
     EVENT_TYPE_MOVED, FileModifiedEvent)
 
 from cmscloud_client.utils import (
     ValidationError, hashfile, is_hidden, is_valid_file_name, uniform_filepath)
+
+###############################################################################
+# Logging configuration
+###############################################################################
+BACKUP_COUNT = 2
+FORMAT = '%(asctime)s|%(name)s|%(levelname)s: %(message)s'
+LOG_FILENAME = '.sync.log'
+MAX_BYTES = 100 * (2 ** 10)  # 100KB
+
+
+def get_site_specific_logger(sitename, site_dir):
+    log_filename = os.path.join(site_dir, LOG_FILENAME)
+    rotating_handler = logging.handlers.RotatingFileHandler(
+        log_filename, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT)
+    formatter = logging.Formatter(FORMAT)
+    rotating_handler.setFormatter(formatter)
+    rotating_handler.setLevel(logging.DEBUG)
+
+    sync_logger = logging.getLogger(sitename)
+    sync_logger.setLevel(logging.DEBUG)
+    sync_logger.handlers = []
+    sync_logger.addHandler(rotating_handler)
+    return sync_logger
+###############################################################################
 
 
 class SyncEvent(object):
@@ -370,3 +397,29 @@ class FileHashesCache(dict):
             else:
                 status = False
         return status
+
+
+def sync_back_protocol_factory(
+        subscription_key, channel, event_callback, logger):
+
+    class SyncBackProtocol(WampClientProtocol):
+        def onSessionOpen(self):
+            d = self.call('authenticate', subscription_key)
+            d.addCallbacks(self.onAuthSuccess, self.onAuthError)
+
+        def onAuthSuccess(self, permissions):
+            self.subscribe(channel, self.onEvent)
+            logger.debug('authenticate channel %s' % channel)
+
+        def onAuthError(self, e):
+            logger.debug('Failure: authenticate channel: %s, error: %s' %
+                         (channel, e.message))
+
+        def onEvent(self, channel, event):
+            event_callback(event)
+
+        def connectionLost(self, reason):
+            WampClientProtocol.connectionLost(self, reason)
+            logger.debug('connectionLost: %s' % reason)
+
+    return SyncBackProtocol

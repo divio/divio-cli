@@ -25,7 +25,9 @@ Options:
 
 def main():
     args = docopt.docopt(__doc__, version=version)
-    client = Client(os.environ.get(Client.CMSCLOUD_HOST_KEY, Client.CMSCLOUD_HOST_DEFAULT))
+    client = Client(
+        os.environ.get(Client.CMSCLOUD_HOST_KEY, Client.CMSCLOUD_HOST_DEFAULT),
+        interactive=True)
     retval = True
     msg = None
     if args['login']:

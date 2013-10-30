@@ -39,7 +39,7 @@ from kivy.uix.screenmanager import Screen, ScreenManager, TransitionBase
 from kivy.utils import get_color_from_hex
 
 from client import Client
-from utils_kivy import TabTextInput, open_in_file_manager
+from utils_kivy import TabTextInput, open_in_file_manager, notify
 
 HOME_DIR = os.path.expanduser('~')
 KNOWN_CONFIG_FILES_FILTERS = ['*.yaml', '*.py']
@@ -106,9 +106,11 @@ class InfoDialog(BoxLayout):
 
 
 class ConfirmDialog(BoxLayout):
-    cancel = ObjectProperty(None)
-    confirm = ObjectProperty(None)
+    cancel_callback = ObjectProperty(None)
+    confirm_callback = ObjectProperty(None)
     message_label = ObjectProperty(None)
+    cancel_btn_text = ObjectProperty(None)
+    confirm_btn_text = ObjectProperty(None)
 
 
 class LoadingDialog(RelativeLayout):
@@ -232,28 +234,34 @@ class LoadSitesListThread(threading.Thread):
         self.callback = callback
 
     def run(self):
-        status, data = self.client.sites(interactive=False)
+        status, data = self.client.sites()
         Clock.schedule_once(lambda dt: self.callback(status, data), 0)
 
 
 class SyncDirThread(threading.Thread):
 
-    def __init__(self, domain, path, client, callback):
+    def __init__(self, domain, path, client, sync_callback, stop_sync_callback):
         super(SyncDirThread, self).__init__()
         self.domain = domain
         self.path = path
         self.client = client
-        self.callback = callback
+        self.sync_callback = sync_callback
+        self.stop_sync_callback = stop_sync_callback
 
     def run(self):
         app = App.get_running_app()
         domain = app.sites_dir_database[self.domain]['domain'].encode('utf-8')
         try:
-            status, msg_or_observer = self.client.sync(sitename=domain, path=self.path, interactive=False)
+            status, msg_or_observer = self.client.sync(
+                sitename=domain, path=self.path,
+                stop_sync_callback=self.stop_sync_callback)
         except OSError as e:
-            Clock.schedule_once(lambda dt: app.show_info_dialog('Filesystem Error', str(e)), 0)
+            Clock.schedule_once(
+                lambda dt: app.show_info_dialog('Filesystem Error', str(e)), 0)
         else:
-            Clock.schedule_once(lambda dt: self.callback(self.domain, status, msg_or_observer), 0)
+            Clock.schedule_once(
+                lambda dt: self.sync_callback(
+                    self.domain, status, msg_or_observer), 0)
 
 
 ###########
@@ -383,7 +391,9 @@ class CMSCloudGUIApp(App):
 
     def __init__(self, *args, **kwargs):
         super(CMSCloudGUIApp, self).__init__(*args, **kwargs)
-        self.client = Client(os.environ.get(Client.CMSCLOUD_HOST_KEY, Client.CMSCLOUD_HOST_DEFAULT))
+        self.client = Client(
+            os.environ.get(Client.CMSCLOUD_HOST_KEY, Client.CMSCLOUD_HOST_DEFAULT),
+            interactive=False)
         sites_dir_database_file_path = os.path.join(self.user_data_dir, SITES_DATABASE_FILENAME)
         self.sites_dir_database = shelve.open(sites_dir_database_file_path, writeback=True)
 
@@ -445,14 +455,23 @@ class CMSCloudGUIApp(App):
             self._confirm_popup.dismiss()
             del self._confirm_popup
 
-    def show_confirm_dialog(self, title, msg, on_confirm, on_open=None):
+    def show_confirm_dialog(self, title, msg, on_confirm,
+                            cancel_btn_text='Cancel',
+                            confirm_btn_text='Confirm',
+                            on_open=None):
 
         def on_confirm_wrapper():
             self.dismiss_confirm_dialog()
             on_confirm()
-        content = ConfirmDialog(confirm=on_confirm_wrapper, cancel=self.dismiss_confirm_dialog)
+
+        content = ConfirmDialog(confirm_callback=on_confirm_wrapper,
+                                cancel_callback=self.dismiss_confirm_dialog,
+                                cancel_btn_text=cancel_btn_text,
+                                confirm_btn_text=confirm_btn_text)
         content.message_label.text = msg
-        self._confirm_popup = Popup(title="Confirm", auto_dismiss=False, content=content, size_hint=(0.9, None), height=200)
+        self._confirm_popup = Popup(
+            title=title, content=content,
+            auto_dismiss=False, size_hint=(0.9, None), height=200)
         if on_open:
             self._confirm_popup.on_open = on_open
         self._confirm_popup.open()
@@ -546,7 +565,7 @@ class CMSCloudGUIApp(App):
             self.show_info_dialog('Error', msg)
 
     def logout(self):
-        self.client.logout(interactive=False)
+        self.client.logout()
         self._websites_manager.clear_websites()
 
         def callback():  # change screen from empty to sync after the animation
@@ -589,10 +608,12 @@ class CMSCloudGUIApp(App):
     def _select_site_dir_callback(self, domain, site_dir):
         self._websites_manager.set_site_dir(domain, site_dir)
 
-    def sync(self, domain):
+    ### SYNC ###
+
+    def sync_toggle(self, domain):
         observer = self._websites_manager.get_site_sync_observer(domain)
         if observer:
-            self._websites_manager.stop_site_sync_observer(domain)
+            self.stop_sync(domain)
         else:
             site_dir = self._websites_manager.get_site_dir(domain)
             if site_dir:
@@ -604,10 +625,15 @@ class CMSCloudGUIApp(App):
             else:
                 self.select_site_dir(domain)
 
+    def stop_sync(self, domain):
+        self._websites_manager.stop_site_sync_observer(domain)
+
     def _sync_confirmed(self, domain, site_dir):
         self.show_loading_dialog()
         path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
-        sync_dir_thread = SyncDirThread(domain, path, self.client, self._sync_callback)
+        stop_sync_callback = partial(self._stop_sync_callback, domain)
+        sync_dir_thread = SyncDirThread(
+            domain, path, self.client, self._sync_callback, stop_sync_callback)
         sync_dir_thread.start()
 
     def _sync_callback(self, domain, status, msg_or_observer):
@@ -616,6 +642,18 @@ class CMSCloudGUIApp(App):
             self._websites_manager.set_site_sync_observer(domain, msg_or_observer)
         else:  # msg
             self.show_info_dialog('Error', msg_or_observer)
+
+    def _stop_sync_callback(self, domain, msg):
+        notify(WINDOW_TITLE, msg)
+        on_confirm = partial(self.stop_sync, domain)
+        title = 'Stop syncing'
+        cancel_btn_text = 'No, continue'
+        confirm_btn_text = 'Yes, stop syncing'
+        self.show_confirm_dialog(title, msg, on_confirm,
+                                 cancel_btn_text=cancel_btn_text,
+                                 confirm_btn_text=confirm_btn_text)
+
+    ### END OF SYNC ###
 
     def _set_last_dir(self, path):
         self.config.set(USER_SETTINGS_SECTION, LAST_DIR_KEY, path)

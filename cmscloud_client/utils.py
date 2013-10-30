@@ -233,6 +233,7 @@ def hashfile(fd, blocksize=65536):
 
 def uniform_filepath(filepath):
     filepath = os.path.abspath(filepath)
+    filepath = os.path.realpath(filepath)
     filepath = filepath.rstrip(os.sep)
     return filepath
 
@@ -240,3 +241,17 @@ def uniform_filepath(filepath):
 def is_hidden(path):
     filename = os.path.basename(path)
     return filename.startswith('.')
+
+
+def is_inside_dir(path, parent_dir):
+    path = os.path.join(parent_dir, path)
+    path = uniform_filepath(path)
+    return path.startswith(parent_dir)
+
+
+def filter_bad_paths(members, parent_dir):
+    parent_dir = uniform_filepath(parent_dir)
+    for finfo in members:
+        if (not finfo.issym() and not finfo.islnk() and
+                is_inside_dir(finfo.path, parent_dir)):
+            yield finfo
