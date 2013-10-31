@@ -26,7 +26,7 @@ echo 'install_hooks(globals())' | cat - "$DEPLOY_NAME.spec" > temp && mv temp "$
 echo 'from kivy.tools.packaging.pyinstaller_hooks import install_hooks' | cat - "$DEPLOY_NAME.spec" > temp && mv temp "$DEPLOY_NAME.spec"
 
 #set hiddenimports
-perl -i -pe 'BEGIN{undef $/;} s/hiddenimports=\[\],/hiddenimports=\['\"setuptools\"', '\"distutils\"', '\"cython\"', '\"requests\"', '\"watchdog\"', '\"certifi\"', '\"kivy.core.image.img_gif\"'],/smg' "$DEPLOY_NAME.spec"
+perl -i -pe 'BEGIN{undef $/;} s/hiddenimports=\[\],/hiddenimports=\['\"setuptools\"', '\"distutils\"', '\"cython\"', '\"requests\"', '\"watchdog\"', '\"autobahn\"', '\"pync\"', '\"certifi\"', '\"kivy.core.image.img_gif\"'],/smg' "$DEPLOY_NAME.spec"
 
 #set hookspath to none, otherwise kivy breaks
 perl -i -pe 'BEGIN{undef $/;} s/,\n\s+hookspath=None//smg' "$DEPLOY_NAME.spec"
@@ -61,6 +61,6 @@ mv -f $DIST_FOLDER/$DEPLOY_NAME.dmg $PACKAGING_FOLDER/
 cd $PYINSTALLER_FOLDER
 rm -rf $DEPLOY_NAME
 
-#cd $PACKAGING_FOLDER
-#cd ..
-#open $PACKAGING_FOLDER
+cd $PACKAGING_FOLDER
+cd ..
+open $PACKAGING_FOLDER
