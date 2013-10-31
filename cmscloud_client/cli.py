@@ -1,13 +1,22 @@
 # -*- coding: utf-8 -*-
+import docopt
+import imp
+import os
 import sys
+
 from cmscloud_client import __version__ as version
 from cmscloud_client.client import Client
-import docopt
-import os
 
-__doc__ = """django CMS cloud client.
+try:
+    imp.find_module('kivy')
+except ImportError:
+    GUI = False
+else:
+    GUI = True
 
-Usage:
+doc_draft = """django CMS cloud client.
+
+Usage:%(extra_commands)s
     cmscloud login
     cmscloud boilerplate upload
     cmscloud boilerplate validate
@@ -22,6 +31,14 @@ Options:
     --sitename=<sitename>       Domain of your site, eg example.cloud.django-cms.com.
 """
 
+gui_command = """
+    cmscloud gui"""
+
+if GUI:
+    __doc__ = doc_draft % {'extra_commands': gui_command}
+else:
+    __doc__ = doc_draft % {'extra_commands': ''}
+
 
 def main():
     args = docopt.docopt(__doc__, version=version)
@@ -30,7 +47,10 @@ def main():
         interactive=True)
     retval = True
     msg = None
-    if args['login']:
+    if GUI and args['gui']:
+        from main import CMSCloudGUIApp
+        CMSCloudGUIApp().run()
+    elif args['login']:
         retval, msg = client.login()
     elif args['boilerplate']:
         if args['upload']:

@@ -14,7 +14,15 @@ INSTALL_REQUIRES = [
 ]
 DEPENDENCY_LINKS = [
     'https://github.com/gorakhargosh/watchdog/archive/v0.6.1.zip#egg=watchdog-0.6.1',
+    'https://bitbucket.org/pygame/pygame/get/56e0eadfc267.zip#egg=pygame-1.9.2',
 ]
+EXTRAS_REQUIRE = {
+    'gui': [
+        'Kivy==1.7.2',
+        'pygame',
+        'pync==1.1',
+    ],
+}
 try:
     import json
 except ImportError:
@@ -44,6 +52,7 @@ setup(
     license='BSD',
     platforms=['OS Independent'],
     install_requires=INSTALL_REQUIRES,
+    extras_require=EXTRAS_REQUIRE,
     dependency_links=DEPENDENCY_LINKS,
     entry_points="""
     [console_scripts]
