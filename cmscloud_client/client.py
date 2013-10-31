@@ -23,18 +23,8 @@ from cmscloud_client.sync_helpers import (
 from cmscloud_client.utils import (
     validate_boilerplate_config, bundle_boilerplate, filter_template_files,
     filter_static_files, filter_bad_paths, validate_app_config, bundle_app,
-    filter_sass_files)
+    filter_sass_files, resource_path)
 
-
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = os.sys._MEIPASS
-    except Exception:
-        base_path = os.path.dirname(__file__)
-
-    return os.path.join(base_path, relative_path)
 
 CACERT_PEM_PATH = resource_path('cacert.pem')
 

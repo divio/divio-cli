@@ -32,7 +32,7 @@
 
             Image:
                 size_hint: 1, 0.2
-                source: 'img/aldryn_logo_white.png'
+                source: root.aldryn_logo_white_img
 
             Label:
                 size_hint: 1, 0.1
@@ -109,7 +109,7 @@
         Image:
             size_hint: None, None
             size: (100, 100)
-            source: 'img/aldryn_logo.png'
+            source: root.aldryn_logo_img
 
 
 <SyncScreen>:
@@ -123,7 +123,7 @@
         Image:
             size_hint: None, None
             size: (100, 100)
-            source: 'img/aldryn_logo.png'
+            source: root.aldryn_logo_img
 
     BoxLayout:
         size_hint: 1, 1
@@ -296,7 +296,7 @@
         pos_hint: {'x': 0.51, 'center_y': 0.5}
         size: 25, 25
         size_hint: None, None
-        source: 'img/loader.gif'
+        source: root.loader_img
 
 
 
@@ -410,7 +410,7 @@
         pos: self.parent.pos[0], self.parent.pos[1] + (self.parent.height - self.height) / 2.0
         size: self.texture_size
         size_hint: None, None
-        source: 'img/external.png'
+        source: root.external_img
 
 
 <WebsiteView@RelativeView>:

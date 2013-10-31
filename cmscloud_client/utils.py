@@ -255,3 +255,16 @@ def filter_bad_paths(members, parent_dir):
         if (not finfo.issym() and not finfo.islnk() and
                 is_inside_dir(finfo.path, parent_dir)):
             yield finfo
+
+
+def resource_path(relative_path):
+    """
+    Get absolute path of the resource, works for dev and for PyInstaller
+    """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = os.sys._MEIPASS
+    except Exception:
+        base_path = os.path.dirname(__file__)
+
+    return os.path.join(base_path, relative_path)

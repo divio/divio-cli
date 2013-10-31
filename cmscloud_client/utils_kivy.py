@@ -17,6 +17,8 @@ from kivy.uix.textinput import TextInput
 from kivy.utils import get_color_from_hex
 from pync import Notifier
 
+from cmscloud_client.utils import resource_path
+
 HOME_DIR = os.path.expanduser('~')
 # status to dot color mapping
 STATUS_TO_COLOR = {
@@ -46,7 +48,7 @@ class ConfirmDialog(BoxLayout):
 
 
 class LoadingDialog(RelativeLayout):
-    pass
+    loader_img = resource_path('img/loader.gif')
 
 
 class DirChooserDialog(BoxLayout):
@@ -85,7 +87,7 @@ class LinkButton(PaddedButton):
 
 
 class OpenButton(Button):
-    pass
+    external_img = resource_path('img/external.png')
 
 
 class CustomFileChooserListView(FileChooserListView):
@@ -344,16 +346,20 @@ class LoginScreen(BaseScreen):
     email = TabTextInput()
     password = TabTextInput()
 
+    aldryn_logo_white_img = resource_path('img/aldryn_logo_white.png')
+
     def __init__(self, *args, **kwargs):
         super(LoginScreen, self).__init__(*args, **kwargs)
 
 
 class EmptyScreen(BaseScreen):
-    pass
+    aldryn_logo_img = resource_path('img/aldryn_logo.png')
 
 
 class SyncScreen(BaseScreen):
     sites_list_view = ObjectProperty(None)
+
+    aldryn_logo_img = resource_path('img/aldryn_logo.png')
 
 
 ##################
