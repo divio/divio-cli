@@ -109,7 +109,8 @@ class SyncEventHandler(FileSystemEventHandler):
                 print "Sync failed! %s" % response.content
             else:
                 print "Sync failed! Unexpected status code %s" % response.status_code
-                print response.content
+                if response.status_code < 500:
+                    print response.content
 
     def dispatch(self, raw_event):
         now = datetime.datetime.now()
