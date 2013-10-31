@@ -330,6 +330,12 @@ class CMSCloudGUIApp(App):
             self.show_info_dialog('Error', msg_or_observer)
 
     def _stop_sync_callback(self, domain, msg):
+        observer = self._websites_manager.get_site_sync_observer(domain)
+        if observer:
+            if hasattr(observer, '_continue_despite_stop_callback'):
+                return
+            else:
+                observer._continue_despite_stop_callback = True
         notify(WINDOW_TITLE, msg)
         on_confirm = partial(self.stop_sync, domain)
         title = 'Stop syncing'
