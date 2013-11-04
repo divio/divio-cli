@@ -191,10 +191,12 @@ class LoadSitesListThread(threading.Thread):
 
 class SyncDirThread(threading.Thread):
 
-    def __init__(self, domain, path, client, sync_callback, stop_sync_callback):
+    def __init__(self, domain, path, force, client,
+                 sync_callback, stop_sync_callback):
         super(SyncDirThread, self).__init__()
         self.domain = domain
         self.path = path
+        self.force = force
         self.client = client
         self.sync_callback = sync_callback
         self.stop_sync_callback = stop_sync_callback
@@ -204,7 +206,7 @@ class SyncDirThread(threading.Thread):
         domain = app.sites_dir_database[self.domain]['domain'].encode('utf-8')
         try:
             status, msg_or_observer = self.client.sync(
-                sitename=domain, path=self.path,
+                sitename=domain, path=self.path, force=self.force,
                 stop_sync_callback=self.stop_sync_callback)
         except OSError as e:
             Clock.schedule_once(

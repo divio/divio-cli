@@ -84,7 +84,9 @@ class Client(object):
     CMSCLOUD_DOT_FILENAME = '.cmscloud'
     CMSCLOUD_HOST_DEFAULT = 'https://control.django-cms.com'
     CMSCLOUD_HOST_KEY = 'CMSCLOUD_HOST'
+    CMSCLOUD_SYNC_LOCK_FILENAME = '.cmscloud-sync-lock'
     DATA_FILENAME = 'data.yaml'
+    DIRECTORY_ALREADY_SYNCING_MESSAGE = 'Directory already syncing'
     SETUP_FILENAME = 'setup.py'
 
     ALL_CONFIG_FILES = [APP_FILENAME, BOILERPLATE_FILENAME, CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
@@ -239,7 +241,42 @@ class Client(object):
             config = yaml.safe_load(fobj)
         return validate_app_config(config)
 
-    def sync(self, sitename=None, path='.', stop_sync_callback=None):
+    def _acquire_sync_lock(self, sync_dir):
+        lock_filename = os.path.join(
+            sync_dir, Client.CMSCLOUD_SYNC_LOCK_FILENAME)
+        try:
+            fd = os.open(lock_filename, os.O_CREAT | os.O_EXCL)
+            os.close(fd)
+        except OSError:
+            return False
+        else:
+            return True
+
+    def _remove_sync_lock(self, sync_dir):
+        lock_filename = os.path.join(
+            sync_dir, Client.CMSCLOUD_SYNC_LOCK_FILENAME)
+        if os.path.exists(lock_filename):
+            os.remove(lock_filename)
+
+    def sync(self, sitename=None, path='.', force=False,
+             stop_sync_callback=None):
+        if not self._acquire_sync_lock(path):
+            if self.interactive:
+                print 'It seems that you are already syncing this directory.'
+                while True:
+                    answer = raw_input(
+                        'Are you sure you want to start syncing anyway? [yN]')
+                    if answer.lower() == 'n' or not answer:
+                        return (False, 'Aborted')
+                    elif answer.lower() == 'y':
+                        break
+                    else:
+                        print 'Invalid answer, please type either y or n'
+            else:
+                if force:
+                    pass
+                else:
+                    return (False, Client.DIRECTORY_ALREADY_SYNCING_MESSAGE)
         cmscloud_dot_filename = os.path.join(path, Client.CMSCLOUD_DOT_FILENAME)
         if not sitename:
             if os.path.exists(cmscloud_dot_filename):
@@ -308,7 +345,7 @@ class Client(object):
                 while self._is_syncing(sitename):
                     time.sleep(1)
             except KeyboardInterrupt:
-                self._stop_sync(sitename)
+                self._stop_sync(sitename, path)
             msg = "Stopped syncing"
             return (True, msg)
         else:
@@ -317,12 +354,13 @@ class Client(object):
     def _is_syncing(self, sitename):
         return sitename in self._observers_cache
 
-    def _stop_sync(self, sitename):
+    def _stop_sync(self, sitename, path):
         observer = self._observers_cache.get(sitename, None)
         if observer:
             observer.stop()
             observer.join()
             del self._observers_cache[sitename]
+        self._remove_sync_lock(path)
 
     def _sync_back_file(self, sitename, filepath, path='.'):
         params = {'filepath': filepath}
@@ -371,7 +409,7 @@ class Client(object):
                     answer = raw_input(
                         'Do you want to stop syncing? [y/n]')
                     if answer.lower() == 'y':
-                        self._stop_sync(sitename)
+                        self._stop_sync(sitename, path)
                         break
                     elif answer.lower() == 'n':
                         break

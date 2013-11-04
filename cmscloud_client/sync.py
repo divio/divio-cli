@@ -24,7 +24,8 @@ TIME_DELTA_IN_SECONDS = 0.5
 # to collect all actions from a single "batch" into (preferably) single request
 COLLECT_TIME_DELTA_IN_SECONDS = TIME_DELTA_IN_SECONDS * 2.01
 
-IGNORED_FILES = set(['.cmscloud', '.cmscloud-folder', '.DS_Store', LOG_FILENAME])
+IGNORED_FILES = set(['.cmscloud', '.cmscloud-folder', '.cmscloud-sync-lock',
+                     '.DS_Store', LOG_FILENAME])
 for i in xrange(1, BACKUP_COUNT + 1):
     IGNORED_FILES.add('%s.%d' % (LOG_FILENAME, i))
 
@@ -180,7 +181,7 @@ class SyncEventHandler(FileSystemEventHandler):
 
     def on_modified(self, sync_event):
         if sync_event.is_directory:
-            # Ihis doesn't mean that the directory was renamed
+            # This doesn't mean that the directory was renamed
             # it just means that the content of it was modified
             # which we handle in their own events
             return
