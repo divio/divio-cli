@@ -314,12 +314,13 @@ class CMSCloudGUIApp(App):
     def stop_sync(self, domain):
         self._websites_manager.stop_site_sync_observer(domain)
 
-    def _sync_confirmed(self, domain, site_dir):
+    def _sync_confirmed(self, domain, site_dir, force=False):
         self.show_loading_dialog()
         path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
         stop_sync_callback = partial(self._stop_sync_callback, domain)
         sync_dir_thread = SyncDirThread(
-            domain, path, self.client, self._sync_callback, stop_sync_callback)
+            domain, path, force, self.client,
+            self._sync_callback, stop_sync_callback)
         sync_dir_thread.start()
 
     def _sync_callback(self, domain, status, msg_or_observer):
@@ -327,7 +328,21 @@ class CMSCloudGUIApp(App):
         if status:  # observer
             self._websites_manager.set_site_sync_observer(domain, msg_or_observer)
         else:  # msg
-            self.show_info_dialog('Error', msg_or_observer)
+            if msg_or_observer == Client.DIRECTORY_ALREADY_SYNCING_MESSAGE:
+                site_dir = self._websites_manager.get_site_dir(domain)
+                if site_dir:
+                    on_confirm = partial(
+                        self._sync_confirmed, domain, site_dir, force=True)
+                    self.show_confirm_dialog(
+                        'Directory already syncing',
+                        'It seems that you are already syncing this directory',
+                        on_confirm,
+                        cancel_btn_text='Cancel',
+                        confirm_btn_text='Continue anyway')
+                else:
+                    self.select_site_dir(domain)
+            else:
+                self.show_info_dialog('Error', msg_or_observer)
 
     def _stop_sync_callback(self, domain, msg):
         observer = self._websites_manager.get_site_sync_observer(domain)
