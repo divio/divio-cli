@@ -26,6 +26,8 @@ ALLOWED_EXTENSIONS = [
     '.rb',
     '.sass',
     '.scss',
+    '.svg',
+    '.webm',
 ]
 
 BOILERPLATE_REQUIRED = [
