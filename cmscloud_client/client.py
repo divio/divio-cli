@@ -323,12 +323,14 @@ class Client(object):
 
         sync_back_conn = self._start_sync_back_listener(
             sitename, path, stop_sync_callback=stop_sync_callback)
+        client = self
 
         class SyncObserver(Observer):
 
             def on_thread_stop(self):
                 Observer.on_thread_stop(self)
                 sync_back_conn.disconnect()
+                client._remove_sync_lock(path)
 
         event_handler = SyncEventHandler(self.session, sitename, relpath=path)
         observer = SyncObserver()
