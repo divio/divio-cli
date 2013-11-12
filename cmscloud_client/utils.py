@@ -10,22 +10,24 @@ import os
 import re
 import yaml
 
-FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_]+[a-zA-Z0-9._-]*\.[a-zA-Z]{2,4}$')
+FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_]+[a-zA-Z0-9._-]*(@2x)?\.[a-zA-Z]{2,4}$')
 ALLOWED_EXTENSIONS = [
-    '.js',
     '.css',
-    '.png',
-    '.jpg',
-    '.jpeg',
     '.gif',
     '.htc',
-    '.scss',
-    '.sass',
-    '.rb',
-    '.less',
-    '.ico',
-    '.html',
     '.htm',
+    '.html',
+    '.ico',
+    '.jpeg',
+    '.jpg',
+    '.js',
+    '.less',
+    '.png',
+    '.rb',
+    '.sass',
+    '.scss',
+    '.svg',
+    '.webm',
 ]
 
 BOILERPLATE_REQUIRED = [
