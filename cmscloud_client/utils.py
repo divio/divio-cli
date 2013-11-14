@@ -129,14 +129,16 @@ def tar_add_stringio(tar, string_io, name):
     tar.addfile(tarinfo=info, fileobj=string_io)
 
 
-def is_valid_file_name(name):
+def is_valid_file_name(name, logger=None):
     if not FILENAME_BASIC_RE.match(name):
-        raise ValidationError(
-            "File name %r is not valid, ignoring." % name)
+        if logger:
+            logger("File name %r is not valid, ignoring." % name)
+        return False
     ext = os.path.splitext(name)[-1]
     if ext not in ALLOWED_EXTENSIONS:
-        raise ValidationError(
-            "File extension %r is not allowed, ignoring." % ext)
+        if logger:
+            logger("File extension %r is not allowed, ignoring." % ext)
+        return False
     return True
 
 

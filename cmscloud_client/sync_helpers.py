@@ -76,8 +76,13 @@ class SyncEvent(object):
                 elif event.is_directory:
                     syncable = True
                 else:
+
+                    def raiser(msg):
+                        raise ValidationError(msg)
+
                     try:
-                        syncable = is_valid_file_name(event_base_path)
+                        syncable = is_valid_file_name(
+                            event_base_path, logger=raiser)
                     except ValidationError as e:
                         syncable = False
                         setattr(self, '_sync_%s_error' % attr, e.message)
