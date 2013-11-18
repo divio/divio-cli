@@ -85,7 +85,7 @@ def validate_app_config(config):
     return _validate(config, APP_REQUIRED)
 
 
-def validate_boilerplate_config(config):
+def validate_boilerplate_config(config, path='.'):
     (valid, msg) = _validate(config, BOILERPLATE_REQUIRED)
     if not valid:
         return (False, msg)
@@ -113,7 +113,8 @@ def validate_boilerplate_config(config):
     else:
         errors = []
         for filename in protected:
-            if not os.path.exists(filename):
+            filepath = os.path.join(path, filename)
+            if not os.path.exists(filepath):
                 valid = False
                 errors.append("Protected file %r not found" % filename)
         if errors:
