@@ -165,7 +165,7 @@ class Client(object):
             msgs.append("There was a problem logging in, please try again later.")
             return (False, '\n'.join(msgs))
 
-    def upload_boilerplate(self, path=''):
+    def upload_boilerplate(self, path='.'):
         boilerplate_filename = os.path.join(path, Client.BOILERPLATE_FILENAME)
         data_filename = os.path.join(path, Client.DATA_FILENAME)
 
@@ -182,15 +182,16 @@ class Client(object):
                 else:
                     data = {}
                 extra_file_paths.extend([f.path for f in extra_objects[File]])
-        if not validate_boilerplate_config(config):
-            return False
+        is_valid, error_msg = validate_boilerplate_config(config, path=path)
+        if not is_valid:
+            return (False, error_msg)
         tarball = bundle_boilerplate(config, data, extra_file_paths, templates=filter_template_files,
                                      static=filter_static_files, private=filter_sass_files)
         response = self.session.post('/api/v1/boilerplates/', files={'boilerplate': tarball})
         msg = '\t'.join([str(response.status_code), response.content])
         return (True, msg)
 
-    def validate_boilerplate(self, path=''):
+    def validate_boilerplate(self, path='.'):
         boilerplate_filename = os.path.join(path, Client.BOILERPLATE_FILENAME)
 
         if not os.path.exists(boilerplate_filename):
@@ -198,9 +199,9 @@ class Client(object):
             return (False, msg)
         with open(boilerplate_filename) as fobj:
             config = yaml.safe_load(fobj)
-        return validate_boilerplate_config(config)
+        return validate_boilerplate_config(config, path=path)
 
-    def upload_app(self, path=''):
+    def upload_app(self, path='.'):
         app_filename = os.path.join(path, Client.APP_FILENAME)
         cmscloud_config_filename = os.path.join(path, Client.CMSCLOUD_CONFIG_FILENAME)
         setup_filename = os.path.join(path, Client.SETUP_FILENAME)
@@ -228,7 +229,7 @@ class Client(object):
         msgs.append('\t'.join([str(response.status_code), response.content]))
         return (True, '\n'.join(msgs))
 
-    def validate_app(self, path=''):
+    def validate_app(self, path='.'):
         app_filename = os.path.join(path, Client.APP_FILENAME)
         setup_filename = os.path.join(path, Client.SETUP_FILENAME)
         if not os.path.exists(setup_filename):
