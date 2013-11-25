@@ -49,6 +49,12 @@ def _network_error_callback(message, on_confirm, on_cancel):
         on_cancel()
 
 
+def _protected_file_change_callback(message):
+    print '!!!'
+    print message
+    print '!!!'
+
+
 def main():
     args = docopt.docopt(__doc__, version=version)
     client = Client(
@@ -73,8 +79,9 @@ def main():
             retval, msg = client.validate_app()
     elif args['sync']:
         retval, msg = client.sync(
-            args.get('--sitename', None),
-            network_error_callback=_network_error_callback)
+            _network_error_callback,
+            _protected_file_change_callback,
+            sitename=args.get('--sitename', None))
     elif args['sites']:
         retval, msg = client.sites()
     if msg:

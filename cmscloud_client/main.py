@@ -325,7 +325,6 @@ class CMSCloudGUIApp(App):
         stop_sync_callback = partial(self._stop_sync_callback, domain)
 
         def network_error_callback(message, on_confirm, on_cancel):
-
             def on_cancel_wrapper():
                 self.stop_sync(domain)
                 on_cancel()
@@ -334,9 +333,17 @@ class CMSCloudGUIApp(App):
                 on_confirm, on_cancel=on_cancel_wrapper,
                 confirm_btn_text='Retry',
                 cancel_btn_text='Stop sync (lose unsynced changes!)')
+
+        def protected_file_change_callback(message):
+            notify(WINDOW_TITLE, message)
+            self.show_info_dialog('Info', message)
+
         sync_dir_thread = SyncDirThread(
             domain, path, force, self.client,
-            self._sync_callback, stop_sync_callback, network_error_callback)
+            self._sync_callback,
+            stop_sync_callback,
+            network_error_callback,
+            protected_file_change_callback)
         sync_dir_thread.start()
 
     def _sync_callback(self, domain, status, msg_or_observer):

@@ -192,7 +192,8 @@ class LoadSitesListThread(threading.Thread):
 class SyncDirThread(threading.Thread):
 
     def __init__(self, domain, path, force, client,
-                 sync_callback, stop_sync_callback, network_error_callback):
+                 sync_callback, stop_sync_callback, network_error_callback,
+                 protected_file_change_callback):
         super(SyncDirThread, self).__init__()
         self.domain = domain
         self.path = path
@@ -201,15 +202,16 @@ class SyncDirThread(threading.Thread):
         self.sync_callback = sync_callback
         self.stop_sync_callback = stop_sync_callback
         self.network_error_callback = network_error_callback
+        self.protected_file_change_callback = protected_file_change_callback
 
     def run(self):
         app = App.get_running_app()
         domain = app.sites_dir_database[self.domain]['domain'].encode('utf-8')
         try:
             status, msg_or_observer = self.client.sync(
+                self.network_error_callback, self.protected_file_change_callback,
                 sitename=domain, path=self.path, force=self.force,
-                stop_sync_callback=self.stop_sync_callback,
-                network_error_callback=self.network_error_callback)
+                stop_sync_callback=self.stop_sync_callback)
         except OSError as e:
             Clock.schedule_once(
                 lambda dt: app.show_info_dialog('Filesystem Error', str(e)), 0)

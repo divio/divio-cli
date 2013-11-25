@@ -83,7 +83,8 @@ class Client(object):
     BOILERPLATE_FILENAME = 'boilerplate.yaml'
     CMSCLOUD_CONFIG_FILENAME = 'cmscloud_config.py'
     CMSCLOUD_DOT_FILENAME = '.cmscloud'
-    CMSCLOUD_HOST_DEFAULT = 'https://control.django-cms.com'
+    #CMSCLOUD_HOST_DEFAULT = 'https://control.django-cms.com'
+    CMSCLOUD_HOST_DEFAULT = 'http://control.localhost:8000/'
     CMSCLOUD_HOST_KEY = 'CMSCLOUD_HOST'
     CMSCLOUD_SYNC_LOCK_FILENAME = '.cmscloud-sync-lock'
     DATA_FILENAME = 'data.yaml'
@@ -93,6 +94,7 @@ class Client(object):
     # messages
     DIRECTORY_ALREADY_SYNCING_MESSAGE = 'Directory already syncing.'
     NETWORK_ERROR_MESSAGE = 'Network error.\nPlease check your connection and try again later.'
+    PROTECTED_FILE_CHANGE_MESSAGE = 'You are overriding file "%s".\nThis file is protected by the boilerplate.'
     SYNC_NETWORK_ERROR_MESSAGE = "Couldn't sync file \"%s\".\nPlease check your connection and try again later."
 
     ALL_CONFIG_FILES = [APP_FILENAME, BOILERPLATE_FILENAME, CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
@@ -279,9 +281,8 @@ class Client(object):
         if os.path.exists(lock_filename):
             os.remove(lock_filename)
 
-    def sync(self, sitename=None, path='.', force=False,
-             stop_sync_callback=None,
-             network_error_callback=None):
+    def sync(self, network_error_callback, protected_file_change_callback,
+             sitename=None, path='.', force=False, stop_sync_callback=None):
         cmscloud_dot_filename = os.path.join(path, Client.CMSCLOUD_DOT_FILENAME)
         if not sitename:
             if os.path.exists(cmscloud_dot_filename):
@@ -337,6 +338,21 @@ class Client(object):
         tarball = tarfile.open(mode='r|gz', fileobj=response.raw)
         tarball.extractall(path=path)
         tarball.close()
+
+        protected_files_filename = os.path.join(
+            path, Client.PROTECTED_FILES_FILENAME)
+        protected_files = []
+        if (os.path.exists(protected_files_filename)):
+            with open(protected_files_filename, 'r') as fobj:
+                protected_files = json.loads(fobj.read())
+        # making the protected files read-only
+        for rel_protected_path in protected_files:
+            protected_path = os.path.join(path, rel_protected_path)
+            mode = os.stat(protected_path)[stat.ST_MODE]
+            read_only_mode = mode & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
+            os.chmod(protected_path, read_only_mode)
+
+        # successfully initialized the sync, saving the site's name
         with open(cmscloud_dot_filename, 'w') as fobj:
             fobj.write(sitename)
 
@@ -355,7 +371,7 @@ class Client(object):
 
         event_handler = SyncEventHandler(
             self.session, sitename, observer_stopped, network_error_callback,
-            relpath=path)
+            protected_files, protected_file_change_callback, relpath=path)
         observer = SyncObserver()
         observer.event_queue.queue.clear()
         observer.schedule(event_handler, path, recursive=True)
