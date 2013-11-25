@@ -87,8 +87,13 @@ class Client(object):
     CMSCLOUD_HOST_KEY = 'CMSCLOUD_HOST'
     CMSCLOUD_SYNC_LOCK_FILENAME = '.cmscloud-sync-lock'
     DATA_FILENAME = 'data.yaml'
-    DIRECTORY_ALREADY_SYNCING_MESSAGE = 'Directory already syncing'
+    PROTECTED_FILES_FILENAME = '.protected_files'
     SETUP_FILENAME = 'setup.py'
+
+    # messages
+    DIRECTORY_ALREADY_SYNCING_MESSAGE = 'Directory already syncing.'
+    NETWORK_ERROR_MESSAGE = 'Network error.\nPlease check your connection and try again later.'
+    SYNC_NETWORK_ERROR_MESSAGE = "Couldn't sync file \"%s\".\nPlease check your connection and try again later."
 
     ALL_CONFIG_FILES = [APP_FILENAME, BOILERPLATE_FILENAME, CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
 
@@ -104,7 +109,8 @@ class Client(object):
             }
         else:
             headers = {}
-        self.session = SingleHostSession(host, headers=headers, trust_env=False)
+        self.session = SingleHostSession(
+            host, headers=headers, trust_env=False)
 
         self._observers_cache = {}
 
