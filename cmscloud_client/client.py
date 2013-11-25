@@ -324,6 +324,7 @@ class Client(object):
 
         sync_back_conn = self._start_sync_back_listener(
             sitename, path, stop_sync_callback=stop_sync_callback)
+        observer_stopped = threading.Event()
         client = self
 
         class SyncObserver(Observer):
@@ -331,9 +332,11 @@ class Client(object):
             def on_thread_stop(self):
                 Observer.on_thread_stop(self)
                 sync_back_conn.disconnect()
+                observer_stopped.set()
                 client._remove_sync_lock(path)
 
-        event_handler = SyncEventHandler(self.session, sitename, relpath=path)
+        event_handler = SyncEventHandler(
+            self.session, sitename, observer_stopped, relpath=path)
         observer = SyncObserver()
         observer.event_queue.queue.clear()
         observer.schedule(event_handler, path, recursive=True)

@@ -36,11 +36,12 @@ for i in xrange(1, BACKUP_COUNT + 1):
 
 class SyncEventHandler(FileSystemEventHandler):
 
-    def __init__(self, session, sitename, relpath='.'):
+    def __init__(self, session, sitename, observer_stopped, relpath='.'):
         self.session = session
         self.sitename = sitename
         self.relpath = uniform_filepath(relpath)
         self.sync_logger = get_site_specific_logger(sitename, self.relpath)
+        self._observer_stopped = observer_stopped
 
         self._recently_modified_file_hashes = {}
 
@@ -57,16 +58,14 @@ class SyncEventHandler(FileSystemEventHandler):
         # will fail because the fail wasn't created yet)
         self._send_requests_thread = threading.Thread(
             target=self._send_requests_worker, name='Requests sender')
-        self._send_requests_thread.daemon = True
         self._send_requests_thread.start()
 
         self._collect_events_thread = threading.Thread(
             target=self._collect_events_worker, name='Events collector')
-        self._collect_events_thread.daemon = True
         self._collect_events_thread.start()
 
     def _collect_events_worker(self):
-        while True:
+        while not self._observer_stopped.isSet():
             start_timestamp = datetime.datetime.now()
 
             oldest_events_buffer = (
@@ -88,7 +87,7 @@ class SyncEventHandler(FileSystemEventHandler):
                 time.sleep(delay)
 
     def _send_requests_worker(self):
-        while True:
+        while not self._observer_stopped.isSet():
             sync_event = self._proceeded_events_queue.get_event(
                 timeout=TIME_DELTA_IN_SECONDS)
             if sync_event:
