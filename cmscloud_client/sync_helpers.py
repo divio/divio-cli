@@ -147,16 +147,19 @@ class SyncEvent(object):
 
     def prepare_request(self):
         event_type = self.event_type
+        fobj = None
         if event_type == EVENT_TYPE_CREATED:
             msg = "Syncing file creation %s" % self.src_path
             method = 'POST'
+            fobj = open(self.src_path)
             kwargs = {'data': {'path': self.rel_src_path},
-                      'files': {'content': open(self.src_path)}}
+                      'files': {'content': fobj}}
         elif event_type == EVENT_TYPE_MODIFIED:
             msg = "Syncing file modification %s" % self.src_path
             method = 'PUT'
+            fobj = open(self.src_path)
             kwargs = {'data': {'path': self.rel_src_path},
-                      'files': {'content': open(self.src_path)}}
+                      'files': {'content': fobj}}
         elif event_type == EVENT_TYPE_MOVED:
             msg = "Syncing file move from %s to %s" % (
                 self.src_path, self.dest_path)
@@ -174,7 +177,7 @@ class SyncEvent(object):
             else:
                 rel_src_path = self.rel_src_path
             kwargs = {'params': {'path': rel_src_path}}
-        return (msg, method, kwargs)
+        return (msg, method, kwargs, fobj)
 
 
 class EventsBuffer(object):

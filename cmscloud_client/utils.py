@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 from cStringIO import StringIO
 import hashlib
+import os
+import re
 import shutil
 import subprocess
 import tarfile
 import tempfile
-from cmscloud_client.serialize import register_yaml_extensions
-import os
-import re
 import yaml
+
+from cmscloud_client.serialize import register_yaml_extensions
 
 FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_]+[a-zA-Z0-9._-]*(@2x)?\.[a-zA-Z]{2,4}$')
 ALLOWED_EXTENSIONS = [
@@ -273,3 +274,29 @@ def resource_path(relative_path):
         base_path = os.path.dirname(__file__)
 
     return os.path.join(base_path, relative_path)
+
+
+def cli_confirm(question, message=None, default=None):
+    if message:
+        print message
+
+    if default is None:
+        default_answer_str = '[y/n]'
+    else:
+        default = bool(default)
+        if default is True:
+            default_answer_str = '[Y/n]'
+        elif default is False:
+            default_answer_str = '[y/N]'
+
+    question = '%s %s' % (question.rstrip(), default_answer_str)
+    while True:
+        answer = raw_input(question)
+        if answer.lower() == 'y':
+            return True
+        elif answer.lower() == 'n':
+            return False
+        elif default is not None and answer == '':
+            return default
+        else:
+            print "Invalid answer, please type either y or n"

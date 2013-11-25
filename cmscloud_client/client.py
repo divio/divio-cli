@@ -7,6 +7,7 @@ import shutil
 import tarfile
 import threading
 import time
+import stat
 import urlparse
 
 from autobahn.wamp import WampClientFactory
@@ -23,7 +24,7 @@ from cmscloud_client.sync_helpers import (
 from cmscloud_client.utils import (
     validate_boilerplate_config, bundle_boilerplate, filter_template_files,
     filter_static_files, filter_bad_paths, validate_app_config, bundle_app,
-    filter_sass_files, resource_path)
+    filter_sass_files, resource_path, cli_confirm)
 
 
 CACERT_PEM_PATH = resource_path('cacert.pem')
@@ -142,7 +143,12 @@ class Client(object):
             email = raw_input('E-Mail: ')
         if password is None:
             password = getpass.getpass('Password: ')
-        response = self.session.post('/api/v1/login/', data={'email': email, 'password': password})
+        try:
+            response = self.session.post(
+                '/api/v1/login/', data={'email': email, 'password': password})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
         if response.ok:
             token = response.content
             self.session.headers = {
@@ -187,7 +193,11 @@ class Client(object):
             return (False, error_msg)
         tarball = bundle_boilerplate(config, data, extra_file_paths, templates=filter_template_files,
                                      static=filter_static_files, private=filter_sass_files)
-        response = self.session.post('/api/v1/boilerplates/', files={'boilerplate': tarball})
+        try:
+            response = self.session.post('/api/v1/boilerplates/', files={'boilerplate': tarball})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
         msg = '\t'.join([str(response.status_code), response.content])
         return (True, msg)
 
@@ -225,7 +235,11 @@ class Client(object):
             msgs.append("File '%s' not found, your app will not have any configurable settings." %
                         Client.CMSCLOUD_CONFIG_FILENAME)
         tarball = bundle_app(config, script)
-        response = self.session.post('/api/v1/apps/', files={'app': tarball})
+        try:
+            response = self.session.post('/api/v1/apps/', files={'app': tarball})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
         msgs.append('\t'.join([str(response.status_code), response.content]))
         return (True, '\n'.join(msgs))
 
@@ -260,24 +274,8 @@ class Client(object):
             os.remove(lock_filename)
 
     def sync(self, sitename=None, path='.', force=False,
-             stop_sync_callback=None):
-        if not self._acquire_sync_lock(path):
-            if self.interactive:
-                print 'It seems that you are already syncing this directory.'
-                while True:
-                    answer = raw_input(
-                        'Are you sure you want to start syncing anyway? [yN]')
-                    if answer.lower() == 'n' or not answer:
-                        return (False, 'Aborted')
-                    elif answer.lower() == 'y':
-                        break
-                    else:
-                        print 'Invalid answer, please type either y or n'
-            else:
-                if force:
-                    pass
-                else:
-                    return (False, Client.DIRECTORY_ALREADY_SYNCING_MESSAGE)
+             stop_sync_callback=None,
+             network_error_callback=None):
         cmscloud_dot_filename = os.path.join(path, Client.CMSCLOUD_DOT_FILENAME)
         if not sitename:
             if os.path.exists(cmscloud_dot_filename):
@@ -288,17 +286,25 @@ class Client(object):
                 return (False, msg)
         if '.' in sitename:
             sitename = sitename.split('.')[0]
+        if not self._acquire_sync_lock(path):
+            if self.interactive:
+                if not cli_confirm(
+                        'Are you sure you want to start syncing anyway?',
+                        message='It seems that you are already syncing this directory.',
+                        default=False):
+                    return (False, 'Aborted')
+            else:
+                if force:
+                    pass
+                else:
+                    return (False, Client.DIRECTORY_ALREADY_SYNCING_MESSAGE)
         print "Preparing to sync %s." % sitename
         print "This will undo all local changes."
-        while self.interactive:
-            answer = raw_input('Are you sure you want to continue? [yN]')
-            if answer.lower() == 'n' or not answer:
-                msg = "Aborted"
-                return (True, msg)
-            elif answer.lower() == 'y':
-                break
-            else:
-                print "Invalid answer, please type either y or n"
+        if (self.interactive and
+                not cli_confirm('Are you sure you want to continue?',
+                                default=False)):
+            self._remove_sync_lock(path)
+            return (True, "Aborted")
 
         for folder in ['static', 'templates', 'private']:
             folder_path = os.path.join(path, folder)
@@ -308,13 +314,19 @@ class Client(object):
                 else:
                     os.remove(folder_path)
         print "Updating local files..."
-        response = self.session.get('/api/v1/sync/%s/' % sitename, stream=True,
-                                    headers={'accept': 'application/octet'})
+        try:
+            response = self.session.get('/api/v1/sync/%s/' % sitename, stream=True,
+                                        headers={'accept': 'application/octet'})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            self._remove_sync_lock(path)
+            return (False, Client.NETWORK_ERROR_MESSAGE)
         if response.status_code != 200:
             msgs = []
             msgs.append("Unexpected HTTP Response %s" % response.status_code)
             if response.status_code < 500:
                 msgs.append(response.content)
+            self._remove_sync_lock(path)
             return (False, '\n'.join(msgs))
         tarball = tarfile.open(mode='r|gz', fileobj=response.raw)
         tarball.extractall(path=path)
@@ -336,7 +348,8 @@ class Client(object):
                 client._remove_sync_lock(path)
 
         event_handler = SyncEventHandler(
-            self.session, sitename, observer_stopped, relpath=path)
+            self.session, sitename, observer_stopped, network_error_callback,
+            relpath=path)
         observer = SyncObserver()
         observer.event_queue.queue.clear()
         observer.schedule(event_handler, path, recursive=True)
@@ -352,8 +365,7 @@ class Client(object):
                     time.sleep(1)
             except KeyboardInterrupt:
                 self._stop_sync(sitename, path)
-            msg = "Stopped syncing"
-            return (True, msg)
+            return (True, 'Stopped syncing')
         else:
             return (True, observer)
 
@@ -370,9 +382,13 @@ class Client(object):
 
     def _sync_back_file(self, sitename, filepath, path='.'):
         params = {'filepath': filepath}
-        response = self.session.get(
-            '/api/v1/sync/%s/sync-back-file/' % sitename, params=params, stream=True,
-            headers={'accept': 'application/octet'})
+        try:
+            response = self.session.get(
+                '/api/v1/sync/%s/sync-back-file/' % sitename, params=params, stream=True,
+                headers={'accept': 'application/octet'})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
         if response.status_code != 200:
             msgs = []
             msgs.append("Unexpected HTTP Response %s" % response.status_code)
@@ -435,7 +451,11 @@ class Client(object):
         return conn
 
     def sites(self):
-        response = self.session.get('/api/v1/sites/', stream=True)
+        try:
+            response = self.session.get('/api/v1/sites/', stream=True)
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
         if response.status_code != 200:
             msgs = []
             msgs.append("Unexpected HTTP Response %s" % response.status_code)

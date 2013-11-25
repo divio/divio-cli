@@ -141,7 +141,7 @@ class CMSCloudGUIApp(App):
             self._confirm_popup.dismiss()
             del self._confirm_popup
 
-    def show_confirm_dialog(self, title, msg, on_confirm,
+    def show_confirm_dialog(self, title, msg, on_confirm, on_cancel=None,
                             cancel_btn_text='Cancel',
                             confirm_btn_text='Confirm',
                             on_open=None):
@@ -150,8 +150,13 @@ class CMSCloudGUIApp(App):
             self.dismiss_confirm_dialog()
             on_confirm()
 
+        def on_cancel_wrapper():
+            self.dismiss_confirm_dialog()
+            if callable(on_cancel):
+                on_cancel()
+
         content = ConfirmDialog(confirm_callback=on_confirm_wrapper,
-                                cancel_callback=self.dismiss_confirm_dialog,
+                                cancel_callback=on_cancel_wrapper,
                                 cancel_btn_text=cancel_btn_text,
                                 confirm_btn_text=confirm_btn_text)
         content.message_label.text = msg
@@ -318,9 +323,20 @@ class CMSCloudGUIApp(App):
         self.show_loading_dialog()
         path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
         stop_sync_callback = partial(self._stop_sync_callback, domain)
+
+        def network_error_callback(message, on_confirm, on_cancel):
+
+            def on_cancel_wrapper():
+                self.stop_sync(domain)
+                on_cancel()
+            self.show_confirm_dialog(
+                'Network error', message,
+                on_confirm, on_cancel=on_cancel_wrapper,
+                confirm_btn_text='Retry',
+                cancel_btn_text='Stop sync (lose unsynced changes!)')
         sync_dir_thread = SyncDirThread(
             domain, path, force, self.client,
-            self._sync_callback, stop_sync_callback)
+            self._sync_callback, stop_sync_callback, network_error_callback)
         sync_dir_thread.start()
 
     def _sync_callback(self, domain, status, msg_or_observer):

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import datetime
 import os
+import requests
 import threading
 import time
 
@@ -36,12 +37,14 @@ for i in xrange(1, BACKUP_COUNT + 1):
 
 class SyncEventHandler(FileSystemEventHandler):
 
-    def __init__(self, session, sitename, observer_stopped, relpath='.'):
+    def __init__(self, session, sitename, observer_stopped,
+                 network_error_callback, relpath='.'):
         self.session = session
         self.sitename = sitename
         self.relpath = uniform_filepath(relpath)
         self.sync_logger = get_site_specific_logger(sitename, self.relpath)
         self._observer_stopped = observer_stopped
+        self._network_error_callback = network_error_callback
 
         self._recently_modified_file_hashes = {}
 
@@ -93,9 +96,35 @@ class SyncEventHandler(FileSystemEventHandler):
             if sync_event:
                 self.sync_logger.debug(
                     'Sending request for event:\t' + repr(sync_event))
-                msg, method, kwargs = sync_event.prepare_request()
+                msg, method, kwargs, fobj = sync_event.prepare_request()
                 print msg
-                self._send_request(method, **kwargs)
+
+                retry_event = threading.Event()
+                exit_loop_event = threading.Event()
+
+                def on_confirm():
+                    retry_event.set()
+
+                def on_cancel():
+                    exit_loop_event.set()
+                    retry_event.set()
+
+                while not exit_loop_event.isSet():
+                    if fobj:  # reseting the read state of the sending file
+                        fobj.seek(0)
+                    try:
+                        self._send_request(method, **kwargs)
+                    except (requests.exceptions.ConnectionError,
+                            requests.exceptions.Timeout):
+                        retry_event.clear()
+                        from cmscloud_client.client import Client
+                        message = Client.SYNC_NETWORK_ERROR_MESSAGE % sync_event.src_path
+                        self._network_error_callback(
+                            message, on_confirm, on_cancel)
+                        retry_event.wait()
+                    else:
+                        fobj.close()
+                        exit_loop_event.set()
 
     def _send_request(self, method, *args, **kwargs):
         headers = kwargs.get('headers', {})
