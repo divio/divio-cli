@@ -83,7 +83,7 @@ class Client(object):
     BOILERPLATE_FILENAME = 'boilerplate.yaml'
     CMSCLOUD_CONFIG_FILENAME = 'cmscloud_config.py'
     CMSCLOUD_DOT_FILENAME = '.cmscloud'
-    CMSCLOUD_HOST_DEFAULT = 'https://control.django-cms.com'
+    CMSCLOUD_HOST_DEFAULT = 'https://control.aldryn.com'
     CMSCLOUD_HOST_KEY = 'CMSCLOUD_HOST'
     CMSCLOUD_SYNC_LOCK_FILENAME = '.cmscloud-sync-lock'
     DATA_FILENAME = 'data.yaml'
