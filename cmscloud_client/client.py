@@ -80,7 +80,8 @@ class SingleHostSession(requests.Session):
 
 class Client(object):
     APP_FILENAME = 'app.yaml'
-    BOILERPLATE_FILENAME = 'boilerplate.yaml'
+    BOILERPLATE_FILENAME_JSON = 'boilerplate.json'
+    BOILERPLATE_FILENAME_YAML = 'boilerplate.yaml'
     CMSCLOUD_CONFIG_FILENAME = 'cmscloud_config.py'
     CMSCLOUD_DOT_FILENAME = '.cmscloud'
     CMSCLOUD_HOST_DEFAULT = 'https://control.aldryn.com'
@@ -96,7 +97,9 @@ class Client(object):
     PROTECTED_FILE_CHANGE_MESSAGE = 'You are overriding file "%s".\nThis file is protected by the boilerplate.'
     SYNC_NETWORK_ERROR_MESSAGE = "Couldn't sync file \"%s\".\nPlease check your connection and try again later."
 
-    ALL_CONFIG_FILES = [APP_FILENAME, BOILERPLATE_FILENAME, CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
+    ALL_CONFIG_FILES = [
+        APP_FILENAME, BOILERPLATE_FILENAME_YAML, BOILERPLATE_FILENAME_JSON,
+        CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
 
     def __init__(self, host, interactive=True):
         register_yaml_extensions()
@@ -179,16 +182,34 @@ class Client(object):
             return (False, '\n'.join(msgs))
 
     def upload_boilerplate(self, path='.'):
-        boilerplate_filename = os.path.join(path, Client.BOILERPLATE_FILENAME)
         data_filename = os.path.join(path, Client.DATA_FILENAME)
 
-        if not os.path.exists(boilerplate_filename):
-            msg = "File '%s' not found." % boilerplate_filename
+        boilerplate_filename_json = os.path.join(path, Client.BOILERPLATE_FILENAME_JSON)
+        boilerplate_filename_yaml = os.path.join(path, Client.BOILERPLATE_FILENAME_YAML)
+        boilerplate_filename = None
+        load_json_config = False
+        if os.path.exists(boilerplate_filename_yaml):
+            boilerplate_filename = boilerplate_filename_yaml
+        if os.path.exists(boilerplate_filename_json):
+            if boilerplate_filename is None:
+                boilerplate_filename = boilerplate_filename_json
+                load_json_config = True
+            else:
+                msg = "Please provide only one config file ('%s' or '%s')" % (
+                    Client.BOILERPLATE_FILENAME_JSON,
+                    Client.BOILERPLATE_FILENAME_YAML)
+                return (False, msg)
+        if boilerplate_filename is None:
+            msg = "File '%s' nor '%s' not found." % (
+                Client.BOILERPLATE_FILENAME_JSON, Client.BOILERPLATE_FILENAME_YAML)
             return (False, msg)
         extra_file_paths = []
         with open(boilerplate_filename) as fobj:
             with Trackable.tracker as extra_objects:
-                config = yaml.safe_load(fobj)
+                if load_json_config:
+                    config = json.load(fobj)
+                else:
+                    config = yaml.safe_load(fobj)
                 if os.path.exists(data_filename):
                     with open(data_filename) as fobj2:
                         data = yaml.safe_load(fobj2)
@@ -224,10 +245,10 @@ class Client(object):
         setup_filename = os.path.join(path, Client.SETUP_FILENAME)
         msgs = []
         if not os.path.exists(setup_filename):
-            msg = "File '%' not found." % Client.SETUP_FILENAME
+            msg = "File '%s' not found." % Client.SETUP_FILENAME
             return (False, msg)
         if not os.path.exists(app_filename):
-            msg = "File '%s' not found." % app_filename
+            msg = "File '%s' not found." % Client.APP_FILENAME
             return (False, msg)
         with open(app_filename) as fobj:
             config = yaml.safe_load(fobj)
