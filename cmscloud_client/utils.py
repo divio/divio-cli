@@ -183,10 +183,10 @@ def bundle_boilerplate(config, data, extra_file_paths, **complex_extra):
     fileobj = StringIO()
     tar = tarfile.open(mode='w:gz', fileobj=fileobj)
     config_fileobj = StringIO()
-    yaml.dump(config, config_fileobj)
+    yaml.safe_dump(config, config_fileobj)
     tar_add_stringio(tar, config_fileobj, 'boilerplate.yaml')
     data_fileobj = StringIO()
-    yaml.dump(data, data_fileobj)
+    yaml.safe_dump(data, data_fileobj)
     tar_add_stringio(tar, data_fileobj, 'data.yaml')
     for path in extra_file_paths:
         tar.add(path)
