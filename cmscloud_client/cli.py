@@ -55,6 +55,10 @@ def _protected_file_change_callback(message):
     print '!!!'
 
 
+def _sync_error_callback(message):
+    print message
+
+
 def main():
     args = docopt.docopt(__doc__, version=version)
     client = Client(
@@ -80,6 +84,7 @@ def main():
     elif args['sync']:
         retval, msg = client.sync(
             _network_error_callback,
+            _sync_error_callback,
             _protected_file_change_callback,
             sitename=args.get('--sitename', None))
     elif args['sites']:

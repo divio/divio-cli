@@ -336,6 +336,10 @@ class CMSCloudGUIApp(App):
                 confirm_btn_text='Retry',
                 cancel_btn_text='Stop sync (lose unsynced changes!)')
 
+        def sync_error_callback(message, title='Error'):
+            notify(WINDOW_TITLE, message)
+            self.show_info_dialog(title, message)
+
         def protected_file_change_callback(message):
             notify(WINDOW_TITLE, message)
             self.show_info_dialog('Info', message)
@@ -345,6 +349,7 @@ class CMSCloudGUIApp(App):
             self._sync_callback,
             stop_sync_callback,
             network_error_callback,
+            sync_error_callback,
             protected_file_change_callback)
         sync_dir_thread.start()
 
