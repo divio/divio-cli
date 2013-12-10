@@ -123,35 +123,39 @@ class CMSCloudGUIApp(App):
 
     ### DIALOGS ###
 
-    def dismiss_info_dialog(self):
-        if hasattr(self, '_info_popup') and self._info_popup:
-            self._info_popup.dismiss()
-            del self._info_popup
-
     def show_info_dialog(self, title, msg, on_open=None):
-        content = InfoDialog(close=self.dismiss_info_dialog)
-        content.message_label.text = msg
-        self._info_popup = Popup(title=title, content=content, size_hint=(0.9, None), height=200)
-        if on_open:
-            self._info_popup.on_open = on_open
-        self._info_popup.open()
+        info_popup = None
 
-    def dismiss_confirm_dialog(self):
-        if hasattr(self, '_confirm_popup') and self._confirm_popup:
-            self._confirm_popup.dismiss()
-            del self._confirm_popup
+        def dismiss_info_dialog():
+            if info_popup and hasattr(info_popup, 'dismiss'):
+                info_popup.dismiss()
+
+        content = InfoDialog(close=dismiss_info_dialog)
+        content.message_label.text = msg
+        info_popup = Popup(
+            title=title, content=content, auto_dismiss=False,
+            size_hint=(0.9, None), height=200)
+        if on_open:
+            info_popup.on_open = on_open
+        info_popup.open()
+        return info_popup
 
     def show_confirm_dialog(self, title, msg, on_confirm, on_cancel=None,
                             cancel_btn_text='Cancel',
                             confirm_btn_text='Confirm',
                             on_open=None):
+        confirm_popup = None
+
+        def dismiss_confirm_dialog():
+            if confirm_popup and hasattr(confirm_popup, 'dismiss'):
+                confirm_popup.dismiss()
 
         def on_confirm_wrapper():
-            self.dismiss_confirm_dialog()
+            dismiss_confirm_dialog()
             on_confirm()
 
         def on_cancel_wrapper():
-            self.dismiss_confirm_dialog()
+            dismiss_confirm_dialog()
             if callable(on_cancel):
                 on_cancel()
 
@@ -160,31 +164,30 @@ class CMSCloudGUIApp(App):
                                 cancel_btn_text=cancel_btn_text,
                                 confirm_btn_text=confirm_btn_text)
         content.message_label.text = msg
-        self._confirm_popup = Popup(
+        confirm_popup = Popup(
             title=title, content=content,
             auto_dismiss=False, size_hint=(0.9, None), height=200)
         if on_open:
-            self._confirm_popup.on_open = on_open
-        self._confirm_popup.open()
-
-    def dismiss_loading_dialog(self):
-        if hasattr(self, '_loading_popup') and self._loading_popup:
-            self._loading_popup.dismiss()
-            del self._loading_popup
+            confirm_popup.on_open = on_open
+        confirm_popup.open()
+        return confirm_popup
 
     def show_loading_dialog(self, on_open=None):
         content = LoadingDialog()
-        self._loading_popup = Popup(title='', auto_dismiss=False, content=content, size_hint=(0.9, None), height=200)
+        loading_popup = Popup(
+            title='', auto_dismiss=False, content=content,
+            size_hint=(0.9, None), height=200)
         if on_open:
-            self._loading_popup.on_open = on_open
-        self._loading_popup.open()
-
-    def dismiss_dir_chooser_dialog(self):
-        if hasattr(self, '_dir_chooser_popup') and self._dir_chooser_popup:
-            self._dir_chooser_popup.dismiss()
-            del self._dir_chooser_popup
+            loading_popup.on_open = on_open
+        loading_popup.open()
+        return loading_popup
 
     def show_dir_chooser_dialog(self, on_selection, path=None, on_open=None):
+        dir_chooser_popup = None
+
+        def dismiss_dir_chooser_dialog():
+            if dir_chooser_popup and hasattr(dir_chooser_popup, 'dismiss'):
+                dir_chooser_popup.dismiss()
 
         def on_selection_wrapper(path, selection, new_dir_name):
             dir_path = path
@@ -204,17 +207,20 @@ class CMSCloudGUIApp(App):
                     return
                 else:
                     dir_path = selection[0]
-            self.dismiss_dir_chooser_dialog()
+            dismiss_dir_chooser_dialog()
             on_selection(dir_path)
 
-        content = DirChooserDialog(select=on_selection_wrapper, cancel=self.dismiss_dir_chooser_dialog)
+        content = DirChooserDialog(
+            select=on_selection_wrapper, cancel=dismiss_dir_chooser_dialog)
         file_chooser = content.file_chooser
         file_chooser.path = path or self._get_last_dir()
         file_chooser.bind(path=lambda instance, path: self._set_last_dir(path))
-        self._dir_chooser_popup = Popup(title="Choose directory", content=content, size_hint=(0.9, 0.9))
+        dir_chooser_popup = Popup(
+            title="Choose directory", content=content, size_hint=(0.9, 0.9))
         if on_open:
-            self._dir_chooser_popup.on_open = on_open
-        self._dir_chooser_popup.open()
+            dir_chooser_popup.on_open = on_open
+        dir_chooser_popup.open()
+        return dir_chooser_popup
 
     ### END OF DIALOGS ###
 
@@ -237,12 +243,14 @@ class CMSCloudGUIApp(App):
         set_size(RESIZING_STEPS, 0.0)
 
     def login(self, email, password):
-        self.show_loading_dialog()
-        self._login_thread = LoginThread(email, password, self.client, self._login_callback)
+        loading_dialog = self.show_loading_dialog()
+        login_callback = partial(self._login_callback, loading_dialog)
+        self._login_thread = LoginThread(
+            email, password, self.client, login_callback)
         self._login_thread.start()
 
-    def _login_callback(self, status, msg):
-        self.dismiss_loading_dialog()
+    def _login_callback(self, loading_dialog, status, msg):
+        loading_dialog.dismiss()
         if status:
 
             def callback():  # change screen to sync after the animation
@@ -270,12 +278,15 @@ class CMSCloudGUIApp(App):
         return self.root.get_screen('sync').sites_list_view
 
     def load_sites_list(self):
-        self.show_loading_dialog()
-        self._load_sites_list_thread = LoadSitesListThread(self.client, self._load_sites_list_callback)
+        loading_dialog = self.show_loading_dialog()
+        load_sites_list_callback = partial(
+            self._load_sites_list_callback, loading_dialog)
+        self._load_sites_list_thread = LoadSitesListThread(
+            self.client, load_sites_list_callback)
         self._load_sites_list_thread.start()
 
-    def _load_sites_list_callback(self, status, data):
-        self.dismiss_loading_dialog()
+    def _load_sites_list_callback(self, loading_dialog, status, data):
+        loading_dialog.dismiss()
         if status:
             new_sites_names = set()
             old_sites_names = set(self._websites_manager.get_domain())
@@ -320,8 +331,9 @@ class CMSCloudGUIApp(App):
         self._websites_manager.stop_site_sync_observer(domain)
 
     def _sync_confirmed(self, domain, site_dir, force=False):
-        self.show_loading_dialog()
+        loading_dialog = self.show_loading_dialog()
         path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
+        sync_callback = partial(self._sync_callback, loading_dialog)
         stop_sync_callback = partial(self._stop_sync_callback, domain)
 
         def network_error_callback(message, on_confirm, on_cancel):
@@ -334,20 +346,25 @@ class CMSCloudGUIApp(App):
                 confirm_btn_text='Retry',
                 cancel_btn_text='Stop sync (lose unsynced changes!)')
 
+        def sync_error_callback(message, title='Error'):
+            notify(WINDOW_TITLE, message)
+            self.show_info_dialog(title, message)
+
         def protected_file_change_callback(message):
             notify(WINDOW_TITLE, message)
             self.show_info_dialog('Info', message)
 
         sync_dir_thread = SyncDirThread(
             domain, path, force, self.client,
-            self._sync_callback,
+            sync_callback,
             stop_sync_callback,
             network_error_callback,
+            sync_error_callback,
             protected_file_change_callback)
         sync_dir_thread.start()
 
-    def _sync_callback(self, domain, status, msg_or_observer):
-        self.dismiss_loading_dialog()
+    def _sync_callback(self, loading_dialog, domain, status, msg_or_observer):
+        loading_dialog.dismiss()
         if status:  # observer
             self._websites_manager.set_site_sync_observer(domain, msg_or_observer)
         else:  # msg

@@ -38,7 +38,7 @@ for i in xrange(1, BACKUP_COUNT + 1):
 class SyncEventHandler(FileSystemEventHandler):
 
     def __init__(self, session, sitename, observer_stopped,
-                 network_error_callback,
+                 network_error_callback, sync_error_callback,
                  protected_files, protected_file_change_callback,
                  relpath='.'):
         self.session = session
@@ -47,7 +47,9 @@ class SyncEventHandler(FileSystemEventHandler):
         self.sync_logger = get_site_specific_logger(sitename, self.relpath)
         self._observer_stopped = observer_stopped
         self._network_error_callback = network_error_callback
+        self._sync_error_callback = sync_error_callback
         self._protected_files = protected_files
+        self._overridden_protected_filed = set()
         self._protected_file_change_callback = protected_file_change_callback
 
         self._recently_modified_file_hashes = {}
@@ -99,9 +101,12 @@ class SyncEventHandler(FileSystemEventHandler):
                 timeout=TIME_DELTA_IN_SECONDS)
             if sync_event:
                 from cmscloud_client.client import Client
-                if sync_event.rel_src_path in self._protected_files:
+                rel_src_path = sync_event.rel_src_path
+                if (rel_src_path in self._protected_files and
+                        rel_src_path not in self._overridden_protected_filed):
                     message = Client.PROTECTED_FILE_CHANGE_MESSAGE % sync_event.src_path
                     self._protected_file_change_callback(message)
+                    self._overridden_protected_filed.add(rel_src_path)
 
                 self.sync_logger.debug(
                     'Sending request for event:\t' + repr(sync_event))
@@ -142,12 +147,16 @@ class SyncEventHandler(FileSystemEventHandler):
         response = self.session.request(
             method, '/api/v1/sync/%s/' % self.sitename, *args, **kwargs)
         if not response.ok:
+            title = "Sync failed!"
             if response.status_code == 400:
-                print "Sync failed! %s" % response.content
+                msg = response.content
             else:
-                print "Sync failed! Unexpected status code %s" % response.status_code
+                base_msg = "Unexpected status code %s" % response.status_code
                 if response.status_code < 500:
-                    print response.content
+                    msg = '\n'.join([base_msg, response.content])
+                else:
+                    msg = '\n'.join([base_msg, "Internal Server Error"])
+            self._sync_error_callback(msg, title=title)
 
     def dispatch(self, raw_event):
         now = datetime.datetime.now()
