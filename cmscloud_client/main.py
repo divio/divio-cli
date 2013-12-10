@@ -131,7 +131,9 @@ class CMSCloudGUIApp(App):
     def show_info_dialog(self, title, msg, on_open=None):
         content = InfoDialog(close=self.dismiss_info_dialog)
         content.message_label.text = msg
-        self._info_popup = Popup(title=title, content=content, size_hint=(0.9, None), height=200)
+        self._info_popup = Popup(
+            title=title, content=content, auto_dismiss=False,
+            size_hint=(0.9, None), height=200)
         if on_open:
             self._info_popup.on_open = on_open
         self._info_popup.open()
