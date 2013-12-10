@@ -49,6 +49,7 @@ class SyncEventHandler(FileSystemEventHandler):
         self._network_error_callback = network_error_callback
         self._sync_error_callback = sync_error_callback
         self._protected_files = protected_files
+        self._overridden_protected_filed = set()
         self._protected_file_change_callback = protected_file_change_callback
 
         self._recently_modified_file_hashes = {}
@@ -100,9 +101,12 @@ class SyncEventHandler(FileSystemEventHandler):
                 timeout=TIME_DELTA_IN_SECONDS)
             if sync_event:
                 from cmscloud_client.client import Client
-                if sync_event.rel_src_path in self._protected_files:
+                rel_src_path = sync_event.rel_src_path
+                if (rel_src_path in self._protected_files and
+                        rel_src_path not in self._overridden_protected_filed):
                     message = Client.PROTECTED_FILE_CHANGE_MESSAGE % sync_event.src_path
                     self._protected_file_change_callback(message)
+                    self._overridden_protected_filed.add(rel_src_path)
 
                 self.sync_logger.debug(
                     'Sending request for event:\t' + repr(sync_event))
