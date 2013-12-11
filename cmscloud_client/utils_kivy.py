@@ -11,6 +11,7 @@ from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView
+from kivy.uix.image import Image
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
@@ -48,7 +49,7 @@ class ConfirmDialog(BoxLayout):
 
 
 class LoadingDialog(RelativeLayout):
-    loader_img = resource_path('img/loader.gif')
+    message_label = ObjectProperty(None)
 
 
 class DirChooserDialog(BoxLayout):
@@ -78,6 +79,10 @@ class TabTextInput(TextInput):
             super(TabTextInput, self)._keyboard_on_key_down(window, keycode, text, modifiers)
 
 
+class LoadingImage(Image):
+    loader_img = resource_path('img/loader.gif')
+
+
 class PaddedButton(Button):
     pass
 
@@ -102,14 +107,16 @@ class WebsiteView(RelativeLayout):
     dir_label = ObjectProperty(None)
     change_or_set_dir_btn = ObjectProperty(None)
     open_dir_btn = ObjectProperty(None)
-    sync_btn = ObjectProperty(None)
     preview_btn = ObjectProperty(None)
+    sync_btn = ObjectProperty(None)
+    sync_loading_overlay = ObjectProperty(None)
 
     domain = StringProperty(None)
 
     def __init__(self, domain):
         super(WebsiteView, self).__init__()
         self.domain = domain
+        self.hide_sync_loading_overlay()
 
     def set_name(self, name):
         self.name_btn.text = name
@@ -158,6 +165,14 @@ class WebsiteView(RelativeLayout):
 
         self.sync_btn.text = 'Sync Files'
 
+    def show_sync_loading_overlay(self):
+        if self.sync_loading_overlay.parent is None:
+            self.sync_btn.add_widget(self.sync_loading_overlay)
+
+    def hide_sync_loading_overlay(self):
+        if self.sync_loading_overlay.parent is not None:
+            self.sync_btn.remove_widget(self.sync_loading_overlay)
+
 
 ######################
 # Asynchronous tasks #
@@ -192,14 +207,16 @@ class LoadSitesListThread(threading.Thread):
 class SyncDirThread(threading.Thread):
 
     def __init__(self, domain, path, force, client,
-                 sync_callback, stop_sync_callback, network_error_callback,
-                 sync_error_callback, protected_file_change_callback):
+                 sync_callback, sync_indicator_callback, stop_sync_callback,
+                 network_error_callback, sync_error_callback,
+                 protected_file_change_callback):
         super(SyncDirThread, self).__init__()
         self.domain = domain
         self.path = path
         self.force = force
         self.client = client
         self.sync_callback = sync_callback
+        self.sync_indicator_callback = sync_indicator_callback
         self.stop_sync_callback = stop_sync_callback
         self.network_error_callback = network_error_callback
         self.sync_error_callback = sync_error_callback
@@ -213,6 +230,7 @@ class SyncDirThread(threading.Thread):
                 self.network_error_callback, self.sync_error_callback,
                 self.protected_file_change_callback, sitename=domain,
                 path=self.path, force=self.force,
+                sync_indicator_callback=self.sync_indicator_callback,
                 stop_sync_callback=self.stop_sync_callback)
         except OSError as e:
             Clock.schedule_once(
@@ -291,7 +309,7 @@ class WebsitesManager(object):
     def get_site_name(self, domain):
         return self._sites_dir_database[domain]['name'].encode('utf-8')
 
-    def get_domain(self):
+    def get_domains(self):
         return self._site_views_cache.keys()
 
     def get_site_dashboard_url(self, domain):
@@ -326,6 +344,13 @@ class WebsitesManager(object):
 
     def stop_site_sync_observer(self, domain):
         self._delete_site_sync_observer(domain)
+        self.hide_sync_loading_overlay(domain)
+
+    def show_sync_loading_overlay(self, domain):
+        self._site_views_cache[domain].show_sync_loading_overlay()
+
+    def hide_sync_loading_overlay(self, domain):
+        self._site_views_cache[domain].hide_sync_loading_overlay()
 
     ### Site's sync directory ###
 

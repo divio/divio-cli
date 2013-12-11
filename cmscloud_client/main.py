@@ -289,7 +289,7 @@ class CMSCloudGUIApp(App):
         loading_dialog.dismiss()
         if status:
             new_sites_names = set()
-            old_sites_names = set(self._websites_manager.get_domain())
+            old_sites_names = set(self._websites_manager.get_domains())
             for site_data in data:
                 domain = site_data['domain'].encode('utf-8')
                 new_sites_names.add(domain)
@@ -354,9 +354,16 @@ class CMSCloudGUIApp(App):
             notify(WINDOW_TITLE, message)
             self.show_info_dialog('Info', message)
 
+        def sync_indicator_callback(stop=False):
+            if stop:
+                self._websites_manager.hide_sync_loading_overlay(domain)
+            else:
+                self._websites_manager.show_sync_loading_overlay(domain)
+
         sync_dir_thread = SyncDirThread(
             domain, path, force, self.client,
             sync_callback,
+            sync_indicator_callback,
             stop_sync_callback,
             network_error_callback,
             sync_error_callback,
