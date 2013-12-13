@@ -301,8 +301,9 @@ class Client(object):
         if os.path.exists(lock_filename):
             os.remove(lock_filename)
 
-    def sync(self, network_error_callback, sync_error_callback, protected_file_change_callback,
-             sitename=None, path='.', force=False, stop_sync_callback=None):
+    def sync(self, network_error_callback, sync_error_callback,
+             protected_file_change_callback, sitename=None, path='.', force=False,
+             sync_indicator_callback=None, stop_sync_callback=None):
         cmscloud_dot_filename = os.path.join(path, Client.CMSCLOUD_DOT_FILENAME)
         if not sitename:
             if os.path.exists(cmscloud_dot_filename):
@@ -392,7 +393,7 @@ class Client(object):
         event_handler = SyncEventHandler(
             self.session, sitename, observer_stopped, network_error_callback,
             sync_error_callback, protected_files, protected_file_change_callback,
-            relpath=path)
+            relpath=path, sync_indicator_callback=sync_indicator_callback)
         observer = SyncObserver()
         observer.event_queue.queue.clear()
         observer.schedule(event_handler, path, recursive=True)

@@ -291,12 +291,12 @@
         size_hint: None, None
         text: 'Loading'
 
-    Image:
-        anim_delay: 0.08
+    LoadingImage:
+        anim_delay: 0.06
         pos_hint: {'x': 0.51, 'center_y': 0.5}
         size: 25, 25
         size_hint: None, None
-        source: root.loader_img
+        source: self.loader_img
 
 
 
@@ -419,6 +419,7 @@
     dir_label: dir_label_id.__self__
     change_or_set_dir_btn: change_or_set_dir_btn_id.__self__
     sync_btn: sync_btn_id.__self__
+    sync_loading_overlay: sync_loading_overlay_id.__self__
 
     height: 50
     padding: 10
@@ -519,3 +520,29 @@
             id: sync_btn_id
 
             on_release: app.sync_toggle(root.domain)
+
+            RelativeLayout:
+                id: sync_loading_overlay_id
+
+                pos: sync_btn_id.pos
+                size: sync_btn_id.size
+                size_hint: None, None
+
+                canvas.before:
+                    Color:
+                        rgba: 0.0, 0.0, 0.0, 0.3
+                    Rectangle:
+                        size: self.size
+
+                Button:
+                    background_color: 0, 0, 0, 0
+                    background_down: ''
+                    background_normal: ''
+                    size: self.parent.size
+
+                LoadingImage:
+                    anim_delay: 0.06
+                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                    size: min(self.parent.height * 0.7, 25), min(self.parent.height * 0.7, 25)
+                    size_hint: None, None
+                    source: self.loader_img

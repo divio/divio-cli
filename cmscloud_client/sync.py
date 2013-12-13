@@ -40,7 +40,7 @@ class SyncEventHandler(FileSystemEventHandler):
     def __init__(self, session, sitename, observer_stopped,
                  network_error_callback, sync_error_callback,
                  protected_files, protected_file_change_callback,
-                 relpath='.'):
+                 relpath='.', sync_indicator_callback=None):
         self.session = session
         self.sitename = sitename
         self.relpath = uniform_filepath(relpath)
@@ -48,6 +48,7 @@ class SyncEventHandler(FileSystemEventHandler):
         self._observer_stopped = observer_stopped
         self._network_error_callback = network_error_callback
         self._sync_error_callback = sync_error_callback
+        self._sync_indicator_callback = sync_indicator_callback
         self._protected_files = protected_files
         self._overridden_protected_filed = set()
         self._protected_file_change_callback = protected_file_change_callback
@@ -123,6 +124,8 @@ class SyncEventHandler(FileSystemEventHandler):
                     exit_loop_event.set()
                     retry_event.set()
 
+                if self._sync_indicator_callback:
+                    self._sync_indicator_callback()
                 while not exit_loop_event.isSet():
                     if fobj:  # reseting the read state of the sending file
                         fobj.seek(0)
@@ -138,6 +141,8 @@ class SyncEventHandler(FileSystemEventHandler):
                     else:
                         fobj.close()
                         exit_loop_event.set()
+                if self._sync_indicator_callback:
+                    self._sync_indicator_callback(stop=True)
 
     def _send_request(self, method, *args, **kwargs):
         headers = kwargs.get('headers', {})
