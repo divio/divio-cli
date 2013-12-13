@@ -4,9 +4,9 @@ import imp
 import os
 import sys
 
-from cmscloud_client import __version__ as version
-from cmscloud_client.client import Client
-from cmscloud_client.utils import cli_confirm
+from . import __version__ as version
+from .client import Client
+from .utils import cli_confirm
 
 try:
     imp.find_module('kivy')

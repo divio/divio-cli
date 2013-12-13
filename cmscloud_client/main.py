@@ -32,7 +32,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import ScreenManager, TransitionBase
 
 from client import Client
-from utils_kivy import (
+from .utils_kivy import (
     ConfirmDialog,
     DirChooserDialog,
     EmptyScreen,

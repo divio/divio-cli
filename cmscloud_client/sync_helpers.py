@@ -13,7 +13,7 @@ from watchdog.events import (
     EVENT_TYPE_CREATED, EVENT_TYPE_DELETED, EVENT_TYPE_MODIFIED,
     EVENT_TYPE_MOVED, FileModifiedEvent)
 
-from cmscloud_client.utils import (
+from .utils import (
     ValidationError, hashfile, is_hidden, is_valid_file_name, uniform_filepath)
 
 ###############################################################################
@@ -47,7 +47,7 @@ class SyncEvent(object):
         self.timestamp = timestamp
         self.relpath = relpath
 
-        from cmscloud_client.sync import SYNCABLE_DIRECTORIES
+        from .sync import SYNCABLE_DIRECTORIES
         for attr in ['src', 'dest']:
             if hasattr(event, '%s_path' % attr):
                 event_path = getattr(event, '%s_path' % attr)

@@ -17,7 +17,7 @@ from kivy.uix.textinput import TextInput
 from kivy.utils import get_color_from_hex
 from pync import Notifier
 
-from cmscloud_client.utils import resource_path
+from .utils import resource_path
 
 HOME_DIR = os.path.expanduser('~')
 # status to dot color mapping

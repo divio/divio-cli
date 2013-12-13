@@ -17,11 +17,11 @@ from watchdog.observers import Observer
 import requests
 import yaml
 
-from cmscloud_client.serialize import register_yaml_extensions, Trackable, File
-from cmscloud_client.sync import SyncEventHandler
-from cmscloud_client.sync_helpers import (
+from .serialize import register_yaml_extensions, Trackable, File
+from .sync import SyncEventHandler
+from .sync_helpers import (
     get_site_specific_logger, sync_back_protocol_factory)
-from cmscloud_client.utils import (
+from .utils import (
     validate_boilerplate_config, bundle_boilerplate, filter_template_files,
     filter_static_files, filter_bad_paths, validate_app_config, bundle_app,
     filter_sass_files, resource_path, cli_confirm)

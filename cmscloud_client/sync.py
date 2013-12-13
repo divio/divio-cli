@@ -9,8 +9,8 @@ from watchdog.events import (
     DirCreatedEvent, DirDeletedEvent, FileCreatedEvent, FileDeletedEvent,
     FileSystemEventHandler)
 
-from cmscloud_client.utils import uniform_filepath
-from cmscloud_client.sync_helpers import (
+from .utils import uniform_filepath
+from .sync_helpers import (
     EventsBuffer, FileHashesCache, ProceededEventsQueue, SyncEvent,
     get_site_specific_logger, BACKUP_COUNT, LOG_FILENAME)
 
@@ -100,7 +100,7 @@ class SyncEventHandler(FileSystemEventHandler):
             sync_event = self._proceeded_events_queue.get_event(
                 timeout=TIME_DELTA_IN_SECONDS)
             if sync_event:
-                from cmscloud_client.client import Client
+                from .client import Client
                 rel_src_path = sync_event.rel_src_path
                 if (rel_src_path in self._protected_files and
                         rel_src_path not in self._overridden_protected_filed):

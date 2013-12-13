@@ -9,7 +9,7 @@ import tarfile
 import tempfile
 import yaml
 
-from cmscloud_client.serialize import register_yaml_extensions
+from .serialize import register_yaml_extensions
 
 FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_]+[a-zA-Z0-9._-]*(@2x)?\.[a-zA-Z]{2,4}$')
 ALLOWED_EXTENSIONS = [
