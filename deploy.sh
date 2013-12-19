@@ -26,7 +26,8 @@ echo 'install_hooks(globals())' | cat - "$DEPLOY_NAME.spec" > temp && mv temp "$
 echo 'from kivy.tools.packaging.pyinstaller_hooks import install_hooks' | cat - "$DEPLOY_NAME.spec" > temp && mv temp "$DEPLOY_NAME.spec"
 
 #set hiddenimports
-perl -i -pe 'BEGIN{undef $/;} s/hiddenimports=\[\],/hiddenimports=\['\"setuptools\"', '\"distutils\"', '\"cython\"', '\"requests\"', '\"watchdog\"', '\"autobahn\"', '\"pync\"', '\"certifi\"', '\"kivy.core.image.img_gif\"'],/smg' "$DEPLOY_NAME.spec"
+#you may need to add pync again
+perl -i -pe 'BEGIN{undef $/;} s/hiddenimports=\[\],/hiddenimports=\['\"setuptools\"', '\"distutils\"', '\"cython\"', '\"requests\"', '\"watchdog\"', '\"autobahn\"', '\"certifi\"', '\"kivy.core.image.img_gif\"'],/smg' "$DEPLOY_NAME.spec"
 
 #set hookspath to none, otherwise kivy breaks
 perl -i -pe 'BEGIN{undef $/;} s/,\n\s+hookspath=None//smg' "$DEPLOY_NAME.spec"

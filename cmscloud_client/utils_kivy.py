@@ -16,7 +16,7 @@ from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 from kivy.utils import get_color_from_hex
-from pync import Notifier
+# from pync import Notifier
 
 from .utils import resource_path
 
@@ -413,11 +413,12 @@ def open_in_file_manager(path):
 
 
 def notify(title, message):
-    platform = sys.platform
-    if platform == 'darwin':
-        Notifier.notify(message, title=title)
-    else:
-        try:
-            subprocess.Popen(['notify-send', title, message, '-t', '10000'])
-        except OSError:
-            Logger.exception('Cannot open external file manager')
+    pass
+    # platform = sys.platform
+    # if platform == 'darwin':
+    #     Notifier.notify(message, title=title)
+    # else:
+    #     try:
+    #         subprocess.Popen(['notify-send', title, message, '-t', '10000'])
+    #     except OSError:
+    #         Logger.exception('Cannot open external file manager')
