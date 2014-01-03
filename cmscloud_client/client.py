@@ -79,7 +79,8 @@ class SingleHostSession(requests.Session):
 
 
 class Client(object):
-    APP_FILENAME = 'app.yaml'
+    APP_FILENAME_JSON = 'app.json'
+    APP_FILENAME_YAML = 'app.yaml'
     BOILERPLATE_FILENAME_JSON = 'boilerplate.json'
     BOILERPLATE_FILENAME_YAML = 'boilerplate.yaml'
     CMSCLOUD_CONFIG_FILENAME = 'cmscloud_config.py'
@@ -98,7 +99,8 @@ class Client(object):
     SYNC_NETWORK_ERROR_MESSAGE = "Couldn't sync file \"%s\".\nPlease check your connection and try again later."
 
     ALL_CONFIG_FILES = [
-        APP_FILENAME, BOILERPLATE_FILENAME_YAML, BOILERPLATE_FILENAME_JSON,
+        APP_FILENAME_JSON, APP_FILENAME_YAML,
+        BOILERPLATE_FILENAME_JSON, BOILERPLATE_FILENAME_YAML,
         CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
 
     def __init__(self, host, interactive=True):
@@ -181,9 +183,7 @@ class Client(object):
             msgs.append("There was a problem logging in, please try again later.")
             return (False, '\n'.join(msgs))
 
-    def upload_boilerplate(self, path='.'):
-        data_filename = os.path.join(path, Client.DATA_FILENAME)
-
+    def _load_boilerplate(self, path):
         boilerplate_filename_json = os.path.join(path, Client.BOILERPLATE_FILENAME_JSON)
         boilerplate_filename_yaml = os.path.join(path, Client.BOILERPLATE_FILENAME_YAML)
         boilerplate_filename = None
@@ -200,22 +200,33 @@ class Client(object):
                     Client.BOILERPLATE_FILENAME_YAML)
                 return (False, msg)
         if boilerplate_filename is None:
-            msg = "File '%s' nor '%s' not found." % (
+            msg = "Neither file '%s' nor '%s' were found." % (
                 Client.BOILERPLATE_FILENAME_JSON, Client.BOILERPLATE_FILENAME_YAML)
             return (False, msg)
         extra_file_paths = []
         with open(boilerplate_filename) as fobj:
-            with Trackable.tracker as extra_objects:
-                if load_json_config:
-                    config = json.load(fobj)
-                else:
+            if load_json_config:
+                config = json.load(fobj)
+            else:
+                with Trackable.tracker as extra_objects:
                     config = yaml.safe_load(fobj)
-                if os.path.exists(data_filename):
-                    with open(data_filename) as fobj2:
-                        data = yaml.safe_load(fobj2)
-                else:
-                    data = {}
+                    extra_file_paths.extend([f.path for f in extra_objects[File]])
+            return (True, (config, extra_file_paths))
+
+    def upload_boilerplate(self, path='.'):
+        is_loaded, result = self._load_boilerplate(path)
+        if is_loaded:
+            config, extra_file_paths = result
+        else:
+            return (False, result)
+        data_filename = os.path.join(path, Client.DATA_FILENAME)
+        if os.path.exists(data_filename):
+            with Trackable.tracker as extra_objects:
+                with open(data_filename) as fobj2:
+                    data = yaml.safe_load(fobj2)
                 extra_file_paths.extend([f.path for f in extra_objects[File]])
+        else:
+            data = {}
         is_valid, error_msg = validate_boilerplate_config(config, path=path)
         if not is_valid:
             return (False, error_msg)
@@ -230,38 +241,63 @@ class Client(object):
         return (True, msg)
 
     def validate_boilerplate(self, path='.'):
-        boilerplate_filename = os.path.join(path, Client.BOILERPLATE_FILENAME)
+        is_loaded, result = self._load_boilerplate(path)
+        if is_loaded:
+            config, extra_file_paths = result
+            return validate_boilerplate_config(config, path=path)
+        else:
+            return (False, result)
 
-        if not os.path.exists(boilerplate_filename):
-            msg = "File '%s' not found." % boilerplate_filename
+    def _load_app(self, path):
+        app_filename_json = os.path.join(path, Client.APP_FILENAME_JSON)
+        app_filename_yaml = os.path.join(path, Client.APP_FILENAME_YAML)
+        app_filename = None
+        load_json_config = False
+        if os.path.exists(app_filename_yaml):
+            app_filename = app_filename_yaml
+        if os.path.exists(app_filename_json):
+            if app_filename is None:
+                app_filename = app_filename_json
+                load_json_config = True
+            else:
+                msg = "Please provide only one config file ('%s' or '%s')" % (
+                    Client.APP_FILENAME_JSON,
+                    Client.APP_FILENAME_YAML)
+                return (False, msg)
+        if app_filename is None:
+            msg = "Neither file '%s' nor '%s' were found." % (
+                Client.APP_FILENAME_JSON, Client.APP_FILENAME_YAML)
             return (False, msg)
-        with open(boilerplate_filename) as fobj:
-            config = yaml.safe_load(fobj)
-        return validate_boilerplate_config(config, path=path)
+        with open(app_filename) as fobj:
+            if load_json_config:
+                config = json.load(fobj)
+            else:
+                config = yaml.safe_load(fobj)
+        return (True, config)
 
     def upload_app(self, path='.'):
-        app_filename = os.path.join(path, Client.APP_FILENAME)
-        cmscloud_config_filename = os.path.join(path, Client.CMSCLOUD_CONFIG_FILENAME)
+        is_loaded, result = self._load_app(path)
+        if is_loaded:
+            config = result
+        else:
+            return (False, result)
+        is_valid, msg = validate_app_config(config)
+        if not is_valid:
+            return (False, msg)
         setup_filename = os.path.join(path, Client.SETUP_FILENAME)
-        msgs = []
         if not os.path.exists(setup_filename):
             msg = "File '%s' not found." % Client.SETUP_FILENAME
             return (False, msg)
-        if not os.path.exists(app_filename):
-            msg = "File '%s' not found." % Client.APP_FILENAME
-            return (False, msg)
-        with open(app_filename) as fobj:
-            config = yaml.safe_load(fobj)
-        (valid, msg) = validate_app_config(config)
-        if not valid:
-            return (False, msg)
+        cmscloud_config_filename = os.path.join(
+            path, Client.CMSCLOUD_CONFIG_FILENAME)
+        msgs = []
         if os.path.exists(cmscloud_config_filename):
             with open(cmscloud_config_filename) as fobj:
                 script = fobj.read()
         else:
             script = ''
-            msgs.append("File '%s' not found, your app will not have any configurable settings." %
-                        Client.CMSCLOUD_CONFIG_FILENAME)
+            msgs.append("Warning: File '%s' not found." % Client.CMSCLOUD_CONFIG_FILENAME)
+            msgs.append("Your app will not have any configurable settings.")
         tarball = bundle_app(config, script)
         try:
             response = self.session.post('/api/v1/apps/', files={'app': tarball})
@@ -272,17 +308,16 @@ class Client(object):
         return (True, '\n'.join(msgs))
 
     def validate_app(self, path='.'):
-        app_filename = os.path.join(path, Client.APP_FILENAME)
         setup_filename = os.path.join(path, Client.SETUP_FILENAME)
         if not os.path.exists(setup_filename):
             msg = "File '%s' not found." % Client.SETUP_FILENAME
             return (False, msg)
-        if not os.path.exists(app_filename):
-            msg = "File '%s' not found." % Client.APP_FILENAME
-            return (False, msg)
-        with open(app_filename) as fobj:
-            config = yaml.safe_load(fobj)
-        return validate_app_config(config)
+        is_loaded, result = self._load_app(path)
+        if is_loaded:
+            config = result
+            return validate_app_config(config)
+        else:
+            return (False, result)
 
     def _acquire_sync_lock(self, sync_dir):
         lock_filename = os.path.join(

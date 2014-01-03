@@ -212,7 +212,7 @@ def bundle_app(config, script):
     fileobj = StringIO()
     tar = tarfile.open(mode='w:gz', fileobj=fileobj)
     config_fileobj = StringIO()
-    yaml.dump(config, config_fileobj)
+    yaml.safe_dump(config, config_fileobj)
     tar_add_stringio(tar, config_fileobj, 'app.yaml')
     script_fileobj = StringIO(script)
     if os.path.exists('cmscloud_config.py'):
