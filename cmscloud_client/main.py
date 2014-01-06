@@ -11,8 +11,11 @@ HEIGHT_SYNC = 700
 POSITION_TOP = 200
 POSITION_LEFT = 200
 
+import os
 from kivy.config import Config
 Config.set('kivy', 'desktop', 1)
+icon = "resources/appIcon.ico" if os.name == 'nt' else "resources/appIcon.icns"
+Config.set('kivy', 'window_icon', icon)
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
 # app's default window's position
 #Config.set('graphics', 'position', 'custom')
@@ -21,7 +24,6 @@ Config.set('input', 'mouse', 'mouse,disable_multitouch')
 
 
 from functools import partial
-import os
 import shelve
 import webbrowser
 
@@ -73,7 +75,6 @@ ADD_NEW_SITE_URL = 'https://control.django-cms.com/control/new/'
 class CMSCloudGUIApp(App):
 
     title = WINDOW_TITLE
-    icon = "resources/appIcon.icns"
 
     def __init__(self, *args, **kwargs):
         super(CMSCloudGUIApp, self).__init__(*args, **kwargs)
