@@ -8,7 +8,6 @@ import logging.handlers
 import os
 import threading
 
-from autobahn.wamp import WampClientProtocol
 from watchdog.events import (
     EVENT_TYPE_CREATED, EVENT_TYPE_DELETED, EVENT_TYPE_MODIFIED,
     EVENT_TYPE_MOVED, FileModifiedEvent)
@@ -405,29 +404,3 @@ class FileHashesCache(dict):
             else:
                 status = False
         return status
-
-
-def sync_back_protocol_factory(
-        subscription_key, channel, event_callback, logger):
-
-    class SyncBackProtocol(WampClientProtocol):
-        def onSessionOpen(self):
-            d = self.call('authenticate', subscription_key)
-            d.addCallbacks(self.onAuthSuccess, self.onAuthError)
-
-        def onAuthSuccess(self, permissions):
-            self.subscribe(channel, self.onEvent)
-            logger.debug('authenticate channel %s' % channel)
-
-        def onAuthError(self, e):
-            logger.debug('Failure: authenticate channel: %s, error: %s' %
-                         (channel, e.message))
-
-        def onEvent(self, channel, event):
-            event_callback(event)
-
-        def connectionLost(self, reason):
-            WampClientProtocol.connectionLost(self, reason)
-            logger.debug('connectionLost: %s' % reason)
-
-    return SyncBackProtocol
