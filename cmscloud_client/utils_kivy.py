@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import platform
 import subprocess
 import sys
 import threading
@@ -400,10 +401,10 @@ class SyncScreen(BaseScreen):
 ##################
 
 def open_in_file_manager(path):
-    platform = sys.platform
-    if platform == 'win32':
+    system = platform.system()
+    if system == 'Windows':
         subprocess.Popen(['start', path], shell=True)
-    elif platform == 'darwin':
+    elif system == 'Darwin':
         subprocess.Popen(['open', path])
     else:
         try:
@@ -422,3 +423,14 @@ def notify(title, message):
     #         subprocess.Popen(['notify-send', title, message, '-t', '10000'])
     #     except OSError:
     #         Logger.exception('Cannot open external file manager')
+
+
+def get_icon_path():
+    system = platform.system()
+    if system == 'Darwin':
+        icon = 'resources/appIcon.icns'
+    elif system == 'Windows':
+        icon = 'resources/appIcon.ico'
+    else:
+        icon = 'resources/appIcon.png'
+    return resource_path(icon)
