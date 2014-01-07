@@ -1,27 +1,23 @@
 # -*- coding: utf-8 -*-
 # Configuring kivy
-import kivy
-kivy.require('1.7.2')
-
-# window size's and position
+# window's sizes and position
 WIDTH_LOGIN = 400
 HEIGHT_LOGIN = 600
 WIDTH_SYNC = 1200
 HEIGHT_SYNC = 700
-POSITION_TOP = 200
-POSITION_LEFT = 200
 
 import os
 from kivy.config import Config
 Config.set('kivy', 'desktop', 1)
-icon = "resources/appIcon.ico" if os.name == 'nt' else "resources/appIcon.icns"
-Config.set('kivy', 'window_icon', icon)
+# disable multitouch emulation with mouse's clicks
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
-# app's default window's position
-#Config.set('graphics', 'position', 'custom')
-#Config.set('graphics', 'top', POSITION_TOP)
-#Config.set('graphics', 'left', POSITION_LEFT)
+from .utils_kivy import get_icon_path
+Config.set('kivy', 'window_icon', get_icon_path())
+Config.write()
 
+# Kivy's import must happen after the configuration
+import kivy
+kivy.require('1.7.2')
 
 from functools import partial
 import shelve
