@@ -10,20 +10,15 @@ import time
 import stat
 import urlparse
 
-from autobahn.wamp import WampClientFactory
-from autobahn.websocket import connectWS
-from twisted.internet import reactor, threads
 from watchdog.observers import Observer
 import requests
 import yaml
 
 from .serialize import register_yaml_extensions, Trackable, File
 from .sync import SyncEventHandler
-from .sync_helpers import (
-    get_site_specific_logger, sync_back_protocol_factory)
 from .utils import (
     validate_boilerplate_config, bundle_boilerplate, filter_template_files,
-    filter_static_files, filter_bad_paths, validate_app_config, bundle_app,
+    filter_static_files, validate_app_config, bundle_app,
     filter_sass_files, resource_path, cli_confirm)
 
 
@@ -119,11 +114,6 @@ class Client(object):
             host, headers=headers, trust_env=False)
 
         self._observers_cache = {}
-
-        self._twisted_reactor_thread = threading.Thread(
-            target=reactor.run, args=(False,))
-        self._twisted_reactor_thread.daemon = True
-        self._twisted_reactor_thread.start()
 
     def get_auth_data(self):
         return self.netrc.hosts.get(self.host)
@@ -412,8 +402,6 @@ class Client(object):
         with open(cmscloud_dot_filename, 'w') as fobj:
             fobj.write(sitename)
 
-        sync_back_conn = self._start_sync_back_listener(
-            sitename, path, stop_sync_callback=stop_sync_callback)
         observer_stopped = threading.Event()
         client = self
 
@@ -421,7 +409,6 @@ class Client(object):
 
             def on_thread_stop(self):
                 Observer.on_thread_stop(self)
-                sync_back_conn.disconnect()
                 observer_stopped.set()
                 client._remove_sync_lock(path)
 
@@ -458,76 +445,6 @@ class Client(object):
             observer.join()
             del self._observers_cache[sitename]
         self._remove_sync_lock(path)
-
-    def _sync_back_file(self, sitename, filepath, path='.'):
-        params = {'filepath': filepath}
-        try:
-            response = self.session.get(
-                '/api/v1/sync/%s/sync-back-file/' % sitename, params=params, stream=True,
-                headers={'accept': 'application/octet'})
-        except (requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout):
-            return (False, Client.NETWORK_ERROR_MESSAGE)
-        if response.status_code != 200:
-            msgs = []
-            msgs.append("Unexpected HTTP Response %s" % response.status_code)
-            if response.status_code < 500:
-                msgs.append(response.content)
-            return (False, '\n'.join(msgs))
-        tarball = tarfile.open(mode='r|gz', fileobj=response.raw)
-        tarball.extractall(
-            path=path, members=filter_bad_paths(tarball.members, path))
-        tarball.close()
-        return (True, 'Synced back file %s' % filepath)
-
-    def _get_sync_back_credentials(self, sitename):
-        response = self.session.get('/api/v1/sync/%s/sync-back-credentials/' % sitename, stream=True)
-        data = json.loads(response.content)
-        return (data['uri'], data['key'], data['channel'])
-
-    def _start_sync_back_listener(self, sitename, path='.',
-                                  stop_sync_callback=None):
-        uri, key, channel = self._get_sync_back_credentials(sitename)
-        factory = WampClientFactory(uri, debugWamp=True)
-
-        def event_callback(event):
-            updaters_email = event['updaters_email']
-            if updaters_email == self.get_login():
-                # it's our change
-                return
-            filepath = event['purge']
-            if updaters_email:
-                user_str = 'User "%s"' % updaters_email
-            else:
-                user_str = 'Someone'
-            if self.interactive:
-                print '\n'.join([
-                    '\n!!!',
-                    '%s just changed "%s".' % (user_str, filepath),
-                    'If you continue you can override it!',
-                    '!!!\n'])
-                while True:
-                    answer = raw_input(
-                        'Do you want to stop syncing? [y/n]')
-                    if answer.lower() == 'y':
-                        self._stop_sync(sitename, path)
-                        break
-                    elif answer.lower() == 'n':
-                        break
-                    else:
-                        print "Invalid answer, please type either y or n"
-            elif stop_sync_callback:
-                msg = '\n'.join([
-                    '%s just edited "%s".' % (user_str, filepath),
-                    ' If you continue you can override it!',
-                    ' Do you want to stop syncing?'])
-                stop_sync_callback(msg)
-
-        logger = get_site_specific_logger(sitename, path)
-        factory.protocol = sync_back_protocol_factory(
-            key, channel, event_callback, logger=logger)
-        conn = threads.blockingCallFromThread(reactor, connectWS, factory)
-        return conn
 
     def sites(self):
         try:
