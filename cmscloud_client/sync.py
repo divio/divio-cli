@@ -14,8 +14,6 @@ from .sync_helpers import (
     EventsBuffer, FileHashesCache, ProceededEventsQueue, SyncEvent,
     get_site_specific_logger, BACKUP_COUNT, LOG_FILENAME)
 
-SYNCABLE_DIRECTORIES = ('templates/', 'static/', 'private/')
-
 # Amount of time during which we collect events and perform heuristics
 # to reduce the number of requests
 TIME_DELTA_IN_SECONDS = 0.5

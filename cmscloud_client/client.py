@@ -3,19 +3,16 @@ import getpass
 import json
 import netrc
 import os
-import shutil
-import tarfile
-import threading
 import time
 import stat
 import urlparse
 
-from watchdog.observers import Observer
+import git
 import requests
 import yaml
 
 from .serialize import register_yaml_extensions, Trackable, File
-from .sync import SyncEventHandler
+from .git_sync import GitSyncHandler
 from .utils import (
     validate_boilerplate_config, bundle_boilerplate, filter_template_files,
     filter_static_files, validate_app_config, bundle_app,
@@ -91,7 +88,7 @@ class Client(object):
     DIRECTORY_ALREADY_SYNCING_MESSAGE = 'Directory already syncing.'
     NETWORK_ERROR_MESSAGE = 'Network error.\nPlease check your connection and try again later.'
     PROTECTED_FILE_CHANGE_MESSAGE = 'You are overriding file "%s".\nThis file is protected by the boilerplate.'
-    SYNC_NETWORK_ERROR_MESSAGE = "Couldn't sync file \"%s\".\nPlease check your connection and try again later."
+    SYNC_NETWORK_ERROR_MESSAGE = "Couldn't sync changes.\nPlease check your connection and try again later."
 
     ALL_CONFIG_FILES = [
         APP_FILENAME_JSON, APP_FILENAME_YAML,
@@ -113,7 +110,7 @@ class Client(object):
         self.session = SingleHostSession(
             host, headers=headers, trust_env=False)
 
-        self._observers_cache = {}
+        self._sync_handlers_cache = {}
 
     def get_auth_data(self):
         return self.netrc.hosts.get(self.host)
@@ -351,78 +348,83 @@ class Client(object):
                     pass
                 else:
                     return (False, Client.DIRECTORY_ALREADY_SYNCING_MESSAGE)
-        print "Preparing to sync %s." % sitename
-        print "This will undo all local changes."
-        if (self.interactive and
-                not cli_confirm('Are you sure you want to continue?',
-                                default=False)):
-            self._remove_sync_lock(path)
-            return (True, "Aborted")
 
-        for folder in ['static', 'templates', 'private']:
-            folder_path = os.path.join(path, folder)
-            if os.path.exists(folder_path):
-                if os.path.isdir(folder_path):
-                    shutil.rmtree(folder_path)
-                else:
-                    os.remove(folder_path)
-        print "Updating local files..."
+        git_dir = os.path.join(path, '.git')
+        params = {}
+        if os.path.exists(git_dir):
+            repo = git.Repo(path)
+            upstream_remote = repo.remotes.develop_bundle
+            last_synced_commit = upstream_remote.refs.develop.commit.hexsha
+            params['last_synced_commit'] = last_synced_commit
+        else:
+            repo = git.Repo.init(path)
+            cfg = repo.config_writer()
+            cfg.set_value('user', 'name', 'Git Sync by')
+            cfg.set_value('user', 'email', self.get_login())
+            cfg.write()
+            cfg._lock._release_lock()
+            del cfg
         try:
-            response = self.session.get('/api/v1/sync/%s/' % sitename, stream=True,
-                                        headers={'accept': 'application/octet'})
+            response = self.session.get(
+                '/api/v1/git-sync/%s/' % sitename, params=params, stream=True,
+                headers={'accept': 'application/octet'})
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout):
             self._remove_sync_lock(path)
             return (False, Client.NETWORK_ERROR_MESSAGE)
-        if response.status_code != 200:
+
+        upstream_modified = True
+        if response.status_code == 304:
+            upstream_modified = False
+        elif response.status_code != 200:
             msgs = []
             msgs.append("Unexpected HTTP Response %s" % response.status_code)
             if response.status_code < 500:
                 msgs.append(response.content)
             self._remove_sync_lock(path)
             return (False, '\n'.join(msgs))
-        tarball = tarfile.open(mode='r|gz', fileobj=response.raw)
-        tarball.extractall(path=path)
-        tarball.close()
+
+        if upstream_modified:
+            bundle_path = os.path.join(path, '.develop.bundle')
+            with open(bundle_path, 'wb') as fobj:
+                for chunk in response.iter_content(512 * 1024):
+                    if not chunk:
+                        break
+                    fobj.write(chunk)
+            if not hasattr(repo.remotes, 'develop_bundle'):
+                repo.git.remote('add', 'develop_bundle', bundle_path)
+            repo.git.fetch('develop_bundle', 'develop')
+            if not hasattr(repo.heads, 'develop'):
+                repo.git.checkout('develop_bundle/develop', b='develop')
+            repo.git.pull('develop_bundle', 'develop')
 
         protected_files_filename = os.path.join(
             path, Client.PROTECTED_FILES_FILENAME)
         protected_files = []
-        if (os.path.exists(protected_files_filename)):
-            with open(protected_files_filename, 'r') as fobj:
-                protected_files = json.loads(fobj.read())
-        # making the protected files read-only
-        for rel_protected_path in protected_files:
-            protected_path = os.path.join(path, rel_protected_path)
-            mode = os.stat(protected_path)[stat.ST_MODE]
-            read_only_mode = mode & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
-            os.chmod(protected_path, read_only_mode)
+        #if (os.path.exists(protected_files_filename)):
+        #    with open(protected_files_filename, 'r') as fobj:
+        #        protected_files = json.loads(fobj.read())
+        ## making the protected files read-only
+        #for rel_protected_path in protected_files:
+        #    protected_path = os.path.join(path, rel_protected_path)
+        #    mode = os.stat(protected_path)[stat.ST_MODE]
+        #    read_only_mode = mode & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
+        #    os.chmod(protected_path, read_only_mode)
 
         # successfully initialized the sync, saving the site's name
         with open(cmscloud_dot_filename, 'w') as fobj:
             fobj.write(sitename)
 
-        observer_stopped = threading.Event()
-        client = self
+        upstream_remote = repo.remotes.develop_bundle
+        last_synced_commit = upstream_remote.refs.develop.commit.hexsha
 
-        class SyncObserver(Observer):
-
-            def on_thread_stop(self):
-                Observer.on_thread_stop(self)
-                observer_stopped.set()
-                client._remove_sync_lock(path)
-
-        event_handler = SyncEventHandler(
-            self.session, sitename, observer_stopped, network_error_callback,
-            sync_error_callback, protected_files, protected_file_change_callback,
+        sync_handler = GitSyncHandler(
+            self.session, sitename, repo, last_synced_commit,
+            network_error_callback, sync_error_callback,
+            protected_files, protected_file_change_callback,
             relpath=path, sync_indicator_callback=sync_indicator_callback)
-        observer = SyncObserver()
-        observer.event_queue.queue.clear()
-        observer.schedule(event_handler, path, recursive=True)
-        observer.start()
-
-        self._observers_cache[sitename] = observer
-
+        sync_handler.start()
+        self._sync_handlers_cache[sitename] = sync_handler
         if self.interactive:
             print "Done, now watching for changes. You can stop the sync by hitting Ctrl-c in this shell"
 
@@ -433,17 +435,16 @@ class Client(object):
                 self._stop_sync(sitename, path)
             return (True, 'Stopped syncing')
         else:
-            return (True, observer)
+            return (True, sync_handler)
 
     def _is_syncing(self, sitename):
-        return sitename in self._observers_cache
+        return sitename in self._sync_handlers_cache
 
     def _stop_sync(self, sitename, path):
-        observer = self._observers_cache.get(sitename, None)
-        if observer:
-            observer.stop()
-            observer.join()
-            del self._observers_cache[sitename]
+        sync_handler = self._sync_handlers_cache.get(sitename, None)
+        if sync_handler:
+            sync_handler.stop()
+            del self._sync_handlers_cache[sitename]
         self._remove_sync_lock(path)
 
     def sites(self):

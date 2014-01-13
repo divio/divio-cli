@@ -22,6 +22,7 @@ BACKUP_COUNT = 2
 FORMAT = '%(asctime)s|%(name)s|%(levelname)s: %(message)s'
 LOG_FILENAME = '.sync.log'
 MAX_BYTES = 100 * (2 ** 10)  # 100KB
+SYNCABLE_DIRECTORIES = ('templates/', 'static/', 'private/')
 
 
 def get_site_specific_logger(sitename, site_dir):
@@ -46,7 +47,6 @@ class SyncEvent(object):
         self.timestamp = timestamp
         self.relpath = relpath
 
-        from .sync import SYNCABLE_DIRECTORIES
         for attr in ['src', 'dest']:
             if hasattr(event, '%s_path' % attr):
                 event_path = getattr(event, '%s_path' % attr)
@@ -404,3 +404,21 @@ class FileHashesCache(dict):
             else:
                 status = False
         return status
+
+
+def git_changes(repo):
+    added = []
+    deleted = []
+    other = []
+    git_status = repo.git.status(porcelain=True, untracked_files='all')
+    for change in git_status.split('\n'):
+        # change[0] contains staged status
+        unstaged_status = change[1]
+        path = change[3:]
+        if unstaged_status in ['M', '?']:
+            added.append(path)
+        elif unstaged_status == 'D':
+            deleted.append(path)
+        else:
+            other.append(path)
+    return {'added': added, 'deleted': deleted, 'other': other}

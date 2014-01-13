@@ -55,7 +55,9 @@ def _protected_file_change_callback(message):
     print '!!!'
 
 
-def _sync_error_callback(message):
+def _sync_error_callback(message, title=None):
+    if title:
+        print title
     print message
 
 
