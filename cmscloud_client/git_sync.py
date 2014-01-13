@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 import datetime
 import os
+import platform
 import requests
 import threading
 import time
 
 from .utils import (
-    ValidationError, is_hidden, is_valid_file_name, uniform_filepath)
+    ValidationError, is_hidden, is_valid_file_name, resource_path,
+    uniform_filepath)
 from .sync_helpers import (
     BACKUP_COUNT, LOG_FILENAME, get_site_specific_logger, git_changes)
 
@@ -18,6 +20,17 @@ for i in xrange(1, BACKUP_COUNT + 1):
     IGNORED_FILES.add('%s.%d' % (LOG_FILENAME, i))
 
 CHANGES_CHECK_DELAY = 0.5
+
+
+def update_env_path_with_git_bin():
+    system = platform.system()
+    if system == 'Darwin':
+        pass  # TODO
+    elif system == 'Windows':
+        os.environ['PATH'] += ';%s' % resource_path('resources/windows/bin')
+    else:
+        pass  # TODO
+update_env_path_with_git_bin()
 
 
 class GitSyncHandler(object):
