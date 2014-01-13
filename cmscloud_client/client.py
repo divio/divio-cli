@@ -355,8 +355,7 @@ class Client(object):
         params = {}
         if os.path.exists(git_dir):
             repo = git.Repo(path)
-            upstream_remote = repo.remotes.develop_bundle
-            last_synced_commit = upstream_remote.refs.develop.commit.hexsha
+            last_synced_commit = repo.git.rev_parse('develop_bundle/develop')
             params['last_synced_commit'] = last_synced_commit
         else:
             repo = git.Repo.init(path)

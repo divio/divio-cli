@@ -160,7 +160,7 @@ class GitSyncHandler(object):
             else:
                 fobj.close()
                 exit_loop_event.set()
-        self._last_synced_commit = self.repo.git.rev_parse('HEAD')
+        self._last_synced_commit = self.repo.git.rev_parse('develop')
         if self._sync_indicator_callback:
             self._sync_indicator_callback(stop=True)
 
