@@ -28,6 +28,8 @@ class WritableNetRC(netrc.netrc):
         if not os.path.exists(netrc_path):
             open(netrc_path, 'a').close()
             os.chmod(netrc_path, 0600)
+        # XXX netrc uses os.environ['HOME'] which isn't defined on Windows
+        os.environ['HOME'] = os.path.expanduser('~')
         netrc.netrc.__init__(self, *args, **kwargs)
 
     def get_netrc_path(self):
