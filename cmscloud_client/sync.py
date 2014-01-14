@@ -139,7 +139,8 @@ class SyncEventHandler(FileSystemEventHandler):
                             message, on_confirm, on_cancel)
                         retry_event.wait()
                     else:
-                        fobj.close()
+                        if fobj:
+                            fobj.close()
                         exit_loop_event.set()
                 if self._sync_indicator_callback:
                     self._sync_indicator_callback(stop=True)
