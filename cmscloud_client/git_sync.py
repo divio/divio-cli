@@ -25,7 +25,7 @@ CHANGES_CHECK_DELAY = 0.5
 def update_env_path_with_git_bin():
     system = platform.system()
     if system == 'Darwin':
-        pass  # TODO
+        os.environ['PATH'] += ':%s' % resource_path('resources/mac_osx/bin')
     elif system == 'Windows':
         os.environ['PATH'] += ';%s' % resource_path('resources/windows/bin')
     else:
