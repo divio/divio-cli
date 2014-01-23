@@ -3,6 +3,7 @@ import datetime
 import os
 import platform
 import requests
+import shutil
 import threading
 import time
 
@@ -35,11 +36,11 @@ update_env_path_with_git_bin()
 
 class GitSyncHandler(object):
 
-    def __init__(self, session, sitename, repo, last_synced_commit,
+    def __init__(self, client, sitename, repo, last_synced_commit,
                  network_error_callback, sync_error_callback,
                  protected_files, protected_file_change_callback,
                  relpath='.', sync_indicator_callback=None):
-        self.session = session
+        self.client = client
         self.sitename = sitename
         self.repo = repo
         self._last_synced_commit = last_synced_commit
@@ -62,6 +63,9 @@ class GitSyncHandler(object):
         self._sync_stopped_event.set()
         if hasattr(self, '_send_changes_thread'):
             self._send_changes_thread.join()
+        self.client._remove_sync_lock(self.relpath)
+        if self.sitename in self.client._sync_handlers_cache:
+            del self.client._sync_handlers_cache[self.sitename]
 
     def _send_changes_worker(self):
         while not self._sync_stopped_event.isSet():
@@ -168,6 +172,11 @@ class GitSyncHandler(object):
             else:
                 fobj.close()
                 exit_loop_event.set()
+        # Updating local "file" remote after successful sync of the commits
+        develop_bundle_path = os.path.join(self.relpath, '.develop.bundle')
+        shutil.move(sync_bundle_path, develop_bundle_path)
+        self.repo.git.fetch('develop_bundle')
+
         self._last_synced_commit = self.repo.git.rev_parse('develop')
         if self._sync_indicator_callback:
             self._sync_indicator_callback(stop=True)
@@ -177,7 +186,7 @@ class GitSyncHandler(object):
         if 'accept' not in headers:
             headers['accept'] = 'text/plain'
         kwargs['headers'] = headers
-        response = self.session.request(
+        response = self.client.session.request(
             'POST', '/api/v1/git-sync/%s/' % self.sitename, *args, **kwargs)
         if not response.ok:
             title = "Sync failed!"

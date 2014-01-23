@@ -422,7 +422,7 @@ class Client(object):
         last_synced_commit = upstream_remote.refs.develop.commit.hexsha
 
         sync_handler = GitSyncHandler(
-            self.session, sitename, repo, last_synced_commit,
+            self, sitename, repo, last_synced_commit,
             network_error_callback, sync_error_callback,
             protected_files, protected_file_change_callback,
             relpath=path, sync_indicator_callback=sync_indicator_callback)
@@ -435,20 +435,13 @@ class Client(object):
                 while self._is_syncing(sitename):
                     time.sleep(1)
             except KeyboardInterrupt:
-                self._stop_sync(sitename, path)
+                sync_handler.stop()
             return (True, 'Stopped syncing')
         else:
             return (True, sync_handler)
 
     def _is_syncing(self, sitename):
         return sitename in self._sync_handlers_cache
-
-    def _stop_sync(self, sitename, path):
-        sync_handler = self._sync_handlers_cache.get(sitename, None)
-        if sync_handler:
-            sync_handler.stop()
-            del self._sync_handlers_cache[sitename]
-        self._remove_sync_lock(path)
 
     def sites(self):
         try:
