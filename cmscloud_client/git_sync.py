@@ -68,44 +68,48 @@ class GitSyncHandler(object):
             start_timestamp = datetime.datetime.now()
             changes = git_changes(self.repo)
             commit = False
-            for kind, changed_files in changes.items():
-                for file_rel_path in changed_files:
-                    filepath = os.path.join(self.relpath, file_rel_path)
-                    file_basename = os.path.basename(filepath)
-                    if file_basename in IGNORED_FILES:
-                        continue
-                    if (file_basename in self._protected_files and
-                            file_rel_path not in self._overridden_protected_files):
-                        from .client import Client
-                        message = Client.PROTECTED_FILE_CHANGE_MESSAGE % filepath
-                        self._protected_file_change_callback(message)
-                        self._overridden_protected_files.add(file_rel_path)
+            added_files = changes['added']
+            for file_rel_path in added_files:
+                filepath = os.path.join(self.relpath, file_rel_path)
+                file_basename = os.path.basename(filepath)
+                if file_basename in IGNORED_FILES:
+                    continue
+                if (file_basename in self._protected_files and
+                        file_rel_path not in self._overridden_protected_files):
+                    from .client import Client
+                    message = Client.PROTECTED_FILE_CHANGE_MESSAGE % filepath
+                    self._protected_file_change_callback(message)
+                    self._overridden_protected_files.add(file_rel_path)
 
-                    syncable = True
-                    in_sync_dir = file_rel_path.startswith(SYNCABLE_DIRECTORIES)
-                    if not in_sync_dir:
-                        error_msg = ('Not in the syncable directory: %s' %
-                                     (', '.join(SYNCABLE_DIRECTORIES)))
-                        syncable = False
-                    elif is_hidden(file_basename):
-                        error_msg = 'Hidden files aren\'t synchronized.'
-                        syncable = False
-                    else:
-                        def raiser(msg):
-                            raise ValidationError(msg)
+                syncable = True
+                in_sync_dir = file_rel_path.startswith(SYNCABLE_DIRECTORIES)
+                if not in_sync_dir:
+                    error_msg = ('Not in the syncable directory: %s' %
+                                 (', '.join(SYNCABLE_DIRECTORIES)))
+                    syncable = False
+                elif is_hidden(file_basename):
+                    error_msg = 'Hidden files aren\'t synchronized.'
+                    syncable = False
+                else:
+                    def raiser(msg):
+                        raise ValidationError(msg)
 
-                        try:
-                            syncable = is_valid_file_name(
-                                file_basename, logger=raiser)
-                        except ValidationError as e:
-                            syncable = False
-                            error_msg = e.message
-                    if syncable:
-                        commit = True
-                        self.repo.git.add(file_rel_path)
-                    else:
-                        msg = 'not a syncable file: "%s": %s' % (filepath, error_msg)
-                        self.sync_logger.info(msg)
+                    try:
+                        syncable = is_valid_file_name(
+                            file_basename, logger=raiser)
+                    except ValidationError as e:
+                        syncable = False
+                        error_msg = e.message
+                if syncable:
+                    commit = True
+                    self.repo.git.add(file_rel_path)
+                else:
+                    msg = 'not a syncable file: "%s": %s' % (filepath, error_msg)
+                    self.sync_logger.info(msg)
+            deleted_files = changes['deleted']
+            for file_rel_path in deleted_files:
+                commit = True
+                self.repo.git.rm(file_rel_path)
             if commit:
                 print changes
                 self._commit_changes()

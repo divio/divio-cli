@@ -411,16 +411,17 @@ def git_changes(repo):
     deleted = []
     other = []
     git_status = repo.git.status(porcelain=True, untracked_files='all')
-    for change in git_status.split('\n'):
-        # change[0] contains staged status
-        unstaged_status = change[1]
-        path = change[3:]
-        if unstaged_status in ['M', '?']:
-            added.append(path)
-        elif unstaged_status == 'D':
-            deleted.append(path)
-        else:
-            other.append(path)
+    if git_status:
+        for change in git_status.split('\n'):
+            # change[0] contains staged status
+            unstaged_status = change[1]
+            path = change[3:]
+            if unstaged_status in ['M', '?']:
+                added.append(path)
+            elif unstaged_status == 'D':
+                deleted.append(path)
+            else:
+                other.append(path)
     return {'added': added, 'deleted': deleted, 'other': other}
 
 
