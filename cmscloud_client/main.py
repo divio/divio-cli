@@ -310,8 +310,8 @@ class CMSCloudGUIApp(App):
     ### SYNC ###
 
     def sync_toggle(self, domain):
-        observer = self._websites_manager.get_site_sync_observer(domain)
-        if observer:
+        handler = self._websites_manager.get_site_sync_handler(domain)
+        if handler:
             self.stop_sync(domain)
         else:
             site_dir = self._websites_manager.get_site_dir(domain)
@@ -325,7 +325,7 @@ class CMSCloudGUIApp(App):
                 self.select_site_dir(domain)
 
     def stop_sync(self, domain):
-        self._websites_manager.stop_site_sync_observer(domain)
+        self._websites_manager.stop_site_sync_handler(domain)
 
     def _sync_confirmed(self, domain, site_dir, force=False):
         loading_dialog = self.show_loading_dialog()
@@ -367,12 +367,12 @@ class CMSCloudGUIApp(App):
             protected_file_change_callback)
         sync_dir_thread.start()
 
-    def _sync_callback(self, loading_dialog, domain, status, msg_or_observer):
+    def _sync_callback(self, loading_dialog, domain, status, msg_or_sync_handler):
         loading_dialog.dismiss()
-        if status:  # observer
-            self._websites_manager.set_site_sync_observer(domain, msg_or_observer)
+        if status:  # handler
+            self._websites_manager.set_site_sync_handler(domain, msg_or_sync_handler)
         else:  # msg
-            if msg_or_observer == Client.DIRECTORY_ALREADY_SYNCING_MESSAGE:
+            if msg_or_sync_handler == Client.DIRECTORY_ALREADY_SYNCING_MESSAGE:
                 site_dir = self._websites_manager.get_site_dir(domain)
                 if site_dir:
                     on_confirm = partial(
@@ -386,15 +386,15 @@ class CMSCloudGUIApp(App):
                 else:
                     self.select_site_dir(domain)
             else:
-                self.show_info_dialog('Error', msg_or_observer)
+                self.show_info_dialog('Error', msg_or_sync_handler)
 
     def _stop_sync_callback(self, domain, msg):
-        observer = self._websites_manager.get_site_sync_observer(domain)
-        if observer:
-            if hasattr(observer, '_continue_despite_stop_callback'):
+        handler = self._websites_manager.get_site_sync_handler(domain)
+        if handler:
+            if hasattr(handler, '_continue_despite_stop_callback'):
                 return
             else:
-                observer._continue_despite_stop_callback = True
+                handler._continue_despite_stop_callback = True
         notify(WINDOW_TITLE, msg)
         on_confirm = partial(self.stop_sync, domain)
         title = 'Stop syncing'

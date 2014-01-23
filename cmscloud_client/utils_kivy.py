@@ -227,7 +227,7 @@ class SyncDirThread(threading.Thread):
         app = App.get_running_app()
         domain = app.sites_dir_database[self.domain]['domain'].encode('utf-8')
         try:
-            status, msg_or_observer = self.client.sync(
+            status, msg_or_sync_handler = self.client.sync(
                 self.network_error_callback, self.sync_error_callback,
                 self.protected_file_change_callback, sitename=domain,
                 path=self.path, force=self.force,
@@ -239,7 +239,7 @@ class SyncDirThread(threading.Thread):
         else:
             Clock.schedule_once(
                 lambda dt: self.sync_callback(
-                    self.domain, status, msg_or_observer), 0)
+                    self.domain, status, msg_or_sync_handler), 0)
 
 
 ###########
@@ -252,7 +252,7 @@ class WebsitesManager(object):
         self._sites_dir_database = sites_dir_database
         self._sites_list_view = sites_list_view
         self._site_views_cache = {}
-        self._site_sync_threads = {}
+        self._site_sync_handlers = {}
 
     def add_or_update_website(self, domain, site_data):
         site_view = None
@@ -276,7 +276,7 @@ class WebsitesManager(object):
 
         site_view.set_site_dir_widgets(site_dir)
 
-        if domain in self._site_sync_threads:
+        if domain in self._site_sync_handlers:
             site_view.set_sync_btn_text_to_stop()
         else:
             site_view.set_sync_btn_text_to_sync()
@@ -290,10 +290,10 @@ class WebsitesManager(object):
         self._sites_list_view.remove_widget(site_view)
         del self._site_views_cache[domain]
 
-        if domain in self._site_sync_threads:
-            site_sync_thread = self._site_sync_threads[domain]
+        if domain in self._site_sync_handlers:
+            site_sync_thread = self._site_sync_handlers[domain]
             site_sync_thread.stop()
-            del self._site_sync_threads[domain]
+            del self._site_sync_handlers[domain]
 
     def clear_websites(self):
         self._sites_list_view.clear_widgets()
@@ -302,10 +302,9 @@ class WebsitesManager(object):
         self.stop_all_threads()
 
     def stop_all_threads(self):
-        for t in self._site_sync_threads.values():
-            t.stop()
-            t.join()
-        self._site_sync_threads.clear()
+        for handler in self._site_sync_handlers.values():
+            handler.stop()
+        self._site_sync_handlers.clear()
 
     def get_site_name(self, domain):
         return self._sites_dir_database[domain]['name'].encode('utf-8')
@@ -321,30 +320,29 @@ class WebsitesManager(object):
         return self._sites_dir_database[domain].get(
             'stage_url', None)
 
-    ### Site's sync observer ###
+    ### Site's sync handler ###
 
-    def _delete_site_sync_observer(self, domain):
-        observer = self.get_site_sync_observer(domain)
-        if observer:
-            observer.stop()
-            observer.join()
-            del self._site_sync_threads[domain]
+    def _delete_site_sync_handler(self, domain):
+        handler = self.get_site_sync_handler(domain)
+        if handler:
+            handler.stop()
+            del self._site_sync_handlers[domain]
             site_view = self._site_views_cache[domain]
             site_view.set_sync_btn_text_to_sync()
 
-    def set_site_sync_observer(self, domain, observer):
-        # stopping and removing any older syncing observer
-        self._delete_site_sync_observer(domain)
+    def set_site_sync_handler(self, domain, handler):
+        # stopping and removing any older syncing handler
+        self._delete_site_sync_handler(domain)
 
-        self._site_sync_threads[domain] = observer
+        self._site_sync_handlers[domain] = handler
         site_view = self._site_views_cache[domain]
         site_view.set_sync_btn_text_to_stop()
 
-    def get_site_sync_observer(self, domain):
-        return self._site_sync_threads.get(domain, None)
+    def get_site_sync_handler(self, domain):
+        return self._site_sync_handlers.get(domain, None)
 
-    def stop_site_sync_observer(self, domain):
-        self._delete_site_sync_observer(domain)
+    def stop_site_sync_handler(self, domain):
+        self._delete_site_sync_handler(domain)
         self.hide_sync_loading_overlay(domain)
 
     def show_sync_loading_overlay(self, domain):
