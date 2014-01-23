@@ -392,10 +392,10 @@ class Client(object):
                     if not chunk:
                         break
                     fobj.write(chunk)
-            if not hasattr(repo.remotes, 'develop_bundle'):
+            if not 'develop_bundle' in repo.git.remote().split():
                 repo.git.remote('add', 'develop_bundle', bundle_path)
             repo.git.fetch('develop_bundle', 'develop')
-            if not hasattr(repo.heads, 'develop'):
+            if not 'develop' in repo.git.branch().split():
                 repo.git.checkout('develop_bundle/develop', b='develop')
             repo.git.pull('develop_bundle', 'develop')
 
