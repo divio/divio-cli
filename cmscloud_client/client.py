@@ -13,6 +13,7 @@ import yaml
 
 from .serialize import register_yaml_extensions, Trackable, File
 from .git_sync import GitSyncHandler
+from .sync_helpers import git_update_gitignore
 from .utils import (
     validate_boilerplate_config, bundle_boilerplate, filter_template_files,
     filter_static_files, validate_app_config, bundle_app,
@@ -398,6 +399,7 @@ class Client(object):
             if not 'develop' in repo.git.branch().split():
                 repo.git.checkout('develop_bundle/develop', b='develop')
             repo.git.pull('develop_bundle', 'develop')
+        git_update_gitignore(repo, ['.*', '!.gitignore'])
 
         protected_files_filename = os.path.join(
             path, Client.PROTECTED_FILES_FILENAME)
