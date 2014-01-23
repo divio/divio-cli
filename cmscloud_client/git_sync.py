@@ -108,8 +108,12 @@ class GitSyncHandler(object):
                     self.sync_logger.info(msg)
             deleted_files = changes['deleted']
             for file_rel_path in deleted_files:
-                commit = True
-                self.repo.git.rm(file_rel_path)
+                filepath = os.path.join(self.relpath, file_rel_path)
+                if not os.path.exists(filepath):
+                    # Some editors remove the original file and rename
+                    # the updated copy.
+                    commit = True
+                    self.repo.git.rm(file_rel_path)
             if commit:
                 print changes
                 self._commit_changes()
