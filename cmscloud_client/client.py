@@ -395,7 +395,7 @@ class Client(object):
                     fobj.write(chunk)
             if not 'develop_bundle' in repo.git.remote().split():
                 repo.git.remote('add', 'develop_bundle', bundle_path)
-            repo.git.fetch('develop_bundle', 'develop')
+            repo.git.fetch('develop_bundle')
             if not 'develop' in repo.git.branch().split():
                 repo.git.checkout('develop_bundle/develop', b='develop')
             repo.git.pull('develop_bundle', 'develop')
