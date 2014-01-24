@@ -361,7 +361,9 @@ class Client(object):
                 **extra_git_kwargs)
             params['last_synced_commit'] = last_synced_commit
         else:
-            repo = git.Repo.init(path)
+            g = git.Git(path)
+            g.execute(['git', 'init'], **extra_git_kwargs)
+            repo = git.Repo(path)
             cfg = repo.config_writer()
             cfg.set_value('user', 'name', 'Git Sync by')
             cfg.set_value('user', 'email', self.get_login())
