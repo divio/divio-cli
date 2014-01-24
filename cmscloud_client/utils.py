@@ -29,6 +29,9 @@ ALLOWED_EXTENSIONS = [
     '.scss',
     '.svg',
     '.webm',
+    '.eot',
+    '.ttf',
+    '.woff',
 ]
 
 BOILERPLATE_REQUIRED = [
