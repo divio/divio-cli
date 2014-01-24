@@ -407,7 +407,7 @@ class Client(object):
                 repo.git.execute(
                     ['git', 'checkout', '-bdevelop', 'develop_bundle/develop'],
                     **extra_git_kwargs)
-            repo.git.execute(['git', 'pull', 'develop_bundle', 'develop'],
+            repo.git.execute(['git', 'merge', 'develop_bundle/develop', 'develop'],
                              **extra_git_kwargs)
         git_update_gitignore(repo, ['.*', '!.gitignore'])
 
