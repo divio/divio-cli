@@ -13,7 +13,7 @@ import yaml
 
 from .serialize import register_yaml_extensions, Trackable, File
 from .git_sync import GitSyncHandler
-from .sync_helpers import git_update_gitignore
+from .sync_helpers import extra_git_kwargs, git_update_gitignore
 from .utils import (
     validate_boilerplate_config, bundle_boilerplate, filter_template_files,
     filter_static_files, validate_app_config, bundle_app,
@@ -356,7 +356,9 @@ class Client(object):
         params = {}
         if os.path.exists(git_dir):
             repo = git.Repo(path)
-            last_synced_commit = repo.git.rev_parse('develop_bundle/develop')
+            last_synced_commit = repo.git.execute(
+                ['git', 'rev-parse', 'develop_bundle/develop'],
+                **extra_git_kwargs)
             params['last_synced_commit'] = last_synced_commit
         else:
             repo = git.Repo.init(path)
@@ -393,12 +395,20 @@ class Client(object):
                     if not chunk:
                         break
                     fobj.write(chunk)
-            if not 'develop_bundle' in repo.git.remote().split():
-                repo.git.remote('add', 'develop_bundle', bundle_path)
-            repo.git.fetch('develop_bundle')
-            if not 'develop' in repo.git.branch().split():
-                repo.git.checkout('develop_bundle/develop', b='develop')
-            repo.git.pull('develop_bundle', 'develop')
+            if not 'develop_bundle' in repo.git.execute(
+                    ['git', 'remote'], **extra_git_kwargs).split():
+                repo.git.execute(
+                    ['git', 'remote', 'add', 'develop_bundle', bundle_path],
+                    **extra_git_kwargs)
+            repo.git.execute(
+                ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
+            if not 'develop' in repo.git.execute(
+                    ['git', 'branch'], **extra_git_kwargs).split():
+                repo.git.execute(
+                    ['git', 'checkout', '-bdevelop', 'develop_bundle/develop'],
+                    **extra_git_kwargs)
+            repo.git.execute(['git', 'pull', 'develop_bundle', 'develop'],
+                             **extra_git_kwargs)
         git_update_gitignore(repo, ['.*', '!.gitignore'])
 
         protected_files_filename = os.path.join(

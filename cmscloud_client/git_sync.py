@@ -7,11 +7,14 @@ import shutil
 import threading
 import time
 
+from git.exc import GitCommandError
+
 from .utils import (
     ValidationError, is_hidden, is_valid_file_name, resource_path,
     uniform_filepath)
 from .sync_helpers import (
-    BACKUP_COUNT, LOG_FILENAME, get_site_specific_logger, git_changes)
+    BACKUP_COUNT, LOG_FILENAME, get_site_specific_logger, git_changes,
+    extra_git_kwargs)
 
 SYNCABLE_DIRECTORIES = ('templates/', 'static/', 'private/')
 
@@ -20,7 +23,7 @@ IGNORED_FILES = set(['.cmscloud', '.cmscloud-folder', '.cmscloud-sync-lock',
 for i in xrange(1, BACKUP_COUNT + 1):
     IGNORED_FILES.add('%s.%d' % (LOG_FILENAME, i))
 
-CHANGES_CHECK_DELAY = 0.5
+CHANGES_CHECK_DELAY = 1.0
 
 
 def update_env_path_with_git_bin():
@@ -106,32 +109,40 @@ class GitSyncHandler(object):
                         error_msg = e.message
                 if syncable:
                     commit = True
-                    self.repo.git.add(file_rel_path)
+                    self.repo.git.execute(
+                        ['git', 'add', file_rel_path], **extra_git_kwargs)
                 else:
                     msg = 'not a syncable file: "%s": %s' % (filepath, error_msg)
                     self.sync_logger.info(msg)
             deleted_files = changes['deleted']
             for file_rel_path in deleted_files:
                 filepath = os.path.join(self.relpath, file_rel_path)
-                if not os.path.exists(filepath):
+                try:
+                    self.repo.git.execute(
+                        ['git', 'rm', file_rel_path], **extra_git_kwargs)
+                except GitCommandError:
                     # Some editors remove the original file and rename
-                    # the updated copy.
+                    # the updated copy. We just run the command during the
+                    # process.
+                    pass
+                else:
                     commit = True
-                    self.repo.git.rm(file_rel_path)
             if commit:
                 print changes
                 self._commit_changes()
 
-        stop_timestamp = datetime.datetime.now()
-        time_elapsed_delta = stop_timestamp - start_timestamp
-        delay = CHANGES_CHECK_DELAY - time_elapsed_delta.total_seconds()
-        if delay > 0:
-            time.sleep(delay)
+            stop_timestamp = datetime.datetime.now()
+            time_elapsed_delta = stop_timestamp - start_timestamp
+            delay = CHANGES_CHECK_DELAY - time_elapsed_delta.total_seconds()
+            if delay > 0:
+                time.sleep(delay)
 
     def _commit_changes(self):
-        self.sync_logger.debug('Sending changes:\t' + self.repo.git.status(porcelain=True))
+        self.sync_logger.debug('Sending changes:\t' + self.repo.git.execute(
+            ['git', 'status', '--porcelain'], **extra_git_kwargs))
         try:
-            self.repo.git.commit(m='Git Sync')
+            self.repo.git.execute(
+                ['git', 'commit', '-m Git Sync'], **extra_git_kwargs)
         except Exception as e:
             print e
             # TODO this sometimes fails, probably due to file being modified again
@@ -150,7 +161,9 @@ class GitSyncHandler(object):
 
         sync_bundle_path = os.path.join(self.relpath, '.sync.bundle')
         commits_range = '%s..develop' % self._last_synced_commit
-        self.repo.git.bundle('create', sync_bundle_path, commits_range)
+        self.repo.git.execute(
+            ['git', 'bundle', 'create', sync_bundle_path, commits_range],
+            **extra_git_kwargs)
         fobj = open(sync_bundle_path)
         kwargs = {'files': {'content': fobj}}
 
@@ -175,9 +188,11 @@ class GitSyncHandler(object):
         # Updating local "file" remote after successful sync of the commits
         develop_bundle_path = os.path.join(self.relpath, '.develop.bundle')
         shutil.move(sync_bundle_path, develop_bundle_path)
-        self.repo.git.fetch('develop_bundle')
+        self.repo.git.execute(
+            ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
 
-        self._last_synced_commit = self.repo.git.rev_parse('develop')
+        self._last_synced_commit = self.repo.git.execute(
+            ['git', 'rev-parse', 'develop'], **extra_git_kwargs)
         if self._sync_indicator_callback:
             self._sync_indicator_callback(stop=True)
 

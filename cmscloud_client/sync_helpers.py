@@ -25,6 +25,16 @@ MAX_BYTES = 100 * (2 ** 10)  # 100KB
 SYNCABLE_DIRECTORIES = ('templates/', 'static/', 'private/')
 
 
+extra_git_kwargs = {}
+if os.name == 'nt':
+        import subprocess
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        extra_git_kwargs['startupinfo'] = startupinfo
+        istream = subprocess.PIPE
+        extra_git_kwargs['istream'] = istream
+
+
 def get_site_specific_logger(sitename, site_dir):
     log_filename = os.path.join(site_dir, LOG_FILENAME)
     rotating_handler = logging.handlers.RotatingFileHandler(
@@ -410,7 +420,9 @@ def git_changes(repo):
     added = []
     deleted = []
     other = []
-    git_status = repo.git.status(porcelain=True, untracked_files='all')
+    git_status = repo.git.execute(
+        ['git', 'status', '--porcelain', '--untracked-files=all'],
+        **extra_git_kwargs)
     if git_status:
         for change in git_status.split('\n'):
             # change[0] contains staged status
@@ -441,5 +453,5 @@ def git_update_gitignore(repo, new_ignore_patterns):
         with open(gitignore_filepath, 'w') as fobj:
             new_gitignore_str = '\n'.join(sorted(ignored_set))
             fobj.write(new_gitignore_str)
-        repo.git.add(gitignore_filepath)
-        repo.git.commit(m='Update gitignore')
+        repo.git.execute(['git', 'add', gitignore_filepath], **extra_git_kwargs)
+        repo.git.execute(['git', 'commit', '-m Update gitignore'], **extra_git_kwargs)
