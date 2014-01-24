@@ -29,9 +29,10 @@ CHANGES_CHECK_DELAY = 1.0
 def update_env_path_with_git_bin():
     system = platform.system()
     if system == 'Darwin':
-        os.environ['PATH'] += ':%s' % resource_path('resources/mac_osx/bin')
+        os.environ['PATH'] = '%s:' % resource_path('resources/mac_osx/bin') + os.environ['PATH']
+        os.environ['GIT_EXEC_PATH'] = resource_path('resources/mac_osx/libexec/git-core')
     elif system == 'Windows':
-        os.environ['PATH'] += ';%s' % resource_path('resources/windows/bin')
+        os.environ['PATH'] = '%s;' % resource_path('resources/windows/bin') + os.environ['PATH']
     else:
         pass  # TODO
 update_env_path_with_git_bin()
