@@ -118,16 +118,17 @@ class GitSyncHandler(object):
             deleted_files = changes['deleted']
             for file_rel_path in deleted_files:
                 filepath = os.path.join(self.relpath, file_rel_path)
-                try:
-                    self.repo.git.execute(
-                        ['git', 'rm', file_rel_path], **extra_git_kwargs)
-                except GitCommandError:
-                    # Some editors remove the original file and rename
-                    # the updated copy. We just run the command during the
-                    # process.
-                    pass
-                else:
-                    commit = True
+                if not os.path.exists(filepath):
+                    try:
+                        self.repo.git.execute(
+                            ['git', 'rm', file_rel_path], **extra_git_kwargs)
+                    except GitCommandError:
+                        # Some editors remove the original file and rename
+                        # the updated copy. We just run the command during the
+                        # process.
+                        pass
+                    else:
+                        commit = True
             if commit:
                 print changes
                 self._commit_changes()
