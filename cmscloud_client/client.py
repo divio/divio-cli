@@ -411,7 +411,7 @@ class Client(object):
                     **extra_git_kwargs)
             repo.git.execute(['git', 'merge', 'develop_bundle/develop', 'develop'],
                              **extra_git_kwargs)
-        git_update_gitignore(repo, ['.*', '!.gitignore'])
+        git_update_gitignore(repo, ['.*', '!.gitignore', '/db_dumps/'])
 
         protected_files_filename = os.path.join(
             path, Client.PROTECTED_FILES_FILENAME)
