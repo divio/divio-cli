@@ -31,8 +31,8 @@ if os.name == 'nt':
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         extra_git_kwargs['startupinfo'] = startupinfo
-        stdin = subprocess.PIPE
-        extra_git_kwargs['stdin'] = stdin
+        istream = subprocess.PIPE
+        extra_git_kwargs['istream'] = istream
 
 
 def get_site_specific_logger(sitename, site_dir):
