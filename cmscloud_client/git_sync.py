@@ -171,11 +171,12 @@ class GitSyncHandler(object):
 
         if self._sync_indicator_callback:
             self._sync_indicator_callback()
+        success = False
         while not exit_loop_event.isSet():
             if fobj:  # reseting the read state of the sending file
                 fobj.seek(0)
             try:
-                self._send_request(**kwargs)
+                success = self._send_request(**kwargs)
             except (requests.exceptions.ConnectionError,
                     requests.exceptions.Timeout):
                 retry_event.clear()
@@ -187,14 +188,15 @@ class GitSyncHandler(object):
             else:
                 fobj.close()
                 exit_loop_event.set()
-        # Updating local "file" remote after successful sync of the commits
-        develop_bundle_path = os.path.join(self.relpath, '.develop.bundle')
-        shutil.move(sync_bundle_path, develop_bundle_path)
-        self.repo.git.execute(
-            ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
+        if success:
+            # Updating local "file" remote after successful sync of the commits
+            develop_bundle_path = os.path.join(self.relpath, '.develop.bundle')
+            shutil.move(sync_bundle_path, develop_bundle_path)
+            self.repo.git.execute(
+                ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
 
-        self._last_synced_commit = self.repo.git.execute(
-            ['git', 'rev-parse', 'develop'], **extra_git_kwargs)
+            self._last_synced_commit = self.repo.git.execute(
+                ['git', 'rev-parse', 'develop'], **extra_git_kwargs)
         if self._sync_indicator_callback:
             self._sync_indicator_callback(stop=True)
 
@@ -205,7 +207,9 @@ class GitSyncHandler(object):
         kwargs['headers'] = headers
         response = self.client.session.request(
             'POST', '/api/v1/git-sync/%s/' % self.sitename, *args, **kwargs)
-        if not response.ok:
+        if response.ok:
+            return True
+        else:
             title = "Sync failed!"
             if response.status_code == 400:
                 msg = response.content
@@ -216,3 +220,4 @@ class GitSyncHandler(object):
                 else:
                     msg = '\n'.join([base_msg, "Internal Server Error"])
             self._sync_error_callback(msg, title=title)
+            return False
