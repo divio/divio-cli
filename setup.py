@@ -5,6 +5,7 @@ from cmscloud_client import __version__
 
 
 INSTALL_REQUIRES = [
+    'GitPython==0.3.2.RC1',
     'requests',
     'docopt',
     'pyyaml',
