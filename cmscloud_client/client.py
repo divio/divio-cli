@@ -347,19 +347,6 @@ class Client(object):
             if sitename != dir_sitename:
                 msg = 'This directory is already being synced with website "%s"' % dir_sitename
                 return (False, msg)
-        if not self._acquire_sync_lock(path):
-            if self.interactive:
-                if not cli_confirm(
-                        'Are you sure you want to start syncing anyway?',
-                        message='It seems that you are already syncing this directory.',
-                        default=False):
-                    return (False, 'Aborted')
-            else:
-                if force:
-                    pass
-                else:
-                    return (False, Client.DIRECTORY_ALREADY_SYNCING_MESSAGE)
-
         git_dir = os.path.join(path, '.git')
         params = {}
         if os.path.exists(git_dir) and os.path.exists(cmscloud_dot_filename):
@@ -384,6 +371,20 @@ class Client(object):
             cfg.write()
             cfg._lock._release_lock()
             del cfg
+
+        if not self._acquire_sync_lock(path):
+            if self.interactive:
+                if not cli_confirm(
+                        'Are you sure you want to start syncing anyway?',
+                        message='It seems that you are already syncing this directory.',
+                        default=False):
+                    return (False, 'Aborted')
+            else:
+                if force:
+                    pass
+                else:
+                    return (False, Client.DIRECTORY_ALREADY_SYNCING_MESSAGE)
+
         try:
             response = self.session.get(
                 '/api/v1/git-sync/%s/' % sitename, params=params, stream=True,
