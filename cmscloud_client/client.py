@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+import datetime
 import getpass
 import json
 import netrc
 import os
 import time
+import shutil
 import stat
 import urlparse
 
@@ -339,6 +341,12 @@ class Client(object):
                 return (False, msg)
         if '.' in sitename:
             sitename = sitename.split('.')[0]
+        if os.path.exists(cmscloud_dot_filename):
+            with open(cmscloud_dot_filename, 'r') as fobj:
+                dir_sitename = fobj.read().strip()
+            if sitename != dir_sitename:
+                msg = 'This directory is already being synced with website "%s"' % dir_sitename
+                return (False, msg)
         if not self._acquire_sync_lock(path):
             if self.interactive:
                 if not cli_confirm(
@@ -354,13 +362,19 @@ class Client(object):
 
         git_dir = os.path.join(path, '.git')
         params = {}
-        if os.path.exists(git_dir):
+        if os.path.exists(git_dir) and os.path.exists(cmscloud_dot_filename):
             repo = git.Repo(path)
             last_synced_commit = repo.git.execute(
                 ['git', 'rev-parse', 'develop_bundle/develop'],
                 **extra_git_kwargs)
             params['last_synced_commit'] = last_synced_commit
         else:
+            if os.path.exists(path):
+                if os.listdir(path):  # dir isn't empty
+                    backup_dir_path = '%s-%s.backup' % (path, str(datetime.datetime.now()))
+                    shutil.move(path, backup_dir_path)
+            else:
+                os.makedirs(path)
             g = git.Git(path)
             g.execute(['git', 'init'], **extra_git_kwargs)
             repo = git.Repo(path)
