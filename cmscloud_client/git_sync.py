@@ -166,7 +166,7 @@ class GitSyncHandler(object):
         self.repo.git.execute(
             ['git', 'bundle', 'create', sync_bundle_path, commits_range],
             **extra_git_kwargs)
-        fobj = open(sync_bundle_path)
+        fobj = open(sync_bundle_path, 'rb')
         kwargs = {'files': {'content': fobj}}
 
         if self._sync_indicator_callback:
