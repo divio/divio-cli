@@ -20,7 +20,9 @@ import kivy
 kivy.require('1.7.2')
 
 from functools import partial
+import anydbm
 import shelve
+import traceback
 import webbrowser
 
 from kivy.app import App
@@ -78,7 +80,15 @@ class CMSCloudGUIApp(App):
             os.environ.get(Client.CMSCLOUD_HOST_KEY, Client.CMSCLOUD_HOST_DEFAULT),
             interactive=False)
         sites_dir_database_file_path = os.path.join(self.user_data_dir, SITES_DATABASE_FILENAME)
-        self.sites_dir_database = shelve.open(sites_dir_database_file_path, writeback=True)
+
+        def open_db():
+            self.sites_dir_database = shelve.open(sites_dir_database_file_path, writeback=True)
+        try:
+            open_db()
+        except anydbm.error:  # "db type could not be determined"
+            traceback.print_exc()  # log the exception
+            os.remove(sites_dir_database_file_path)  # remove corrupted db file
+            open_db()  # retry
 
     def build_config(self, config):
         config.setdefaults(USER_SETTINGS_SECTION, {
