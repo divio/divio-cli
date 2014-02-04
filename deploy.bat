@@ -2,6 +2,7 @@
 echo ***********************************
 echo AldrynCloud Win32 deployment script
 echo ***********************************
+del .\cmscloud_client\cmscloudgui.ini
 REM FIXME: Broken if uses 'pip install twisted'
 easy_install twisted
 pip install autobahn
