@@ -9,10 +9,8 @@ INSTALL_REQUIRES = [
     'requests',
     'docopt',
     'pyyaml',
-    'watchdog',
 ]
 DEPENDENCY_LINKS = [
-    'https://github.com/gorakhargosh/watchdog/archive/v0.6.1.zip#egg=watchdog-0.6.1',
     'https://bitbucket.org/pygame/pygame/get/df48571.zip#egg=pygame-1.9.2',
 ]
 EXTRAS_REQUIRE = {

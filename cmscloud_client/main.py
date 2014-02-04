@@ -339,7 +339,7 @@ class CMSCloudGUIApp(App):
 
     def _sync_confirmed(self, domain, site_dir, force=False):
         loading_dialog = self.show_loading_dialog()
-        path = site_dir.encode('utf-8')  # otherwise watchdog's observer crashed
+        path = site_dir.encode('utf-8')
         sync_callback = partial(self._sync_callback, loading_dialog)
         stop_sync_callback = partial(self._stop_sync_callback, domain)
 
