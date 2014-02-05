@@ -358,8 +358,9 @@ class Client(object):
         else:
             if os.path.exists(path):
                 if os.listdir(path):  # dir isn't empty
-                    backup_dir_path = '%s-%s.backup' % (path, str(datetime.datetime.now()))
+                    backup_dir_path = '%s - %s.backup' % (path, str(datetime.datetime.now()))
                     shutil.move(path, backup_dir_path)
+                    os.mkdir(path)
             else:
                 os.makedirs(path)
             g = git.Git(path)
