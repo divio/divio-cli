@@ -309,10 +309,14 @@ class CMSCloudGUIApp(App):
             msg = unicode(data)
             self.show_info_dialog('Error', msg)
 
-    def select_site_dir(self, domain):
-        on_selection = partial(self._select_site_dir_callback, domain)
+    def select_site_dir(self, domain, on_selection=None):
+
+        def on_selection_wrapper(site_dir):
+            self._select_site_dir_callback(domain, site_dir)
+            if callable(on_selection):
+                on_selection()
         site_dir = self._websites_manager.get_site_dir(domain)
-        self.show_dir_chooser_dialog(on_selection, path=site_dir)
+        self.show_dir_chooser_dialog(on_selection_wrapper, path=site_dir)
 
     def _select_site_dir_callback(self, domain, site_dir):
         self._websites_manager.set_site_dir(domain, site_dir)
@@ -332,7 +336,7 @@ class CMSCloudGUIApp(App):
                 msg = 'All local changes to the boilerplate of "%s" will be undone. Continue?' % name
                 self.show_confirm_dialog(title, msg, on_confirm)
             else:
-                self.select_site_dir(domain)
+                self.select_site_dir(domain, on_selection=lambda *args: self.sync_toggle(domain))
 
     def stop_sync(self, domain):
         self._websites_manager.stop_site_sync_handler(domain)
