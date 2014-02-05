@@ -330,11 +330,13 @@ class CMSCloudGUIApp(App):
         else:
             site_dir = self._websites_manager.get_site_dir(domain)
             if site_dir:
-                on_confirm = partial(self._sync_confirmed, domain, site_dir)
-                title = 'Confirm sync'
-                name = self._websites_manager.get_site_name(domain)
-                msg = 'All local changes to the boilerplate of "%s" will be undone. Continue?' % name
-                self.show_confirm_dialog(title, msg, on_confirm)
+                # XXX since git sync solution we don't discard any local changes
+                #on_confirm = partial(self._sync_confirmed, domain, site_dir)
+                #title = 'Confirm sync'
+                #name = self._websites_manager.get_site_name(domain)
+                #msg = 'All local changes to the boilerplate of "%s" will be undone. Continue?' % name
+                #self.show_confirm_dialog(title, msg, on_confirm)
+                self._sync_confirmed(domain, site_dir)
             else:
                 self.select_site_dir(domain, on_selection=lambda *args: self.sync_toggle(domain))
 
