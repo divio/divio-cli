@@ -23,7 +23,7 @@ IGNORED_FILES = set(['.cmscloud', '.cmscloud-folder', '.cmscloud-sync-lock',
 for i in xrange(1, BACKUP_COUNT + 1):
     IGNORED_FILES.add('%s.%d' % (LOG_FILENAME, i))
 
-CHANGES_CHECK_DELAY = 1.0
+CHANGES_CHECK_DELAY = 0.5
 
 
 def update_env_path_with_git_bin():
