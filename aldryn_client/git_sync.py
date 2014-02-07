@@ -18,7 +18,7 @@ from .sync_helpers import (
 
 SYNCABLE_DIRECTORIES = ('templates/', 'static/', 'private/')
 
-IGNORED_FILES = set(['.cmscloud', '.cmscloud-folder', '.cmscloud-sync-lock',
+IGNORED_FILES = set(['.aldryn', '.aldryn-folder', '.aldryn-sync-lock',
                      '.DS_Store', LOG_FILENAME])
 for i in xrange(1, BACKUP_COUNT + 1):
     IGNORED_FILES.add('%s.%d' % (LOG_FILENAME, i))

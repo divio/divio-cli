@@ -3,7 +3,7 @@
 echo '***********************************'
 echo 'AldrynCloud OS X deployment script'
 echo '***********************************'
-rm -f ./cmscloud_client/cmscloudgui.ini
+rm -f ./aldryn_client/aldryngui.ini
 rm -rf ./dist/AldrynCloud
 rm -rf ./dist/AldrynCloud.app
 rm -rf ./dist/AldrynCloud.dmg

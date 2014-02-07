@@ -2,10 +2,10 @@
 
 WORKSPACE_FOLDER="$HOME/Documents/workspace"
 PYINSTALLER_FOLDER="$WORKSPACE_FOLDER/pyinstaller"
-SEARCH_FOLDER="$WORKSPACE_FOLDER/cmscloud-client/cmscloud_client"
+SEARCH_FOLDER="$WORKSPACE_FOLDER/aldryn-client/aldryn_client"
 PACKAGING_FOLDER="$WORKSPACE_FOLDER/packages"
-MAIN_PYTHON_SCRIPT="$WORKSPACE_FOLDER/cmscloud-client/cmscloud_client/main.py"
-CONTENTS_FOLDER="$WORKSPACE_FOLDER/cmscloud-client/cmscloud_client/resources"
+MAIN_PYTHON_SCRIPT="$WORKSPACE_FOLDER/aldryn-client/aldryn_client/main.py"
+CONTENTS_FOLDER="$WORKSPACE_FOLDER/aldryn-client/aldryn_client/resources"
 ICON_FILE="$CONTENTS_FOLDER/appIcon.icns"
 
 DEPLOY_NAME="AldrynCloud"

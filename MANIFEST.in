@@ -1,5 +1,5 @@
 include *.txt
-include cmscloud_client/cacert.pem cmscloud_client/cmscloudgui.kv
-recursive-include cmscloud_client/resources *.*
-recursive-include cmscloud_client/img *.*
+include aldryn_client/cacert.pem aldryn_client/aldryngui.kv
+recursive-include aldryn_client/resources *.*
+recursive-include aldryn_client/img *.*
 exclude deploy.sh

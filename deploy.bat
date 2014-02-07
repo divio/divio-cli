@@ -2,7 +2,7 @@
 echo ***********************************
 echo AldrynCloud Win32 deployment script
 echo ***********************************
-del .\cmscloud_client\cmscloudgui.ini
+del .\aldryn_client\aldryngui.ini
 pip install requests
 python ..\PyInstaller-2.1\pyinstaller.py bin\AldrynCloud.spec
 echo ***********************************

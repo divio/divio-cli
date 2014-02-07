@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from cmscloud_client.serialize import Dumper
+from aldryn_client.serialize import Dumper
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils.translation import get_language
@@ -15,7 +15,7 @@ class Command(BaseCommand):
              print "You must specify a language code (eg: en) as second argument"
              return
          datadir = os.path.join(os.path.dirname(outfile), 'data')
-         dumper = Dumper(datadir, language, getattr(settings, 'CMSCLOUD_DUMPDATA_FOLLOW', []))
+         dumper = Dumper(datadir, language, getattr(settings, 'ALDRYN_DUMPDATA_FOLLOW', []))
          dumper.dump(outfile)
 
 

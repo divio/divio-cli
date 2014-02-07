@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-CMSCLOUD_DUMPDATA_FOLLOW
+# -*- coding: utf-8 -*-ALDRYN_DUMPDATA_FOLLOW
 import os
 from django.core.management.base import NoArgsCommand
-from cmscloud_client.serialize import Loader
+from aldryn_client.serialize import Loader
 
 
 class Command(NoArgsCommand):

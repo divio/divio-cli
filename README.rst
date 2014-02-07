@@ -13,24 +13,24 @@ Installing
 
 Install from our internal package server using pip, or straight from git.
 
-``pip install --extra-index-url https://divio:<insert password here>@pkg.divio.ch/simple/ cmscloud-client``
+``pip install --extra-index-url https://divio:<insert password here>@pkg.divio.ch/simple/ aldryn-client``
 
 
 ****************
 Using the client
 ****************
 
-After installing, you'll have a command line tool called ``cmscloud`` at your disposal. As it uses docopt, just running
+After installing, you'll have a command line tool called ``aldryn`` at your disposal. As it uses docopt, just running
 it with no arguments will give you all possible commands.
 
 What it's not telling you is that you can override the host it's talking to by setting the environemnt variable
-``CMSCLOUD_HOST`` to something (for example: ``http://localhost:8000``). If you want to use the client locally, just
-invoke it like this: ``CMSCLOUD_HOST=http://localhost:8000 cmscloud ...``.
+``ALDRYN_HOST`` to something (for example: ``http://localhost:8000``). If you want to use the client locally, just
+invoke it like this: ``ALDRYN_HOST=http://localhost:8000 aldryn ...``.
 
 Logging in
 ==========
 
-Before using the client, you need to log in, call ``cmscloud login`` and provide your username and password. This will
+Before using the client, you need to log in, call ``aldryn login`` and provide your username and password. This will
 store a token in your local ``.netrc`` file that will be used for subsequent requests.
 
 
@@ -62,20 +62,20 @@ It requires at least the following keys:
 Settings
 ========
 
-If you want to provide settings (and a nice form) for your app, you may add a file ``cmscloud_config.py`` to the root of
+If you want to provide settings (and a nice form) for your app, you may add a file ``aldryn_config.py`` to the root of
 your app (next to setup.py).
 
-This file **must** contain a class named ``Form`` which **must** subclass ``cmscloud_client.forms.BaseForm``.
+This file **must** contain a class named ``Form`` which **must** subclass ``aldryn_client.forms.BaseForm``.
 
 The ``Form`` class may contain any number of form fields.
 
 Available fields are:
 
-* ``cmscloud_client.forms.CharField``
-* ``cmscloud_client.forms.CheckboxField``
-* ``cmscloud_client.forms.SelectField``
-* ``cmscloud_client.forms.NumberField``
-* ``cmscloud_client.forms.StaticFileField``
+* ``aldryn_client.forms.CharField``
+* ``aldryn_client.forms.CheckboxField``
+* ``aldryn_client.forms.SelectField``
+* ``aldryn_client.forms.NumberField``
+* ``aldryn_client.forms.StaticFileField``
 
 All fields must provide a label as first argument and take a keyword argument named ``required`` to indicate whether
 this field is required or not.
@@ -98,7 +98,7 @@ Custom field validation
 -----------------------
 
 If you want to have custom field validation, subclass a field and overwrite it's ``clean`` method, which takes a single
-argument (the value to clean) and should return a cleaned value or raise ``cmscloud_client.forms.ValidationError`` with
+argument (the value to clean) and should return a cleaned value or raise ``aldryn_client.forms.ValidationError`` with
 a nice message as to why the validation failed.
 
 Custom Runtime APIs
@@ -161,8 +161,8 @@ It requires at least the following keys:
 Including initial data
 ======================
 
-To include initial data in your boilerplate, add ``cmscloud_client`` to your installed apps in your project and call
-the management command ``cmscloud_dumpdata <outfile> <language>``. ``<outfile>`` must be a file named ``data.yaml``
+To include initial data in your boilerplate, add ``aldryn_client`` to your installed apps in your project and call
+the management command ``aldryn_dumpdata <outfile> <language>``. ``<outfile>`` must be a file named ``data.yaml``
 located next to your ``boilerplate.yaml`` file. ``<language>`` is the language code of the language you want to include
 ('en' is a good default choice). Only one language can be included.
 
@@ -171,7 +171,7 @@ Handling relations in plugins
 -----------------------------
 
 If your plugins include relationships to other models that need to be included, define a setting
-``CMSCLOUD_DUMPDATA_FOLLOW`` which is a list of strings in the form of ``PluginName.relationship_field``.
+``ALDRYN_DUMPDATA_FOLLOW`` which is a list of strings in the form of ``PluginName.relationship_field``.
 
 
 

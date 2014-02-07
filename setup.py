@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
-from cmscloud_client import __version__
+from aldryn_client import __version__
 
 
 INSTALL_REQUIRES = [
@@ -39,12 +39,12 @@ CLASSIFIERS = [
 ]
 
 setup(
-    name='cmscloud-client',
+    name='aldryn-client',
     version=__version__,
-    description='The command-line client for the django CMS cloud',
+    description='The command-line client for the Aldryn Cloud',
     author='The django CMS cloud team',
     author_email='info@divio.ch',
-    url='http://django-cms.com/',
+    url='http://aldryn.com/',
     packages=find_packages(),
     license='BSD',
     platforms=['OS Independent'],
@@ -53,6 +53,6 @@ setup(
     dependency_links=DEPENDENCY_LINKS,
     entry_points="""
     [console_scripts]
-    cmscloud = cmscloud_client.cli:main
+    aldryn = aldryn_client.cli:main
     """,
 )
