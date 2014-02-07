@@ -46,6 +46,8 @@ setup(
     author_email='info@divio.ch',
     url='http://aldryn.com/',
     packages=find_packages(),
+    include_package_data=True,
+    zip_safe=False,
     license='BSD',
     platforms=['OS Independent'],
     install_requires=INSTALL_REQUIRES,

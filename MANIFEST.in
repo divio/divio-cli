@@ -1,5 +1,6 @@
 include *.txt
-include aldryn_client/cacert.pem aldryn_client/aldryngui.kv
+include aldryn_client/cacert.pem
+include aldryn_client/aldryngui.kv
 recursive-include aldryn_client/resources *.*
 recursive-include aldryn_client/img *.*
 exclude deploy.sh
