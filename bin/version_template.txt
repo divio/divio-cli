@@ -36,7 +36,9 @@ VSVersionInfo(
         StringStruct(u'LegalCopyright', u'© Divio AG. All rights reserved.'),
         StringStruct(u'OriginalFilename', u'ALDRYNCLOUD.EXE'),
         StringStruct(u'ProductName', u'cmscloud-client'),
-        StringStruct(u'ProductVersion', u'$version_str')])
+        StringStruct(u'ProductVersion', u'$version_str'),
+        StringStruct(u'ReleaseType', u'stable'),
+        StringStruct(u'WWW', u'http://aldryn.com/')])
       ]),
     VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
   ]

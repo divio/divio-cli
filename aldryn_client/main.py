@@ -26,10 +26,13 @@ import traceback
 import webbrowser
 
 from kivy.app import App
+from kivy.base import stopTouchApp
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import ScreenManager, TransitionBase
+from kivy.utils import platform
+import pygame
 
 from client import Client
 from .utils_kivy import (
@@ -73,6 +76,7 @@ ADD_NEW_SITE_URL = 'https://control.django-cms.com/control/new/'
 class AldrynGUIApp(App):
 
     title = WINDOW_TITLE
+    icon = get_icon_path()
 
     def __init__(self, *args, **kwargs):
         super(AldrynGUIApp, self).__init__(*args, **kwargs)
@@ -102,8 +106,24 @@ class AldrynGUIApp(App):
         sm.add_widget(EmptyScreen(name='empty'))
         return sm
 
+    def on_key_down(self, win, key, scancode, string, modifiers):
+        if platform == 'macosx':
+            if 'meta' in modifiers:
+                if key == 113:  # cmd+q
+                    stopTouchApp()
+                    return True
+                if key == 104:  # cmd+h
+                    pygame.display.iconify()
+                    return True
+        elif platform == 'win':
+            if 'alt' in modifiers and key == 285:  # alt+f4
+                stopTouchApp()
+                return True
+                
     def on_start(self):
         super(AldrynGUIApp, self).on_start()
+
+        Window.bind(on_key_down=self.on_key_down)
 
         sites_list_view = self._get_sites_list_view()
         self._websites_manager = WebsitesManager(self.sites_dir_database, sites_list_view)
