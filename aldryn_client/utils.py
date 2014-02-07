@@ -218,10 +218,10 @@ def bundle_app(config, script):
     yaml.safe_dump(config, config_fileobj)
     tar_add_stringio(tar, config_fileobj, 'app.yaml')
     script_fileobj = StringIO(script)
-    if os.path.exists('cmscloud_config.py'):
-        tar_add_stringio(tar, script_fileobj, 'cmscloud_config.py')
+    if os.path.exists('aldryn_config.py'):
+        tar_add_stringio(tar, script_fileobj, 'aldryn_config.py')
         # add actual package
-    distdir = tempfile.mkdtemp(prefix='cmscloud-client')
+    distdir = tempfile.mkdtemp(prefix='aldryn-client')
     try:
         bundle_package(distdir, tar)
     finally:

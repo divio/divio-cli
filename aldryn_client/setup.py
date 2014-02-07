@@ -10,17 +10,17 @@ from setuptools import setup
 APP = ['main.py']
 DATA_FILES = []
 OPTIONS = {
-    'excludes': ['numpy','email'],
-    'argv_emulation': False, 
+    'excludes': ['numpy', 'email'],
+    'argv_emulation': False,
     'iconfile': 'resources/appIcon.icns',
-    'semi_standalone':'False',
+    'semi_standalone': 'False',
     'optimize': 2,
-    'resources': ['client.py','serialize.py','sync.py','utils_kivy.py','utils.py', 'cacert.pem', 'img', 'management', 'cmscloudgui.kv'],
-    'packages': ['certifi','wxwidgets', 'wxpython'],
+    'resources': ['client.py', 'serialize.py', 'sync.py', 'utils_kivy.py', 'utils.py', 'cacert.pem', 'img', 'management', 'aldryngui.kv'],
+    'packages': ['certifi', 'wxwidgets', 'wxpython'],
     'site_packages': 'True',
-    'plist' : {
-            'LSPrefersPPC' : False,
-            'LSArchitecturePriority' : 'x86_64',
+    'plist': {
+        'LSPrefersPPC': False,
+        'LSArchitecturePriority': 'x86_64',
     }
 }
 

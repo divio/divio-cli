@@ -80,11 +80,11 @@ class Client(object):
     APP_FILENAME_YAML = 'app.yaml'
     BOILERPLATE_FILENAME_JSON = 'boilerplate.json'
     BOILERPLATE_FILENAME_YAML = 'boilerplate.yaml'
-    CMSCLOUD_CONFIG_FILENAME = 'cmscloud_config.py'
-    CMSCLOUD_DOT_FILENAME = '.cmscloud'
-    CMSCLOUD_HOST_DEFAULT = 'https://control.aldryn.com'
-    CMSCLOUD_HOST_KEY = 'CMSCLOUD_HOST'
-    CMSCLOUD_SYNC_LOCK_FILENAME = '.cmscloud-sync-lock'
+    ALDRYN_CONFIG_FILENAME = 'aldryn_config.py'
+    ALDRYN_DOT_FILENAME = '.aldryn'
+    ALDRYN_HOST_DEFAULT = 'https://control.aldryn.com'
+    ALDRYN_HOST_KEY = 'ALDRYN_HOST'
+    ALDRYN_SYNC_LOCK_FILENAME = '.aldryn-sync-lock'
     DATA_FILENAME = 'data.yaml'
     PROTECTED_FILES_FILENAME = '.protected_files'
     SETUP_FILENAME = 'setup.py'
@@ -98,7 +98,7 @@ class Client(object):
     ALL_CONFIG_FILES = [
         APP_FILENAME_JSON, APP_FILENAME_YAML,
         BOILERPLATE_FILENAME_JSON, BOILERPLATE_FILENAME_YAML,
-        CMSCLOUD_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
+        ALDRYN_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
 
     def __init__(self, host, interactive=True):
         register_yaml_extensions()
@@ -280,15 +280,15 @@ class Client(object):
         if not os.path.exists(setup_filename):
             msg = "File '%s' not found." % Client.SETUP_FILENAME
             return (False, msg)
-        cmscloud_config_filename = os.path.join(
-            path, Client.CMSCLOUD_CONFIG_FILENAME)
+        aldryn_config_filename = os.path.join(
+            path, Client.ALDRYN_CONFIG_FILENAME)
         msgs = []
-        if os.path.exists(cmscloud_config_filename):
-            with open(cmscloud_config_filename) as fobj:
+        if os.path.exists(aldryn_config_filename):
+            with open(aldryn_config_filename) as fobj:
                 script = fobj.read()
         else:
             script = ''
-            msgs.append("Warning: File '%s' not found." % Client.CMSCLOUD_CONFIG_FILENAME)
+            msgs.append("Warning: File '%s' not found." % Client.ALDRYN_CONFIG_FILENAME)
             msgs.append("Your app will not have any configurable settings.")
         tarball = bundle_app(config, script)
         try:
@@ -313,7 +313,7 @@ class Client(object):
 
     def _acquire_sync_lock(self, sync_dir):
         lock_filename = os.path.join(
-            sync_dir, Client.CMSCLOUD_SYNC_LOCK_FILENAME)
+            sync_dir, Client.ALDRYN_SYNC_LOCK_FILENAME)
         try:
             fd = os.open(lock_filename, os.O_CREAT | os.O_EXCL)
             os.close(fd)
@@ -324,32 +324,32 @@ class Client(object):
 
     def _remove_sync_lock(self, sync_dir):
         lock_filename = os.path.join(
-            sync_dir, Client.CMSCLOUD_SYNC_LOCK_FILENAME)
+            sync_dir, Client.ALDRYN_SYNC_LOCK_FILENAME)
         if os.path.exists(lock_filename):
             os.remove(lock_filename)
 
     def sync(self, network_error_callback, sync_error_callback,
              protected_file_change_callback, sitename=None, path='.', force=False,
              sync_indicator_callback=None, stop_sync_callback=None):
-        cmscloud_dot_filename = os.path.join(path, Client.CMSCLOUD_DOT_FILENAME)
+        aldryn_dot_filename = os.path.join(path, Client.ALDRYN_DOT_FILENAME)
         if not sitename:
-            if os.path.exists(cmscloud_dot_filename):
-                with open(cmscloud_dot_filename, 'r') as fobj:
+            if os.path.exists(aldryn_dot_filename):
+                with open(aldryn_dot_filename, 'r') as fobj:
                     sitename = fobj.read().strip()
             if not sitename:
                 msg = "Please specify a sitename using --sitename."
                 return (False, msg)
         if '.' in sitename:
             sitename = sitename.split('.')[0]
-        if os.path.exists(cmscloud_dot_filename):
-            with open(cmscloud_dot_filename, 'r') as fobj:
+        if os.path.exists(aldryn_dot_filename):
+            with open(aldryn_dot_filename, 'r') as fobj:
                 dir_sitename = fobj.read().strip()
             if sitename != dir_sitename:
                 msg = 'This directory is already being synced with website "%s"' % dir_sitename
                 return (False, msg)
         git_dir = os.path.join(path, '.git')
         params = {}
-        if os.path.exists(git_dir) and os.path.exists(cmscloud_dot_filename):
+        if os.path.exists(git_dir) and os.path.exists(aldryn_dot_filename):
             repo = git.Repo(path)
             last_synced_commit = repo.git.execute(
                 ['git', 'rev-parse', 'develop_bundle/develop'],
@@ -443,7 +443,7 @@ class Client(object):
         #    os.chmod(protected_path, read_only_mode)
 
         # successfully initialized the sync, saving the site's name
-        with open(cmscloud_dot_filename, 'w') as fobj:
+        with open(aldryn_dot_filename, 'w') as fobj:
             fobj.write(sitename)
 
         upstream_remote = repo.remotes.develop_bundle

@@ -3,13 +3,13 @@
 *.pyc
 *.pyo
 
-cmscloudgui.ini
+aldryngui.ini
 sync.log
 build/
-cmscloud_client.egg-info/
+aldryn_client.egg-info/
 dist/
 env/
 
-/cmscloud_client/packaging/
-/cmscloud_client/temp
+/aldryn_client/packaging/
+/aldryn_client/temp
 /KIVY/

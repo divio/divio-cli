@@ -4,26 +4,26 @@ from kivy.tools.packaging.pyinstaller_hooks import install_hooks
 install_hooks(globals())
 
 # for __version__
-execfile('./cmscloud_client/__init__.py')
+execfile('./aldryn_client/__init__.py')
 
 system = platform.system()
 if system == 'Windows':
     script = './bin/AldrynCloud.py'
 else:
-    script = './cmscloud_client/main.py'
+    script = './aldryn_client/main.py'
 
 a = Analysis([script],
-             hiddenimports=['cmscloud_client.management.commands', 'kivy.core.image.img_gif', 'kivy.core.image.img_pil', 'git']
+             hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif', 'kivy.core.image.img_pil', 'git']
             )
 
-a.datas += Tree('./cmscloud_client/resources', './resources')
-a.datas += Tree('./cmscloud_client/img', './img')
-a.datas += [('./cacert.pem', './cmscloud_client/cacert.pem', 'DATA')]
+a.datas += Tree('./aldryn_client/resources', './resources')
+a.datas += Tree('./aldryn_client/img', './img')
+a.datas += [('./cacert.pem', './aldryn_client/cacert.pem', 'DATA')]
 
 pyz = PYZ(a.pure)
 
 if system == 'Windows':
-    a.datas += [('cmscloud_client/cmscloudgui.kv', './cmscloud_client/cmscloudgui.kv', 'DATA')]
+    a.datas += [('aldryn_client/aldryngui.kv', './aldryn_client/aldryngui.kv', 'DATA')]
 
     ### http://www.pyinstaller.org/ticket/783
     for d in a.datas:
@@ -51,11 +51,11 @@ if system == 'Windows':
               strip=None,
               upx=True,
               console=False,
-              icon="./cmscloud_client/resources/appIcon.ico",
+              icon="./aldryn_client/resources/appIcon.ico",
               version='./build/version_info.txt')
 
 elif system == 'Darwin':
-    a.datas += [('./cmscloudgui.kv', './cmscloud_client/cmscloudgui.kv', 'DATA')]
+    a.datas += [('./aldryngui.kv', './aldryn_client/aldryngui.kv', 'DATA')]
     exe = EXE(pyz,
               a.scripts,
               exclude_binaries=1,
@@ -74,7 +74,7 @@ elif system == 'Darwin':
                    name=os.path.join('dist', 'AldrynCloud'))
 
     app = BUNDLE(coll,
-                 icon="./cmscloud_client/resources/appIcon.icns",
+                 icon="./aldryn_client/resources/appIcon.icns",
                  name=os.path.join('dist', 'AldrynCloud.app'),
                  version=__version__)
 else:

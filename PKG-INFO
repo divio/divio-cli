@@ -1,8 +1,8 @@
 Metadata-Version: 1.0
-Name: cmscloud-client
+Name: aldryn-client
 Version: 0.4.1
-Summary: The command-line client for the django CMS cloud
-Home-page: http://django-cms.com/
+Summary: The command-line client for the Aldryn Cloud
+Home-page: http://aldryn.com/
 Author: The django CMS cloud team
 Author-email: info@divio.ch
 License: BSD

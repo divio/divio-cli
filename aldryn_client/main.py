@@ -70,14 +70,14 @@ ADD_NEW_SITE_URL = 'https://control.django-cms.com/control/new/'
 # App's main class #
 ####################
 
-class CMSCloudGUIApp(App):
+class AldrynGUIApp(App):
 
     title = WINDOW_TITLE
 
     def __init__(self, *args, **kwargs):
-        super(CMSCloudGUIApp, self).__init__(*args, **kwargs)
+        super(AldrynGUIApp, self).__init__(*args, **kwargs)
         self.client = Client(
-            os.environ.get(Client.CMSCLOUD_HOST_KEY, Client.CMSCLOUD_HOST_DEFAULT),
+            os.environ.get(Client.ALDRYN_HOST_KEY, Client.ALDRYN_HOST_DEFAULT),
             interactive=False)
         sites_dir_database_file_path = os.path.join(self.user_data_dir, SITES_DATABASE_FILENAME)
 
@@ -103,7 +103,7 @@ class CMSCloudGUIApp(App):
         return sm
 
     def on_start(self):
-        super(CMSCloudGUIApp, self).on_start()
+        super(AldrynGUIApp, self).on_start()
 
         sites_list_view = self._get_sites_list_view()
         self._websites_manager = WebsitesManager(self.sites_dir_database, sites_list_view)
@@ -117,7 +117,7 @@ class CMSCloudGUIApp(App):
         self.sites_dir_database.close()
         self.config.write()
         self._websites_manager.stop_all_threads()
-        super(CMSCloudGUIApp, self).on_stop()
+        super(AldrynGUIApp, self).on_stop()
 
     def set_screen_to_sync(self):
         Window.size = WIDTH_SYNC, HEIGHT_SYNC
@@ -451,4 +451,4 @@ class CMSCloudGUIApp(App):
 
 
 if __name__ == '__main__':
-    CMSCloudGUIApp().run()
+    AldrynGUIApp().run()
