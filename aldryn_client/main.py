@@ -21,6 +21,7 @@ kivy.require('1.7.2')
 
 from functools import partial
 import anydbm
+import platform
 import shelve
 import traceback
 import webbrowser
@@ -31,7 +32,6 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import ScreenManager, TransitionBase
-from kivy.utils import platform
 import pygame
 
 from . import __version__ as current_version
@@ -109,7 +109,8 @@ class AldrynGUIApp(App):
         return sm
 
     def on_key_down(self, win, key, scancode, string, modifiers):
-        if platform == 'macosx':
+        system = platform.system()
+        if system == 'Darwin':
             if 'meta' in modifiers:
                 if key == 113:  # cmd+q
                     stopTouchApp()
@@ -117,7 +118,7 @@ class AldrynGUIApp(App):
                 if key == 104:  # cmd+h
                     pygame.display.iconify()
                     return True
-        elif platform == 'win':
+        elif platform == 'Windows':
             if 'alt' in modifiers and key == 285:  # alt+f4
                 stopTouchApp()
                 return True
@@ -331,9 +332,10 @@ class AldrynGUIApp(App):
             if version_data:
                 newest_version = version_data['version']
                 if newest_version > current_version:
-                    if platform == 'macosx':
+                    system = platform.system()
+                    if system == 'Darwin':
                         link = version_data['osx_link']
-                    elif platform == 'win':
+                    elif system == 'Windows':
                         link = version_data['windows_link']
                     else:
                         link = None
