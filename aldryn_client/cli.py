@@ -22,8 +22,8 @@ Usage:%(extra_commands)s
     aldryn login
     aldryn boilerplate upload
     aldryn boilerplate validate
-    aldryn app upload
-    aldryn app validate
+    aldryn addon upload
+    aldryn addon validate
     aldryn sync [--sitename=<sitename>]
     aldryn sites
     aldryn newest_version
@@ -80,7 +80,7 @@ def main():
             retval, msg = client.upload_boilerplate()
         elif args['validate']:
             retval, msg = client.validate_boilerplate()
-    elif args['app']:
+    elif args['addon']:
         if args['upload']:
             retval, msg = client.upload_app()
         elif args['validate']:
