@@ -202,7 +202,11 @@ class LoadSitesListThread(threading.Thread):
 
     def run(self):
         status, data = self.client.sites()
-        Clock.schedule_once(lambda dt: self.callback(status, data), 0)
+        if status:
+            version_status, version_data = self.client.newest_version()
+            if not version_status:
+                version_data = None
+        Clock.schedule_once(lambda dt: self.callback(status, data, version_data=version_data), 0)
 
 
 class SyncDirThread(threading.Thread):

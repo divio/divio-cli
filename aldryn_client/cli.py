@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import docopt
 import imp
+import platform
 import os
 import sys
 
@@ -25,6 +26,7 @@ Usage:%(extra_commands)s
     aldryn app validate
     aldryn sync [--sitename=<sitename>]
     aldryn sites
+    aldryn newest_version
 
 Options:
     -h --help                   Show this screen.
@@ -91,6 +93,29 @@ def main():
             sitename=args.get('--sitename', None))
     elif args['sites']:
         retval, msg = client.sites()
+    elif args['newest_version']:
+        print 'Current version: %s' % version
+        retval, version_data = client.newest_version()
+        if retval:
+            if version_data:
+                newest_version = version_data['version']
+            else:
+                newest_version = None
+            if newest_version and newest_version > version:
+                system = platform.system()
+                if True or system == 'Darwin':
+                    link = version_data['osx_link']
+                elif system == 'Windows':
+                    link = version_data['windows_link']
+                else:
+                    link = None
+                if link:
+                    msg = 'You can download the newest version (%s) from here:\n%s' % (
+                        newest_version, link)
+                else:
+                    msg = 'Newer version is available (%s).' % newest_version
+            else:
+                msg = 'You are using the latest version.'
     if msg:
         print msg
     sys.exit(int(retval))

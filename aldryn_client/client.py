@@ -490,3 +490,21 @@ class Client(object):
             else:
                 data = sites
             return (True, data)
+
+    def newest_version(self):
+        try:
+            response = self.session.get('/api/v1/newest-client-app-version/')
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
+        if response.status_code == 404:
+            return (True, None)
+        elif response.status_code != 200:
+            msgs = []
+            msgs.append("Unexpected HTTP Response %s" % response.status_code)
+            if response.status_code < 500:
+                msgs.append(response.content)
+            return (False, '\n'.join(msgs))
+        else:
+            version = json.loads(response.content)
+            return (True, version)

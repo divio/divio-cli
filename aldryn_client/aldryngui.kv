@@ -114,6 +114,7 @@
 
 <SyncScreen>:
     sites_list_view: sites_list_view_id
+    top_right_buttons: top_right_buttons_id
 
     AnchorLayout:
         size_hint: 1, 1
@@ -163,7 +164,7 @@
                 orientation: 'lr-tb'
                 padding: 10
                 pos_hint: {'x': 0, 'center_y': 0.5}
-                size_hint: 0.75, None
+                size_hint: 0.5, None
                 spacing: 10
 
                 PaddedButton:
@@ -185,11 +186,11 @@
                 id: top_right_buttons_id
 
                 height: logout_btn_id.height + self.padding[1] + self.padding[3]
-                minimum_width: 100
+                minimum_width: 300
                 orientation: 'rl-tb'
                 padding: 10
                 pos_hint: {'right': 1, 'center_y': 0.5}
-                size_hint: 0.25, None
+                size_hint: 0.5, None
                 spacing: 10
 
                 PaddedButton:

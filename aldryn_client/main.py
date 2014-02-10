@@ -34,13 +34,15 @@ from kivy.uix.screenmanager import ScreenManager, TransitionBase
 from kivy.utils import platform
 import pygame
 
-from client import Client
+from . import __version__ as current_version
+from .client import Client
 from .utils_kivy import (
     ConfirmDialog,
     DirChooserDialog,
     EmptyScreen,
     HOME_DIR,
     InfoDialog,
+    LinkButton,
     LoadSitesListThread,
     LoadingDialog,
     LoginScreen,
@@ -119,7 +121,7 @@ class AldrynGUIApp(App):
             if 'alt' in modifiers and key == 285:  # alt+f4
                 stopTouchApp()
                 return True
-                
+
     def on_start(self):
         super(AldrynGUIApp, self).on_start()
 
@@ -312,7 +314,7 @@ class AldrynGUIApp(App):
             self.client, load_sites_list_callback)
         self._load_sites_list_thread.start()
 
-    def _load_sites_list_callback(self, loading_dialog, status, data):
+    def _load_sites_list_callback(self, loading_dialog, status, data, version_data=None):
         loading_dialog.dismiss()
         if status:
             new_sites_names = set()
@@ -325,6 +327,27 @@ class AldrynGUIApp(App):
             removed_sites_names = old_sites_names - new_sites_names
             for removed_domain in removed_sites_names:
                 self._websites_manager.remove_website(removed_domain)
+
+            if version_data:
+                newest_version = version_data['version']
+                if newest_version > current_version:
+                    if platform == 'macosx':
+                        link = version_data['osx_link']
+                    elif platform == 'win':
+                        link = version_data['windows_link']
+                    else:
+                        link = None
+                    if link:
+                        sync_screen = self.root.get_screen('sync')
+                        if hasattr(sync_screen, 'newest_version_btn'):
+                            newest_version_btn = sync_screen.newest_version_btn
+                        else:
+                            newest_version_btn = LinkButton()
+                            sync_screen.newest_version_btn = newest_version_btn
+                            sync_screen.top_right_buttons.add_widget(newest_version_btn)
+                        newest_version_btn.text = 'Newer version is available (%s => %s)' % (current_version, newest_version)
+                        newest_version_btn.bind(on_release=lambda *args: webbrowser.open(link))
+
         else:
             msg = unicode(data)
             self.show_info_dialog('Error', msg)
