@@ -44,7 +44,7 @@ setup(
     description='The command-line client for the Aldryn Cloud',
     author='The django CMS cloud team',
     author_email='info@divio.ch',
-    url='http://aldryn.com/',
+    url='http://www.aldryn.com/',
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
