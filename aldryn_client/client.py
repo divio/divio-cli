@@ -204,7 +204,7 @@ class Client(object):
                     with Trackable.tracker as extra_objects:
                         config = yaml.safe_load(fobj)
                         extra_file_paths.extend([f.path for f in extra_objects[File]])
-            except Exception as e:
+            except (yaml.YAMLError, ValueError) as e:
                 return (False, repr(e))
             return (True, (config, extra_file_paths))
 
@@ -269,7 +269,7 @@ class Client(object):
                     config = json.load(fobj)
                 else:
                     config = yaml.safe_load(fobj)
-            except Exception as e:
+            except (yaml.YAMLError, ValueError) as e:
                 return (False, repr(e))
         return (True, config)
 
