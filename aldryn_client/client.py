@@ -197,12 +197,15 @@ class Client(object):
             return (False, msg)
         extra_file_paths = []
         with open(boilerplate_filename) as fobj:
-            if load_json_config:
-                config = json.load(fobj)
-            else:
-                with Trackable.tracker as extra_objects:
-                    config = yaml.safe_load(fobj)
-                    extra_file_paths.extend([f.path for f in extra_objects[File]])
+            try:
+                if load_json_config:
+                    config = json.load(fobj)
+                else:
+                    with Trackable.tracker as extra_objects:
+                        config = yaml.safe_load(fobj)
+                        extra_file_paths.extend([f.path for f in extra_objects[File]])
+            except Exception as e:
+                return (False, repr(e))
             return (True, (config, extra_file_paths))
 
     def upload_boilerplate(self, path='.'):
@@ -261,10 +264,13 @@ class Client(object):
                 Client.APP_FILENAME_JSON, Client.APP_FILENAME_YAML)
             return (False, msg)
         with open(app_filename) as fobj:
-            if load_json_config:
-                config = json.load(fobj)
-            else:
-                config = yaml.safe_load(fobj)
+            try:
+                if load_json_config:
+                    config = json.load(fobj)
+                else:
+                    config = yaml.safe_load(fobj)
+            except Exception as e:
+                return (False, repr(e))
         return (True, config)
 
     def upload_app(self, path='.'):
