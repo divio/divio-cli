@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from cStringIO import StringIO
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -9,7 +10,7 @@ import tarfile
 import tempfile
 import yaml
 
-from .serialize import register_yaml_extensions
+from .serialize import register_yaml_extensions, Trackable, File
 
 FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_]+[a-zA-Z0-9._-]*(@2x)?\.[a-zA-Z]{2,4}$')
 ALLOWED_EXTENSIONS = [
@@ -192,18 +193,36 @@ def filter_template_files(tarinfo):
         return None
 
 
-def bundle_boilerplate(config, data, extra_file_paths, **complex_extra):
+def _get_license_filename(path):
+    for valid_license_filename in VALID_LICENSE_FILENAMES:
+        filepath = os.path.join(path, valid_license_filename)
+        if os.path.exists(filepath):
+            return filepath
+
+
+def load_license(path):
+    filepath = _get_license_filename(path)
+    if filepath:
+        with open(filepath, 'r') as f:
+            license = f.read()
+            return license
+
+
+def bundle_boilerplate(config, data, path, extra_file_paths, **complex_extra):
     register_yaml_extensions()
     fileobj = StringIO()
     tar = tarfile.open(mode='w:gz', fileobj=fileobj)
     config_fileobj = StringIO()
-    yaml.safe_dump(config, config_fileobj)
-    tar_add_stringio(tar, config_fileobj, 'boilerplate.yaml')
+    json.dump(config, config_fileobj)
+    tar_add_stringio(tar, config_fileobj, 'boilerplate.json')
     data_fileobj = StringIO()
     yaml.safe_dump(data, data_fileobj)
     tar_add_stringio(tar, data_fileobj, 'data.yaml')
-    for path in extra_file_paths:
-        tar.add(path)
+    license_filepath = _get_license_filename(path)
+    if license_filepath:
+        tar.add(license_filepath, 'LICENSE.txt')
+    for extra_path in extra_file_paths:
+        tar.add(extra_path)
     for key, value in complex_extra.items():
         tar.add(key, filter=value)
     tar.close()
@@ -221,14 +240,17 @@ def bundle_package(workspace, tar):
     tar.add(egg_file, arcname='package.tar.gz')
 
 
-def bundle_app(config, script):
+def bundle_app(config, script, path):
     register_yaml_extensions()
     fileobj = StringIO()
     tar = tarfile.open(mode='w:gz', fileobj=fileobj)
     config_fileobj = StringIO()
-    yaml.safe_dump(config, config_fileobj)
-    tar_add_stringio(tar, config_fileobj, 'app.yaml')
+    json.dump(config, config_fileobj)
+    tar_add_stringio(tar, config_fileobj, 'addon.json')
     script_fileobj = StringIO(script)
+    license_filepath = _get_license_filename(path)
+    if license_filepath:
+        tar.add(license_filepath, 'LICENSE.txt')
     if os.path.exists('aldryn_config.py'):
         tar_add_stringio(tar, script_fileobj, 'aldryn_config.py')
         # add actual package
@@ -314,3 +336,76 @@ def cli_confirm(question, message=None, default=None):
             return default
         else:
             print "Invalid answer, please type either y or n"
+
+
+def load_boilerplate_config(path):
+    from .client import Client
+    boilerplate_filename_json = os.path.join(path, Client.BOILERPLATE_FILENAME_JSON)
+    boilerplate_filename_yaml = os.path.join(path, Client.BOILERPLATE_FILENAME_YAML)
+    boilerplate_filename = None
+    load_json_config = False
+    if os.path.exists(boilerplate_filename_yaml):
+        boilerplate_filename = boilerplate_filename_yaml
+    if os.path.exists(boilerplate_filename_json):
+        if boilerplate_filename is None:
+            boilerplate_filename = boilerplate_filename_json
+            load_json_config = True
+        else:
+            msg = "Please provide only one config file ('%s' or '%s')" % (
+                Client.BOILERPLATE_FILENAME_JSON,
+                Client.BOILERPLATE_FILENAME_YAML)
+            return (False, msg)
+    if boilerplate_filename is None:
+        msg = "Neither file '%s' nor '%s' were found." % (
+            Client.BOILERPLATE_FILENAME_JSON, Client.BOILERPLATE_FILENAME_YAML)
+        return (False, msg)
+    extra_file_paths = []
+    with open(boilerplate_filename) as fobj:
+        try:
+            if load_json_config:
+                config = json.load(fobj)
+            else:
+                with Trackable.tracker as extra_objects:
+                    config = yaml.safe_load(fobj)
+                    extra_file_paths.extend([f.path for f in extra_objects[File]])
+        except (yaml.YAMLError, ValueError) as e:
+            return (False, repr(e))
+        return (True, (config, extra_file_paths))
+
+
+def load_app_config(path):
+    from .client import Client
+    app_filename_json = os.path.join(path, Client.APP_FILENAME_JSON)
+    app_filename_yaml = os.path.join(path, Client.APP_FILENAME_YAML)
+    addon_filename_json = os.path.join(path, Client.ADDON_FILENAME_JSON)
+    addon_filename_yaml = os.path.join(path, Client.ADDON_FILENAME_YAML)
+    app_filenames = []
+    load_json_config = False
+    if os.path.exists(app_filename_yaml):
+        app_filenames.append(app_filename_yaml)
+    if os.path.exists(addon_filename_yaml):
+        app_filenames.append(addon_filename_yaml)
+    if os.path.exists(app_filename_json):
+        app_filenames.append(app_filename_json)
+        load_json_config = True
+    if os.path.exists(addon_filename_json):
+        app_filenames.append(addon_filename_json)
+        load_json_config = True
+    if len(app_filenames) == 0:
+        msg = "File '%s' not found." % Client.ADDON_FILENAME_JSON
+        return (False, msg)
+    elif len(app_filenames) == 1:
+        app_filename = app_filenames[0]
+    else:
+        msg = "Please provide only one config file (%s)" % (
+            ' or '.join(map(os.path.basename, app_filenames)),)
+        return (False, msg)
+    with open(app_filename) as fobj:
+        try:
+            if load_json_config:
+                config = json.load(fobj)
+            else:
+                config = yaml.safe_load(fobj)
+        except (yaml.YAMLError, ValueError) as e:
+            return (False, repr(e))
+    return (True, config)

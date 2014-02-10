@@ -18,8 +18,8 @@ from .git_sync import GitSyncHandler
 from .sync_helpers import extra_git_kwargs, git_update_gitignore
 from .utils import (
     validate_boilerplate_config, bundle_boilerplate, filter_template_files,
-    filter_static_files, validate_app_config, bundle_app,
-    filter_sass_files, resource_path, cli_confirm)
+    filter_static_files, validate_app_config, bundle_app, filter_sass_files,
+    resource_path, cli_confirm, load_app_config, load_boilerplate_config)
 
 
 CACERT_PEM_PATH = resource_path('cacert.pem')
@@ -78,6 +78,8 @@ class SingleHostSession(requests.Session):
 class Client(object):
     APP_FILENAME_JSON = 'app.json'
     APP_FILENAME_YAML = 'app.yaml'
+    ADDON_FILENAME_JSON = 'addon.json'
+    ADDON_FILENAME_YAML = 'addon.yaml'
     BOILERPLATE_FILENAME_JSON = 'boilerplate.json'
     BOILERPLATE_FILENAME_YAML = 'boilerplate.yaml'
     ALDRYN_CONFIG_FILENAME = 'aldryn_config.py'
@@ -175,41 +177,8 @@ class Client(object):
             msgs.append("There was a problem logging in, please try again later.")
             return (False, '\n'.join(msgs))
 
-    def _load_boilerplate(self, path):
-        boilerplate_filename_json = os.path.join(path, Client.BOILERPLATE_FILENAME_JSON)
-        boilerplate_filename_yaml = os.path.join(path, Client.BOILERPLATE_FILENAME_YAML)
-        boilerplate_filename = None
-        load_json_config = False
-        if os.path.exists(boilerplate_filename_yaml):
-            boilerplate_filename = boilerplate_filename_yaml
-        if os.path.exists(boilerplate_filename_json):
-            if boilerplate_filename is None:
-                boilerplate_filename = boilerplate_filename_json
-                load_json_config = True
-            else:
-                msg = "Please provide only one config file ('%s' or '%s')" % (
-                    Client.BOILERPLATE_FILENAME_JSON,
-                    Client.BOILERPLATE_FILENAME_YAML)
-                return (False, msg)
-        if boilerplate_filename is None:
-            msg = "Neither file '%s' nor '%s' were found." % (
-                Client.BOILERPLATE_FILENAME_JSON, Client.BOILERPLATE_FILENAME_YAML)
-            return (False, msg)
-        extra_file_paths = []
-        with open(boilerplate_filename) as fobj:
-            try:
-                if load_json_config:
-                    config = json.load(fobj)
-                else:
-                    with Trackable.tracker as extra_objects:
-                        config = yaml.safe_load(fobj)
-                        extra_file_paths.extend([f.path for f in extra_objects[File]])
-            except (yaml.YAMLError, ValueError) as e:
-                return (False, repr(e))
-            return (True, (config, extra_file_paths))
-
     def upload_boilerplate(self, path='.'):
-        is_loaded, result = self._load_boilerplate(path)
+        is_loaded, result = load_boilerplate_config(path)
         if is_loaded:
             config, extra_file_paths = result
         else:
@@ -225,7 +194,7 @@ class Client(object):
         is_valid, error_msg = validate_boilerplate_config(config, path)
         if not is_valid:
             return (False, error_msg)
-        tarball = bundle_boilerplate(config, data, extra_file_paths, templates=filter_template_files,
+        tarball = bundle_boilerplate(config, data, path, extra_file_paths, templates=filter_template_files,
                                      static=filter_static_files, private=filter_sass_files)
         try:
             response = self.session.post('/api/v1/boilerplates/', files={'boilerplate': tarball})
@@ -236,45 +205,15 @@ class Client(object):
         return (True, msg)
 
     def validate_boilerplate(self, path='.'):
-        is_loaded, result = self._load_boilerplate(path)
+        is_loaded, result = load_boilerplate_config(path)
         if is_loaded:
             config, extra_file_paths = result
             return validate_boilerplate_config(config, path)
         else:
             return (False, result)
 
-    def _load_app(self, path):
-        app_filename_json = os.path.join(path, Client.APP_FILENAME_JSON)
-        app_filename_yaml = os.path.join(path, Client.APP_FILENAME_YAML)
-        app_filename = None
-        load_json_config = False
-        if os.path.exists(app_filename_yaml):
-            app_filename = app_filename_yaml
-        if os.path.exists(app_filename_json):
-            if app_filename is None:
-                app_filename = app_filename_json
-                load_json_config = True
-            else:
-                msg = "Please provide only one config file ('%s' or '%s')" % (
-                    Client.APP_FILENAME_JSON,
-                    Client.APP_FILENAME_YAML)
-                return (False, msg)
-        if app_filename is None:
-            msg = "Neither file '%s' nor '%s' were found." % (
-                Client.APP_FILENAME_JSON, Client.APP_FILENAME_YAML)
-            return (False, msg)
-        with open(app_filename) as fobj:
-            try:
-                if load_json_config:
-                    config = json.load(fobj)
-                else:
-                    config = yaml.safe_load(fobj)
-            except (yaml.YAMLError, ValueError) as e:
-                return (False, repr(e))
-        return (True, config)
-
     def upload_app(self, path='.'):
-        is_loaded, result = self._load_app(path)
+        is_loaded, result = load_app_config(path)
         if is_loaded:
             config = result
         else:
@@ -296,7 +235,7 @@ class Client(object):
             script = ''
             msgs.append("Warning: File '%s' not found." % Client.ALDRYN_CONFIG_FILENAME)
             msgs.append("Your app will not have any configurable settings.")
-        tarball = bundle_app(config, script)
+        tarball = bundle_app(config, script, path)
         try:
             response = self.session.post('/api/v1/apps/', files={'app': tarball})
         except (requests.exceptions.ConnectionError,
@@ -310,7 +249,7 @@ class Client(object):
         if not os.path.exists(setup_filename):
             msg = "File '%s' not found." % Client.SETUP_FILENAME
             return (False, msg)
-        is_loaded, result = self._load_app(path)
+        is_loaded, result = load_app_config(path)
         if is_loaded:
             config = result
             return validate_app_config(config, path)
