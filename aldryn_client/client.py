@@ -222,7 +222,7 @@ class Client(object):
                 extra_file_paths.extend([f.path for f in extra_objects[File]])
         else:
             data = {}
-        is_valid, error_msg = validate_boilerplate_config(config, path=path)
+        is_valid, error_msg = validate_boilerplate_config(config, path)
         if not is_valid:
             return (False, error_msg)
         tarball = bundle_boilerplate(config, data, extra_file_paths, templates=filter_template_files,
@@ -239,7 +239,7 @@ class Client(object):
         is_loaded, result = self._load_boilerplate(path)
         if is_loaded:
             config, extra_file_paths = result
-            return validate_boilerplate_config(config, path=path)
+            return validate_boilerplate_config(config, path)
         else:
             return (False, result)
 
@@ -279,7 +279,7 @@ class Client(object):
             config = result
         else:
             return (False, result)
-        is_valid, msg = validate_app_config(config)
+        is_valid, msg = validate_app_config(config, path)
         if not is_valid:
             return (False, msg)
         setup_filename = os.path.join(path, Client.SETUP_FILENAME)
@@ -313,7 +313,7 @@ class Client(object):
         is_loaded, result = self._load_app(path)
         if is_loaded:
             config = result
-            return validate_app_config(config)
+            return validate_app_config(config, path)
         else:
             return (False, result)
 

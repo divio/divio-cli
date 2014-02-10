@@ -43,7 +43,6 @@ BOILERPLATE_REQUIRED = [
     'description',
     ('license', [
         'name',
-        'text',
     ]),
     'templates',
 ]
@@ -58,9 +57,15 @@ APP_REQUIRED = [
     'description',
     ('license', [
         'name',
-        'text'
     ]),
     'installed-apps',
+]
+
+VALID_LICENSE_FILENAMES = [
+    'LICENSE.txt',
+    'LICENSE',
+    'license.txt',
+    'license',
 ]
 
 
@@ -68,7 +73,13 @@ class ValidationError(Exception):
     pass
 
 
-def _validate(config, required):
+def _validate(config, required, path):
+    license_exists = False
+    for valid_license_filename in VALID_LICENSE_FILENAMES:
+        license_exists |= os.path.exists(
+            os.path.join(path, valid_license_filename))
+    if not license_exists:
+        return (False, "Required LICENSE.txt file not found")
     valid = (True, "Configuration file is valid")
     for thing in required:
         if isinstance(thing, tuple):
@@ -85,12 +96,12 @@ def _validate(config, required):
     return valid
 
 
-def validate_app_config(config):
-    return _validate(config, APP_REQUIRED)
+def validate_app_config(config, path):
+    return _validate(config, APP_REQUIRED, path)
 
 
-def validate_boilerplate_config(config, path='.'):
-    (valid, msg) = _validate(config, BOILERPLATE_REQUIRED)
+def validate_boilerplate_config(config, path):
+    (valid, msg) = _validate(config, BOILERPLATE_REQUIRED, path)
     if not valid:
         return (False, msg)
     # check templates
