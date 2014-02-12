@@ -286,28 +286,27 @@ class Client(object):
                 return (False, msg)
         if '.' in sitename:
             sitename = sitename.split('.')[0]
-        if os.path.exists(aldryn_dot_filename):
-            with open(aldryn_dot_filename, 'r') as fobj:
-                dir_sitename = fobj.read().strip()
-            if sitename != dir_sitename:
-                msg = 'This directory is already being synced with website "%s"' % dir_sitename
-                return (False, msg)
-        git_dir = os.path.join(path, '.git')
-        params = {}
-        if os.path.exists(git_dir) and os.path.exists(aldryn_dot_filename):
-            repo = git.Repo(path)
-            last_synced_commit = repo.git.execute(
-                ['git', 'rev-parse', 'develop_bundle/develop'],
-                **extra_git_kwargs)
-            params['last_synced_commit'] = last_synced_commit
-        else:
-            if os.path.exists(path):
-                if os.listdir(path):  # dir isn't empty
-                    backup_dir_path = '%s - %s.backup' % (path, str(datetime.datetime.now()))
-                    shutil.move(path, backup_dir_path)
-                    os.mkdir(path)
+        git_sync_params = {}
+        if not os.path.exists(path):
+            os.mkdir(path)
+        if os.listdir(path):  # dir isn't empty
+            git_dir = os.path.join(path, '.git')
+            if os.path.exists(aldryn_dot_filename) and os.path.exists(git_dir):
+                with open(aldryn_dot_filename, 'r') as fobj:
+                    dir_sitename = fobj.read().strip()
+                if sitename != dir_sitename:
+                    msg = 'This directory is already being synced with the website "%s"' % dir_sitename
+                    return (False, msg)
+                repo = git.Repo(path)
+                last_synced_commit = repo.git.execute(
+                    ['git', 'rev-parse', 'develop_bundle/develop'],
+                    **extra_git_kwargs)
+                git_sync_params['last_synced_commit'] = last_synced_commit
             else:
-                os.makedirs(path)
+                msg = ('The folder you selected is not empty. '
+                       'Please choose an empty folder to sync your files.')
+                return (False, msg)
+        else:
             g = git.Git(path)
             g.execute(['git', 'init'], **extra_git_kwargs)
             repo = git.Repo(path)
@@ -333,7 +332,7 @@ class Client(object):
 
         try:
             response = self.session.get(
-                '/api/v1/git-sync/%s/' % sitename, params=params, stream=True,
+                '/api/v1/git-sync/%s/' % sitename, params=git_sync_params, stream=True,
                 headers={'accept': 'application/octet'})
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout):
