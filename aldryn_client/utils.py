@@ -23,6 +23,7 @@ ALLOWED_EXTENSIONS = [
     '.jpeg',
     '.jpg',
     '.js',
+    '.json',
     '.less',
     '.png',
     '.rb',
