@@ -7,18 +7,15 @@ install_hooks(globals())
 execfile('./aldryn_client/__init__.py')
 
 system = platform.system()
-if system == 'Windows':
-    script = './bin/AldrynCloud.py'
-else:
-    script = './aldryn_client/main.py'
 
-a = Analysis([script],
+a = Analysis(['./bin/AldrynCloud.py'],
              hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif', 'kivy.core.image.img_pil', 'git']
             )
 
 a.datas += Tree('./aldryn_client/resources', './resources')
 a.datas += Tree('./aldryn_client/img', './img')
 a.datas += [('./cacert.pem', './aldryn_client/cacert.pem', 'DATA')]
+a.datas += [('aldryn_client/aldryngui.kv', './aldryn_client/aldryngui.kv', 'DATA')]
 
 pyz = PYZ(a.pure)
 
@@ -55,7 +52,6 @@ if system == 'Windows':
               version='./build/version_info.txt')
 
 elif system == 'Darwin':
-    a.datas += [('./aldryngui.kv', './aldryn_client/aldryngui.kv', 'DATA')]
     exe = EXE(pyz,
               a.scripts,
               exclude_binaries=1,

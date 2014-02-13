@@ -34,7 +34,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import ScreenManager, TransitionBase
 import pygame
 
-from aldryn_client import __version__ as current_version
+from . import __version__ as current_version
 from .client import Client
 from .utils_kivy import (
     ConfirmDialog,
