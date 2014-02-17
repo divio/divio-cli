@@ -49,6 +49,10 @@ BOILERPLATE_REQUIRED = [
     'templates',
 ]
 
+BOILERPLATE_REQUIRED_FILEPATHS = [
+    os.path.join('templates', 'base.html'),
+]
+
 APP_REQUIRED = [
     'name',
     ('author', [
@@ -103,6 +107,11 @@ def validate_app_config(config, path):
 
 
 def validate_boilerplate_config(config, path):
+    for required_filepath in BOILERPLATE_REQUIRED_FILEPATHS:
+        dirpath = os.path.join(path, required_filepath)
+        if not os.path.exists(dirpath):
+            msg = 'Required file "%s" not found' % required_filepath
+            return (False, msg)
     (valid, msg) = _validate(config, BOILERPLATE_REQUIRED, path)
     if not valid:
         return (False, msg)
@@ -225,16 +234,19 @@ def bundle_boilerplate(config, data, path, extra_file_paths, **complex_extra):
     for extra_path in extra_file_paths:
         tar.add(extra_path)
     for key, value in complex_extra.items():
-        tar.add(key, filter=value)
+        dirpath = os.path.join(path, key)
+        if os.path.exists(dirpath):
+            tar.add(key, filter=value)
     tar.close()
     fileobj.seek(0)
     return fileobj
 
 
-def bundle_package(workspace, tar):
+def bundle_package(workspace, tar, path):
     devnull = open(os.devnull, 'w')
     try:
-        subprocess.check_call(['python', 'setup.py', 'sdist', '-d', workspace], stdout=devnull, stderr=devnull)
+        subprocess.check_call(['python', 'setup.py', 'sdist', '-d', workspace],
+                              cwd=path, stdout=devnull, stderr=devnull)
     finally:
         devnull.close()
     egg_file = os.path.join(workspace, os.listdir(workspace)[0])
@@ -257,7 +269,7 @@ def bundle_app(config, script, path):
         # add actual package
     distdir = tempfile.mkdtemp(prefix='aldryn-client')
     try:
-        bundle_package(distdir, tar)
+        bundle_package(distdir, tar, path)
     finally:
         shutil.rmtree(distdir)
     tar.close()
