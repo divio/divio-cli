@@ -25,6 +25,7 @@ ALLOWED_EXTENSIONS = [
     '.js',
     '.json',
     '.less',
+    '.map',
     '.png',
     '.rb',
     '.sass',
