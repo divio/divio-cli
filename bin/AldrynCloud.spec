@@ -73,5 +73,97 @@ elif system == 'Darwin':
                  icon="./aldryn_client/resources/appIcon.icns",
                  name=os.path.join('dist', 'AldrynCloud.app'),
                  version=__version__)
+
+    # Create DMG with Background and Applications folder
+    import os
+    import sys
+    import shutil
+    import shlex
+    import re
+    import time
+    from subprocess import Popen, PIPE
+
+    vol_name = "AldrynCloud"
+    dist_dir = './dist'
+    dmg_dir = 'dmg_dir'
+    try:
+        os.makedirs(os.path.join(dist_dir, dmg_dir))
+        os.makedirs(os.path.join(dist_dir, dmg_dir, '.background'))
+        shutil.copy('./bin/aldryndmg.png', os.path.join(dist_dir, dmg_dir, '.background'))
+        shutil.move('./dist/%s.app' % vol_name, os.path.join(dist_dir, dmg_dir))
+    except:
+        pass
+
+    print("* Try unmounting existing disk image")
+    umount_cmd = 'hdiutil detach /Volumes/%s' % vol_name
+    Popen(shlex.split(umount_cmd), cwd=dist_dir,
+            stdout=PIPE).communicate()
+
+    print("* Creating intermediate DMG disk image: temp.dmg")
+    print("  checking how much space is needed for disk image...")
+    du_cmd = 'du -sh %s' % dmg_dir
+    du_out = Popen(shlex.split(du_cmd), cwd=dist_dir, stdout=PIPE).communicate()[0]
+    size, unit = re.search('(\d+)(.*?)\s+', du_out).group(1, 2)
+    print("  build needs at least %s%s." % (size, unit))
+
+    size = int(size) + 4
+    print("* Allocating %d%s for temp.dmg" % (size, unit, ))
+    create_dmg_cmd = 'hdiutil create -srcfolder %s -volname %s \
+         -format UDRW -size %d%s temp.dmg' % (dmg_dir, vol_name, size, unit)
+    Popen(shlex.split(create_dmg_cmd), cwd=dist_dir).communicate()
+
+    print("*mounting intermediate disk image:")
+    mount_cmd = 'hdiutil attach -readwrite -noverify -noautoopen "temp.dmg"'
+    Popen(shlex.split(mount_cmd), cwd=dist_dir,
+      stdout=PIPE).communicate()
+
+    print("* Running Apple Script to configure DMG layout properties:")
+    dmg_config_script = """
+tell application "Finder"
+    tell disk "%s"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set the bounds of container window to {270,100,902,582}
+        set theViewOptions to the icon view options of container window
+        set arrangement of theViewOptions to not arranged
+        set icon size of theViewOptions to 72
+        set background picture of theViewOptions to file ".background:aldryndmg.png"
+        do shell script "ln -s /Applications /Volumes/AldrynCloud"
+        close
+        open
+        delay 1
+        set position of item "AldrynCloud" of container window to {160, 315}
+        set position of item "Applications" of container window to {485, 315}
+        set position of item ".background" of container window to {900, 900}
+        set position of item ".DS_Store" of container window to {900, 900}
+        set position of item ".fseventsd" of container window to {900, 900}
+        set position of item ".Trashes" of container window to {900, 900}
+        close
+        open
+        update without registering applications
+        delay 5
+        close
+        eject
+    end tell
+end tell
+    """ % vol_name
+    print(Popen(['osascript'], cwd=dist_dir, stdin=PIPE,
+        stdout=PIPE).communicate(dmg_config_script)[0])
+
+    print("* Creating final disk image")
+    convert_cmd = 'hdiutil convert "temp.dmg" -format UDZO -imagekey ' + \
+      'zlib-level=9 -o %s' % (vol_name + '.dmg',)
+    Popen(shlex.split(convert_cmd), cwd=dist_dir,
+      stdout=PIPE).communicate()
+
+    print("* Cleaning temporary files")
+    try:
+        os.remove('./dist/temp.dmg')
+    except OSError:
+        pass
+    shutil.rmtree(os.path.join(dist_dir, dmg_dir), ignore_errors=True)
+
 else:
     print("TODO: %s" % (system))
