@@ -19,9 +19,11 @@ class ValidationError(Exception):
 class BaseField(object):
     field_type = None
 
-    def __init__(self, label, required=True):
+    def __init__(self, label, required=True, help_text=None, initial=None):
         self.label = label
         self.required = required
+        self.help_text = help_text
+        self.initial = initial
 
     def clean(self, value):
         return value
@@ -30,15 +32,18 @@ class BaseField(object):
         return {
             'field_type': self.field_type,
             'label': self.label,
-            'required': self.required
+            'required': self.required,
+            'help_text': self.help_text,
+            'initial': self.initial,
         }
 
 
 class CharField(BaseField):
     field_type = 'text'
 
-    def __init__(self, label, min_length=None, max_length=None, required=True):
-        super(CharField, self).__init__(label, required)
+    def __init__(self, label, min_length=None, max_length=None, required=True,
+                 **kwargs):
+        super(CharField, self).__init__(label, required, **kwargs)
         self.min_length = min_length
         self.max_length = max_length
 
@@ -69,8 +74,8 @@ class CheckboxField(BaseField):
 class SelectField(BaseField):
     field_type = 'select'
 
-    def __init__(self, label, choices, required=True):
-        super(SelectField, self).__init__(label, required)
+    def __init__(self, label, choices, required=True, **kwargs):
+        super(SelectField, self).__init__(label, required, **kwargs)
         self.choices = choices
 
     def serialize(self):
@@ -82,8 +87,9 @@ class SelectField(BaseField):
 class NumberField(BaseField):
     field_type = 'number'
 
-    def __init__(self, label, min_value=None, max_value=None, required=True):
-        super(NumberField, self).__init__(label, required)
+    def __init__(self, label, min_value=None, max_value=None, required=True,
+                 **kwargs):
+        super(NumberField, self).__init__(label, required, **kwargs)
         self.min_value = min_value
         self.max_value = max_value
 
@@ -94,7 +100,7 @@ class NumberField(BaseField):
             raise ValidationError("Expected number, but got %s" % value)
         value = int(value)
         if self.min_value is not None and value < self.min_value:
-            raise ValidationError("Must be bigger than %s"  % self.min_value)
+            raise ValidationError("Must be bigger than %s" % self.min_value)
         if self.max_value is not None and value > self.max_value:
             raise ValidationError("Must be smaller than %s" % self.max_value)
         return value
@@ -103,8 +109,8 @@ class NumberField(BaseField):
 class StaticFileField(BaseField):
     field_type = 'x-static-file'
 
-    def __init__(self, label, extensions=None, required=True):
-        super(StaticFileField, self).__init__(label, required)
+    def __init__(self, label, extensions=None, required=True, **kwargs):
+        super(StaticFileField, self).__init__(label, required, **kwargs)
         self.extensions = extensions
 
     def clean(self, value):
@@ -162,6 +168,7 @@ class BaseForm(object):
                     self.cleaned_data[name] = field.clean(value)
                 except ValidationError, e:
                     self.errors[name] = e.message
+        return self.cleaned_data
 
     def to_settings(self, data, settings):
         return settings
