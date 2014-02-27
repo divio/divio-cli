@@ -6,6 +6,7 @@ import requests
 import shutil
 import threading
 import time
+import traceback
 
 from git.exc import GitCommandError
 
@@ -14,7 +15,7 @@ from .utils import (
     uniform_filepath)
 from .sync_helpers import (
     BACKUP_COUNT, LOG_FILENAME, get_site_specific_logger, git_changes,
-    extra_git_kwargs)
+    git_pull_develop_bundle, extra_git_kwargs)
 
 SYNCABLE_DIRECTORIES = ('templates/', 'static/', 'private/')
 
@@ -23,7 +24,8 @@ IGNORED_FILES = set(['.aldryn', '.aldryn-folder', '.aldryn-sync-lock',
 for i in xrange(1, BACKUP_COUNT + 1):
     IGNORED_FILES.add('%s.%d' % (LOG_FILENAME, i))
 
-CHANGES_CHECK_DELAY = 0.5
+CHANGES_CHECK_DELAY = 0.5  # 0.5s
+SYNC_BACK_EVERY_X_CHECKS = 10  # 5s
 
 
 def update_env_path_with_git_bin():
@@ -72,6 +74,7 @@ class GitSyncHandler(object):
             del self.client._sync_handlers_cache[self.sitename]
 
     def _send_changes_worker(self):
+        iteration_counter = 0
         while not self._sync_stopped_event.isSet():
             start_timestamp = datetime.datetime.now()
             changes = git_changes(self.repo)
@@ -138,6 +141,9 @@ class GitSyncHandler(object):
             delay = CHANGES_CHECK_DELAY - time_elapsed_delta.total_seconds()
             if delay > 0:
                 time.sleep(delay)
+            iteration_counter += 1
+            if iteration_counter % SYNC_BACK_EVERY_X_CHECKS == 0:
+                self._sync_back_upstream_changes()
 
     def _commit_changes(self):
         self.sync_logger.debug('Sending changes:\t' + self.repo.git.execute(
@@ -199,6 +205,24 @@ class GitSyncHandler(object):
                 ['git', 'rev-parse', 'develop'], **extra_git_kwargs)
         if self._sync_indicator_callback:
             self._sync_indicator_callback(stop=True)
+
+    def _sync_back_upstream_changes(self):
+        try:
+            last_synced_commit = self.repo.git.execute(
+                ['git', 'rev-parse', 'develop_bundle/develop'],
+                **extra_git_kwargs)
+            git_sync_params = {'last_synced_commit': last_synced_commit}
+            response = self.client.session.get(
+                '/api/v1/git-sync/%s/' % self.sitename, params=git_sync_params,
+                stream=True, headers={'accept': 'application/octet'})
+            if response.status_code == 304:
+                pass  # NOT MODIFIED
+            elif response.status_code == 200:
+                git_pull_develop_bundle(response, self.repo, self.relpath)
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout, GitCommandError):
+            stack_trace = traceback.format_exc()
+            print 'Supressing pull update error:\n%s' % stack_trace
 
     def _send_request(self, *args, **kwargs):
         headers = kwargs.get('headers', {})

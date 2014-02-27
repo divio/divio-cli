@@ -78,3 +78,26 @@ def git_update_gitignore(repo, new_ignore_patterns):
             fobj.write(new_gitignore_str)
         repo.git.execute(['git', 'add', gitignore_filepath], **extra_git_kwargs)
         repo.git.execute(['git', 'commit', '-m Update gitignore'], **extra_git_kwargs)
+
+
+def git_pull_develop_bundle(response, repo, path):
+    bundle_path = os.path.join(path, '.develop.bundle')
+    with open(bundle_path, 'wb') as fobj:
+        for chunk in response.iter_content(512 * 1024):
+            if not chunk:
+                break
+            fobj.write(chunk)
+    if not 'develop_bundle' in repo.git.execute(
+            ['git', 'remote'], **extra_git_kwargs).split():
+        repo.git.execute(
+            ['git', 'remote', 'add', 'develop_bundle', bundle_path],
+            **extra_git_kwargs)
+    repo.git.execute(
+        ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
+    if not 'develop' in repo.git.execute(
+            ['git', 'branch'], **extra_git_kwargs).split():
+        repo.git.execute(
+            ['git', 'checkout', '-bdevelop', 'develop_bundle/develop'],
+            **extra_git_kwargs)
+    repo.git.execute(['git', 'merge', 'develop_bundle/develop', 'develop'],
+                     **extra_git_kwargs)

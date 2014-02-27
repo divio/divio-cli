@@ -15,7 +15,8 @@ import yaml
 
 from .serialize import register_yaml_extensions, Trackable, File
 from .git_sync import GitSyncHandler
-from .sync_helpers import extra_git_kwargs, git_update_gitignore
+from .sync_helpers import (
+    extra_git_kwargs, git_update_gitignore, git_pull_develop_bundle)
 from .utils import (
     validate_boilerplate_config, bundle_boilerplate, filter_template_files,
     filter_static_files, validate_app_config, bundle_app, filter_sass_files,
@@ -351,26 +352,7 @@ class Client(object):
             return (False, '\n'.join(msgs))
 
         if upstream_modified:
-            bundle_path = os.path.join(path, '.develop.bundle')
-            with open(bundle_path, 'wb') as fobj:
-                for chunk in response.iter_content(512 * 1024):
-                    if not chunk:
-                        break
-                    fobj.write(chunk)
-            if not 'develop_bundle' in repo.git.execute(
-                    ['git', 'remote'], **extra_git_kwargs).split():
-                repo.git.execute(
-                    ['git', 'remote', 'add', 'develop_bundle', bundle_path],
-                    **extra_git_kwargs)
-            repo.git.execute(
-                ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
-            if not 'develop' in repo.git.execute(
-                    ['git', 'branch'], **extra_git_kwargs).split():
-                repo.git.execute(
-                    ['git', 'checkout', '-bdevelop', 'develop_bundle/develop'],
-                    **extra_git_kwargs)
-            repo.git.execute(['git', 'merge', 'develop_bundle/develop', 'develop'],
-                             **extra_git_kwargs)
+            git_pull_develop_bundle(response, repo. path)
         git_update_gitignore(repo, ['.*', '!.gitignore', '/db_dumps/'])
 
         protected_files_filename = os.path.join(
