@@ -19,6 +19,7 @@ Config.write()
 import kivy
 kivy.require('1.7.2')
 
+from distutils.version import LooseVersion
 from functools import partial
 import anydbm
 import platform
@@ -331,7 +332,7 @@ class AldrynGUIApp(App):
 
             if version_data:
                 newest_version = version_data['version']
-                if newest_version > current_version:
+                if LooseVersion(newest_version) > LooseVersion(current_version):
                     system = platform.system()
                     if system == 'Darwin':
                         link = version_data['osx_link']
