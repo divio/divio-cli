@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-import datetime
 import getpass
 import json
 import netrc
 import os
 import time
-import shutil
 import stat
 import urlparse
 
@@ -352,7 +350,7 @@ class Client(object):
             return (False, '\n'.join(msgs))
 
         if upstream_modified:
-            git_pull_develop_bundle(response, repo. path)
+            git_pull_develop_bundle(response, repo, path)
         git_update_gitignore(repo, ['.*', '!.gitignore', '/db_dumps/'])
 
         protected_files_filename = os.path.join(
