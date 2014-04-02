@@ -6,7 +6,7 @@ from aldryn_client import __version__
 
 INSTALL_REQUIRES = [
     'GitPython==0.3.2.RC1',
-    'requests',
+    'requests>=1',
     'docopt',
     'pyyaml',
 ]
