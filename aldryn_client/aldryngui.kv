@@ -5,6 +5,8 @@
 # Main Screen's layouts #
 #########################
 
+#:set WEBSITE_VIEW_HEIGHT 50
+
 <BaseScreen>:
     canvas:
         Color:
@@ -219,7 +221,7 @@
 
                 orientation: 'tb-lr'
                 size_hint: 1, None
-                height: self.parent.height - 1
+                height: (len(self.children) + 1) * WEBSITE_VIEW_HEIGHT
 
                 canvas:
                     Color:
@@ -422,7 +424,7 @@
     sync_btn: sync_btn_id.__self__
     sync_loading_overlay: sync_loading_overlay_id.__self__
 
-    height: 50
+    height: WEBSITE_VIEW_HEIGHT
     padding: 10
     size_hint: 1, None
     spacing: 10
