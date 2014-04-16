@@ -133,7 +133,12 @@ class GitSyncHandler(object):
                     else:
                         commit = True
             if commit:
-                print changes
+                for key, values in changes.items():
+                    if values:
+                        print ('%s:' % key),
+                        for value in values:
+                            print ('\t%s' % value),
+                        print
                 self._commit_changes()
 
             stop_timestamp = datetime.datetime.now()
