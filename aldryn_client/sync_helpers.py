@@ -51,6 +51,8 @@ def git_changes(repo):
             # change[0] contains staged status
             unstaged_status = change[1]
             path = change[3:]
+            # if path contains space it will be surrounded by "
+            path = path.strip('"')
             if unstaged_status in ['M', '?']:
                 added.append(path)
             elif unstaged_status == 'D':
