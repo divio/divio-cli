@@ -69,7 +69,7 @@ RESIZING_STEPS = 1
 ACCOUNT_CREATION_URL = 'https://login.django-cms.com/login/'
 TROUBLE_SIGNING_IN_URL = 'https://login.django-cms.com/account/reset-password/'
 CONTROL_PANEL_URL = 'https://control.django-cms.com/control/'
-ADD_NEW_SITE_URL = 'https://control.django-cms.com/control/new/'
+ADD_NEW_SITE_URL = 'https://control.django-cms.com/control/choose-website-type/'
 
 
 ####################
