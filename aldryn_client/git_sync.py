@@ -227,7 +227,7 @@ class GitSyncHandler(object):
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout, GitCommandError):
             stack_trace = traceback.format_exc()
-            print 'Supressing pull update error:\n%s' % stack_trace
+            print 'Suppressing pull update error:\n%s' % stack_trace
 
     def _send_request(self, *args, **kwargs):
         headers = kwargs.get('headers', {})
