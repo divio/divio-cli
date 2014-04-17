@@ -207,7 +207,7 @@ class GitSyncHandler(object):
                 ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
 
             self._last_synced_commit = self.repo.git.execute(
-                ['git', 'rev-parse', 'develop'], **extra_git_kwargs)
+                ['git', 'rev-parse', 'develop_bundle/develop'], **extra_git_kwargs)
         if self._sync_indicator_callback:
             self._sync_indicator_callback(stop=True)
 
