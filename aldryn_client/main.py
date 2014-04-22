@@ -396,6 +396,8 @@ class AldrynGUIApp(App):
         stop_sync_callback = partial(self._stop_sync_callback, domain)
 
         def network_error_callback(message, on_confirm, on_cancel):
+            notify(WINDOW_TITLE, message)
+
             def on_cancel_wrapper():
                 self.stop_sync(domain)
                 on_cancel()
