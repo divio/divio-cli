@@ -417,7 +417,7 @@ def open_in_file_manager(path):
             Logger.exception('Cannot open external file manager')
 
 
-def notify(title, message):
+def notify(title, message, bring_up=False):
     print title, message
     try:
         notification.notify(title, message)
@@ -425,8 +425,12 @@ def notify(title, message):
             from AppKit import NSApp, NSApplication
             NSApplication.sharedApplication()
             app = NSApp()
-            app.requestUserAttention_(0)
-            app.activateIgnoringOtherApps_(True)
+            app.requestUserAttention_(0)  # this should bounce the icon
+            # the 0 should be replaced by the NSRequestUserAttentionType.NSCriticalRequest
+            # imported from NSApplication? TODO
+            # https://developer.apple.com/library/mac/documentation/Cocoa/Reference/ApplicationKit/Classes/NSApplication_Class/Reference/Reference.html#//apple_ref/doc/c_ref/NSRequestUserAttentionType
+            if bring_up:
+                app.activateIgnoringOtherApps_(True)  # this should bring the app to the foreground
     except Exception as e:
         print e
         Logger.exception('Notification error:\n%s' % e)
