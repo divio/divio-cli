@@ -4,6 +4,7 @@
 *.pyo
 
 aldryngui.ini
+requirements_venv.txt
 sync.log
 build/
 aldryn_client.egg-info/

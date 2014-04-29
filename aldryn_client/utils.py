@@ -32,9 +32,25 @@ ALLOWED_EXTENSIONS = [
     '.scss',
     '.svg',
     '.webm',
+    # font formats
     '.eot',
     '.ttf',
     '.woff',
+    # text formats
+    '.txt',
+    '.md',
+    '.rst',
+    # document formats
+    '.pdf',
+    '.ps',
+    '.djv',
+    '.djvu',
+    '.doc',
+    '.docx',
+    '.ppt',
+    '.pptx',
+    '.xls',
+    '.xlsx',
 ]
 
 BOILERPLATE_REQUIRED = [

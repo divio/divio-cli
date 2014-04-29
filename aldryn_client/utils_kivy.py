@@ -2,7 +2,6 @@
 import os
 import platform
 import subprocess
-import sys
 import threading
 
 from kivy.app import App
@@ -17,7 +16,7 @@ from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 from kivy.utils import get_color_from_hex
-# from pync import Notifier
+from plyer import notification
 
 from .utils import resource_path
 
@@ -403,8 +402,10 @@ class SyncScreen(BaseScreen):
 # OS integration #
 ##################
 
+system = platform.system()
+
+
 def open_in_file_manager(path):
-    system = platform.system()
     if system == 'Windows':
         subprocess.Popen(['start', path], shell=True)
     elif system == 'Darwin':
@@ -416,16 +417,23 @@ def open_in_file_manager(path):
             Logger.exception('Cannot open external file manager')
 
 
-def notify(title, message):
-    pass
-    # platform = sys.platform
-    # if platform == 'darwin':
-    #     Notifier.notify(message, title=title)
-    # else:
-    #     try:
-    #         subprocess.Popen(['notify-send', title, message, '-t', '10000'])
-    #     except OSError:
-    #         Logger.exception('Cannot open external file manager')
+def notify(title, message, bring_up=False):
+    print title, message
+    try:
+        notification.notify(title, message)
+        if system == 'Darwin':
+            from AppKit import NSApp, NSApplication
+            NSApplication.sharedApplication()
+            app = NSApp()
+            app.requestUserAttention_(0)  # this should bounce the icon
+            # the 0 should be replaced by the NSRequestUserAttentionType.NSCriticalRequest
+            # imported from NSApplication? TODO
+            # https://developer.apple.com/library/mac/documentation/Cocoa/Reference/ApplicationKit/Classes/NSApplication_Class/Reference/Reference.html#//apple_ref/doc/c_ref/NSRequestUserAttentionType
+            if bring_up:
+                app.activateIgnoringOtherApps_(True)  # this should bring the app to the foreground
+    except Exception as e:
+        print e
+        Logger.exception('Notification error:\n%s' % e)
 
 
 def get_icon_path():

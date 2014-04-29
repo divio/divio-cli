@@ -16,8 +16,8 @@ DEPENDENCY_LINKS = [
 EXTRAS_REQUIRE = {
     'gui': [
         'Kivy==1.7.2',
+        'plyer==1.1.2',
         'pygame',
-        # 'pync==1.1',
     ],
 }
 try:
