@@ -9,7 +9,7 @@ execfile('./aldryn_client/__init__.py')
 system = platform.system()
 
 a = Analysis(['./bin/AldrynCloud.py'],
-             hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif', 'kivy.core.image.img_pil', 'git']
+             hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif', 'kivy.core.image.img_pil', 'git', 'plyer.platforms.macosx.notification'] 
             )
 
 a.datas += Tree('./aldryn_client/resources', './resources')
@@ -90,6 +90,17 @@ elif system == 'Darwin':
         os.makedirs(os.path.join(dist_dir, dmg_dir))
         os.makedirs(os.path.join(dist_dir, dmg_dir, '.background'))
         shutil.copy('./bin/aldryndmg.png', os.path.join(dist_dir, dmg_dir, '.background'))
+        # Add additional property list require for Notification API
+        with open('./dist/%s.app/Contents/Info.plist' % vol_name, 'rb') as f:
+            info_plist = f.read()
+        info_plist = info_plist.replace("</dict>\n</plist>",
+                                        "<key>CFBundleIdentifier</key>\n"
+                                        "<string>com.divio.aldryncloud</string>\n"
+                                        "<key>CFBundleSignature</key>\n"
+                                        "<string>????</string>\n"
+                                        "</dict>\n</plist>")
+        with open('./dist/%s.app/Contents/Info.plist' % vol_name, 'wb') as f:
+            f.write(info_plist)
         shutil.move('./dist/%s.app' % vol_name, os.path.join(dist_dir, dmg_dir))
     except:
         pass
