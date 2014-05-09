@@ -377,16 +377,22 @@ class AldrynGUIApp(App):
             site_dir = self._websites_manager.get_site_dir(domain)
             if site_dir:
                 # XXX since git sync solution we don't discard any local changes
-                #on_confirm = partial(self._sync_confirmed, domain, site_dir)
-                #title = 'Confirm sync'
-                #name = self._websites_manager.get_site_name(domain)
-                #msg = 'All local changes to the boilerplate of "%s" will be undone. Continue?' % name
-                #self.show_confirm_dialog(title, msg, on_confirm)
+                # on_confirm = partial(self._sync_confirmed, domain, site_dir)
+                # title = 'Confirm sync'
+                # name = self._websites_manager.get_site_name(domain)
+                # msg = 'All local changes to the boilerplate of "%s" will be undone. Continue?' % name
+                # self.show_confirm_dialog(title, msg, on_confirm)
                 self._sync_confirmed(domain, site_dir)
             else:
                 self.select_site_dir(domain, on_selection=lambda *args: self.sync_toggle(domain))
 
     def stop_sync(self, domain):
+        try:
+            self.client.session.post('/api/v1/sync/%s/sync-log-stop/' % domain)
+        except Exception as e:
+            # suppress exception, this request isn't that important, sync will
+            # eventually be marked as stopped
+            print e
         self._websites_manager.stop_site_sync_handler(domain)
 
     def _sync_confirmed(self, domain, site_dir, force=False):
