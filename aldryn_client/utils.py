@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 from cStringIO import StringIO
 import hashlib
+import imp
 import json
 import os
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
+import time
 import yaml
 
 from .serialize import register_yaml_extensions, Trackable, File
@@ -120,6 +123,24 @@ def _validate(config, required, path):
 
 
 def validate_app_config(config, path):
+    aldryn_config_path = os.path.abspath(os.path.join(path, 'aldryn_config.py'))
+    if os.path.exists(aldryn_config_path):
+        tempdir = tempfile.mkdtemp()
+        shutil.copy(aldryn_config_path, tempdir)
+        filepath = os.path.join(tempdir, 'aldryn_config.py')
+        try:
+            orig_err = sys.stderr
+            sys.stderr = StringIO()
+            # suppressing "RuntimeWarning: Parent module 'aldryn_config' not found while handling absolute import"
+            module = imp.load_source('aldryn_config.config_%s' % int(time.time()), filepath)
+            sys.stderr = orig_err
+            # checking basic functionality of the Form
+            form = module.Form({})
+            form.is_valid()
+        except Exception:
+            import traceback
+            error_msg = traceback.format_exc()
+            return (False, "Exception in aldryn_config.py:\n\n%s" % error_msg)
     return _validate(config, APP_REQUIRED, path)
 
 
