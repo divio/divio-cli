@@ -87,7 +87,6 @@ class Client(object):
     ALDRYN_HOST_KEY = 'ALDRYN_HOST'
     ALDRYN_SYNC_LOCK_FILENAME = '.aldryn-sync-lock'
     DATA_FILENAME = 'data.yaml'
-    PROTECTED_FILES_FILENAME = '.protected_files'
     SETUP_FILENAME = 'setup.py'
 
     # messages
@@ -338,10 +337,7 @@ class Client(object):
             self._remove_sync_lock(path)
             return (False, Client.NETWORK_ERROR_MESSAGE)
 
-        upstream_modified = True
-        if response.status_code == 304:
-            upstream_modified = False
-        elif response.status_code != 200:
+        def report_unexpected_http_response(response):
             msgs = []
             msgs.append("Unexpected HTTP Response %s" % response.status_code)
             if response.status_code < 500:
@@ -349,22 +345,35 @@ class Client(object):
             self._remove_sync_lock(path)
             return (False, '\n'.join(msgs))
 
+        upstream_modified = True
+        if response.status_code == 304:
+            upstream_modified = False
+        elif response.status_code != 200:
+            return report_unexpected_http_response(response)
+
         if upstream_modified:
             git_pull_develop_bundle(response, repo, path)
         git_update_gitignore(repo, ['.*', '!.gitignore', '/db_dumps/'])
 
-        protected_files_filename = os.path.join(
-            path, Client.PROTECTED_FILES_FILENAME)
-        protected_files = []
-        #if (os.path.exists(protected_files_filename)):
-        #    with open(protected_files_filename, 'r') as fobj:
-        #        protected_files = json.loads(fobj.read())
-        ## making the protected files read-only
-        #for rel_protected_path in protected_files:
-        #    protected_path = os.path.join(path, rel_protected_path)
-        #    mode = os.stat(protected_path)[stat.ST_MODE]
-        #    read_only_mode = mode & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
-        #    os.chmod(protected_path, read_only_mode)
+        try:
+            response = self.session.get(
+                '/api/v1/sync/%s/unchanged-protected-files' % sitename,
+                headers={'accept': 'application/json'})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            self._remove_sync_lock(path)
+            return (False, Client.NETWORK_ERROR_MESSAGE)
+
+        if response.status_code != 200:
+            return report_unexpected_http_response(response)
+
+        protected_files = response.json()
+        # making the protected files read-only
+        for rel_protected_path in protected_files:
+            protected_path = os.path.join(path, rel_protected_path)
+            mode = os.stat(protected_path)[stat.ST_MODE]
+            read_only_mode = mode & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
+            os.chmod(protected_path, read_only_mode)
 
         # successfully initialized the sync, saving the site's name
         with open(aldryn_dot_filename, 'w') as fobj:
