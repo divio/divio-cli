@@ -387,12 +387,6 @@ class AldrynGUIApp(App):
                 self.select_site_dir(domain, on_selection=lambda *args: self.sync_toggle(domain))
 
     def stop_sync(self, domain):
-        try:
-            self.client.session.post('/api/v1/sync/%s/sync-log-stop/' % domain)
-        except Exception as e:
-            # suppress exception, this request isn't that important, sync will
-            # eventually be marked as stopped
-            print e
         self._websites_manager.stop_site_sync_handler(domain)
 
     def _sync_confirmed(self, domain, site_dir, force=False):

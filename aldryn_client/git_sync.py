@@ -66,6 +66,12 @@ class GitSyncHandler(object):
         self._send_changes_thread.start()
 
     def stop(self):
+        try:
+            self.client.session.post('/api/v1/sync/%s/sync-log-stop/' % self.sitename)
+        except Exception as e:
+            # suppress exception, this request isn't that important, sync will
+            # eventually be marked as stopped
+            print e
         self._sync_stopped_event.set()
         if hasattr(self, '_send_changes_thread'):
             self._send_changes_thread.join()
