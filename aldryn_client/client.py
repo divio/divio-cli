@@ -352,7 +352,13 @@ class Client(object):
             return report_unexpected_http_response(response)
 
         if upstream_modified:
-            git_pull_develop_bundle(response, repo, path)
+            try:
+                git_pull_develop_bundle(response, repo, path)
+            except git.exc.GitCommandError as e:
+                # there were changes both in the upstream and uncommited local ones
+                # next auto-merge will resolve the conflict (preferring our commits)
+                # and then applying the upstream changes
+                print e
         git_update_gitignore(repo, ['.*', '!.gitignore', '/db_dumps/'])
 
         try:
