@@ -85,7 +85,7 @@ class GitSyncHandler(object):
                 file_basename = os.path.basename(filepath)
                 if file_basename in IGNORED_FILES:
                     continue
-                if (file_basename in self._protected_files and
+                if (file_rel_path in self._protected_files and
                         file_rel_path not in self._overridden_protected_files):
                     from .client import Client
                     message = Client.PROTECTED_FILE_CHANGE_MESSAGE % filepath
