@@ -18,12 +18,15 @@ class ValidationError(Exception):
 
 class BaseField(object):
     field_type = None
+    _order_counter = 0
 
     def __init__(self, label, required=True, help_text=None, initial=None):
         self.label = label
         self.required = required
         self.help_text = help_text
         self.initial = initial
+        self._order_counter = BaseField._order_counter
+        BaseField._order_counter += 1
 
     def clean(self, value):
         return value
@@ -133,7 +136,8 @@ class FormMeta(type):
         for key, value in attrs.items():
             if isinstance(value, BaseField):
                 fields.append((key, value))
-        attrs['_fields'] = fields
+        # restore the fields' order as it was in the Form's class body
+        attrs['_fields'] = sorted(fields, key=lambda kv: kv[1]._order_counter)
         return super(FormMeta, cls).__new__(cls, name, bases, attrs)
 
 
