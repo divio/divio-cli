@@ -59,6 +59,7 @@ class GitSyncHandler(object):
         self._protected_files = protected_files
         self._overridden_protected_files = set()
         self._protected_file_change_callback = protected_file_change_callback
+        self._already_notified_incorrect_files = set()
 
     def start(self):
         self._send_changes_thread = threading.Thread(
@@ -121,8 +122,10 @@ class GitSyncHandler(object):
                     commit = True
                     self.repo.git.execute(
                         ['git', 'add', file_rel_path], **extra_git_kwargs)
-                else:
+                elif filepath not in self._already_notified_incorrect_files:
+                    self._already_notified_incorrect_files.add(filepath)
                     msg = 'not a syncable file: "%s": %s' % (filepath, error_msg)
+                    self._sync_error_callback(msg)
                     self.sync_logger.info(msg)
             deleted_files = changes['deleted']
             for file_rel_path in deleted_files:
