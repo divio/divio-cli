@@ -178,6 +178,8 @@ def validate_boilerplate_config(config, path):
         errors = []
         for filename in protected:
             filepath = os.path.join(path, filename)
+            if filepath.endswith('*'):
+                continue
             if not os.path.exists(filepath):
                 valid = False
                 errors.append("Protected file %r not found" % filename)
