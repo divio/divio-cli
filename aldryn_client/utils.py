@@ -78,7 +78,6 @@ APP_REQUIRED = [
     ('author', [
         'name',
     ]),
-    'version',
     'package-name',
     'description',
     ('license', [
@@ -123,24 +122,30 @@ def _validate(config, required, path):
 
 
 def validate_app_config(config, path):
+    if 'version' in config:
+        print ("WARNING! Use of the 'version' field in the 'addon.json' is deprecated, "
+               "please remove it.")
     aldryn_config_path = os.path.abspath(os.path.join(path, 'aldryn_config.py'))
     if os.path.exists(aldryn_config_path):
-        tempdir = tempfile.mkdtemp()
-        shutil.copy(aldryn_config_path, tempdir)
-        filepath = os.path.join(tempdir, 'aldryn_config.py')
+        tempdir = tempfile.mkdtemp(prefix='tmp_aldryn_client_')
         try:
-            orig_err = sys.stderr
-            sys.stderr = StringIO()
-            # suppressing "RuntimeWarning: Parent module 'aldryn_config' not found while handling absolute import"
-            module = imp.load_source('aldryn_config.config_%s' % int(time.time()), filepath)
-            sys.stderr = orig_err
-            # checking basic functionality of the Form
-            form = module.Form({})
-            form.is_valid()
-        except Exception:
-            import traceback
-            error_msg = traceback.format_exc()
-            return (False, "Exception in aldryn_config.py:\n\n%s" % error_msg)
+            shutil.copy(aldryn_config_path, tempdir)
+            filepath = os.path.join(tempdir, 'aldryn_config.py')
+            try:
+                orig_err = sys.stderr
+                sys.stderr = StringIO()
+                # suppressing "RuntimeWarning: Parent module 'aldryn_config' not found while handling absolute import"
+                module = imp.load_source('aldryn_config.config_%s' % int(time.time()), filepath)
+                sys.stderr = orig_err
+                # checking basic functionality of the Form
+                form = module.Form({})
+                form.is_valid()
+            except Exception:
+                import traceback
+                error_msg = traceback.format_exc()
+                return (False, "Exception in aldryn_config.py:\n\n%s" % error_msg)
+        finally:
+            shutil.rmtree(tempdir)
     return _validate(config, APP_REQUIRED, path)
 
 
@@ -282,6 +287,16 @@ def bundle_boilerplate(config, data, path, extra_file_paths, **complex_extra):
     return fileobj
 
 
+def get_package_version(path):
+    devnull = open(os.devnull, 'w')
+    try:
+        version = subprocess.check_output(
+            ['python', 'setup.py', '--version'], cwd=path, stderr=devnull)
+    finally:
+        devnull.close()
+    return version.strip()
+
+
 def bundle_package(workspace, tar, path):
     devnull = open(os.devnull, 'w')
     try:
@@ -307,11 +322,16 @@ def bundle_app(config, script, path):
     if os.path.exists('aldryn_config.py'):
         tar_add_stringio(tar, script_fileobj, 'aldryn_config.py')
         # add actual package
-    distdir = tempfile.mkdtemp(prefix='aldryn-client')
+    distdir = tempfile.mkdtemp(prefix='tmp_aldryn_client_')
     try:
         bundle_package(distdir, tar, path)
     finally:
         shutil.rmtree(distdir)
+    version = get_package_version(path)
+    version_fobj = StringIO(version)
+    info = tarfile.TarInfo(name='VERSION')
+    info.size = len(version_fobj.getvalue())
+    tar.addfile(info, fileobj=version_fobj)
     tar.close()
     fileobj.seek(0)
     return fileobj
