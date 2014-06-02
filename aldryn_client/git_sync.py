@@ -26,6 +26,7 @@ for i in xrange(1, BACKUP_COUNT + 1):
 
 CHANGES_CHECK_DELAY = 0.5  # 0.5s
 SYNC_BACK_EVERY_X_CHECKS = 10  # 5s
+MAX_SYNC_RETRY_COUNT = 2
 
 
 def update_env_path_with_git_bin():
@@ -181,42 +182,57 @@ class GitSyncHandler(object):
             exit_loop_event.set()
             retry_event.set()
 
-        sync_bundle_path = os.path.join(self.relpath, '.sync.bundle')
-        commits_range = '%s..develop' % self._last_synced_commit
-        self.repo.git.execute(
-            ['git', 'bundle', 'create', sync_bundle_path, commits_range],
-            **extra_git_kwargs)
-        fobj = open(sync_bundle_path, 'rb')
-        kwargs = {'files': {'content': fobj}}
-
         if self._sync_indicator_callback:
             self._sync_indicator_callback()
-        success = False
+        try_count = 0
         while not exit_loop_event.isSet():
-            if fobj:  # reseting the read state of the sending file
-                fobj.seek(0)
-            try:
-                success = self._send_request(**kwargs)
-            except (requests.exceptions.ConnectionError,
-                    requests.exceptions.Timeout):
-                retry_event.clear()
-                from .client import Client
-                message = Client.SYNC_NETWORK_ERROR_MESSAGE
-                self._network_error_callback(
-                    message, on_confirm, on_cancel)
-                retry_event.wait()
-            else:
-                fobj.close()
-                exit_loop_event.set()
-        if success:
-            # Updating local "file" remote after successful sync of the commits
-            develop_bundle_path = os.path.join(self.relpath, '.develop.bundle')
-            shutil.move(sync_bundle_path, develop_bundle_path)
+            try_count += 1
+            sync_bundle_path = os.path.join(self.relpath, '.sync.bundle')
+            commits_range = '%s..develop' % self._last_synced_commit
             self.repo.git.execute(
-                ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
+                ['git', 'bundle', 'create', sync_bundle_path, commits_range],
+                **extra_git_kwargs)
+            with open(sync_bundle_path, 'rb') as fobj:
+                kwargs = {'files': {'content': fobj}}
 
-            self._last_synced_commit = self.repo.git.execute(
-                ['git', 'rev-parse', 'develop_bundle/develop'], **extra_git_kwargs)
+                try:
+                    response = self._send_request(**kwargs)
+                except (requests.exceptions.ConnectionError,
+                        requests.exceptions.Timeout):
+                    retry_event.clear()
+                    from .client import Client
+                    message = Client.SYNC_NETWORK_ERROR_MESSAGE
+                    self._network_error_callback(
+                        message, on_confirm, on_cancel)
+                    retry_event.wait()
+                else:
+                    if response.ok:
+                        # Updating local "file" remote after successful sync of the commits
+                        develop_bundle_path = os.path.join(self.relpath, '.develop.bundle')
+                        shutil.move(sync_bundle_path, develop_bundle_path)
+                        self.repo.git.execute(
+                            ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
+
+                        self._last_synced_commit = self.repo.git.execute(
+                            ['git', 'rev-parse', 'develop_bundle/develop'], **extra_git_kwargs)
+                        exit_loop_event.set()
+                    elif response.status_code == 409 and try_count <= MAX_SYNC_RETRY_COUNT:
+                        # probably upstream has some new commits which we need to pull
+                        self.sync_logger.debug(response.content)
+                        self._sync_back_upstream_changes()
+                    else:
+                        title = "Sync failed!"
+                        if response.status_code in (400, 409):
+                            msg = response.content
+                        else:
+                            base_msg = "Unexpected status code %s" % response.status_code
+                            if response.status_code < 500:
+                                msg = '\n'.join([base_msg, response.content])
+                            else:
+                                msg = '\n'.join([base_msg, "Internal Server Error"])
+                        self._sync_error_callback(msg, title=title)
+                        exit_loop_event.set()
+            # endwhile
         if self._sync_indicator_callback:
             self._sync_indicator_callback(stop=True)
 
@@ -245,17 +261,4 @@ class GitSyncHandler(object):
         kwargs['headers'] = headers
         response = self.client.session.request(
             'POST', '/api/v1/git-sync/%s/' % self.sitename, *args, **kwargs)
-        if response.ok:
-            return True
-        else:
-            title = "Sync failed!"
-            if response.status_code == 400:
-                msg = response.content
-            else:
-                base_msg = "Unexpected status code %s" % response.status_code
-                if response.status_code < 500:
-                    msg = '\n'.join([base_msg, response.content])
-                else:
-                    msg = '\n'.join([base_msg, "Internal Server Error"])
-            self._sync_error_callback(msg, title=title)
-            return False
+        return response
