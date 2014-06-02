@@ -409,7 +409,7 @@ class AldrynGUIApp(App):
 
         def sync_error_callback(message, title='Error'):
             notify(WINDOW_TITLE, message, bring_up=True)
-            self.show_info_dialog(title, message)
+            return self.show_info_dialog(title, message)
 
         def protected_file_change_callback(message):
             notify(WINDOW_TITLE, message)

@@ -54,13 +54,18 @@ class GitSyncHandler(object):
         self.relpath = uniform_filepath(relpath)
         self.sync_logger = get_site_specific_logger(sitename, self.relpath)
         self._sync_stopped_event = threading.Event()
+        # UI callbacks
         self._network_error_callback = network_error_callback
         self._sync_error_callback = sync_error_callback
         self._sync_indicator_callback = sync_indicator_callback
+        # protected files
         self._protected_files = protected_files
         self._overridden_protected_files = set()
         self._protected_file_change_callback = protected_file_change_callback
+        # warnings about incorret files
         self._already_notified_incorrect_files = set()
+        # sync error dialog handlers
+        self._sync_error_dialogs = []
 
     def start(self):
         self._send_changes_thread = threading.Thread(
@@ -207,6 +212,11 @@ class GitSyncHandler(object):
                     retry_event.wait()
                 else:
                     if response.ok:
+                        # Dismiss previous sync error dialogs
+                        for dialog in self._sync_error_dialogs:
+                            if dialog and hasattr(dialog, 'dismiss'):
+                                dialog.dismiss()
+                        self._sync_error_dialogs = []
                         # Updating local "file" remote after successful sync of the commits
                         develop_bundle_path = os.path.join(self.relpath, '.develop.bundle')
                         shutil.move(sync_bundle_path, develop_bundle_path)
@@ -230,7 +240,8 @@ class GitSyncHandler(object):
                                 msg = '\n'.join([base_msg, response.content])
                             else:
                                 msg = '\n'.join([base_msg, "Internal Server Error"])
-                        self._sync_error_callback(msg, title=title)
+                        sync_error_dialog = self._sync_error_callback(msg, title=title)
+                        self._sync_error_dialogs.append(sync_error_dialog)
                         exit_loop_event.set()
             # endwhile
         if self._sync_indicator_callback:
