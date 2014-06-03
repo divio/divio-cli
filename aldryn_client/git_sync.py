@@ -197,52 +197,50 @@ class GitSyncHandler(object):
             self.repo.git.execute(
                 ['git', 'bundle', 'create', sync_bundle_path, commits_range],
                 **extra_git_kwargs)
-            with open(sync_bundle_path, 'rb') as fobj:
-                kwargs = {'files': {'content': fobj}}
+            try:
+                with open(sync_bundle_path, 'rb') as fobj:
+                    response = self._send_request(files={'content': fobj})
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout):
+                retry_event.clear()
+                from .client import Client
+                message = Client.SYNC_NETWORK_ERROR_MESSAGE
+                self._network_error_callback(
+                    message, on_confirm, on_cancel)
+                retry_event.wait()
+            else:
+                if response.ok:
+                    # Dismiss previous sync error dialogs
+                    for dialog in self._sync_error_dialogs:
+                        if dialog and hasattr(dialog, 'dismiss'):
+                            dialog.dismiss()
+                    self._sync_error_dialogs = []
+                    # Updating local "file" remote after successful sync of the commits
+                    develop_bundle_path = os.path.join(self.relpath, '.develop.bundle')
+                    shutil.move(sync_bundle_path, develop_bundle_path)
+                    self.repo.git.execute(
+                        ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
 
-                try:
-                    response = self._send_request(**kwargs)
-                except (requests.exceptions.ConnectionError,
-                        requests.exceptions.Timeout):
-                    retry_event.clear()
-                    from .client import Client
-                    message = Client.SYNC_NETWORK_ERROR_MESSAGE
-                    self._network_error_callback(
-                        message, on_confirm, on_cancel)
-                    retry_event.wait()
+                    self._last_synced_commit = self.repo.git.execute(
+                        ['git', 'rev-parse', 'develop_bundle/develop'], **extra_git_kwargs)
+                    exit_loop_event.set()
+                elif response.status_code == 409 and try_count <= MAX_SYNC_RETRY_COUNT:
+                    # probably upstream has some new commits which we need to pull
+                    self.sync_logger.debug(response.content)
+                    self._sync_back_upstream_changes()
                 else:
-                    if response.ok:
-                        # Dismiss previous sync error dialogs
-                        for dialog in self._sync_error_dialogs:
-                            if dialog and hasattr(dialog, 'dismiss'):
-                                dialog.dismiss()
-                        self._sync_error_dialogs = []
-                        # Updating local "file" remote after successful sync of the commits
-                        develop_bundle_path = os.path.join(self.relpath, '.develop.bundle')
-                        shutil.move(sync_bundle_path, develop_bundle_path)
-                        self.repo.git.execute(
-                            ['git', 'fetch', 'develop_bundle'], **extra_git_kwargs)
-
-                        self._last_synced_commit = self.repo.git.execute(
-                            ['git', 'rev-parse', 'develop_bundle/develop'], **extra_git_kwargs)
-                        exit_loop_event.set()
-                    elif response.status_code == 409 and try_count <= MAX_SYNC_RETRY_COUNT:
-                        # probably upstream has some new commits which we need to pull
-                        self.sync_logger.debug(response.content)
-                        self._sync_back_upstream_changes()
+                    title = "Sync failed!"
+                    if response.status_code in (400, 409):
+                        msg = response.content
                     else:
-                        title = "Sync failed!"
-                        if response.status_code in (400, 409):
-                            msg = response.content
+                        base_msg = "Unexpected status code %s" % response.status_code
+                        if response.status_code < 500:
+                            msg = '\n'.join([base_msg, response.content])
                         else:
-                            base_msg = "Unexpected status code %s" % response.status_code
-                            if response.status_code < 500:
-                                msg = '\n'.join([base_msg, response.content])
-                            else:
-                                msg = '\n'.join([base_msg, "Internal Server Error"])
-                        sync_error_dialog = self._sync_error_callback(msg, title=title)
-                        self._sync_error_dialogs.append(sync_error_dialog)
-                        exit_loop_event.set()
+                            msg = '\n'.join([base_msg, "Internal Server Error"])
+                    sync_error_dialog = self._sync_error_callback(msg, title=title)
+                    self._sync_error_dialogs.append(sync_error_dialog)
+                    exit_loop_event.set()
             # endwhile
         if self._sync_indicator_callback:
             self._sync_indicator_callback(stop=True)
