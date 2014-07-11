@@ -25,6 +25,7 @@ Usage:%(extra_commands)s
     aldryn addon upload
     aldryn addon validate
     aldryn sync [--sitename=<sitename>]
+    aldryn workspace create --sitename=<sitename> [--path=<sitename>]
     aldryn sites
     aldryn newest_version
 
@@ -116,6 +117,12 @@ def main():
                     msg = 'Newer version is available (%s).' % newest_version
             else:
                 msg = 'You are using the latest version.'
+    elif args['workspace']:
+        if args['create']:
+            retval, msg = client.create_workspace(
+                sitename=args.get('--sitename', None),
+                path=args.get('--path', None),
+            )
     if msg:
         print msg
     sys.exit(int(retval))

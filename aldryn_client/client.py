@@ -5,6 +5,8 @@ import netrc
 import os
 import time
 import stat
+import shutil
+import tarfile
 import urlparse
 
 import git
@@ -116,6 +118,7 @@ class Client(object):
             host, headers=headers, trust_env=False)
 
         self._sync_handlers_cache = {}
+        print self.host
 
     def get_auth_data(self):
         return self.netrc.hosts.get(self.host)
@@ -409,6 +412,63 @@ class Client(object):
 
     def _is_syncing(self, sitename):
         return sitename in self._sync_handlers_cache
+
+    def create_workspace(self, sitename, path=None):
+        if path is None:
+            path = './%s' % sitename
+        path = os.path.abspath(path)
+        success, msg = self.workspace_download_site(sitename, path=path)
+        if not success:
+            return success, msg
+        success, msg = self.workspace_init_virtualenv(sitename, path)
+        if not success:
+            return success, msg
+        return True, sitename
+
+    def workspace_download_site(self, sitename, path):
+        if not os.path.exists(path):
+            os.mkdir(path)
+        site_path = os.path.join(path, '.site')
+        try:
+            response = self.session.get(
+                '/api/v1/workspace/%s/download/' % sitename, stream=True,
+                headers={'accept': 'application/x-tar-gz'})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
+        if response.status_code != 200:
+            msgs = []
+            msgs.append("Unexpected HTTP Response %s" % response.status_code)
+            if response.status_code < 500:
+                msgs.append(response.content)
+            return (False, '\n'.join(msgs))
+        else:
+            # unpack the downloaded tar.gz containing the whole project
+            if os.path.exists(site_path):
+                print "deleting old .site"
+                shutil.rmtree(site_path)
+                if os.path.exists(site_path):
+                    return (False, "Failed to delete old .site directory")
+
+            print "extracting site to .site"
+            from StringIO import StringIO
+            tar = tarfile.open(mode='r:gz', fileobj=StringIO(response.content))
+            tar.extractall(path=site_path)
+            tar.close()
+            print "finished extracting site"
+            return True, sitename
+
+    def workspace_init_virtualenv(self, sitename, path):
+        virtualenv_path = os.path.join(path, '.virtualenv')
+        requirements_path = os.path.join(path, '.site/requirements.txt')
+        pip_path = os.path.join(path, '.virtualenv/bin/pip')
+        import subprocess
+        subprocess.call(['virtualenv', virtualenv_path])
+
+        subprocess.call([pip_path, 'install', '-r', requirements_path])
+        with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite.pth'), 'w+') as fobj:
+            fobj.write(os.path.abspath('.site/'))
+        return True, sitename
 
     def sites(self):
         try:
