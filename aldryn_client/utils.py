@@ -39,6 +39,7 @@ ALLOWED_EXTENSIONS = [
     '.eot',
     '.ttf',
     '.woff',
+    '.otf',
     # text formats
     '.txt',
     '.md',
