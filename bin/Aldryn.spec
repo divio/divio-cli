@@ -59,6 +59,7 @@ elif system == 'Darwin':
               debug=False,
               strip=None,
               upx=True,
+              append_pkg=False,  # Must be False for codesign
               console=True)
 
     coll = COLLECT(exe,
@@ -101,6 +102,9 @@ elif system == 'Darwin':
                                         "</dict>\n</plist>")
         with open('./dist/%s.app/Contents/Info.plist' % vol_name, 'wb') as f:
             f.write(info_plist)
+        # Code signing by Developer ID Application certificate
+        # for distributing applications outside the Mac App Store
+        Popen(shlex.split('codesign -f -s "Divio AG" Aldryn.app'), cwd=dist_dir, stdout=PIPE).communicate()
         shutil.move('./dist/%s.app' % vol_name, os.path.join(dist_dir, dmg_dir))
     except:
         pass
