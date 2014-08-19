@@ -3,7 +3,7 @@
 echo '***********************************'
 echo 'Aldryn Linux deployment script     '
 echo '***********************************'
-python setup.py install
+sudo python setup.py install
 rm -rf ./build
 rm -f ./aldryn_client/aldryngui.ini
 rm -rf ./dist/Aldryn

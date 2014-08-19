@@ -12,15 +12,16 @@ a = Analysis(['./bin/Aldryn.py'],
              hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif', 'kivy.core.image.img_pil', 'git', 'plyer.platforms.macosx.notification', 'plyer.platforms.linux.notification']
             )
 
-a.datas += Tree('./aldryn_client/resources', './resources')
 a.datas += Tree('./aldryn_client/img', './img')
 a.datas += [('./cacert.pem', './aldryn_client/cacert.pem', 'DATA')]
 a.datas += [('aldryn_client/aldryngui.kv', './aldryn_client/aldryngui.kv', 'DATA')]
+a.datas += [('./resources/appIcon.png', './aldryn_client/resources/appIcon.png', 'DATA')]
 
 pyz = PYZ(a.pure)
 
 if system == 'Windows':
-    a.datas += [('aldryn_client/aldryngui.kv', './aldryn_client/aldryngui.kv', 'DATA')]
+    a.datas += Tree('./aldryn_client/resources/windows', './resources/windows')
+    a.datas += [('./resources/appIcon.ico', './aldryn_client/resources/appIcon.ico', 'DATA')]
 
     ### http://www.pyinstaller.org/ticket/783
     for d in a.datas:
@@ -52,6 +53,9 @@ if system == 'Windows':
               version='./build/version_info.txt')
 
 elif system == 'Darwin':
+    a.datas += Tree('./aldryn_client/resources/mac_osx', './resources/mac_osx')
+    a.datas += [('./resources/appIcon.icns', './aldryn_client/resources/appIcon.icns', 'DATA')]
+
     exe = EXE(pyz,
               a.scripts,
               exclude_binaries=1,
@@ -181,12 +185,17 @@ end tell
     shutil.rmtree(os.path.join(dist_dir, dmg_dir), ignore_errors=True)
 
 elif system == 'Linux':
+
+    arch = platform.architecture()[0]
+    print("Packaging application for Linux %s..." % arch)
+    a.datas += Tree('./aldryn_client/resources/linux%s' % arch[:2], './resources/linux')
+
     exe = EXE(pyz,
           a.scripts,
           a.binaries,
           a.zipfiles,
           a.datas,
-          name=os.path.join('dist', 'Aldryn-%s.bin' % platform.architecture()[0]),
+          name=os.path.join('dist', 'Aldryn-%s.bin' % arch),
           debug=False,
           strip=None,
           upx=False,
