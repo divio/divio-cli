@@ -9,7 +9,7 @@ execfile('./aldryn_client/__init__.py')
 system = platform.system()
 
 a = Analysis(['./bin/Aldryn.py'],
-             hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif', 'kivy.core.image.img_pil', 'git', 'plyer.platforms.macosx.notification'] 
+             hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif', 'kivy.core.image.img_pil', 'git', 'plyer.platforms.macosx.notification', 'plyer.platforms.linux.notification']
             )
 
 a.datas += Tree('./aldryn_client/resources', './resources')
@@ -180,5 +180,16 @@ end tell
         pass
     shutil.rmtree(os.path.join(dist_dir, dmg_dir), ignore_errors=True)
 
+elif system == 'Linux':
+    exe = EXE(pyz,
+          a.scripts,
+          a.binaries,
+          a.zipfiles,
+          a.datas,
+          name=os.path.join('dist', 'Aldryn-%s.bin' % platform.architecture()[0]),
+          debug=False,
+          strip=None,
+          upx=False,
+          console=False)
 else:
     print("TODO: %s" % (system))
