@@ -12,6 +12,7 @@ import tarfile
 import tempfile
 import time
 import yaml
+import platform
 
 from .serialize import register_yaml_extensions, Trackable, File
 
@@ -383,6 +384,17 @@ def resource_path(relative_path):
         base_path = os.path.dirname(__file__)
 
     return os.path.join(base_path, relative_path)
+
+
+def get_icon_path():
+    system = platform.system()
+    if system == 'Darwin':
+        icon = 'resources/appIcon.icns'
+    elif system == 'Windows':
+        icon = 'resources/appIcon.ico'
+    else:
+        icon = 'resources/appIcon.png'
+    return resource_path(icon)
 
 
 def cli_confirm(question, message=None, default=None):
