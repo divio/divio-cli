@@ -9,7 +9,11 @@ execfile('./aldryn_client/__init__.py')
 system = platform.system()
 
 a = Analysis(['./bin/Aldryn.py'],
-             hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif', 'kivy.core.image.img_pil', 'git', 'plyer.platforms.macosx.notification', 'plyer.platforms.linux.notification']
+             hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif',
+                            'kivy.core.image.img_pil', 'git', 'plyer.platforms.macosx.notification',
+                            'plyer.platforms.linux.notification', 'plyer.platforms.win.notification',
+                            'plyer.platforms.win.libs.balloontip', 'plyer.platforms.win.libs.win_api_defs',
+                            'plyer.compat']
             )
 
 a.datas += Tree('./aldryn_client/img', './img')

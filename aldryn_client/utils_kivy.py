@@ -420,7 +420,7 @@ def open_in_file_manager(path):
 def notify(title, message, bring_up=False):
     try:
         kwargs = {'title': title, 'message': message}
-        if system == "Widows" or system == "Linux":
+        if system == "Windows" or system == "Linux":
             kwargs['app_icon'] = os.path.abspath(get_icon_path())
             kwargs['timeout'] = 4
         notification.notify(**kwargs)
