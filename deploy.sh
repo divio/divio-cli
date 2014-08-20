@@ -3,6 +3,7 @@
 echo '***********************************'
 echo 'Aldryn OS X deployment script'
 echo '***********************************'
+rm -f Aldryn.pkg
 rm -f ./aldryn_client/aldryngui.ini
 rm -rf ./dist/Aldryn
 rm -rf ./dist/Aldryn.app
