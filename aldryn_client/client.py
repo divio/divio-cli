@@ -462,12 +462,19 @@ class Client(object):
         virtualenv_path = os.path.join(path, '.virtualenv')
         requirements_path = os.path.join(path, '.site/requirements.txt')
         pip_path = os.path.join(path, '.virtualenv/bin/pip')
+        dev_path = os.path.join(path, 'dev')
+
+        if not os.path.exists(dev_path):
+            os.mkdir(dev_path)
+
         import subprocess
         subprocess.call(['virtualenv', virtualenv_path])
 
         subprocess.call([pip_path, 'install', '-r', requirements_path])
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite.pth'), 'w+') as fobj:
             fobj.write(os.path.abspath('.site/'))
+        with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite_dev.pth'), 'w+') as fobj:
+            fobj.write(os.path.abspath(dev_path))
         return True, sitename
 
     def sites(self):
