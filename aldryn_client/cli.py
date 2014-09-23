@@ -27,7 +27,6 @@ Usage:%(extra_commands)s
     aldryn sync [--sitename=<sitename>]
     aldryn workspace create --sitename=<sitename> [--path=<sitename>]
     aldryn sites
-    aldryn newest_version
 
 Options:
     -h --help                   Show this screen.
