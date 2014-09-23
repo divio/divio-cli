@@ -118,7 +118,7 @@ class Client(object):
             host, headers=headers, trust_env=False)
 
         self._sync_handlers_cache = {}
-        print self.host
+        print 'Connecting to {}'.format(self.host)
 
     def get_auth_data(self):
         return self.netrc.hosts.get(self.host)
