@@ -11,7 +11,7 @@ from kivy.config import Config
 Config.set('kivy', 'desktop', 1)
 # disable multitouch emulation with mouse's clicks
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
-from .utils_kivy import get_icon_path
+from .utils import get_icon_path
 Config.set('kivy', 'window_icon', get_icon_path())
 Config.write()
 
@@ -292,6 +292,7 @@ class AldrynGUIApp(App):
             self.root.get_screen('empty').on_enter = animate_window_resize
             self.root.current = 'empty'
         else:
+            notify(WINDOW_TITLE, msg, bring_up=True)
             self.show_info_dialog('Error', msg)
 
     def logout(self):
@@ -338,6 +339,11 @@ class AldrynGUIApp(App):
                         link = version_data['osx_link']
                     elif system == 'Windows':
                         link = version_data['windows_link']
+                    elif system == 'Linux':
+                        if platform.architecture().startswith('32'):
+                            link = version_data['linux32_link']
+                        else:
+                            link = version_data['linux64_link']
                     else:
                         link = None
                     if link:

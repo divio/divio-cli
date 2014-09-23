@@ -18,7 +18,7 @@ from kivy.uix.textinput import TextInput
 from kivy.utils import get_color_from_hex
 from plyer import notification
 
-from .utils import resource_path
+from .utils import resource_path, get_icon_path
 
 HOME_DIR = os.path.expanduser('~')
 # status to dot color mapping
@@ -418,9 +418,12 @@ def open_in_file_manager(path):
 
 
 def notify(title, message, bring_up=False):
-    print title, message
     try:
-        notification.notify(title, message)
+        kwargs = {'title': title, 'message': message}
+        if system == "Windows" or system == "Linux":
+            kwargs['app_icon'] = os.path.abspath(get_icon_path())
+            kwargs['timeout'] = 4
+        notification.notify(**kwargs)
         if system == 'Darwin':
             from AppKit import NSApp, NSApplication
             NSApplication.sharedApplication()
@@ -435,13 +438,3 @@ def notify(title, message, bring_up=False):
         print e
         Logger.exception('Notification error:\n%s' % e)
 
-
-def get_icon_path():
-    system = platform.system()
-    if system == 'Darwin':
-        icon = 'resources/appIcon.icns'
-    elif system == 'Windows':
-        icon = 'resources/appIcon.ico'
-    else:
-        icon = 'resources/appIcon.png'
-    return resource_path(icon)

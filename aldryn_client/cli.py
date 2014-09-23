@@ -108,6 +108,11 @@ def main():
                     link = version_data['osx_link']
                 elif system == 'Windows':
                     link = version_data['windows_link']
+                elif system == 'Linux':
+                    if platform.architecture().startswith('32'):
+                        link = version_data['linux32_link']
+                    else:
+                        link = version_data['linux64_link']
                 else:
                     link = None
                 if link:

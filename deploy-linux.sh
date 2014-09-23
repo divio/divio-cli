@@ -1,16 +1,18 @@
 #!/bin/bash
 
 echo '***********************************'
-echo 'Aldryn OS X deployment script'
+echo 'Aldryn Linux deployment script     '
 echo '***********************************'
-rm -f Aldryn.pkg
+rm -rf ./build
+mkdir -p ./build
+mkdir -p ./dist
+sudo python setup.py install
 rm -f ./aldryn_client/aldryngui.ini
 rm -rf ./dist/Aldryn
-rm -rf ./dist/Aldryn.app
-rm -rf ./dist/Aldryn.dmg
-kivy ../PyInstaller-2.1/pyinstaller.py bin/Aldryn.spec
+rm -rf ./dist/Aldryn.bin
+python ../PyInstaller-2.1/pyinstaller.py bin/Aldryn.spec
 open ./dist
 echo '***********************************'
-echo 'App file: dist/Aldryn.app'
-echo 'DMG file: dist/Aldryn.dmg'
+echo 'Bin file: dist/Aldryn.bin'
 echo '***********************************'
+

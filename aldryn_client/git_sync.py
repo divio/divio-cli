@@ -36,6 +36,10 @@ def update_env_path_with_git_bin():
         os.environ['GIT_EXEC_PATH'] = resource_path('resources/mac_osx/libexec/git-core')
     elif system == 'Windows':
         os.environ['PATH'] = '%s;' % resource_path('resources/windows/bin') + os.environ['PATH']
+    elif system == 'Linux':
+        os.environ['PATH'] = '%s:' % resource_path('resources/linux/bin') + os.environ['PATH']
+        os.environ['GIT_EXEC_PATH'] = resource_path('resources/linux/libexec/git-core')
+        pass
     else:
         pass  # TODO
 update_env_path_with_git_bin()

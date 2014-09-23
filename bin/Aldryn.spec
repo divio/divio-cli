@@ -8,19 +8,24 @@ execfile('./aldryn_client/__init__.py')
 
 system = platform.system()
 
-a = Analysis(['./bin/AldrynCloud.py'],
-             hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif', 'kivy.core.image.img_pil', 'git', 'plyer.platforms.macosx.notification'] 
+a = Analysis(['./bin/Aldryn.py'],
+             hiddenimports=['aldryn_client.management.commands', 'kivy.core.image.img_gif',
+                            'kivy.core.image.img_pil', 'git', 'plyer.platforms.macosx.notification',
+                            'plyer.platforms.linux.notification', 'plyer.platforms.win.notification',
+                            'plyer.platforms.win.libs.balloontip', 'plyer.platforms.win.libs.win_api_defs',
+                            'plyer.compat']
             )
 
-a.datas += Tree('./aldryn_client/resources', './resources')
 a.datas += Tree('./aldryn_client/img', './img')
 a.datas += [('./cacert.pem', './aldryn_client/cacert.pem', 'DATA')]
 a.datas += [('aldryn_client/aldryngui.kv', './aldryn_client/aldryngui.kv', 'DATA')]
+a.datas += [('./resources/appIcon.png', './aldryn_client/resources/appIcon.png', 'DATA')]
 
 pyz = PYZ(a.pure)
 
 if system == 'Windows':
-    a.datas += [('aldryn_client/aldryngui.kv', './aldryn_client/aldryngui.kv', 'DATA')]
+    a.datas += Tree('./aldryn_client/resources/windows', './resources/windows')
+    a.datas += [('./resources/appIcon.ico', './aldryn_client/resources/appIcon.ico', 'DATA')]
 
     ### http://www.pyinstaller.org/ticket/783
     for d in a.datas:
@@ -43,7 +48,7 @@ if system == 'Windows':
               a.binaries,
               a.zipfiles,
               a.datas,
-              name=os.path.join('dist', 'AldrynCloud.exe'),
+              name=os.path.join('dist', 'Aldryn.exe'),
               debug=False,
               strip=None,
               upx=True,
@@ -52,13 +57,17 @@ if system == 'Windows':
               version='./build/version_info.txt')
 
 elif system == 'Darwin':
+    a.datas += Tree('./aldryn_client/resources/mac_osx', './resources/mac_osx')
+    a.datas += [('./resources/appIcon.icns', './aldryn_client/resources/appIcon.icns', 'DATA')]
+
     exe = EXE(pyz,
               a.scripts,
               exclude_binaries=1,
-              name=os.path.join('build/pyi.darwin/AldrynCloud', 'AldrynCloud'),
+              name=os.path.join('build/pyi.darwin/Aldryn', 'Aldryn'),
               debug=False,
               strip=None,
               upx=True,
+              append_pkg=False,  # Must be False for codesign
               console=True)
 
     coll = COLLECT(exe,
@@ -67,11 +76,11 @@ elif system == 'Darwin':
                    a.datas,
                    strip=None,
                    upx=True,
-                   name=os.path.join('dist', 'AldrynCloud'))
+                   name=os.path.join('dist', 'Aldryn'))
 
     app = BUNDLE(coll,
                  icon="./aldryn_client/resources/appIcon.icns",
-                 name=os.path.join('dist', 'AldrynCloud.app'),
+                 name=os.path.join('dist', 'Aldryn.app'),
                  version=__version__)
 
     # Create DMG with Background and Applications folder
@@ -83,7 +92,7 @@ elif system == 'Darwin':
     import time
     from subprocess import Popen, PIPE
 
-    vol_name = "AldrynCloud"
+    vol_name = "Aldryn"
     dist_dir = './dist'
     dmg_dir = 'dmg_dir'
     try:
@@ -95,12 +104,15 @@ elif system == 'Darwin':
             info_plist = f.read()
         info_plist = info_plist.replace("</dict>\n</plist>",
                                         "<key>CFBundleIdentifier</key>\n"
-                                        "<string>com.divio.aldryncloud</string>\n"
+                                        "<string>com.divio.aldryn</string>\n"
                                         "<key>CFBundleSignature</key>\n"
                                         "<string>????</string>\n"
                                         "</dict>\n</plist>")
         with open('./dist/%s.app/Contents/Info.plist' % vol_name, 'wb') as f:
             f.write(info_plist)
+        # Code signing by Developer ID Application certificate
+        # for distributing applications outside the Mac App Store
+        Popen(shlex.split('codesign -f -s "Divio AG" Aldryn.app'), cwd=dist_dir, stdout=PIPE).communicate()
         shutil.move('./dist/%s.app' % vol_name, os.path.join(dist_dir, dmg_dir))
     except:
         pass
@@ -141,11 +153,11 @@ tell application "Finder"
         set arrangement of theViewOptions to not arranged
         set icon size of theViewOptions to 72
         set background picture of theViewOptions to file ".background:aldryndmg.png"
-        do shell script "ln -s /Applications /Volumes/AldrynCloud"
+        do shell script "ln -s /Applications /Volumes/Aldryn"
         close
         open
         delay 1
-        set position of item "AldrynCloud" of container window to {160, 315}
+        set position of item "Aldryn" of container window to {160, 315}
         set position of item "Applications" of container window to {485, 315}
         set position of item ".background" of container window to {900, 900}
         set position of item ".DS_Store" of container window to {900, 900}
@@ -176,5 +188,21 @@ end tell
         pass
     shutil.rmtree(os.path.join(dist_dir, dmg_dir), ignore_errors=True)
 
+elif system == 'Linux':
+
+    arch = platform.architecture()[0]
+    print("Packaging application for Linux %s..." % arch)
+    a.datas += Tree('./aldryn_client/resources/linux%s' % arch[:2], './resources/linux')
+
+    exe = EXE(pyz,
+          a.scripts,
+          a.binaries,
+          a.zipfiles,
+          a.datas,
+          name=os.path.join('dist', 'Aldryn-%s.bin' % arch),
+          debug=False,
+          strip=None,
+          upx=False,
+          console=False)
 else:
     print("TODO: %s" % (system))
