@@ -201,6 +201,7 @@ class LoadSitesListThread(threading.Thread):
 
     def run(self):
         status, data = self.client.sites()
+        # Also retrieving the latest version number
         version_data = None
         if status:
             version_status, version_data = self.client.newest_version()

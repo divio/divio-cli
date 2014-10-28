@@ -48,7 +48,7 @@ update_env_path_with_git_bin()
 class GitSyncHandler(object):
 
     def __init__(self, client, sitename, repo, last_synced_commit,
-                 network_error_callback, sync_error_callback,
+                 network_error_callback, sync_error_callback, stop_sync_callback,
                  protected_files, protected_file_change_callback,
                  relpath='.', sync_indicator_callback=None):
         self.client = client
@@ -61,6 +61,7 @@ class GitSyncHandler(object):
         # UI callbacks
         self._network_error_callback = network_error_callback
         self._sync_error_callback = sync_error_callback
+        self._stop_sync_callback = stop_sync_callback
         self._sync_indicator_callback = sync_indicator_callback
         # protected files
         self._protected_files = protected_files
@@ -232,6 +233,10 @@ class GitSyncHandler(object):
                     # probably upstream has some new commits which we need to pull
                     self.sync_logger.debug(response.content)
                     self._sync_back_upstream_changes()
+                elif response.status_code == 403:
+                    msg = response.content
+                    self._stop_sync_callback(msg, force=True, logout=True)
+                    exit_loop_event.set()
                 else:
                     title = "Sync failed!"
                     if response.status_code in (400, 409):

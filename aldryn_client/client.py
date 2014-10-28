@@ -125,15 +125,29 @@ class Client(object):
 
     def is_logged_in(self):
         auth_data = self.get_auth_data()
-        return bool(auth_data)
+        if auth_data:
+            email, account, token = auth_data
+            try:
+                response = self.session.post(
+                    '/api/v1/verify-token/', data={'token': token})
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout):
+                return False
+            else:
+                if response.ok:
+                    return True
+                else:
+                    return False
+        else:
+            return False
 
     def get_login(self):
         if self.is_logged_in():
             auth_data = self.get_auth_data()
             return auth_data[0]
 
-    def logout(self):
-        while self.interactive:
+    def logout(self, force=False):
+        while self.interactive and not force:
             answer = raw_input('Are you sure you want to continue? [yN]')
             if answer.lower() == 'n' or not answer:
                 print "Aborted"
@@ -393,7 +407,7 @@ class Client(object):
 
         sync_handler = GitSyncHandler(
             self, sitename, repo, last_synced_commit,
-            network_error_callback, sync_error_callback,
+            network_error_callback, sync_error_callback, stop_sync_callback,
             protected_files, protected_file_change_callback,
             relpath=path, sync_indicator_callback=sync_indicator_callback)
         sync_handler.start()
@@ -483,19 +497,23 @@ class Client(object):
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout):
             return (False, Client.NETWORK_ERROR_MESSAGE)
-        if response.status_code != 200:
-            msgs = []
-            msgs.append("Unexpected HTTP Response %s" % response.status_code)
-            if response.status_code < 500:
-                msgs.append(response.content)
-            return (False, '\n'.join(msgs))
-        else:
+        if response.status_code == 200:
             sites = json.loads(response.content)
             if self.interactive:
                 data = json.dumps(sites, sort_keys=True, indent=4, separators=(',', ': '))
             else:
                 data = sites
             return (True, data)
+        elif response.status_code == 403:
+            self.logout(force=True)
+            msg = 'Session expired. Please log in again.'
+            return (False, msg)
+        else:
+            msgs = []
+            msgs.append("Unexpected HTTP Response %s" % response.status_code)
+            if response.status_code < 500:
+                msgs.append(response.content)
+            return (False, '\n'.join(msgs))
 
     def newest_version(self):
         try:

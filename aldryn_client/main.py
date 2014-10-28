@@ -154,19 +154,21 @@ class AldrynGUIApp(App):
 
     ### DIALOGS ###
 
-    def show_info_dialog(self, title, msg, on_open=None):
+    def show_info_dialog(self, title, msg, on_open=None, on_close=None):
         info_popup = None
 
         def dismiss_info_dialog():
             if info_popup and hasattr(info_popup, 'dismiss'):
                 info_popup.dismiss()
+            if callable(on_close):
+                on_close()
 
         content = InfoDialog(close=dismiss_info_dialog)
         content.message_label.text = msg
         info_popup = Popup(
             title=title, content=content, auto_dismiss=False,
             size_hint=(0.9, None), height=200)
-        if on_open:
+        if callable(on_open):
             info_popup.on_open = on_open
         info_popup.open()
         return info_popup
@@ -458,7 +460,7 @@ class AldrynGUIApp(App):
             else:
                 self.show_info_dialog('Error', msg_or_sync_handler)
 
-    def _stop_sync_callback(self, domain, msg):
+    def _stop_sync_callback(self, domain, msg, force=False, logout=False):
         handler = self._websites_manager.get_site_sync_handler(domain)
         if handler:
             if hasattr(handler, '_continue_despite_stop_callback'):
@@ -466,13 +468,21 @@ class AldrynGUIApp(App):
             else:
                 handler._continue_despite_stop_callback = True
         notify(WINDOW_TITLE, msg)
-        on_confirm = partial(self.stop_sync, domain)
-        title = 'Stop syncing'
-        cancel_btn_text = 'No, continue'
-        confirm_btn_text = 'Yes, stop syncing'
-        self.show_confirm_dialog(title, msg, on_confirm,
-                                 cancel_btn_text=cancel_btn_text,
-                                 confirm_btn_text=confirm_btn_text)
+
+        def on_done():
+            self.stop_sync(domain)
+            if logout:
+                self.logout()
+        if force:
+            title = 'Syncing stopped'
+            self.show_info_dialog(title, msg, on_close=on_done)
+        else:
+            title = 'Stop syncing'
+            cancel_btn_text = 'No, continue'
+            confirm_btn_text = 'Yes, stop syncing'
+            self.show_confirm_dialog(title, msg, on_done,
+                                     cancel_btn_text=cancel_btn_text,
+                                     confirm_btn_text=confirm_btn_text)
 
     ### END OF SYNC ###
 
