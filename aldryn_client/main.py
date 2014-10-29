@@ -291,6 +291,9 @@ class AldrynGUIApp(App):
     def _login_callback(self, loading_dialog, status, msg):
         loading_dialog.dismiss()
         if status:
+            # Removing the credentials from the inputs of the login's screen
+            login_screen = self.root.get_screen('login')
+            login_screen.reset_inputs()
 
             def callback():  # change screen to sync after the animation
                 self.root.get_screen('sync').on_enter = self.load_sites_list

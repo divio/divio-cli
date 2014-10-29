@@ -436,6 +436,13 @@ class LoginScreen(BaseScreen):
             self._login_with_token = LoginWithTokenWidget()
         container.add_widget(self._login_with_token)
 
+    def reset_inputs(self):
+        if hasattr(self, '_login_with_email'):
+            self._login_with_email.email.text = ''
+            self._login_with_email.password.text = ''
+        if hasattr(self, '_login_with_token'):
+            self._login_with_token.token.text = ''
+
 
 class EmptyScreen(BaseScreen):
     aldryn_logo_img = resource_path('img/aldryn_logo.png')
