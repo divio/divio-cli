@@ -91,18 +91,6 @@
             background_color: 0, 0, 0, 0
             on_release: app.browser_open_account_creation()
 
-            canvas:
-                Color:
-                    rgb: 0.06, 0.06, 0.06, 1
-                Rectangle:
-                    pos: self.pos[0], self.pos[1] + self.height - 1
-                    size: self.width, 1
-                Color:
-                    rgb: 0.38, 0.38, 0.38, 1
-                Rectangle:
-                    pos: self.pos[0], self.pos[1] + self.height - 2
-                    size: self.width, 1
-
 
 <EmptyScreen>:
     AnchorLayout:
@@ -401,19 +389,32 @@
 
 
 <OpenButton@Button>
-    background_color: 0, 0, 0, 0
+    background_color: 0.0, 0.0, 0.0, 0.0
     background_down: ''
     background_normal: ''
-    size_hint: None, 1
     size: img_id.size
+    size_hint: None, 1
 
     Image:
         id: img_id
-
-        pos: self.parent.pos[0], self.parent.pos[1] + (self.parent.height - self.height) / 2.0
+        pos: root.pos[0], root.pos[1] + 0.5 * (root.height - self.height)
         size: self.texture_size
         size_hint: None, None
         source: root.external_img
+
+
+<TopBorderButton@Button>
+    canvas:
+        Color:
+            rgb: 0.06, 0.06, 0.06, 1
+        Rectangle:
+            pos: self.pos[0], self.pos[1] + self.height - 1
+            size: self.width, 1
+        Color:
+            rgb: 0.38, 0.38, 0.38, 1
+        Rectangle:
+            pos: self.pos[0], self.pos[1] + self.height - 2
+            size: self.width, 1
 
 
 <WebsiteView@RelativeView>:
