@@ -97,6 +97,15 @@ class OpenButton(Button):
 
 class CustomFileChooserListView(FileChooserListView):
 
+    def __init__(self, *args, **kwargs):
+        super(CustomFileChooserListView, self).__init__(*args, **kwargs)
+        self.bind(path=self._normalize_path)
+
+    def _normalize_path(self, *args, **kwargs):
+        norm_path = os.path.normpath(self.path)
+        if norm_path != self.path:
+            self.path = norm_path
+
     def go_to_home_dir(self):
         self.path = HOME_DIR
 
@@ -192,6 +201,19 @@ class LoginThread(threading.Thread):
         Clock.schedule_once(lambda dt: self.callback(status, msg), 0)
 
 
+class LoginWithTokenThread(threading.Thread):
+
+    def __init__(self, token, client, callback):
+        super(LoginWithTokenThread, self).__init__()
+        self.token = token
+        self.client = client
+        self.callback = callback
+
+    def run(self):
+        status, msg = self.client.login_with_token(token=self.token)
+        Clock.schedule_once(lambda dt: self.callback(status, msg), 0)
+
+
 class LoadSitesListThread(threading.Thread):
 
     def __init__(self, client, callback):
@@ -201,6 +223,7 @@ class LoadSitesListThread(threading.Thread):
 
     def run(self):
         status, data = self.client.sites()
+        # Also retrieving the latest version number
         version_data = None
         if status:
             version_status, version_data = self.client.newest_version()
@@ -375,8 +398,17 @@ class BaseScreen(Screen):
     pass
 
 
+class LoginWithEmailWidget(BoxLayout):
+    email = ObjectProperty(None)
+    password = ObjectProperty(None)
+
+
+class LoginWithTokenWidget(BoxLayout):
+    token = ObjectProperty(None)
+
+
 class LoginScreen(BaseScreen):
-    login_btn = ObjectProperty(None)
+    login_type_container = ObjectProperty(None)
     trouble_btn = ObjectProperty(None)
     create_aldryn_id_btn = ObjectProperty(None)
     email = TabTextInput()
@@ -386,6 +418,30 @@ class LoginScreen(BaseScreen):
 
     def __init__(self, *args, **kwargs):
         super(LoginScreen, self).__init__(*args, **kwargs)
+        self.switch_to_email_and_password()
+
+    def switch_to_email_and_password(self):
+        container = self.login_type_container
+        if container.children:
+            container.remove_widget(container.children[0])
+        if not hasattr(self, '_login_with_email'):
+            self._login_with_email = LoginWithEmailWidget()
+        container.add_widget(self._login_with_email)
+
+    def switch_to_token(self):
+        container = self.login_type_container
+        if container.children:
+            container.remove_widget(container.children[0])
+        if not hasattr(self, '_login_with_token'):
+            self._login_with_token = LoginWithTokenWidget()
+        container.add_widget(self._login_with_token)
+
+    def reset_inputs(self):
+        if hasattr(self, '_login_with_email'):
+            self._login_with_email.email.text = ''
+            self._login_with_email.password.text = ''
+        if hasattr(self, '_login_with_token'):
+            self._login_with_token.token.text = ''
 
 
 class EmptyScreen(BaseScreen):

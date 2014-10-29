@@ -19,7 +19,7 @@ else:
 doc_draft = """django CMS cloud client.
 
 Usage:%(extra_commands)s
-    aldryn login
+    aldryn login [--with-token]
     aldryn boilerplate upload
     aldryn boilerplate validate
     aldryn addon upload
@@ -66,16 +66,17 @@ def _sync_error_callback(message, title=None):
 
 def main():
     args = docopt.docopt(__doc__, version=version)
-    client = Client(
-        os.environ.get(Client.ALDRYN_HOST_KEY, Client.ALDRYN_HOST_DEFAULT),
-        interactive=True)
+    client = Client(Client.get_host_url(), interactive=True)
     retval = True
     msg = None
     if GUI and args['gui']:
         from main import AldrynGUIApp
         AldrynGUIApp().run()
     elif args['login']:
-        retval, msg = client.login()
+        if args['--with-token']:
+            retval, msg = client.login_with_token()
+        else:
+            retval, msg = client.login()
     elif args['boilerplate']:
         if args['upload']:
             retval, msg = client.upload_boilerplate()

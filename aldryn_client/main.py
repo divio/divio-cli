@@ -48,6 +48,7 @@ from .utils_kivy import (
     LoadingDialog,
     LoginScreen,
     LoginThread,
+    LoginWithTokenThread,
     SyncDirThread,
     SyncScreen,
     WebsitesManager,
@@ -83,9 +84,7 @@ class AldrynGUIApp(App):
 
     def __init__(self, *args, **kwargs):
         super(AldrynGUIApp, self).__init__(*args, **kwargs)
-        self.client = Client(
-            os.environ.get(Client.ALDRYN_HOST_KEY, Client.ALDRYN_HOST_DEFAULT),
-            interactive=False)
+        self.client = Client(Client.get_host_url(), interactive=False)
         sites_dir_database_file_path = os.path.join(self.user_data_dir, SITES_DATABASE_FILENAME)
 
         def open_db():
@@ -154,19 +153,21 @@ class AldrynGUIApp(App):
 
     ### DIALOGS ###
 
-    def show_info_dialog(self, title, msg, on_open=None):
+    def show_info_dialog(self, title, msg, on_open=None, on_close=None):
         info_popup = None
 
         def dismiss_info_dialog():
             if info_popup and hasattr(info_popup, 'dismiss'):
                 info_popup.dismiss()
+            if callable(on_close):
+                on_close()
 
         content = InfoDialog(close=dismiss_info_dialog)
         content.message_label.text = msg
         info_popup = Popup(
             title=title, content=content, auto_dismiss=False,
             size_hint=(0.9, None), height=200)
-        if on_open:
+        if callable(on_open):
             info_popup.on_open = on_open
         info_popup.open()
         return info_popup
@@ -280,9 +281,19 @@ class AldrynGUIApp(App):
             email, password, self.client, login_callback)
         self._login_thread.start()
 
+    def login_with_token(self, token):
+        loading_dialog = self.show_loading_dialog()
+        login_callback = partial(self._login_callback, loading_dialog)
+        self._login_thread = LoginWithTokenThread(
+            token, self.client, login_callback)
+        self._login_thread.start()
+
     def _login_callback(self, loading_dialog, status, msg):
         loading_dialog.dismiss()
         if status:
+            # Removing the credentials from the inputs of the login's screen
+            login_screen = self.root.get_screen('login')
+            login_screen.reset_inputs()
 
             def callback():  # change screen to sync after the animation
                 self.root.get_screen('sync').on_enter = self.load_sites_list
@@ -458,7 +469,7 @@ class AldrynGUIApp(App):
             else:
                 self.show_info_dialog('Error', msg_or_sync_handler)
 
-    def _stop_sync_callback(self, domain, msg):
+    def _stop_sync_callback(self, domain, msg, force=False, logout=False):
         handler = self._websites_manager.get_site_sync_handler(domain)
         if handler:
             if hasattr(handler, '_continue_despite_stop_callback'):
@@ -466,13 +477,21 @@ class AldrynGUIApp(App):
             else:
                 handler._continue_despite_stop_callback = True
         notify(WINDOW_TITLE, msg)
-        on_confirm = partial(self.stop_sync, domain)
-        title = 'Stop syncing'
-        cancel_btn_text = 'No, continue'
-        confirm_btn_text = 'Yes, stop syncing'
-        self.show_confirm_dialog(title, msg, on_confirm,
-                                 cancel_btn_text=cancel_btn_text,
-                                 confirm_btn_text=confirm_btn_text)
+
+        def on_done():
+            self.stop_sync(domain)
+            if logout:
+                self.logout()
+        if force:
+            title = 'Syncing stopped'
+            self.show_info_dialog(title, msg, on_close=on_done)
+        else:
+            title = 'Stop syncing'
+            cancel_btn_text = 'No, continue'
+            confirm_btn_text = 'Yes, stop syncing'
+            self.show_confirm_dialog(title, msg, on_done,
+                                     cancel_btn_text=cancel_btn_text,
+                                     confirm_btn_text=confirm_btn_text)
 
     ### END OF SYNC ###
 
@@ -503,6 +522,8 @@ class AldrynGUIApp(App):
         webbrowser.open(self._websites_manager.get_site_stage_url(domain) or
                         CONTROL_PANEL_URL)
 
+    def browser_open_get_access_token(self):
+        webbrowser.open(self.client.get_access_token_url())
 
 if __name__ == '__main__':
     AldrynGUIApp().run()

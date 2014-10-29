@@ -90,6 +90,7 @@ class Client(object):
     ALDRYN_SYNC_LOCK_FILENAME = '.aldryn-sync-lock'
     DATA_FILENAME = 'data.yaml'
     SETUP_FILENAME = 'setup.py'
+    ACCESS_TOKEN_URL_PATH = '/account/desktop-app/access-token/'
 
     # messages
     DIRECTORY_ALREADY_SYNCING_MESSAGE = 'Directory already syncing.'
@@ -101,6 +102,15 @@ class Client(object):
         APP_FILENAME_JSON, APP_FILENAME_YAML,
         BOILERPLATE_FILENAME_JSON, BOILERPLATE_FILENAME_YAML,
         ALDRYN_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
+
+    @classmethod
+    def get_host_url(cls):
+        return os.environ.get(cls.ALDRYN_HOST_KEY, cls.ALDRYN_HOST_DEFAULT)
+
+    @classmethod
+    def get_access_token_url(cls):
+        return '%s/%s' % (
+            cls.get_host_url().rstrip('/'), cls.ACCESS_TOKEN_URL_PATH.lstrip('/'))
 
     def __init__(self, host, interactive=True):
         register_yaml_extensions()
@@ -125,15 +135,29 @@ class Client(object):
 
     def is_logged_in(self):
         auth_data = self.get_auth_data()
-        return bool(auth_data)
+        if auth_data:
+            email, account, token = auth_data
+            try:
+                response = self.session.post(
+                    '/api/v1/verify-token/', data={'token': token})
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout):
+                return False
+            else:
+                if response.ok:
+                    return True
+                else:
+                    return False
+        else:
+            return False
 
     def get_login(self):
         if self.is_logged_in():
             auth_data = self.get_auth_data()
             return auth_data[0]
 
-    def logout(self):
-        while self.interactive:
+    def logout(self, force=False):
+        while self.interactive and not force:
             answer = raw_input('Are you sure you want to continue? [yN]')
             if answer.lower() == 'n' or not answer:
                 print "Aborted"
@@ -161,6 +185,39 @@ class Client(object):
             self.session.headers = {
                 'Authorization': 'Basic %s' % token
             }
+            self.netrc.add(self.host, email, None, token)
+            self.netrc.write()
+            msg = "Logged in as %s" % email
+            return (True, msg)
+        elif response.status_code == requests.codes.forbidden:
+            if response.content:
+                msg = response.content
+            else:
+                msg = "Could not log in, invalid email or password"
+            return (False, msg)
+        else:
+            msgs = []
+            if response.content and response.status_code < 500:
+                msgs.append(response.content)
+            msgs.append("There was a problem logging in, please try again later.")
+            return (False, '\n'.join(msgs))
+
+    def login_with_token(self, token=None):
+        if token is None:
+            print 'To get your access token visit: %s' % self.get_access_token_url()
+            token = raw_input('Access token: ')
+        try:
+            response = self.session.post(
+                '/api/v1/login-with-token/', data={'token': token})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
+        if response.ok:
+            user_data = response.json()
+            self.session.headers = {
+                'Authorization': 'Basic %s' % token
+            }
+            email = user_data['email']
             self.netrc.add(self.host, email, None, token)
             self.netrc.write()
             msg = "Logged in as %s" % email
@@ -393,7 +450,7 @@ class Client(object):
 
         sync_handler = GitSyncHandler(
             self, sitename, repo, last_synced_commit,
-            network_error_callback, sync_error_callback,
+            network_error_callback, sync_error_callback, stop_sync_callback,
             protected_files, protected_file_change_callback,
             relpath=path, sync_indicator_callback=sync_indicator_callback)
         sync_handler.start()
@@ -483,19 +540,23 @@ class Client(object):
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout):
             return (False, Client.NETWORK_ERROR_MESSAGE)
-        if response.status_code != 200:
-            msgs = []
-            msgs.append("Unexpected HTTP Response %s" % response.status_code)
-            if response.status_code < 500:
-                msgs.append(response.content)
-            return (False, '\n'.join(msgs))
-        else:
+        if response.status_code == 200:
             sites = json.loads(response.content)
             if self.interactive:
                 data = json.dumps(sites, sort_keys=True, indent=4, separators=(',', ': '))
             else:
                 data = sites
             return (True, data)
+        elif response.status_code == 403:
+            self.logout(force=True)
+            msg = 'Session expired. Please log in again.'
+            return (False, msg)
+        else:
+            msgs = []
+            msgs.append("Unexpected HTTP Response %s" % response.status_code)
+            if response.status_code < 500:
+                msgs.append(response.content)
+            return (False, '\n'.join(msgs))
 
     def newest_version(self):
         try:

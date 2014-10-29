@@ -16,20 +16,109 @@
             size: self.size
 
 
-<LoginScreen>:
-    login_btn: login_btn_id
-    trouble_btn: trouble_btn_id
-    create_aldryn_id_btn: create_aldryn_id_btn_id
+<LoginWithEmailWidget>:
     email: email_id
     password: password_id
+    login_btn: login_btn_id
+
+    orientation: 'vertical'
+    spacing: 10
+
+    Label:
+        size_hint: 1, 0.15
+        text: 'E-mail'
+
+    TabTextInput
+        id: email_id
+        focus: True
+        next: password_id
+        size_hint: 1, 0.2
+
+    Label:
+        size_hint: 1, 0.15
+        text: 'Password'
+
+    TabTextInput
+        id: password_id
+        next: login_btn_id
+        password: True
+        size_hint: 1, 0.2
+
+    Button:
+        id: login_btn_id
+        background_color: 0.33, 0.66, 0.9, 1
+        background_down: ''
+        background_normal: ''
+        on_release: app.login(email_id.text, password_id.text)
+        size_hint: 1, 0.2
+        text: 'Login'
+
+    LinkButton:
+        background_color: 0, 0, 0, 0
+        background_down: ''
+        background_normal: ''
+        on_release: root.parent.login_screen.switch_to_token()
+        size_hint: 1, 0.1
+        text: 'No password? Login with an access token.'
+
+
+<LoginWithTokenWidget>:
+    token: token_id
+    login_btn: login_btn_id
+
+    orientation: 'vertical'
+    spacing: 10
+
+    Label:
+        size_hint: 1, 0.15
+        text: 'Access token'
+
+    TabTextInput
+        id: token_id
+        focus: True
+        size_hint: 1, 0.2
+
+    Button:
+        id: login_btn_id
+        background_color: 0.33, 0.66, 0.9, 1
+        background_down: ''
+        background_normal: ''
+        on_release: app.login_with_token(token_id.text)
+        size_hint: 1, 0.2
+        text: 'Login'
+
+    LinkButton:
+        background_color: 0, 0, 0, 0
+        background_down: ''
+        background_normal: ''
+        on_release: app.browser_open_get_access_token()
+        size_hint: 1, 0.1
+        text: 'Get your access token.'
+
+    BoxLayout:
+        # Placeholder, so this view is as high as the 'LoginWithEmail'
+        size_hint: 1, 0.25
+
+    LinkButton:
+        background_color: 0, 0, 0, 0
+        background_down: ''
+        background_normal: ''
+        on_release: root.parent.login_screen.switch_to_email_and_password()
+        size_hint: 1, 0.1
+        text: 'Back to the email and password.'
+
+
+<LoginScreen>:
+    login_type_container: login_type_container_id
+    trouble_btn: trouble_btn_id
+    create_aldryn_id_btn: create_aldryn_id_btn_id
 
     BoxLayout:
         orientation: 'vertical'
-        spacing: 10
 
         BoxLayout:
             orientation: 'vertical'
-            padding: 40, 20, 40, 0
+            padding: 40, 20, 40, 20
             spacing: 10
 
             Image:
@@ -40,68 +129,28 @@
                 size_hint: 1, 0.1
                 text: 'Login with your Aldryn ID'
 
-            Label:
-                size_hint: 1, 0.1
-                text: 'E-mail'
+            BoxLayout:
+                size_hint: 1, 0.6
+                id: login_type_container_id
+                login_screen: root
 
-            TabTextInput
-                id: email_id
-                #background_color: 0.22, 0.22, 0.22, 1
-                #background_active: ''
-                #background_normal: ''
-                #border: 0, 0, 0, 0
-                focus: True
-                next: password_id
-                size_hint: 1, 0.1
+        TopBorderButton:
+            id: trouble_btn_id
+            size_hint: 1, 0.1
+            text: 'Trouble signing in?'
+            background_normal: ''
+            background_down: ''
+            background_color: 0, 0, 0, 0
+            on_release: app.browser_open_trouble_signing_in()
 
-            Label:
-                size_hint: 1, 0.1
-                text: 'Password'
-
-            TabTextInput
-                id: password_id
-                next: login_btn_id
-                password: True
-                size_hint: 1, 0.1
-
-            Button:
-                id: login_btn_id
-                background_color: 0.33, 0.66, 0.9, 1
-                background_down: ''
-                background_normal: ''
-                on_release: app.login(email_id.text, password_id.text)
-                size_hint: 1, 0.1
-                text: 'Login'
-
-            Button:
-                id: trouble_btn_id
-                size_hint: 1, 0.1
-                text: 'Trouble signing in?'
-                background_normal: ''
-                background_down: ''
-                background_color: 0, 0, 0, 0
-                on_release: app.browser_open_trouble_signing_in()
-
-        Button:
+        TopBorderButton:
             id: create_aldryn_id_btn_id
             size_hint: 1, 0.1
-            text: 'Create an Aldryn ID'
+            text: 'Create an Aldryn ID.'
             background_normal: ''
             background_down: ''
             background_color: 0, 0, 0, 0
             on_release: app.browser_open_account_creation()
-
-            canvas:
-                Color:
-                    rgb: 0.06, 0.06, 0.06, 1
-                Rectangle:
-                    pos: self.pos[0], self.pos[1] + self.height - 1
-                    size: self.width, 1
-                Color:
-                    rgb: 0.38, 0.38, 0.38, 1
-                Rectangle:
-                    pos: self.pos[0], self.pos[1] + self.height - 2
-                    size: self.width, 1
 
 
 <EmptyScreen>:
@@ -396,24 +445,37 @@
         Color:
             rgb: 1, 1, 1
         Rectangle:
-            pos: self.pos[0] + self.padding_x, self.pos[1]
+            pos: self.pos[0] + self.padding_x + 0.5 * (self.size[0] - self.texture_size[0]), self.pos[1]
             size: self.texture_size[0] - 2 * self.padding_x, 1
 
 
 <OpenButton@Button>
-    background_color: 0, 0, 0, 0
+    background_color: 0.0, 0.0, 0.0, 0.0
     background_down: ''
     background_normal: ''
-    size_hint: None, 1
     size: img_id.size
+    size_hint: None, 1
 
     Image:
         id: img_id
-
-        pos: self.parent.pos[0], self.parent.pos[1] + (self.parent.height - self.height) / 2.0
+        pos: root.pos[0], root.pos[1] + 0.5 * (root.height - self.height)
         size: self.texture_size
         size_hint: None, None
         source: root.external_img
+
+
+<TopBorderButton@Button>
+    canvas:
+        Color:
+            rgb: 0.06, 0.06, 0.06, 1
+        Rectangle:
+            pos: self.pos[0], self.pos[1] + self.height - 1
+            size: self.width, 1
+        Color:
+            rgb: 0.38, 0.38, 0.38, 1
+        Rectangle:
+            pos: self.pos[0], self.pos[1] + self.height - 2
+            size: self.width, 1
 
 
 <WebsiteView@RelativeView>:
