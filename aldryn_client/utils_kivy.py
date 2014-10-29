@@ -97,6 +97,15 @@ class OpenButton(Button):
 
 class CustomFileChooserListView(FileChooserListView):
 
+    def __init__(self, *args, **kwargs):
+        super(CustomFileChooserListView, self).__init__(*args, **kwargs)
+        self.bind(path=self._normalize_path)
+
+    def _normalize_path(self, *args, **kwargs):
+        norm_path = os.path.normpath(self.path)
+        if norm_path != self.path:
+            self.path = norm_path
+
     def go_to_home_dir(self):
         self.path = HOME_DIR
 
