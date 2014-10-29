@@ -19,7 +19,7 @@ else:
 doc_draft = """django CMS cloud client.
 
 Usage:%(extra_commands)s
-    aldryn login
+    aldryn login [--with-token]
     aldryn boilerplate upload
     aldryn boilerplate validate
     aldryn addon upload
@@ -73,7 +73,10 @@ def main():
         from main import AldrynGUIApp
         AldrynGUIApp().run()
     elif args['login']:
-        retval, msg = client.login()
+        if args['--with-token']:
+            retval, msg = client.login_with_token()
+        else:
+            retval, msg = client.login()
     elif args['boilerplate']:
         if args['upload']:
             retval, msg = client.upload_boilerplate()

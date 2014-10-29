@@ -90,6 +90,7 @@ class Client(object):
     ALDRYN_SYNC_LOCK_FILENAME = '.aldryn-sync-lock'
     DATA_FILENAME = 'data.yaml'
     SETUP_FILENAME = 'setup.py'
+    ACCESS_TOKEN_URL_PATH = '/account/desktop-app/access-token/'
 
     # messages
     DIRECTORY_ALREADY_SYNCING_MESSAGE = 'Directory already syncing.'
@@ -105,6 +106,11 @@ class Client(object):
     @classmethod
     def get_host_url(cls):
         return os.environ.get(cls.ALDRYN_HOST_KEY, cls.ALDRYN_HOST_DEFAULT)
+
+    @classmethod
+    def get_access_token_url(cls):
+        return '%s/%s' % (
+            cls.get_host_url().rstrip('/'), cls.ACCESS_TOKEN_URL_PATH.lstrip('/'))
 
     def __init__(self, host, interactive=True):
         register_yaml_extensions()
@@ -179,6 +185,39 @@ class Client(object):
             self.session.headers = {
                 'Authorization': 'Basic %s' % token
             }
+            self.netrc.add(self.host, email, None, token)
+            self.netrc.write()
+            msg = "Logged in as %s" % email
+            return (True, msg)
+        elif response.status_code == requests.codes.forbidden:
+            if response.content:
+                msg = response.content
+            else:
+                msg = "Could not log in, invalid email or password"
+            return (False, msg)
+        else:
+            msgs = []
+            if response.content and response.status_code < 500:
+                msgs.append(response.content)
+            msgs.append("There was a problem logging in, please try again later.")
+            return (False, '\n'.join(msgs))
+
+    def login_with_token(self, token=None):
+        if token is None:
+            print 'To get your access token visit: %s' % self.get_access_token_url()
+            token = raw_input('Access token: ')
+        try:
+            response = self.session.post(
+                '/api/v1/login-with-token/', data={'token': token})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
+        if response.ok:
+            user_data = response.json()
+            self.session.headers = {
+                'Authorization': 'Basic %s' % token
+            }
+            email = user_data['email']
             self.netrc.add(self.host, email, None, token)
             self.netrc.write()
             msg = "Logged in as %s" % email

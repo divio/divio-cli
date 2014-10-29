@@ -48,6 +48,7 @@ from .utils_kivy import (
     LoadingDialog,
     LoginScreen,
     LoginThread,
+    LoginWithTokenThread,
     SyncDirThread,
     SyncScreen,
     WebsitesManager,
@@ -278,6 +279,13 @@ class AldrynGUIApp(App):
         login_callback = partial(self._login_callback, loading_dialog)
         self._login_thread = LoginThread(
             email, password, self.client, login_callback)
+        self._login_thread.start()
+
+    def login_with_token(self, token):
+        loading_dialog = self.show_loading_dialog()
+        login_callback = partial(self._login_callback, loading_dialog)
+        self._login_thread = LoginWithTokenThread(
+            token, self.client, login_callback)
         self._login_thread.start()
 
     def _login_callback(self, loading_dialog, status, msg):
