@@ -522,6 +522,8 @@ class AldrynGUIApp(App):
         webbrowser.open(self._websites_manager.get_site_stage_url(domain) or
                         CONTROL_PANEL_URL)
 
+    def browser_open_get_access_token(self):
+        webbrowser.open(self.client.get_access_token_url())
 
 if __name__ == '__main__':
     AldrynGUIApp().run()

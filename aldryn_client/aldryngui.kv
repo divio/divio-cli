@@ -87,17 +87,25 @@
         size_hint: 1, 0.2
         text: 'Login'
 
-    Button:
+    LinkButton:
+        background_color: 0, 0, 0, 0
+        background_down: ''
+        background_normal: ''
+        on_release: app.browser_open_get_access_token()
+        size_hint: 1, 0.1
+        text: 'Get your access token.'
+
+    BoxLayout:
+        # Placeholder, so this view is as high as the 'LoginWithEmail'
+        size_hint: 1, 0.25
+
+    LinkButton:
         background_color: 0, 0, 0, 0
         background_down: ''
         background_normal: ''
         on_release: root.parent.login_screen.switch_to_email_and_password()
         size_hint: 1, 0.1
         text: 'Back to the email and password.'
-
-    BoxLayout:
-        # Placeholder, so this view is as high as the 'LoginWithEmail'
-        size_hint: 1, 0.35
 
 
 <LoginScreen>:
@@ -138,7 +146,7 @@
         TopBorderButton:
             id: create_aldryn_id_btn_id
             size_hint: 1, 0.1
-            text: 'Create an Aldryn ID'
+            text: 'Create an Aldryn ID.'
             background_normal: ''
             background_down: ''
             background_color: 0, 0, 0, 0
