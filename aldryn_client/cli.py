@@ -66,9 +66,7 @@ def _sync_error_callback(message, title=None):
 
 def main():
     args = docopt.docopt(__doc__, version=version)
-    client = Client(
-        os.environ.get(Client.ALDRYN_HOST_KEY, Client.ALDRYN_HOST_DEFAULT),
-        interactive=True)
+    client = Client(Client.get_host_url(), interactive=True)
     retval = True
     msg = None
     if GUI and args['gui']:

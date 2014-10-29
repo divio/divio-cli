@@ -102,6 +102,10 @@ class Client(object):
         BOILERPLATE_FILENAME_JSON, BOILERPLATE_FILENAME_YAML,
         ALDRYN_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
 
+    @classmethod
+    def get_host_url(cls):
+        return os.environ.get(cls.ALDRYN_HOST_KEY, cls.ALDRYN_HOST_DEFAULT)
+
     def __init__(self, host, interactive=True):
         register_yaml_extensions()
         self.host = urlparse.urlparse(host)[1]

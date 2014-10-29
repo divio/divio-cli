@@ -83,9 +83,7 @@ class AldrynGUIApp(App):
 
     def __init__(self, *args, **kwargs):
         super(AldrynGUIApp, self).__init__(*args, **kwargs)
-        self.client = Client(
-            os.environ.get(Client.ALDRYN_HOST_KEY, Client.ALDRYN_HOST_DEFAULT),
-            interactive=False)
+        self.client = Client(Client.get_host_url(), interactive=False)
         sites_dir_database_file_path = os.path.join(self.user_data_dir, SITES_DATABASE_FILENAME)
 
         def open_db():
