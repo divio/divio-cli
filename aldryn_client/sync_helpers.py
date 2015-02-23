@@ -65,9 +65,10 @@ def git_changes(repo):
 def git_update_gitignore(repo, new_ignore_patterns):
     gitignore_filepath = os.path.join(repo.working_dir, '.gitignore')
     ignored_set = set()
-    with open(gitignore_filepath, 'r') as fobj:
-        for line in fobj.readlines():
-            ignored_set.add(line.strip())
+    if os.path.exists(gitignore_filepath):
+        with open(gitignore_filepath, 'r') as fobj:
+            for line in fobj.readlines():
+                ignored_set.add(line.strip())
     need_updating = False
     for new_ignore in new_ignore_patterns:
         new_ignore = new_ignore.strip()
@@ -78,7 +79,7 @@ def git_update_gitignore(repo, new_ignore_patterns):
         with open(gitignore_filepath, 'w') as fobj:
             new_gitignore_str = '\n'.join(sorted(ignored_set))
             fobj.write(new_gitignore_str)
-        repo.git.execute(['git', 'add', gitignore_filepath], **extra_git_kwargs)
+        repo.git.execute(['git', 'add', '-f', gitignore_filepath], **extra_git_kwargs)
         repo.git.execute(['git', 'commit', '-m Update gitignore'], **extra_git_kwargs)
 
 
