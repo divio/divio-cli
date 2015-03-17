@@ -16,7 +16,7 @@ import platform
 
 from .serialize import register_yaml_extensions, Trackable, File
 
-FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_@]+[a-zA-Z0-9._@-]*\.[a-zA-Z]{2,4}$')
+FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_@]+[a-zA-Z0-9._@-]*\.[a-zA-Z0-9]{1,23}$')
 ALLOWED_EXTENSIONS = [
     '.css',
     '.gif',
