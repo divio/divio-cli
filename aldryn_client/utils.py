@@ -60,16 +60,30 @@ ALLOWED_EXTENSIONS = [
 ]
 
 BOILERPLATE_REQUIRED = [
-    'name',
-    ('author', [
-        'name',
-    ]),
+    'package-name',
+    'identifier',
+    # 'name',
+    # ('author', [
+    #     'name',
+    # ]),
     'version',
-    'description',
+    # 'description',
     ('license', [
         'name',
     ]),
     'templates',
+]
+
+BOILERPLATE_REQUIRED_MSG = {
+    'package-name': "The specs for boilerplate.json have recently changed. 'package-name' is a new mandatory field.\n"
+                    "If you previously already uploaded this Boilerplate without a 'package-name', you can set a "
+                    "package-name at https://control.local.aldryn.net/account/my-boilerplates/.\n",
+}
+
+BOILERPLATE_DEPRECATED_FIELDS = [
+    'name',
+    'description',
+    'url',
 ]
 
 BOILERPLATE_REQUIRED_FILEPATHS = [
@@ -89,6 +103,14 @@ APP_REQUIRED = [
     'installed-apps',
 ]
 
+APP_DEPRECATED_FIELDS = [
+    'name',
+    'description',
+    'repository_url',
+    'project_url',
+    'docs_url',
+]
+
 VALID_LICENSE_FILENAMES = [
     'LICENSE.txt',
     'LICENSE',
@@ -101,14 +123,16 @@ class ValidationError(Exception):
     pass
 
 
-def _validate(config, required, path):
+def _validate(config, required, path, required_msg=None):
+    required_msg = {} if required_msg is None else required_msg
     license_exists = False
     for valid_license_filename in VALID_LICENSE_FILENAMES:
         license_exists |= os.path.exists(
             os.path.join(path, valid_license_filename))
     if not license_exists:
         return (False, "Required LICENSE.txt file not found")
-    valid = (True, "Configuration file is valid")
+    valid = True
+    valid_msg = []
     for thing in required:
         if isinstance(thing, tuple):
             key, values = thing
@@ -116,12 +140,26 @@ def _validate(config, required, path):
             key, values = thing, []
 
         if key not in config:
-            valid = (False, "Required key %r not found in config" % key)
+            valid = False
+
+            valid_msg.append(required_msg.get(
+                key,
+                "Required key %r not found in config" % key
+            ))
 
         for subkey in values:
             if subkey not in config[key]:
                 valid = (False, "Required sub key %r in %r not found in config" % (subkey, key))
-    return valid
+    if valid and not valid_msg:
+        valid_msg = ["Configuration file is valid"]
+    return valid, '\n'.join(valid_msg)
+
+
+def _check_deprecated_fields(config, fields):
+    return [
+        field for field in fields
+        if field in config
+    ]
 
 
 def validate_app_config(config, path):
@@ -158,7 +196,7 @@ def validate_boilerplate_config(config, path):
         if not os.path.exists(dirpath):
             msg = 'Required file "%s" not found' % required_filepath
             return (False, msg)
-    (valid, msg) = _validate(config, BOILERPLATE_REQUIRED, path)
+    (valid, msg) = _validate(config, BOILERPLATE_REQUIRED, path, BOILERPLATE_REQUIRED_MSG)
     if not valid:
         return (False, msg)
     # check templates
@@ -193,6 +231,14 @@ def validate_boilerplate_config(config, path):
                 errors.append("Protected file %r not found" % filename)
         if errors:
             msg = os.linesep.join(errors)
+    # warn about deprecated fields
+    depricated_fields = _check_deprecated_fields(config, BOILERPLATE_DEPRECATED_FIELDS)
+    if depricated_fields:
+        msg += (
+            "\n\nDeprecation warning! "
+            "It's recommended to remove these fields from boilerplate.json and use the web interface ({0}) to edit them instead.\n"
+        ).format('https://control.aldryn.com/account/my-boilerplates/')
+        msg += '\n'.join(['  - {0}'.format(field) for field in depricated_fields])
     return (valid, msg)
 
 
