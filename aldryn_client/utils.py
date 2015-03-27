@@ -84,6 +84,7 @@ BOILERPLATE_DEPRECATED_FIELDS = [
     'name',
     'description',
     'url',
+    'public',
 ]
 
 BOILERPLATE_REQUIRED_FILEPATHS = [
@@ -91,12 +92,12 @@ BOILERPLATE_REQUIRED_FILEPATHS = [
 ]
 
 APP_REQUIRED = [
-    'name',
+    # 'name',
     ('author', [
         'name',
     ]),
     'package-name',
-    'description',
+    # 'description',
     ('license', [
         'name',
     ]),
@@ -106,9 +107,8 @@ APP_REQUIRED = [
 APP_DEPRECATED_FIELDS = [
     'name',
     'description',
-    'repository_url',
-    'project_url',
-    'docs_url',
+    'url',
+    'public',
 ]
 
 VALID_LICENSE_FILENAMES = [
@@ -187,7 +187,16 @@ def validate_app_config(config, path):
                 return (False, "Exception in aldryn_config.py:\n\n%s" % error_msg)
         finally:
             shutil.rmtree(tempdir)
-    return _validate(config, APP_REQUIRED, path)
+    valid, msg = _validate(config, APP_REQUIRED, path)
+    # warn about deprecated fields
+    depricated_fields = _check_deprecated_fields(config, APP_DEPRECATED_FIELDS)
+    if depricated_fields:
+        msg += (
+            "\n\nDeprecation warning! "
+            "It's recommended to remove these fields from boilerplate.json and use the web interface ({0}) to edit them instead.\n"
+        ).format('https://control.aldryn.com/account/my-addons/')
+        msg += '\n'.join(['  - {0}'.format(field) for field in depricated_fields])
+    return valid, msg
 
 
 def validate_boilerplate_config(config, path):
