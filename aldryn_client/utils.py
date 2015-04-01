@@ -62,22 +62,14 @@ ALLOWED_EXTENSIONS = [
 BOILERPLATE_REQUIRED = [
     'package-name',
     'identifier',
-    # 'name',
-    # ('author', [
-    #     'name',
-    # ]),
     'version',
-    # 'description',
-    ('license', [
-        'name',
-    ]),
     'templates',
 ]
 
 BOILERPLATE_REQUIRED_MSG = {
     'package-name': "The specs for boilerplate.json have recently changed. 'package-name' is a new mandatory field.\n"
                     "If you previously already uploaded this Boilerplate without a 'package-name', you can set a "
-                    "package-name at https://control.local.aldryn.net/account/my-boilerplates/.\n",
+                    "package-name at https://control.aldryn.com/account/my-boilerplates/.\n",
 }
 
 BOILERPLATE_DEPRECATED_FIELDS = [
@@ -85,6 +77,8 @@ BOILERPLATE_DEPRECATED_FIELDS = [
     'description',
     'url',
     'public',
+    'license',
+    'author',
 ]
 
 BOILERPLATE_REQUIRED_FILEPATHS = [
@@ -92,15 +86,7 @@ BOILERPLATE_REQUIRED_FILEPATHS = [
 ]
 
 APP_REQUIRED = [
-    # 'name',
-    ('author', [
-        'name',
-    ]),
     'package-name',
-    # 'description',
-    ('license', [
-        'name',
-    ]),
     'installed-apps',
 ]
 
@@ -109,6 +95,8 @@ APP_DEPRECATED_FIELDS = [
     'description',
     'url',
     'public',
+    'license',
+    'author',
 ]
 
 VALID_LICENSE_FILENAMES = [
@@ -193,7 +181,7 @@ def validate_app_config(config, path):
     if depricated_fields:
         msg += (
             "\n\nDeprecation warning! "
-            "It's recommended to remove these fields from boilerplate.json and use the web interface ({0}) to edit them instead.\n"
+            "These fields are ignored. It's recommended to remove them from addon.json and use the web interface ({0}) to edit them instead.\n"
         ).format('https://control.aldryn.com/account/my-addons/')
         msg += '\n'.join(['  - {0}'.format(field) for field in depricated_fields])
     return valid, msg
@@ -245,7 +233,7 @@ def validate_boilerplate_config(config, path):
     if depricated_fields:
         msg += (
             "\n\nDeprecation warning! "
-            "It's recommended to remove these fields from boilerplate.json and use the web interface ({0}) to edit them instead.\n"
+            "These fields are ignored. It's recommended to remove them from boilerplate.json and use the web interface ({0}) to edit them instead.\n"
         ).format('https://control.aldryn.com/account/my-boilerplates/')
         msg += '\n'.join(['  - {0}'.format(field) for field in depricated_fields])
     return (valid, msg)
