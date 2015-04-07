@@ -11,9 +11,7 @@ import urlparse
 
 import git
 import requests
-import yaml
 
-from .serialize import register_yaml_extensions, Trackable, File
 from .git_sync import GitSyncHandler
 from .sync_helpers import (
     extra_git_kwargs, git_update_gitignore, git_pull_develop_bundle)
@@ -113,7 +111,6 @@ class Client(object):
             cls.get_host_url().rstrip('/'), cls.ACCESS_TOKEN_URL_PATH.lstrip('/'))
 
     def __init__(self, host, interactive=True):
-        register_yaml_extensions()
         self.host = urlparse.urlparse(host)[1]
         self.interactive = interactive
         self.netrc = WritableNetRC()
@@ -238,21 +235,13 @@ class Client(object):
     def upload_boilerplate(self, path='.'):
         is_loaded, result = load_boilerplate_config(path)
         if is_loaded:
-            config, extra_file_paths = result
+            config = result
         else:
             return (False, result)
-        data_filename = os.path.join(path, Client.DATA_FILENAME)
-        if os.path.exists(data_filename):
-            with Trackable.tracker as extra_objects:
-                with open(data_filename) as fobj2:
-                    data = yaml.safe_load(fobj2)
-                extra_file_paths.extend([f.path for f in extra_objects[File]])
-        else:
-            data = {}
         is_valid, error_msg = validate_boilerplate_config(config, path)
         if not is_valid:
             return (False, error_msg)
-        tarball = bundle_boilerplate(config, data, path, extra_file_paths, templates=filter_template_files,
+        tarball = bundle_boilerplate(config, path, templates=filter_template_files,
                                      static=filter_static_files, private=filter_sass_files)
         try:
             response = self.session.post('/api/v1/boilerplates/', files={'boilerplate': tarball})
