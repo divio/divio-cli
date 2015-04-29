@@ -15,7 +15,7 @@ OPTIONS = {
     'iconfile': 'resources/appIcon.icns',
     'semi_standalone': 'False',
     'optimize': 2,
-    'resources': ['client.py', 'serialize.py', 'sync.py', 'utils_kivy.py', 'utils.py', 'cacert.pem', 'img', 'management', 'aldryngui.kv'],
+    'resources': ['client.py', 'sync.py', 'utils_kivy.py', 'utils.py', 'cacert.pem', 'img', 'management', 'aldryngui.kv'],
     'packages': ['certifi', 'wxwidgets', 'wxpython'],
     'site_packages': 'True',
     'plist': {

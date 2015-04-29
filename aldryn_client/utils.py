@@ -14,9 +14,8 @@ import time
 import yaml
 import platform
 
-from .serialize import register_yaml_extensions, Trackable, File
 
-FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_@]+[a-zA-Z0-9._@-]*\.[a-zA-Z]{2,4}$')
+FILENAME_BASIC_RE = re.compile(r'^[a-zA-Z0-9_@]+[a-zA-Z0-9._@-]*\.[a-zA-Z0-9]{1,23}$')
 ALLOWED_EXTENSIONS = [
     '.css',
     '.gif',
@@ -60,16 +59,25 @@ ALLOWED_EXTENSIONS = [
 ]
 
 BOILERPLATE_REQUIRED = [
-    'name',
-    ('author', [
-        'name',
-    ]),
+    'package-name',
+    'identifier',
     'version',
-    'description',
-    ('license', [
-        'name',
-    ]),
     'templates',
+]
+
+BOILERPLATE_REQUIRED_MSG = {
+    'package-name': "The specs for boilerplate.json have recently changed. 'package-name' is a new mandatory field.\n"
+                    "If you previously already uploaded this Boilerplate without a 'package-name', you can set a "
+                    "package-name at https://control.aldryn.com/account/my-boilerplates/.\n",
+}
+
+BOILERPLATE_DEPRECATED_FIELDS = [
+    'name',
+    'description',
+    'url',
+    'public',
+    'license',
+    'author',
 ]
 
 BOILERPLATE_REQUIRED_FILEPATHS = [
@@ -77,16 +85,18 @@ BOILERPLATE_REQUIRED_FILEPATHS = [
 ]
 
 APP_REQUIRED = [
-    'name',
-    ('author', [
-        'name',
-    ]),
     'package-name',
-    'description',
-    ('license', [
-        'name',
-    ]),
     'installed-apps',
+]
+
+APP_DEPRECATED_FIELDS = [
+    'name',
+    'description',
+    'url',
+    'public',
+    'license',
+    'author',
+    'version',
 ]
 
 VALID_LICENSE_FILENAMES = [
@@ -101,14 +111,16 @@ class ValidationError(Exception):
     pass
 
 
-def _validate(config, required, path):
+def _validate(config, required, path, required_msg=None):
+    required_msg = {} if required_msg is None else required_msg
     license_exists = False
     for valid_license_filename in VALID_LICENSE_FILENAMES:
         license_exists |= os.path.exists(
             os.path.join(path, valid_license_filename))
     if not license_exists:
         return (False, "Required LICENSE.txt file not found")
-    valid = (True, "Configuration file is valid")
+    valid = True
+    valid_msg = []
     for thing in required:
         if isinstance(thing, tuple):
             key, values = thing
@@ -116,18 +128,29 @@ def _validate(config, required, path):
             key, values = thing, []
 
         if key not in config:
-            valid = (False, "Required key %r not found in config" % key)
+            valid = False
+
+            valid_msg.append(required_msg.get(
+                key,
+                "Required key %r not found in config" % key
+            ))
 
         for subkey in values:
             if subkey not in config[key]:
                 valid = (False, "Required sub key %r in %r not found in config" % (subkey, key))
-    return valid
+    if valid and not valid_msg:
+        valid_msg = ["Configuration file is valid"]
+    return valid, '\n'.join(valid_msg)
+
+
+def _check_deprecated_fields(config, fields):
+    return [
+        field for field in fields
+        if field in config
+    ]
 
 
 def validate_app_config(config, path):
-    if 'version' in config:
-        print ("WARNING! Use of the 'version' field in the 'addon.json' is deprecated, "
-               "please remove it.")
     aldryn_config_path = os.path.abspath(os.path.join(path, 'aldryn_config.py'))
     if os.path.exists(aldryn_config_path):
         tempdir = tempfile.mkdtemp(prefix='tmp_aldryn_client_')
@@ -149,7 +172,16 @@ def validate_app_config(config, path):
                 return (False, "Exception in aldryn_config.py:\n\n%s" % error_msg)
         finally:
             shutil.rmtree(tempdir)
-    return _validate(config, APP_REQUIRED, path)
+    valid, msg = _validate(config, APP_REQUIRED, path)
+    # warn about deprecated fields
+    depricated_fields = _check_deprecated_fields(config, APP_DEPRECATED_FIELDS)
+    if depricated_fields:
+        msg += (
+            "\n\nDeprecation warning! "
+            "These fields are ignored. It's recommended to remove them from addon.json and use the web interface ({0}) to edit them instead.\n"
+        ).format('https://control.aldryn.com/account/my-addons/')
+        msg += '\n'.join(['  - {0}'.format(field) for field in depricated_fields])
+    return valid, msg
 
 
 def validate_boilerplate_config(config, path):
@@ -158,7 +190,7 @@ def validate_boilerplate_config(config, path):
         if not os.path.exists(dirpath):
             msg = 'Required file "%s" not found' % required_filepath
             return (False, msg)
-    (valid, msg) = _validate(config, BOILERPLATE_REQUIRED, path)
+    (valid, msg) = _validate(config, BOILERPLATE_REQUIRED, path, BOILERPLATE_REQUIRED_MSG)
     if not valid:
         return (False, msg)
     # check templates
@@ -193,6 +225,14 @@ def validate_boilerplate_config(config, path):
                 errors.append("Protected file %r not found" % filename)
         if errors:
             msg = os.linesep.join(errors)
+    # warn about deprecated fields
+    depricated_fields = _check_deprecated_fields(config, BOILERPLATE_DEPRECATED_FIELDS)
+    if depricated_fields:
+        msg += (
+            "\n\nDeprecation warning! "
+            "These fields are ignored. It's recommended to remove them from boilerplate.json and use the web interface ({0}) to edit them instead.\n"
+        ).format('https://control.aldryn.com/account/my-boilerplates/')
+        msg += '\n'.join(['  - {0}'.format(field) for field in depricated_fields])
     return (valid, msg)
 
 
@@ -266,21 +306,17 @@ def load_license(path):
             return license
 
 
-def bundle_boilerplate(config, data, path, extra_file_paths, **complex_extra):
-    register_yaml_extensions()
+def bundle_boilerplate(config, path, **complex_extra):
     fileobj = StringIO()
     tar = tarfile.open(mode='w:gz', fileobj=fileobj)
     config_fileobj = StringIO()
     json.dump(config, config_fileobj)
     tar_add_stringio(tar, config_fileobj, 'boilerplate.json')
     data_fileobj = StringIO()
-    yaml.safe_dump(data, data_fileobj)
     tar_add_stringio(tar, data_fileobj, 'data.yaml')
     license_filepath = _get_license_filename(path)
     if license_filepath:
         tar.add(license_filepath, 'LICENSE.txt')
-    for extra_path in extra_file_paths:
-        tar.add(extra_path)
     for key, value in complex_extra.items():
         dirpath = os.path.join(path, key)
         if os.path.exists(dirpath):
@@ -312,7 +348,6 @@ def bundle_package(workspace, tar, path):
 
 
 def bundle_app(config, script, path):
-    register_yaml_extensions()
     fileobj = StringIO()
     tar = tarfile.open(mode='w:gz', fileobj=fileobj)
     config_fileobj = StringIO()
@@ -427,57 +462,27 @@ def cli_confirm(question, message=None, default=None):
 
 def load_boilerplate_config(path):
     from .client import Client
-    boilerplate_filename_json = os.path.join(path, Client.BOILERPLATE_FILENAME_JSON)
-    boilerplate_filename_yaml = os.path.join(path, Client.BOILERPLATE_FILENAME_YAML)
-    boilerplate_filename = None
-    load_json_config = False
-    if os.path.exists(boilerplate_filename_yaml):
-        boilerplate_filename = boilerplate_filename_yaml
-    if os.path.exists(boilerplate_filename_json):
-        if boilerplate_filename is None:
-            boilerplate_filename = boilerplate_filename_json
-            load_json_config = True
-        else:
-            msg = "Please provide only one config file ('%s' or '%s')" % (
-                Client.BOILERPLATE_FILENAME_JSON,
-                Client.BOILERPLATE_FILENAME_YAML)
-            return (False, msg)
-    if boilerplate_filename is None:
-        msg = "Neither file '%s' nor '%s' were found." % (
-            Client.BOILERPLATE_FILENAME_JSON, Client.BOILERPLATE_FILENAME_YAML)
+    boilerplate_filename = os.path.join(path, Client.BOILERPLATE_FILENAME_JSON)
+    if not os.path.exists(boilerplate_filename):
+        msg = "Please provide a %s config file" % Client.BOILERPLATE_FILENAME_JSON
         return (False, msg)
-    extra_file_paths = []
     with open(boilerplate_filename) as fobj:
         try:
-            if load_json_config:
-                config = json.load(fobj)
-            else:
-                with Trackable.tracker as extra_objects:
-                    config = yaml.safe_load(fobj)
-                    extra_file_paths.extend([f.path for f in extra_objects[File]])
-        except (yaml.YAMLError, ValueError) as e:
+            config = json.load(fobj)
+        except ValueError as e:
             return (False, repr(e))
-        return (True, (config, extra_file_paths))
+        return (True, config,)
 
 
 def load_app_config(path):
     from .client import Client
     app_filename_json = os.path.join(path, Client.APP_FILENAME_JSON)
-    app_filename_yaml = os.path.join(path, Client.APP_FILENAME_YAML)
     addon_filename_json = os.path.join(path, Client.ADDON_FILENAME_JSON)
-    addon_filename_yaml = os.path.join(path, Client.ADDON_FILENAME_YAML)
     app_filenames = []
-    load_json_config = False
-    if os.path.exists(app_filename_yaml):
-        app_filenames.append(app_filename_yaml)
-    if os.path.exists(addon_filename_yaml):
-        app_filenames.append(addon_filename_yaml)
     if os.path.exists(app_filename_json):
         app_filenames.append(app_filename_json)
-        load_json_config = True
     if os.path.exists(addon_filename_json):
         app_filenames.append(addon_filename_json)
-        load_json_config = True
     if len(app_filenames) == 0:
         msg = "File '%s' not found." % Client.ADDON_FILENAME_JSON
         return (False, msg)
@@ -489,10 +494,7 @@ def load_app_config(path):
         return (False, msg)
     with open(app_filename) as fobj:
         try:
-            if load_json_config:
-                config = json.load(fobj)
-            else:
-                config = yaml.safe_load(fobj)
-        except (yaml.YAMLError, ValueError) as e:
+            config = json.load(fobj)
+        except (ValueError) as e:
             return (False, repr(e))
     return (True, config)
