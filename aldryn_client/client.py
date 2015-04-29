@@ -6,6 +6,7 @@ import os
 import time
 import stat
 import shutil
+import sys
 import tarfile
 import urlparse
 
@@ -514,7 +515,7 @@ class Client(object):
             os.mkdir(dev_path)
 
         import subprocess
-        subprocess.call(['virtualenv', virtualenv_path])
+        subprocess.call(['virtualenv', '-p', sys.executable, virtualenv_path])
 
         subprocess.call([pip_path, 'install', '-r', requirements_path])
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite.pth'), 'w+') as fobj:
