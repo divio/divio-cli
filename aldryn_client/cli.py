@@ -25,7 +25,7 @@ Usage:%(extra_commands)s
     aldryn addon upload
     aldryn addon validate
     aldryn sync [--sitename=<sitename>]
-    aldryn workspace create --sitename=<sitename> [--path=<sitename>] [--db-name=<database_name>]  [--db-host=<database_host>] [--db-port=<database_port>] [--db-user=<database_user>] [--db-pass=<database_password>]
+    aldryn workspace create --sitename=<sitename> [--path=<sitename>] [--docker] [--db-name=<database_name>]  [--db-host=<database_host>] [--db-port=<database_port>] [--db-user=<database_user>] [--db-pass=<database_password>]
     aldryn sites
     aldryn newest_version
 
@@ -138,10 +138,16 @@ def main():
                 msg = 'You are using the latest version.'
     elif args['workspace']:
         if args['create']:
-            retval, msg = client.create_workspace(
-                sitename=args.get('--sitename', None),
-                path=args.get('--path', None),
-            )
+            if args.get('--docker'):
+                retval, msg = client.create_docker_workspace(
+                    sitename=args.get('--sitename', None),
+                    path=args.get('--path', None),
+                )
+            else:
+                retval, msg = client.create_workspace(
+                    sitename=args.get('--sitename', None),
+                    path=args.get('--path', None),
+                )
     if msg:
         print msg
     sys.exit(int(retval))

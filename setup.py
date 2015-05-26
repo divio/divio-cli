@@ -9,6 +9,7 @@ INSTALL_REQUIRES = [
     'requests>=1',
     'docopt',
     'pyyaml',
+    'docker-py',
 ]
 DEPENDENCY_LINKS = [
     'https://bitbucket.org/pygame/pygame/get/df48571.zip#egg=pygame-1.9.2',
