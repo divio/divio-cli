@@ -469,6 +469,9 @@ class Client(object):
         success, msg = self.workspace_init_virtualenv(sitename, path)
         if not success:
             return success, msg
+        success, msg = self.load_db(sitename, path)
+        if not success:
+            return success, msg
         return True, sitename
 
     def workspace_download_site(self, sitename, path):
@@ -521,6 +524,69 @@ class Client(object):
             fobj.write(os.path.abspath('.site/'))
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite_dev.pth'), 'w+') as fobj:
             fobj.write(os.path.abspath(dev_path))
+        return True, sitename
+
+    def load_db(self, sitename, path):
+        print 'loading db'
+        site_path = os.path.join(path, '.site')
+        tmp_path = os.path.join(path, '.tmp')
+        if not os.path.exists(tmp_path):
+            os.mkdir(tmp_path)
+        try:
+            response = self.session.get(
+                '/api/v1/workspace/%s/download/db/' % sitename, stream=True,
+                headers={'accept': 'application/x-tar-gz'})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
+        if response.status_code != 200:
+            msgs = []
+            msgs.append("Unexpected HTTP Response %s" % response.status_code)
+            if response.status_code < 500:
+                msgs.append(response.content)
+            return (False, '\n'.join(msgs))
+
+        # unpack the downloaded tar.gz containing the whole project
+        print "extracting dump to .tmp"
+        from StringIO import StringIO
+        tar = tarfile.open(mode='r:gz', fileobj=StringIO(response.content))
+        tar.extractall(path=tmp_path)
+        tar.close()
+        print "finished extracting dump"
+
+        # Set up .env
+        database_name = 'aldryn_{}'.format(sitename)
+        database_host = '127.0.0.1'
+        database_port = '5432'
+        database_user = 'postgres'
+        database_password = ''
+        database_url = 'DATABASE_URL=postgres://{user}:{password}' \
+                       '@{host}:{port}/{name}'.format(
+            user=database_user, password=database_password,
+            host=database_host, port=database_port, name=database_name
+        )
+        with open(os.path.join(site_path, '.env'), 'w') as f:
+            f.write(database_url)
+
+        # delete old database
+        os.system('psql -h {host} -p {port} -U {user} -c \'DROP DATABASE "{name}"\''.format(
+            host=database_host, port=database_port, user=database_user,
+            name=database_name,
+        ))
+
+        # create fresh database
+        os.system('psql -h {host} -p {port} -U {user} -c \'CREATE DATABASE "{name}"\''.format(
+            host=database_host, port=database_port, user=database_user,
+            name=database_name,
+        ))
+
+        # load database dump
+        os.system('pg_restore -h {host} -p {port} -U {user} -d {name} '
+                  '--no-owner {dump_path}'.format(
+            host=database_host, port=database_port, user=database_user,
+            name=database_name, dump_path=os.path.join(tmp_path, 'database.dump')
+        ))
+
         return True, sitename
 
     def sites(self):
