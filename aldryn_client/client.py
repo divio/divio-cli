@@ -2,6 +2,7 @@
 import getpass
 import json
 import netrc
+import re
 import os
 import time
 import stat
@@ -517,10 +518,20 @@ class Client(object):
         if not os.path.exists(dev_path):
             os.mkdir(dev_path)
 
-        import subprocess
-        subprocess.call(['virtualenv', virtualenv_path])
+        # fix requirements
+        with open(requirements_path, 'r') as f:
+            lines = f.readlines()
 
-        subprocess.call([pip_path, 'install', '-r', requirements_path])
+        excluded = ['mercurial', 'bzr', 'gyp', 'pygobject', 'pygpgme', 'cffi']
+
+        with open(requirements_path, 'w') as f:
+            for line in lines:
+                if not any(re.match(pat, line) for pat in excluded):
+                    f.write(line)
+
+        subprocess.call(['virtualenv', virtualenv_path])
+        subprocess.call([pip_path, 'install', 'pyOpenSSL==0.15.1', 'ndg-httpsclient==0.3.3', 'pyasn1==0.1.7', 'cryptography==0.8.2'])
+        subprocess.call([pip_path, 'install', '--allow-all-external', '--allow-unverified', 'lazr.restfulclient', '-r', requirements_path])
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite.pth'), 'w+') as fobj:
             fobj.write(os.path.abspath('.site/'))
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite_dev.pth'), 'w+') as fobj:
