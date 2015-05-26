@@ -8,6 +8,7 @@ import stat
 import shutil
 import tarfile
 import urlparse
+import subprocess
 
 import git
 import requests
@@ -546,7 +547,7 @@ class Client(object):
                 msgs.append(response.content)
             return (False, '\n'.join(msgs))
 
-        # unpack the downloaded tar.gz containing the whole project
+        # unpack the downloaded tar.gz containing the database dump
         print "extracting dump to .tmp"
         from StringIO import StringIO
         tar = tarfile.open(mode='r:gz', fileobj=StringIO(response.content))
@@ -569,23 +570,33 @@ class Client(object):
             f.write(database_url)
 
         # delete old database
-        os.system('psql -h {host} -p {port} -U {user} -c \'DROP DATABASE "{name}"\''.format(
-            host=database_host, port=database_port, user=database_user,
-            name=database_name,
-        ))
+        subprocess.call([
+            'psql',
+            '-h', database_host,
+            '-p', database_port,
+            '-U', database_user,
+            '-c', 'DROP DATABASE "{}"'.format(database_name)
+        ])
 
-        # create fresh database
-        os.system('psql -h {host} -p {port} -U {user} -c \'CREATE DATABASE "{name}"\''.format(
-            host=database_host, port=database_port, user=database_user,
-            name=database_name,
-        ))
+        # create fresh new
+        subprocess.call([
+            'psql',
+            '-h', database_host,
+            '-p', database_port,
+            '-U', database_user,
+            '-c', 'CREATE DATABASE "{}"'.format(database_name)
+        ])
 
-        # load database dump
-        os.system('pg_restore -h {host} -p {port} -U {user} -d {name} '
-                  '--no-owner {dump_path}'.format(
-            host=database_host, port=database_port, user=database_user,
-            name=database_name, dump_path=os.path.join(tmp_path, 'database.dump')
-        ))
+        # load data
+        subprocess.call([
+            'pg_restore',
+            '-h', database_host,
+            '-p', database_port,
+            '-U', database_user,
+            '-d', database_name,
+            '--no-owner',
+            os.path.join(tmp_path, 'database.dump'),
+        ])
 
         return True, sitename
 
