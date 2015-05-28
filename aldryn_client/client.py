@@ -24,6 +24,7 @@ from .utils import (
 
 
 CACERT_PEM_PATH = resource_path('cacert.pem')
+DATABASE_URL = 'postgres://{user}:{password}@{host}:{port}/{name}'
 
 
 class WritableNetRC(netrc.netrc):
@@ -112,10 +113,19 @@ class Client(object):
         return '%s/%s' % (
             cls.get_host_url().rstrip('/'), cls.ACCESS_TOKEN_URL_PATH.lstrip('/'))
 
-    def __init__(self, host, interactive=True):
+    def __init__(
+            self, host, interactive=True, database_name=None,
+            database_host='127.0.0.1', database_port=5432,
+            database_user='postgres', database_password=None):
         self.host = urlparse.urlparse(host)[1]
         self.interactive = interactive
         self.netrc = WritableNetRC()
+        self.database_name = database_name
+        self.database_host = database_host
+        self.database_port = database_port
+        self.database_user = database_user
+        self.database_password = database_password
+
         auth_data = self.get_auth_data()
         if auth_data:
             headers = {
@@ -510,6 +520,7 @@ class Client(object):
             return True, sitename
 
     def workspace_init_virtualenv(self, sitename, path):
+        return True, ''
         virtualenv_path = os.path.join(path, '.virtualenv')
         requirements_path = os.path.join(path, '.site/requirements.txt')
         pip_path = os.path.join(path, '.virtualenv/bin/pip')
@@ -567,43 +578,40 @@ class Client(object):
         print "finished extracting dump"
 
         # Set up .env
-        database_name = 'aldryn_{}'.format(sitename)
-        database_host = '127.0.0.1'
-        database_port = '5432'
-        database_user = 'postgres'
-        database_password = ''
-        database_url = 'DATABASE_URL=postgres://{user}:{password}' \
-                       '@{host}:{port}/{name}'.format(
-            user=database_user, password=database_password,
-            host=database_host, port=database_port, name=database_name
+        database_name = self.database_name or 'aldryn_{}'.format(sitename)
+        database_url = DATABASE_URL.format(
+            user=self.database_user, password=self.database_password,
+            host=self.database_host, port=self.database_port,
+            name=database_name
         )
+
         with open(os.path.join(site_path, '.env'), 'w') as f:
-            f.write(database_url)
+            f.write('DATABASE_URL={}'.format(database_url))
 
         # delete old database
         subprocess.call([
             'psql',
-            '-h', database_host,
-            '-p', database_port,
-            '-U', database_user,
+            '-h', self.database_host,
+            '-p', self.database_port,
+            '-U', self.database_user,
             '-c', 'DROP DATABASE "{}"'.format(database_name)
         ])
 
         # create fresh new
         subprocess.call([
             'psql',
-            '-h', database_host,
-            '-p', database_port,
-            '-U', database_user,
+            '-h', self.database_host,
+            '-p', self.database_port,
+            '-U', self.database_user,
             '-c', 'CREATE DATABASE "{}"'.format(database_name)
         ])
 
         # load data
         subprocess.call([
             'pg_restore',
-            '-h', database_host,
-            '-p', database_port,
-            '-U', database_user,
+            '-h', self.database_host,
+            '-p', self.database_port,
+            '-U', self.database_user,
             '-d', database_name,
             '--no-owner',
             os.path.join(tmp_path, 'database.dump'),
