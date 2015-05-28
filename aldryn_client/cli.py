@@ -16,7 +16,7 @@ except ImportError:
 else:
     GUI = True
 
-doc_draft = """django CMS cloud client.
+doc_draft = """Aldryn client.
 
 Usage:%(extra_commands)s
     aldryn login [--with-token]
@@ -25,14 +25,19 @@ Usage:%(extra_commands)s
     aldryn addon upload
     aldryn addon validate
     aldryn sync [--sitename=<sitename>]
-    aldryn workspace create --sitename=<sitename> [--path=<sitename>]
+    aldryn workspace create --sitename=<sitename> [--path=<sitename>] [--db-name=<database_name>]  [--db-host=<database_host>] [--db-port=<database_port>] [--db-user=<database_user>] [--db-pass=<database_password>]
     aldryn sites
     aldryn newest_version
 
 Options:
-    -h --help                   Show this screen.
-    --version                   Show version.
-    --sitename=<sitename>       Domain of your site, eg example.cloud.django-cms.com.
+    -h --help                        Show this screen.
+    --version                        Show version.
+    --sitename=<sitename>            Name of your site, eg your-project-name
+    --db-name=<database_name>        Database Name
+    --db-host=<database_host>        Database Host [default: 127.0.0.1]
+    --db-port=<database_port>        Database Port [default: 5432]
+    --db-user=<database_user>        Database User [default: postgres]
+    --db-pass=<database_password>    Database Password [default: '']
 """
 
 gui_command = """
@@ -66,7 +71,15 @@ def _sync_error_callback(message, title=None):
 
 def main():
     args = docopt.docopt(__doc__, version=version)
-    client = Client(Client.get_host_url(), interactive=True)
+    client = Client(
+        Client.get_host_url(),
+        interactive=True,
+        database_name=args['--db-name'],
+        database_host=args['--db-host'],
+        database_port=args['--db-port'],
+        database_user=args['--db-user'],
+        database_password=args['--db-pass'],
+    )
     retval = True
     msg = None
     if GUI and args['gui']:

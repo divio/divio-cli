@@ -2,12 +2,14 @@
 import getpass
 import json
 import netrc
+import re
 import os
 import time
 import stat
 import shutil
 import tarfile
 import urlparse
+import subprocess
 
 import git
 import requests
@@ -22,6 +24,7 @@ from .utils import (
 
 
 CACERT_PEM_PATH = resource_path('cacert.pem')
+DATABASE_URL = 'postgres://{user}:{password}@{host}:{port}/{name}'
 
 
 class WritableNetRC(netrc.netrc):
@@ -110,10 +113,19 @@ class Client(object):
         return '%s/%s' % (
             cls.get_host_url().rstrip('/'), cls.ACCESS_TOKEN_URL_PATH.lstrip('/'))
 
-    def __init__(self, host, interactive=True):
+    def __init__(
+            self, host, interactive=True, database_name=None,
+            database_host='127.0.0.1', database_port=5432,
+            database_user='postgres', database_password=None):
         self.host = urlparse.urlparse(host)[1]
         self.interactive = interactive
         self.netrc = WritableNetRC()
+        self.database_name = database_name
+        self.database_host = database_host
+        self.database_port = database_port
+        self.database_user = database_user
+        self.database_password = database_password
+
         auth_data = self.get_auth_data()
         if auth_data:
             headers = {
@@ -469,6 +481,9 @@ class Client(object):
         success, msg = self.workspace_init_virtualenv(sitename, path)
         if not success:
             return success, msg
+        success, msg = self.load_db(sitename, path)
+        if not success:
+            return success, msg
         return True, sitename
 
     def workspace_download_site(self, sitename, path):
@@ -505,6 +520,7 @@ class Client(object):
             return True, sitename
 
     def workspace_init_virtualenv(self, sitename, path):
+        return True, ''
         virtualenv_path = os.path.join(path, '.virtualenv')
         requirements_path = os.path.join(path, '.site/requirements.txt')
         pip_path = os.path.join(path, '.virtualenv/bin/pip')
@@ -513,14 +529,94 @@ class Client(object):
         if not os.path.exists(dev_path):
             os.mkdir(dev_path)
 
-        import subprocess
-        subprocess.call(['virtualenv', virtualenv_path])
+        # fix requirements
+        with open(requirements_path, 'r') as f:
+            lines = f.readlines()
 
-        subprocess.call([pip_path, 'install', '-r', requirements_path])
+        excluded = ['mercurial', 'bzr', 'gyp', 'pygobject', 'pygpgme', 'cffi']
+
+        with open(requirements_path, 'w') as f:
+            for line in lines:
+                if not any(re.match(pat, line) for pat in excluded):
+                    f.write(line)
+
+        subprocess.call(['virtualenv', virtualenv_path])
+        subprocess.call([pip_path, 'install', 'pyOpenSSL==0.15.1', 'ndg-httpsclient==0.3.3', 'pyasn1==0.1.7', 'cryptography==0.8.2'])
+        subprocess.call([pip_path, 'install', '--allow-all-external', '--allow-unverified', 'lazr.restfulclient', '-r', requirements_path])
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite.pth'), 'w+') as fobj:
             fobj.write(os.path.abspath('.site/'))
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite_dev.pth'), 'w+') as fobj:
             fobj.write(os.path.abspath(dev_path))
+        return True, sitename
+
+    def load_db(self, sitename, path):
+        print 'loading db'
+        site_path = os.path.join(path, '.site')
+        tmp_path = os.path.join(path, '.tmp')
+        if not os.path.exists(tmp_path):
+            os.mkdir(tmp_path)
+        try:
+            response = self.session.get(
+                '/api/v1/workspace/%s/download/db/' % sitename, stream=True,
+                headers={'accept': 'application/x-tar-gz'})
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout):
+            return (False, Client.NETWORK_ERROR_MESSAGE)
+        if response.status_code != 200:
+            msgs = []
+            msgs.append("Unexpected HTTP Response %s" % response.status_code)
+            if response.status_code < 500:
+                msgs.append(response.content)
+            return (False, '\n'.join(msgs))
+
+        # unpack the downloaded tar.gz containing the database dump
+        print "extracting dump to .tmp"
+        from StringIO import StringIO
+        tar = tarfile.open(mode='r:gz', fileobj=StringIO(response.content))
+        tar.extractall(path=tmp_path)
+        tar.close()
+        print "finished extracting dump"
+
+        # Set up .env
+        database_name = self.database_name or 'aldryn_{}'.format(sitename)
+        database_url = DATABASE_URL.format(
+            user=self.database_user, password=self.database_password,
+            host=self.database_host, port=self.database_port,
+            name=database_name
+        )
+
+        with open(os.path.join(site_path, '.env'), 'w') as f:
+            f.write('DATABASE_URL={}'.format(database_url))
+
+        # delete old database
+        subprocess.call([
+            'psql',
+            '-h', self.database_host,
+            '-p', self.database_port,
+            '-U', self.database_user,
+            '-c', 'DROP DATABASE "{}"'.format(database_name)
+        ])
+
+        # create fresh new
+        subprocess.call([
+            'psql',
+            '-h', self.database_host,
+            '-p', self.database_port,
+            '-U', self.database_user,
+            '-c', 'CREATE DATABASE "{}"'.format(database_name)
+        ])
+
+        # load data
+        subprocess.call([
+            'pg_restore',
+            '-h', self.database_host,
+            '-p', self.database_port,
+            '-U', self.database_user,
+            '-d', database_name,
+            '--no-owner',
+            os.path.join(tmp_path, 'database.dump'),
+        ])
+
         return True, sitename
 
     def sites(self):
