@@ -520,7 +520,6 @@ class Client(object):
             return True, sitename
 
     def workspace_init_virtualenv(self, sitename, path):
-        return True, ''
         virtualenv_path = os.path.join(path, '.virtualenv')
         requirements_path = os.path.join(path, '.site/requirements.txt')
         pip_path = os.path.join(path, '.virtualenv/bin/pip')
