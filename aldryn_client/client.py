@@ -638,7 +638,7 @@ class Client(object):
         site_path = os.path.join(path, '.site')
         try:
             response = self.session.get(
-                '/api/v1/workspace/%s/docker-download/' % sitename, stream=True,
+                '/api/v1/workspace/%s/download/' % sitename, stream=True,
                 headers={'accept': 'application/x-tar-gz'})
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout):
