@@ -149,5 +149,5 @@ def main():
                     path=args.get('--path', None),
                 )
     if msg:
-        print msg
+        print '\n{}'.format(msg)
     sys.exit(int(retval))

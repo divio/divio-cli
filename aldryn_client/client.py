@@ -29,7 +29,14 @@ from .utils import (
 
 CACERT_PEM_PATH = resource_path('cacert.pem')
 DATABASE_URL = 'postgres://{user}:{password}@{host}:{port}/{name}'
-
+OPENSSL_DOCKER_CONFLICT_INSTRUCTIONS = """
+\n\033[91mYour version of OpenSSL is not compatible with boot2docker and/or docker-python.
+Please run the following commands to install a compatible version and try again:
+$ brew unlink openssl
+$ brew install https://raw.githubusercontent.com/Homebrew/homebrew/62fc2a1a65e83ba9dbb30b2e0a2b7355831c714b/Library/Formula/openssl.rb
+$ brew switch openssl 1.0.1j_1
+$ brew link openssl --force\033[0m
+"""
 
 class WritableNetRC(netrc.netrc):
     def __init__(self, *args, **kwargs):
@@ -512,6 +519,7 @@ class Client(object):
     def print_done(self):
         sys.stdout.write('\r')
         sys.stdout.write('{0: <25}\033[32m done\n'.format(self.previous_status))
+        sys.stdout.write('\033[0m')  # reset color
         sys.stdout.flush()
 
     def init_docker(self, sitename, path=None):
@@ -523,15 +531,8 @@ class Client(object):
         try:
             self.docker_client = DockerClient(**docker_kwargs)
         except requests.exceptions.SSLError, e:
-            print e
-            print """
-Your version of OpenSSL is not compatible with boot2docker. Please run the following commands and try again:
-$ brew unlink openssl
-$ brew install https://raw.githubusercontent.com/Homebrew/homebrew/62fc2a1a65e83ba9dbb30b2e0a2b7355831c714b/Library/Formula/openssl.rb
-$ brew switch openssl 1.0.1j_1
-$ brew link openssl --force
-"""
-            return
+            print OPENSSL_DOCKER_CONFLICT_INSTRUCTIONS
+            raise e
 
         db_container_name = '{}_db'.format(sitename)
         web_container_name = '{}_web'.format(sitename)
@@ -640,7 +641,6 @@ $ brew link openssl --force
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout):
             return (False, Client.NETWORK_ERROR_MESSAGE)
-        self.print_done()
         if response.status_code != 200:
             msgs = []
             msgs.append("Unexpected HTTP Response %s" % response.status_code)
@@ -648,6 +648,7 @@ $ brew link openssl --force
                 msgs.append(response.content)
             return (False, '\n'.join(msgs))
         else:
+            self.print_done()
             # unpack the downloaded tar.gz containing the whole project
             if os.path.exists(site_path):
                 # print "deleting old .site"
@@ -663,6 +664,7 @@ $ brew link openssl --force
             return True, sitename
 
     def workspace_init_virtualenv(self, sitename, path):
+        self.print_status('Setting up virtualenv')
         virtualenv_path = os.path.join(path, '.virtualenv')
         requirements_path = os.path.join(path, '.site/requirements.txt')
         pip_path = os.path.join(path, '.virtualenv/bin/pip')
@@ -682,13 +684,16 @@ $ brew link openssl --force
                 if not any(re.match(pat, line) for pat in excluded):
                     f.write(line)
 
-        subprocess.call(['virtualenv', virtualenv_path])
-        subprocess.call([pip_path, 'install', 'pyOpenSSL==0.15.1', 'ndg-httpsclient==0.3.3', 'pyasn1==0.1.7', 'cryptography==0.8.2'])
-        subprocess.call([pip_path, 'install', '--allow-all-external', '--allow-unverified', 'lazr.restfulclient', '-r', requirements_path])
+        self.print_done()
+        self.print_status('Installing requirements')
+        subprocess.call(['virtualenv', virtualenv_path], stdout=open(os.devnull, 'wb'))
+        subprocess.call([pip_path, 'install', 'pyOpenSSL==0.15.1', 'ndg-httpsclient==0.3.3', 'pyasn1==0.1.7', 'cryptography==0.8.2'], stdout=open(os.devnull, 'wb'))
+        subprocess.call([pip_path, 'install', '--allow-all-external', '--allow-unverified', 'lazr.restfulclient', '-r', requirements_path], stdout=open(os.devnull, 'wb'))
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite.pth'), 'w+') as fobj:
             fobj.write(os.path.abspath('.site/'))
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite_dev.pth'), 'w+') as fobj:
             fobj.write(os.path.abspath(dev_path))
+        self.print_done()
         return True, sitename
 
     def load_db(self, sitename, path):
@@ -737,7 +742,7 @@ $ brew link openssl --force
             '-p', self.database_port,
             '-U', self.database_user,
             '-c', 'DROP DATABASE "{}"'.format(database_name)
-        ])
+        ], stdout=open(os.devnull, 'wb'))
 
         # create fresh new
         subprocess.call([
@@ -746,7 +751,7 @@ $ brew link openssl --force
             '-p', self.database_port,
             '-U', self.database_user,
             '-c', 'CREATE DATABASE "{}"'.format(database_name)
-        ])
+        ], stdout=open(os.devnull, 'wb'))
 
         # load data
         subprocess.call([
@@ -757,7 +762,7 @@ $ brew link openssl --force
             '-d', database_name,
             '--no-owner',
             os.path.join(tmp_path, 'database.dump'),
-        ])
+        ],  stdout=open(os.devnull, 'wb'))
 
         return True, sitename
 
