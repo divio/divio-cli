@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import imp
-import os
 import platform
 import sys
 
@@ -140,6 +139,19 @@ def main():
     elif args['workspace']:
         if args['create']:
             if args.get('--docker'):
+                try:
+                    import docker
+                except ImportError:
+                    exit(
+                        "\033[91mIn order to use the experimental Docker "
+                        "support you need to install the package with docker "
+                        "dependencies: pip install aldryn-client[docker]"
+                        "\033[0m"
+                    )
+                sys.stdout.write(
+                    "\033[91mCaution: Docker support is still experimental!"
+                    "\033[0m\n"
+                )
                 retval, msg = client.create_docker_workspace(
                     sitename=args.get('--sitename', None),
                     path=args.get('--path', None),

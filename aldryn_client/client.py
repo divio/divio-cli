@@ -16,8 +16,6 @@ from StringIO import StringIO
 
 import git
 import requests
-from docker.client import Client as DockerClient
-from docker.utils import create_host_config, kwargs_from_env
 
 from .git_sync import GitSyncHandler
 from .sync_helpers import extra_git_kwargs, git_pull_develop_bundle, git_update_gitignore
@@ -524,6 +522,9 @@ class Client(object):
         sys.stdout.flush()
 
     def init_docker(self, sitename, path=None):
+        from docker.client import Client as DockerClient
+        from docker.utils import create_host_config, kwargs_from_env
+
         self.print_status('Setting up docker')
         site_path = os.path.join(path, '.site')
         os.environ.setdefault('DOCKER_CERT_PATH', CACERT_PEM_PATH)
