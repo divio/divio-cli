@@ -2,30 +2,30 @@
 import getpass
 import json
 import netrc
+import os
 import re
-import os
-import webbrowser
-import time
 import shutil
-import tarfile
-import urlparse
-import subprocess
-from StringIO import StringIO
-import sys
-
-import os
 import stat
+import subprocess
+import sys
+import tarfile
+import time
+import urlparse
+import webbrowser
+from StringIO import StringIO
+
 import git
 import requests
 from docker.client import Client as DockerClient
-from docker.utils import kwargs_from_env, create_host_config
+from docker.utils import create_host_config, kwargs_from_env
+
 from .git_sync import GitSyncHandler
-from .sync_helpers import (
-    extra_git_kwargs, git_update_gitignore, git_pull_develop_bundle)
+from .sync_helpers import extra_git_kwargs, git_pull_develop_bundle, git_update_gitignore
 from .utils import (
-    validate_boilerplate_config, bundle_boilerplate, filter_template_files,
-    filter_static_files, validate_app_config, bundle_app, filter_sass_files,
-    resource_path, cli_confirm, load_app_config, load_boilerplate_config)
+    bundle_app, bundle_boilerplate, cli_confirm, filter_sass_files, filter_static_files,
+    filter_template_files, load_app_config, load_boilerplate_config, resource_path,
+    validate_app_config, validate_boilerplate_config
+)
 
 CACERT_PEM_PATH = resource_path('cacert.pem')
 DATABASE_URL = 'postgres://{user}:{password}@{host}:{port}/{name}'

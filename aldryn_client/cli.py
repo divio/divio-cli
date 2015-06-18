@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-import docopt
 import imp
-import platform
 import os
+import platform
 import sys
+
+import docopt
 
 from . import __version__ as version
 from .client import Client
