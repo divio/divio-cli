@@ -182,12 +182,12 @@ class Client(object):
         while self.interactive and not force:
             answer = raw_input('Are you sure you want to continue? [yN]')
             if answer.lower() == 'n' or not answer:
-                print "Aborted"
+                sys.stdout.write('Aborted')
                 return True
             elif answer.lower() == 'y':
                 break
             else:
-                print "Invalid answer, please type either y or n"
+                sys.stdout.write('Invalid answer, please type either y or n')
         self.netrc.remove(self.host)
         self.netrc.write()
 
@@ -226,7 +226,8 @@ class Client(object):
 
     def login_with_token(self, token=None):
         if token is None:
-            print 'To get your access token visit: %s' % self.get_access_token_url()
+            sys.stdout.write('To get your access token visit: {}'.format(
+                self.get_access_token_url()))
             token = raw_input('Access token: ')
         try:
             response = self.session.post(
@@ -531,7 +532,7 @@ class Client(object):
         try:
             self.docker_client = DockerClient(**docker_kwargs)
         except requests.exceptions.SSLError, e:
-            print OPENSSL_DOCKER_CONFLICT_INSTRUCTIONS
+            sys.stdout.write(OPENSSL_DOCKER_CONFLICT_INSTRUCTIONS)
             raise e
 
         db_container_name = '{}_db'.format(sitename)
@@ -579,7 +580,7 @@ class Client(object):
                 name=db_container_name,
             )
         except requests.exceptions.SSLError, e:
-            print OPENSSL_DOCKER_CONFLICT_INSTRUCTIONS
+            sys.stdout.write(OPENSSL_DOCKER_CONFLICT_INSTRUCTIONS)
             raise e
 
         # build web container
@@ -625,10 +626,11 @@ class Client(object):
         time.sleep(5)
 
         self.print_done()
-        print '\n\tFinished setting up your local environment,\n\tyou may now ' \
-              'access your website at:\n' \
-              '\t   http://192.168.59.103:8000'
-
+        sys.stdout.write("""
+\033[32mFinished setting up your local environment,
+you may now access your website at:
+http://192.168.59.103:8000\033[0m
+        """)
         webbrowser.open('http://192.168.59.103:8000')
 
     def workspace_download_site(self, sitename, path):
@@ -699,7 +701,7 @@ class Client(object):
         return True, sitename
 
     def load_db(self, sitename, path):
-        print 'loading db'
+        self.print_status('Fetching database')
         site_path = os.path.join(path, '.site')
         tmp_path = os.path.join(path, '.tmp')
         if not os.path.exists(tmp_path):
@@ -718,15 +720,18 @@ class Client(object):
                 msgs.append(response.content)
             return (False, '\n'.join(msgs))
 
+        self.print_done()
+
         # unpack the downloaded tar.gz containing the database dump
-        print "extracting dump to .tmp"
+        self.print_status('Extracting files')
         from StringIO import StringIO
         tar = tarfile.open(mode='r:gz', fileobj=StringIO(response.content))
         tar.extractall(path=tmp_path)
         tar.close()
-        print "finished extracting dump"
+        self.print_done()
 
         # Set up .env
+        self.print_status('Setting up .env')
         database_name = self.database_name or 'aldryn_{}'.format(sitename)
         database_url = DATABASE_URL.format(
             user=self.database_user, password=self.database_password,
@@ -736,7 +741,9 @@ class Client(object):
 
         with open(os.path.join(site_path, '.env'), 'w') as f:
             f.write('DATABASE_URL={}'.format(database_url))
+        self.print_done()
 
+        self.print_status('Loading database')
         # delete old database
         subprocess.call([
             'psql',
@@ -765,6 +772,7 @@ class Client(object):
             '--no-owner',
             os.path.join(tmp_path, 'database.dump'),
         ],  stdout=open(os.devnull, 'wb'))
+        self.print_done()
 
         return True, sitename
 
