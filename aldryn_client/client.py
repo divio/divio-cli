@@ -566,19 +566,21 @@ class Client(object):
         self.print_done()
         self.print_status('Building containers')
         # Setup Containers
-        db_container = self.docker_client.create_container(
-            image='postgres:latest',
-            # command='pg_restore -d postgres /app/database.dump',
-            volumes='/tmp/data',
-            host_config=create_host_config(binds={
-                site_path: {
-                    'bind': '/app',
-                    'ro': True
-                },
-            }),
-            name=db_container_name,
-            # detach=True,
-        )
+        try:
+            db_container = self.docker_client.create_container(
+                image='postgres:latest',
+                volumes='/tmp/data',
+                host_config=create_host_config(binds={
+                    site_path: {
+                        'bind': '/app',
+                        'ro': True
+                    },
+                }),
+                name=db_container_name,
+            )
+        except requests.exceptions.SSLError, e:
+            print OPENSSL_DOCKER_CONFLICT_INSTRUCTIONS
+            raise e
 
         # build web container
         self.docker_client.build(
