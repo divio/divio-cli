@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-import docopt
 import imp
 import platform
-import os
 import sys
+
+import docopt
 
 from . import __version__ as version
 from .client import Client
@@ -25,7 +25,7 @@ Usage:%(extra_commands)s
     aldryn addon upload
     aldryn addon validate
     aldryn sync [--sitename=<sitename>]
-    aldryn workspace create --sitename=<sitename> [--path=<sitename>] [--db-name=<database_name>]  [--db-host=<database_host>] [--db-port=<database_port>] [--db-user=<database_user>] [--db-pass=<database_password>]
+    aldryn workspace create --sitename=<sitename> [--path=<sitename>] [--docker] [--db-name=<database_name>]  [--db-host=<database_host>] [--db-port=<database_port>] [--db-user=<database_user>] [--db-pass=<database_password>]
     aldryn sites
     aldryn newest_version
 
@@ -138,10 +138,29 @@ def main():
                 msg = 'You are using the latest version.'
     elif args['workspace']:
         if args['create']:
-            retval, msg = client.create_workspace(
-                sitename=args.get('--sitename', None),
-                path=args.get('--path', None),
-            )
+            if args.get('--docker'):
+                try:
+                    import docker
+                except ImportError:
+                    exit(
+                        "\033[91mIn order to use the experimental Docker "
+                        "support you need to install the package with docker "
+                        "dependencies: pip install aldryn-client[docker]"
+                        "\033[0m"
+                    )
+                sys.stdout.write(
+                    "\033[91mCaution: Docker support is still experimental!"
+                    "\033[0m\n"
+                )
+                retval, msg = client.create_docker_workspace(
+                    sitename=args.get('--sitename', None),
+                    path=args.get('--path', None),
+                )
+            else:
+                retval, msg = client.create_workspace(
+                    sitename=args.get('--sitename', None),
+                    path=args.get('--path', None),
+                )
     if msg:
-        print msg
+        print '\n{}'.format(msg)
     sys.exit(int(retval))

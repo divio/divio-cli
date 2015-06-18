@@ -2,30 +2,39 @@
 import getpass
 import json
 import netrc
-import re
 import os
-import time
-import stat
+import re
 import shutil
-import tarfile
-import urlparse
+import stat
 import subprocess
+import sys
+import tarfile
+import time
+import urlparse
+import webbrowser
+from StringIO import StringIO
 
 import git
 import requests
 
 from .git_sync import GitSyncHandler
-from .sync_helpers import (
-    extra_git_kwargs, git_update_gitignore, git_pull_develop_bundle)
+from .sync_helpers import extra_git_kwargs, git_pull_develop_bundle, git_update_gitignore
 from .utils import (
-    validate_boilerplate_config, bundle_boilerplate, filter_template_files,
-    filter_static_files, validate_app_config, bundle_app, filter_sass_files,
-    resource_path, cli_confirm, load_app_config, load_boilerplate_config)
-
+    bundle_app, bundle_boilerplate, cli_confirm, filter_sass_files, filter_static_files,
+    filter_template_files, load_app_config, load_boilerplate_config, resource_path,
+    validate_app_config, validate_boilerplate_config
+)
 
 CACERT_PEM_PATH = resource_path('cacert.pem')
 DATABASE_URL = 'postgres://{user}:{password}@{host}:{port}/{name}'
-
+OPENSSL_DOCKER_CONFLICT_INSTRUCTIONS = """
+\n\033[91mYour version of OpenSSL is not compatible with boot2docker and/or docker-python.
+Please run the following commands to install a compatible version and try again:
+$ brew unlink openssl
+$ brew install https://raw.githubusercontent.com/Homebrew/homebrew/62fc2a1a65e83ba9dbb30b2e0a2b7355831c714b/Library/Formula/openssl.rb
+$ brew switch openssl 1.0.1j_1
+$ brew link openssl --force\033[0m
+"""
 
 class WritableNetRC(netrc.netrc):
     def __init__(self, *args, **kwargs):
@@ -104,6 +113,8 @@ class Client(object):
         BOILERPLATE_FILENAME_JSON, BOILERPLATE_FILENAME_YAML,
         ALDRYN_CONFIG_FILENAME, SETUP_FILENAME, DATA_FILENAME]
 
+    docker_client = None
+
     @classmethod
     def get_host_url(cls):
         return os.environ.get(cls.ALDRYN_HOST_KEY, cls.ALDRYN_HOST_DEFAULT)
@@ -137,7 +148,7 @@ class Client(object):
             host, headers=headers, trust_env=False)
 
         self._sync_handlers_cache = {}
-        print 'Connecting to {}'.format(self.host)
+        # print 'Connecting to {}'.format(self.host)
 
     def get_auth_data(self):
         return self.netrc.hosts.get(self.host)
@@ -169,12 +180,12 @@ class Client(object):
         while self.interactive and not force:
             answer = raw_input('Are you sure you want to continue? [yN]')
             if answer.lower() == 'n' or not answer:
-                print "Aborted"
+                sys.stdout.write('Aborted')
                 return True
             elif answer.lower() == 'y':
                 break
             else:
-                print "Invalid answer, please type either y or n"
+                sys.stdout.write('Invalid answer, please type either y or n')
         self.netrc.remove(self.host)
         self.netrc.write()
 
@@ -213,7 +224,8 @@ class Client(object):
 
     def login_with_token(self, token=None):
         if token is None:
-            print 'To get your access token visit: %s' % self.get_access_token_url()
+            sys.stdout.write('To get your access token visit: {}'.format(
+                self.get_access_token_url()))
             token = raw_input('Access token: ')
         try:
             response = self.session.post(
@@ -471,6 +483,16 @@ class Client(object):
     def _is_syncing(self, sitename):
         return sitename in self._sync_handlers_cache
 
+    def create_docker_workspace(self, sitename, path=None):
+        if path is None:
+            path = './%s' % sitename
+        path = os.path.abspath(path)
+        success, msg = self.workspace_download_site(sitename, path)
+        if not success:
+            return success, msg
+        self.init_docker(sitename, path)
+        return True, ''
+
     def create_workspace(self, sitename, path=None):
         if path is None:
             path = './%s' % sitename
@@ -486,7 +508,134 @@ class Client(object):
             return success, msg
         return True, sitename
 
+    previous_status = ''
+
+    def print_status(self, status):
+        self.previous_status = status
+        sys.stdout.write('\033[37m%s' % status)
+        sys.stdout.flush()
+
+    def print_done(self):
+        sys.stdout.write('\r')
+        sys.stdout.write('{0: <25}\033[32m done\n'.format(self.previous_status))
+        sys.stdout.write('\033[0m')  # reset color
+        sys.stdout.flush()
+
+    def init_docker(self, sitename, path=None):
+        from docker.client import Client as DockerClient
+        from docker.utils import create_host_config, kwargs_from_env
+
+        self.print_status('Setting up docker')
+        site_path = os.path.join(path, '.site')
+        os.environ.setdefault('DOCKER_CERT_PATH', CACERT_PEM_PATH)
+        docker_kwargs = kwargs_from_env()
+        docker_kwargs['tls'].assert_hostname = False
+        try:
+            self.docker_client = DockerClient(**docker_kwargs)
+        except requests.exceptions.SSLError, e:
+            sys.stdout.write(OPENSSL_DOCKER_CONFLICT_INSTRUCTIONS)
+            raise e
+
+        db_container_name = '{}_db'.format(sitename)
+        web_container_name = '{}_web'.format(sitename)
+
+        # Cleanup
+        try:
+            self.docker_client.stop(db_container_name)
+        except:
+            pass
+
+        try:
+            self.docker_client.stop(web_container_name)
+        except:
+            pass
+
+        try:
+            self.docker_client.remove_container(db_container_name)
+        except:
+            pass
+
+        try:
+            self.docker_client.remove_container(web_container_name)
+        except:
+            pass
+
+        # Extract 2nd tar.gz which contains dbdump and static files
+        with open(os.path.join(site_path, 'backup_archive.tar.gz')) as f:
+            with tarfile.open(mode='r:gz', fileobj=f) as tar:
+                tar.extract('database.dump', site_path)
+
+        self.print_done()
+        self.print_status('Building containers')
+        # Setup Containers
+        try:
+            db_container = self.docker_client.create_container(
+                image='postgres:latest',
+                volumes='/tmp/data',
+                host_config=create_host_config(binds={
+                    site_path: {
+                        'bind': '/app',
+                        'ro': True
+                    },
+                }),
+                name=db_container_name,
+            )
+        except requests.exceptions.SSLError, e:
+            sys.stdout.write(OPENSSL_DOCKER_CONFLICT_INSTRUCTIONS)
+            raise e
+
+        # build web container
+        self.docker_client.build(
+            path=site_path,
+            tag='myweb',
+            rm=True,
+        )
+
+        web_container = self.docker_client.create_container(
+            name=web_container_name,
+            image='myweb:latest',
+            volumes='/tmp/data',
+            ports=[80],
+            command='/app/launcher.sh',
+            host_config=create_host_config(
+                binds={
+                    site_path: {
+                        'bind': '/app',
+                        'ro': False
+                    },
+                },
+                port_bindings={80: 8000}
+            )
+        )
+        self.print_done()
+        self.print_status('Loading database')
+        self.docker_client.start(db_container)
+
+        self.docker_client.exec_create(
+            container=db_container,
+            cmd='pg_restore -d postgres /app/database.dump',
+        )
+
+        self.print_done()
+        self.print_status('Starting website')
+        self.docker_client.start(
+            web_container,
+            links={db_container_name: 'db'},
+            port_bindings={80: 8000},
+        )
+
+        time.sleep(5)
+
+        self.print_done()
+        sys.stdout.write("""
+\033[32mFinished setting up your local environment,
+you may now access your website at:
+http://192.168.59.103:8000\033[0m
+        """)
+        webbrowser.open('http://192.168.59.103:8000')
+
     def workspace_download_site(self, sitename, path):
+        self.print_status('Downloading data')
         if not os.path.exists(path):
             os.mkdir(path)
         site_path = os.path.join(path, '.site')
@@ -504,22 +653,23 @@ class Client(object):
                 msgs.append(response.content)
             return (False, '\n'.join(msgs))
         else:
+            self.print_done()
             # unpack the downloaded tar.gz containing the whole project
             if os.path.exists(site_path):
-                print "deleting old .site"
+                # print "deleting old .site"
                 shutil.rmtree(site_path)
                 if os.path.exists(site_path):
                     return (False, "Failed to delete old .site directory")
 
-            print "extracting site to .site"
-            from StringIO import StringIO
+            self.print_status('Extracting files')
             tar = tarfile.open(mode='r:gz', fileobj=StringIO(response.content))
             tar.extractall(path=site_path)
             tar.close()
-            print "finished extracting site"
+            self.print_done()
             return True, sitename
 
     def workspace_init_virtualenv(self, sitename, path):
+        self.print_status('Setting up virtualenv')
         virtualenv_path = os.path.join(path, '.virtualenv')
         requirements_path = os.path.join(path, '.site/requirements.txt')
         pip_path = os.path.join(path, '.virtualenv/bin/pip')
@@ -539,17 +689,20 @@ class Client(object):
                 if not any(re.match(pat, line) for pat in excluded):
                     f.write(line)
 
-        subprocess.call(['virtualenv', virtualenv_path])
-        subprocess.call([pip_path, 'install', 'pyOpenSSL==0.15.1', 'ndg-httpsclient==0.3.3', 'pyasn1==0.1.7', 'cryptography==0.8.2'])
-        subprocess.call([pip_path, 'install', '--allow-all-external', '--allow-unverified', 'lazr.restfulclient', '-r', requirements_path])
+        self.print_done()
+        self.print_status('Installing requirements')
+        subprocess.call(['virtualenv', virtualenv_path], stdout=open(os.devnull, 'wb'))
+        subprocess.call([pip_path, 'install', 'pyOpenSSL==0.15.1', 'ndg-httpsclient==0.3.3', 'pyasn1==0.1.7', 'cryptography==0.8.2'], stdout=open(os.devnull, 'wb'))
+        subprocess.call([pip_path, 'install', '--allow-all-external', '--allow-unverified', 'lazr.restfulclient', '-r', requirements_path], stdout=open(os.devnull, 'wb'))
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite.pth'), 'w+') as fobj:
             fobj.write(os.path.abspath('.site/'))
         with open(os.path.join(virtualenv_path, 'lib/python2.7/site-packages/aldrynsite_dev.pth'), 'w+') as fobj:
             fobj.write(os.path.abspath(dev_path))
+        self.print_done()
         return True, sitename
 
     def load_db(self, sitename, path):
-        print 'loading db'
+        self.print_status('Fetching database')
         site_path = os.path.join(path, '.site')
         tmp_path = os.path.join(path, '.tmp')
         if not os.path.exists(tmp_path):
@@ -568,15 +721,18 @@ class Client(object):
                 msgs.append(response.content)
             return (False, '\n'.join(msgs))
 
+        self.print_done()
+
         # unpack the downloaded tar.gz containing the database dump
-        print "extracting dump to .tmp"
+        self.print_status('Extracting files')
         from StringIO import StringIO
         tar = tarfile.open(mode='r:gz', fileobj=StringIO(response.content))
         tar.extractall(path=tmp_path)
         tar.close()
-        print "finished extracting dump"
+        self.print_done()
 
         # Set up .env
+        self.print_status('Setting up .env')
         database_name = self.database_name or 'aldryn_{}'.format(sitename)
         database_url = DATABASE_URL.format(
             user=self.database_user, password=self.database_password,
@@ -586,7 +742,9 @@ class Client(object):
 
         with open(os.path.join(site_path, '.env'), 'w') as f:
             f.write('DATABASE_URL={}'.format(database_url))
+        self.print_done()
 
+        self.print_status('Loading database')
         # delete old database
         subprocess.call([
             'psql',
@@ -594,7 +752,7 @@ class Client(object):
             '-p', self.database_port,
             '-U', self.database_user,
             '-c', 'DROP DATABASE "{}"'.format(database_name)
-        ])
+        ], stdout=open(os.devnull, 'wb'))
 
         # create fresh new
         subprocess.call([
@@ -603,7 +761,7 @@ class Client(object):
             '-p', self.database_port,
             '-U', self.database_user,
             '-c', 'CREATE DATABASE "{}"'.format(database_name)
-        ])
+        ], stdout=open(os.devnull, 'wb'))
 
         # load data
         subprocess.call([
@@ -614,7 +772,8 @@ class Client(object):
             '-d', database_name,
             '--no-owner',
             os.path.join(tmp_path, 'database.dump'),
-        ])
+        ],  stdout=open(os.devnull, 'wb'))
+        self.print_done()
 
         return True, sitename
 

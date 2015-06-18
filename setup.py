@@ -19,6 +19,9 @@ EXTRAS_REQUIRE = {
         'plyer==1.2.1',
         'pygame',
     ],
+    'docker': [
+        'docker-py',
+    ]
 }
 try:
     import json
