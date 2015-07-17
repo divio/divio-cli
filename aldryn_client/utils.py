@@ -321,6 +321,12 @@ def bundle_boilerplate(config, path, **complex_extra):
         dirpath = os.path.join(path, key)
         if os.path.exists(dirpath):
             tar.add(key, filter=value)
+    special_files = [
+        f for f in config['protected']
+        if not any([f.startswith(key) for key in complex_extra.keys()])
+    ]
+    for special_file in special_files:
+        tar.add(special_file)
     tar.close()
     fileobj.seek(0)
     return fileobj
