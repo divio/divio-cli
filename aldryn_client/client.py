@@ -585,11 +585,14 @@ class Client(object):
             raise e
 
         # build web container
-        self.docker_client.build(
+        build_result = self.docker_client.build(
             path=site_path,
             tag='myweb',
             rm=True,
         )
+        # Consume the generator returned by build() - for some versions
+        # of docker / docker_py this is the only way to make it work.
+        _ = list(build_result)
 
         web_container = self.docker_client.create_container(
             name=web_container_name,
