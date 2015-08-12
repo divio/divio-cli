@@ -592,7 +592,8 @@ class Client(object):
         )
         # Consume the generator returned by build() - for some versions
         # of docker / docker_py this is the only way to make it work.
-        _ = list(build_result)
+        for _ in build_result:
+            pass
 
         web_container = self.docker_client.create_container(
             name=web_container_name,
