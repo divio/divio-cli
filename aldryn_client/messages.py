@@ -5,5 +5,4 @@ SERVER_ERROR = 'A problem occured while trying to communicate with aldryn.com. P
 AUTH_INVALID_TOKEN = 'Login failed. Invalid token specified'
 LOGIN_SUCCESSFUL = 'Welcome to Aldryn. You are now logged in as {greeting}'
 CONFIG_FILE_NOT_FOUND = 'Config file could not be not found at location: {}'
-
-
+FILE_NOT_FOUND = 'File could not be found: {}'

@@ -4,6 +4,9 @@ import os
 import click
 
 
+from .. import messages
+
+
 VALID_LICENSE_FILENAMES = (
     'LICENSE.txt',
     'LICENSE',
@@ -13,14 +16,13 @@ VALID_LICENSE_FILENAMES = (
 
 
 def load_config(fname, path=None):
-    config_path = os.path.join(path or '.', fname)
-    if not os.path.exists(config_path):
+    config_fpath = os.path.join(path or '.', fname)
+    if not os.path.exists(config_fpath):
         raise click.ClickException(
-            'Config file could not be not found at '
-            'location: {}'.format(config_path)
+            messages.FILE_NOT_FOUND.format(config_fpath)
         )
 
-    with open(config_path) as f:
+    with open(config_fpath) as f:
         try:
             return json.load(f)
         except ValueError:
@@ -29,7 +31,7 @@ def load_config(fname, path=None):
             )
 
 
-def validate_python_package(config, required_keys, config_path):
+def validate_package_config(config, required_keys, config_path):
     errors = []
 
     license_exists = any([

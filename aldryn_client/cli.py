@@ -9,6 +9,7 @@ import click
 
 from .cloud import CloudClient
 from .utils import hr, table
+from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
 
 
@@ -94,8 +95,8 @@ def addon(obj, path):
 @addon.command(name='validate')
 @click.pass_context
 def addon_validate(ctx):
-    # TODO
-    pass
+    validate_addon(ctx.parent.params['path'])
+    click.echo('Addon is valid!')
 
 
 @addon.command(name='upload')

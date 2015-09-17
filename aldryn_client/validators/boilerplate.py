@@ -3,7 +3,7 @@ import os
 import click
 
 from .. import settings
-from .common import validate_python_package, load_config
+from .common import validate_package_config, load_config
 
 
 BOILERPLATE_REQUIRED_FILES = (
@@ -49,7 +49,7 @@ def validate_boilerplate_config(config, path):
         if not os.path.exists(fpath):
             raise click.ClickException('Required file {} not found.'.format(fpath))
 
-    errors = validate_python_package(
+    errors = validate_package_config(
         config=config,
         required_keys=BOILERPLATE_REQUIRED_CONFIG_KEYS,
         config_path=path
