@@ -1,11 +1,9 @@
-import json
 import os
 from netrc import netrc
 
 from . import settings
 from . import messages
 from . import api_requests
-import requests
 
 
 class CloudClient(object):
@@ -97,13 +95,17 @@ class WritableNetRC(netrc):
     def write(self, path=None):
         if path is None:
             path = self.get_netrc_path()
+
+        out = []
+        for machine, data in self.hosts.items():
+            login, account, password = data
+            out.append('machine {}'.format(machine))
+            if login:
+                out.append('\tlogin {}'.format(login))
+            if account:
+                out.append('\taccount {}'.format(account))
+            if password:
+                out.append('\tpassword {}'.format(password))
+
         with open(path, 'w') as f:
-            for machine, data in self.hosts.items():
-                login, account, password = data
-                f.write('machine %s\n' % machine)
-                if login:
-                    f.write('\tlogin %s\n' % login)
-                if account:
-                    f.write('\taccount %s\n' % account)
-                if password:
-                    f.write('\tpassword %s\n' % password)
+            f.write(os.linesep.join(out))
