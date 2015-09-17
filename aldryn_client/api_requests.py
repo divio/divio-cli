@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import click
 import requests
 
@@ -50,16 +49,15 @@ class APIRequest(object):
         return self.process(response)
 
     def process(self, response):
-        if response.ok:
-            return response.json()
-        else:
-            print response.content
+        if not response.ok:
             raise click.ClickException(
                 self.response_code_error_map.get(
                     response.status_code,
                     self.default_error_message
                 )
             )
+
+        return response.json()
 
 
 class LoginRequest(APIRequest):

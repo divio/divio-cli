@@ -1,13 +1,9 @@
-# -*- coding: utf-8 -*-
 import sys
 
 try:
     import ipdb as pdb
 except ImportError:
-    try:
-        import bpdb as pdb
-    except ImportError:
-        import pdb
+    import pdb
 
 import click
 
@@ -49,21 +45,20 @@ def login_token_helper(ctx, param, value):
 
 @cli.command()
 @click.argument('token', required=False, callback=login_token_helper)
-@click.pass_context
-def login(ctx, token):
-    click.echo(ctx.obj.login(token))
+@click.pass_obj
+def login(obj, token):
+    click.echo(obj.login(token))
 
 
 @cli.group()
-@click.pass_context
-def project(ctx):
+def project():
     pass
 
 
 @project.command(name='list')
-@click.pass_context
-def project_list(ctx):
-    data = ctx.obj.get_projects()
+@click.pass_obj
+def project_list(obj):
+    data = obj.get_projects()
 
     organisations = {
         account['id']: account['name']
@@ -83,16 +78,16 @@ def project_list(ctx):
 
 @project.command(name='info')
 @click.argument('project_id', 'id')
-@click.pass_context
-def project_info(ctx, project_id):
+@click.pass_obj
+def project_info(obj, project_id):
     # TODO: proper formatting
-    click.echo(ctx.obj.get_project(project_id))
+    click.echo(obj.get_project(project_id))
 
 
 @cli.group()
-@click.option('-p', '--path', default='.', help='Boilerplate directory')
-@click.pass_context
-def addon(ctx, path):
+@click.option('-p', '--path', default='.', help='Addon directory')
+@click.pass_obj
+def addon(obj, path):
     pass
 
 
@@ -104,16 +99,16 @@ def addon_validate(ctx):
 
 
 @addon.command(name='upload')
-@click.pass_context
-def addon_upload(ctx):
+@click.pass_obj
+def addon_upload(obj):
     # TODO
     pass
 
 
 @cli.group()
 @click.option('-p', '--path', default='.', help='Boilerplate directory')
-@click.pass_context
-def boilerplate(ctx, path):
+@click.pass_obj
+def boilerplate(obj, path):
     pass
 
 
@@ -125,7 +120,7 @@ def boilerplate_validate(ctx):
 
 
 @boilerplate.command(name='upload')
-@click.pass_context
-def boilerplate_upload(ctx):
+@click.pass_obj
+def boilerplate_upload(obj):
     # TODO
     pass

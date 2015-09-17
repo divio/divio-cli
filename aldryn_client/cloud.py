@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import json
 import os
 from netrc import netrc

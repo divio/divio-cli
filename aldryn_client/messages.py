@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 SESSION_EXPIRED = 'Session expired. Please log in again.'
 NETWORK_ERROR_MESSAGE = 'Network error. Please check your connection and try again.'
 AUTH_SERVER_ERROR = 'A problem occured while trying to authenticate with aldryn.com. Please try again later'
