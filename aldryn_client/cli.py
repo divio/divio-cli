@@ -120,8 +120,8 @@ def boilerplate(ctx, path):
 @boilerplate.command(name='validate')
 @click.pass_context
 def boilerplate_validate(ctx):
-    # TODO
-    pass
+    validate_boilerplate(ctx.parent.params['path'])
+    click.echo('Boilerplate is valid!')
 
 
 @boilerplate.command(name='upload')
