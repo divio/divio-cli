@@ -25,9 +25,9 @@ def validate_aldryn_config_py(path):
             shutil.copy(aldryn_config_path, temp_dir)
             temp_path = os.path.join(temp_dir, 'aldryn_config.py')
             try:
-                # suppressing RuntimeWarning: Parent module 'aldryn_config'
-                # not found while handling absolute import
                 with silence_stderr():
+                    # suppressing RuntimeWarning: Parent module 'aldryn_config'
+                    # not found while handling absolute import
 
                     # randomizing source name
                     source = 'aldryn_config.config_{}'.format(int(time.time()))
@@ -49,10 +49,10 @@ def validate_aldryn_config_py(path):
 
 
 def validate_addon(path=None):
-    setup_py_fpath = os.path.join(path or '.', 'setup.py')
-    if not os.path.exists(setup_py_fpath):
+    setup_py_path = os.path.join(path or '.', 'setup.py')
+    if not os.path.exists(setup_py_path):
         raise click.ClickException(
-            messages.FILE_NOT_FOUND.format(setup_py_fpath)
+            messages.FILE_NOT_FOUND.format(setup_py_path)
         )
 
     config = load_config(settings.ADDON_CONFIG_FILENAME, path)

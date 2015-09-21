@@ -15,6 +15,13 @@ VALID_LICENSE_FILENAMES = (
 )
 
 
+def get_license(path):
+    for fname in VALID_LICENSE_FILENAMES:
+        fpath = os.path.join(path, fname)
+        if os.path.exists(fpath):
+            return fpath
+
+
 def load_config(fname, path=None):
     config_fpath = os.path.join(path or '.', fname)
     if not os.path.exists(config_fpath):
@@ -34,13 +41,7 @@ def load_config(fname, path=None):
 def validate_package_config(config, required_keys, config_path):
     errors = []
 
-    license_exists = any([
-        os.path.exists(
-            os.path.join(config_path, fname)
-        ) for fname in VALID_LICENSE_FILENAMES
-    ])
-
-    if not license_exists:
+    if not get_license(config_path):
         errors.append(
             'Required LICENSE file not found. Valid names are {}.'.format(
                 ', '.join(VALID_LICENSE_FILENAMES)

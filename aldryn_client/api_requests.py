@@ -28,10 +28,11 @@ class APIRequest(object):
     method = 'GET'
     url = None
 
-    def __init__(self, session, url_kwargs=None, data=None, *args, **kwargs):
+    def __init__(self, session, url_kwargs=None, data=None, files=None, *args, **kwargs):
         self.session = session
         self.url_kwargs = url_kwargs or {}
         self.data = data or {}
+        self.files = files or {}
 
     def get_url(self):
         return self.url.format(**self.url_kwargs)
@@ -40,7 +41,8 @@ class APIRequest(object):
         try:
             response = self.session.request(
                 self.method, self.get_url(),
-                data=self.data, *args, **kwargs
+                data=self.data, files=self.files,
+                *args, **kwargs
             )
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout):
@@ -50,14 +52,18 @@ class APIRequest(object):
 
     def process(self, response):
         if not response.ok:
-            raise click.ClickException(
+            error_msg = '{}\n\n{}'.format(
                 self.response_code_error_map.get(
                     response.status_code,
                     self.default_error_message
-                )
+                ),
+                response.content[:300]
             )
-
-        return response.json()
+            raise click.ClickException(error_msg)
+        try:
+            return response.json()
+        except ValueError:
+            return response.content
 
 
 class LoginRequest(APIRequest):
@@ -72,3 +78,8 @@ class ProjectListRequest(APIRequest):
 
 class ProjectDetailRequest(APIRequest):
     url = '/api/v1/website/{website_id}/info/'
+
+
+class UploadAddonRequest(APIRequest):
+    url = '/api/v1/apps/'
+    method = 'POST'

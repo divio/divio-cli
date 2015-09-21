@@ -71,6 +71,13 @@ class CloudClient(object):
         )
         return request.request()
 
+    def upload_addon(self, archive_obj):
+        request = api_requests.UploadAddonRequest(
+            self.session,
+            files={'app': archive_obj}
+        )
+        return request.request()
+
 
 class WritableNetRC(netrc):
     def __init__(self, *args, **kwargs):

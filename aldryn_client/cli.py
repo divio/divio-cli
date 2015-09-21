@@ -11,6 +11,7 @@ from .cloud import CloudClient
 from .utils import hr, table
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
+from .upload.addon import upload_addon
 
 
 @click.group()
@@ -100,10 +101,10 @@ def addon_validate(ctx):
 
 
 @addon.command(name='upload')
-@click.pass_obj
-def addon_upload(obj):
-    # TODO
-    pass
+@click.pass_context
+def addon_upload(ctx):
+    ret = upload_addon(ctx.obj, ctx.parent.params['path'])
+    click.echo(ret)
 
 
 @cli.group()
