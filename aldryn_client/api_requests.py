@@ -83,3 +83,8 @@ class ProjectDetailRequest(APIRequest):
 class UploadAddonRequest(APIRequest):
     url = '/api/v1/apps/'
     method = 'POST'
+
+
+class UploadBoilerplateRequest(APIRequest):
+    url = '/api/v1/boilerplates/'
+    method = 'POST'

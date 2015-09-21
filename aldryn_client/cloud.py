@@ -78,6 +78,14 @@ class CloudClient(object):
         )
         return request.request()
 
+    def upload_boilerplate(self, archive_obj):
+        request = api_requests.UploadBoilerplateRequest(
+            self.session,
+            files={'boilerplate': archive_obj}
+        )
+        return request.request()
+
+
 
 class WritableNetRC(netrc):
     def __init__(self, *args, **kwargs):

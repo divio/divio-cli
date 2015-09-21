@@ -10,7 +10,7 @@ import click
 from .. import settings
 from ..utils import dev_null, tar_add_stringio, get_package_version
 from ..validators.addon import validate_addon
-from ..validators.common import load_config, get_license
+from .common import add_meta_files
 
 
 def package_addon(path):
@@ -27,13 +27,7 @@ def package_addon(path):
     raise click.ClickException('Packaged addon could not be found')
 
 
-def add_meta_files(tar, path):
-    # addon.json
-    addon_json = load_config(settings.ADDON_CONFIG_FILENAME, path)
-    addon_json_fileobj = StringIO()
-    json.dump(addon_json, addon_json_fileobj)
-    tar_add_stringio(tar, addon_json_fileobj, 'addon.json')
-
+def add_addon_meta_files(tar, path):
     # aldryn_config.py
     try:
         with open(os.path.join(path, 'aldryn_config.py')) as fobj:
@@ -44,11 +38,6 @@ def add_meta_files(tar, path):
             'Your app will not have any configurable settings.'
         )
 
-    # license
-    license_filepath = get_license(path)
-    if license_filepath:
-        tar.add(license_filepath, 'LICENSE.txt')
-
     # version
     version_fobj = StringIO(get_package_version(path))
     info = tarfile.TarInfo(name='VERSION')
@@ -57,15 +46,16 @@ def add_meta_files(tar, path):
 
 
 def create_addon_archive(path):
-    data_fobj = StringIO()
+    data = StringIO()
 
-    with tarfile.open(mode='w:gz', fileobj=data_fobj) as tar:
-        add_meta_files(tar, path)
+    with tarfile.open(mode='w:gz', fileobj=data) as tar:
+        add_meta_files(tar, path, settings.ADDON_CONFIG_FILENAME)
+        add_addon_meta_files(tar, path)
         packaged_addon = package_addon(path)
         tar.add(packaged_addon, arcname='package.tar.gz')
 
-    data_fobj.seek(0)
-    return data_fobj
+    data.seek(0)
+    return data
 
 
 def upload_addon(client, path=None):

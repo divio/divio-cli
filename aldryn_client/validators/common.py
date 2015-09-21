@@ -1,4 +1,5 @@
 import json
+import re
 import os
 
 import click
@@ -13,6 +14,61 @@ VALID_LICENSE_FILENAMES = (
     'license.txt',
     'license',
 )
+
+FILENAME_BASIC_RE = re.compile(
+    r'^[a-zA-Z0-9_@]+[a-zA-Z0-9._@-]*\.[a-zA-Z0-9]{1,23}$'
+)
+
+ALLOWED_EXTENSIONS = (
+    '.css',
+    '.gif',
+    '.htc',
+    '.htm',
+    '.html',
+    '.ico',
+    '.jpeg',
+    '.jpg',
+    '.js',
+    '.json',
+    '.less',
+    '.map',
+    '.png',
+    '.rb',
+    '.sass',
+    '.scss',
+    '.svg',
+    '.webm',
+    # font formats
+    '.eot',
+    '.ttf',
+    '.woff',
+    '.woff2',
+    '.otf',
+    # text formats
+    '.txt',
+    '.md',
+    '.rst',
+    # document formats
+    '.pdf',
+    '.ps',
+    '.djv',
+    '.djvu',
+    '.doc',
+    '.docx',
+    '.ppt',
+    '.pptx',
+    '.xls',
+    '.xlsx',
+)
+
+
+def is_valid_file_name(name):
+    if not FILENAME_BASIC_RE.match(name):
+        return False
+    ext = os.path.splitext(name)[-1]
+    if ext not in ALLOWED_EXTENSIONS:
+        return False
+    return True
 
 
 def get_license(path):

@@ -12,6 +12,7 @@ from .utils import hr, table
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
 from .upload.addon import upload_addon
+from .upload.boilerplate import upload_boilerplate
 
 
 @click.group()
@@ -122,7 +123,8 @@ def boilerplate_validate(ctx):
 
 
 @boilerplate.command(name='upload')
-@click.pass_obj
-def boilerplate_upload(obj):
-    # TODO
-    pass
+@click.pass_context
+def boilerplate_upload(ctx):
+    ret = upload_boilerplate(ctx.obj, ctx.parent.params['path'])
+    click.echo(ret)
+
