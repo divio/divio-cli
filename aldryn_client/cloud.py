@@ -86,7 +86,6 @@ class CloudClient(object):
         return request.request()
 
 
-
 class WritableNetRC(netrc):
     def __init__(self, *args, **kwargs):
         netrc_path = self.get_netrc_path()

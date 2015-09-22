@@ -22,7 +22,8 @@ class APIRequest(object):
     network_exception_message = messages.NETWORK_ERROR_MESSAGE
     default_error_message = messages.SERVER_ERROR
     response_code_error_map = {
-        requests.codes.forbidden: messages.AUTH_INVALID_TOKEN
+        requests.codes.forbidden: messages.AUTH_INVALID_TOKEN,
+        requests.codes.not_found: messages.RESOURCE_NOT_FOUND,
     }
 
     method = 'GET'
@@ -52,18 +53,23 @@ class APIRequest(object):
 
     def process(self, response):
         if not response.ok:
-            error_msg = '{}\n\n{}'.format(
-                self.response_code_error_map.get(
-                    response.status_code,
-                    self.default_error_message
-                ),
-                response.content[:300]
-            )
+            error_msg = self.response_code_error_map.get(response.status_code)
+            if not error_msg:
+                error_msg = '{}\n\n{}'.format(
+                    self.default_error_message,
+                    response.content[:300],
+                )
             raise click.ClickException(error_msg)
-        try:
-            return response.json()
-        except ValueError:
-            return response.content
+
+        return self.echo(response)
+
+    def echo(self, response):
+        return response.json()
+
+
+class TextResponse(object):
+    def echo(self, response):
+        return response.text
 
 
 class LoginRequest(APIRequest):
@@ -80,11 +86,11 @@ class ProjectDetailRequest(APIRequest):
     url = '/api/v1/website/{website_id}/info/'
 
 
-class UploadAddonRequest(APIRequest):
+class UploadAddonRequest(TextResponse, APIRequest):
     url = '/api/v1/apps/'
     method = 'POST'
 
 
-class UploadBoilerplateRequest(APIRequest):
+class UploadBoilerplateRequest(TextResponse, APIRequest):
     url = '/api/v1/boilerplates/'
     method = 'POST'
