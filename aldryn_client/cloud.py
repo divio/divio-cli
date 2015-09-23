@@ -1,10 +1,13 @@
 import os
+import tarfile
+from io import StringIO
 from netrc import netrc
 from urlparse import urlparse
 
 from . import settings
 from . import messages
 from . import api_requests
+from .utils import create_temp_dir
 
 
 DEFAULT_ENDPOINT = 'https://control.aldryn.com'
@@ -124,6 +127,19 @@ class CloudClient(object):
             url_kwargs={'website_id': website_id}
         )
         return request()
+
+    def download_db(self, website_slug):
+        request = api_requests.DownloadDBRequest(
+            self.session,
+            url_kwargs={'website_slug': website_slug},
+        )
+        temp_dir = create_temp_dir()
+        response = request.request()
+        with tarfile.open(
+                fileobj=StringIO(response.content), mode='r:gz'
+        ) as tar:
+            tar.extractall(path=temp_dir)
+        return os.path.join(temp_dir, 'database.dump')
 
 
 class WritableNetRC(netrc):

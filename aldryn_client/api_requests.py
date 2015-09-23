@@ -28,6 +28,7 @@ class APIRequest(object):
 
     method = 'GET'
     url = None
+    headers = {}
 
     def __init__(self, session, url_kwargs=None, data=None, files=None, *args, **kwargs):
         self.session = session
@@ -46,6 +47,7 @@ class APIRequest(object):
             response = self.session.request(
                 self.method, self.get_url(),
                 data=self.data, files=self.files,
+                headers=self.headers,
                 *args, **kwargs
             )
         except (requests.exceptions.ConnectionError,
@@ -129,3 +131,12 @@ class IDToSlugRequest(APIRequest):
 
     def echo(self, response):
         return response.json().get('slug')
+
+
+class DownloadDBRequest(APIRequest):
+    url = '/api/v1/workspace/{website_slug}/download/db/'
+    headers = {'accept': 'application/x-tar-gz'}
+
+    def request(self, *args, **kwargs):
+        kwargs['stream'] = True
+        return super(DownloadDBRequest, self).request(*args, **kwargs)

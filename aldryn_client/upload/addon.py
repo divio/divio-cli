@@ -1,20 +1,20 @@
-import json
 import os
-import tempfile
 import subprocess
 import tarfile
-from StringIO import StringIO
+from io import StringIO
 
 import click
 
 from .. import settings
-from ..utils import dev_null, tar_add_stringio, get_package_version
+from ..utils import (
+    dev_null, tar_add_stringio, get_package_version, create_temp_dir,
+)
 from ..validators.addon import validate_addon
 from .common import add_meta_files
 
 
 def package_addon(path):
-    temp_dir = tempfile.mkdtemp(prefix='tmp_aldryn_client_')
+    temp_dir = create_temp_dir()
     with dev_null() as devnull:
         subprocess.check_call(
             ['python', 'setup.py', 'sdist', '-d', temp_dir],

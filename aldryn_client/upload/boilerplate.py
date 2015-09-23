@@ -1,21 +1,20 @@
-from ..validators.boilerplate import validate_boilerplate
 
 import os
-import tempfile
 import subprocess
 import tarfile
-from StringIO import StringIO
+from io import StringIO
 
 import click
 
 from .. import settings
-from ..utils import dev_null, tar_add_stringio
-from .common import add_meta_files
+from ..utils import dev_null, tar_add_stringio, create_temp_dir
 from ..validators.common import load_config, is_valid_file_name
+from ..validators.boilerplate import validate_boilerplate
+from .common import add_meta_files
 
 
 def package_addon(path):
-    temp_dir = tempfile.mkdtemp(prefix='tmp_aldryn_client_')
+    temp_dir = create_temp_dir()
     with dev_null() as devnull:
         subprocess.check_call(
             ['python', 'setup.py', 'sdist', '-d', temp_dir],

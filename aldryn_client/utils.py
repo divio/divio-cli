@@ -58,6 +58,10 @@ def silence_stdout():
         sys.stderr = sys.__stdout__
 
 
+def create_temp_dir():
+    return tempfile.mkdtemp(prefix='tmp_aldryn_client_')
+
+
 def tar_add_stringio(tar, string_io, name):
     info = tarfile.TarInfo(name=name)
     string_io.seek(0, os.SEEK_END)
