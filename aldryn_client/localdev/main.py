@@ -43,8 +43,8 @@ def create_workspace(client, website_slug, path=None):
     if existing_db_data_container_id:
         # get db container id
         reuse_db_data_container = click.confirm(
-            'There\'s an existing database storage container for this '
-            'project ({}). Do you want to reuse this container?'
+            "There's an existing database storage container for this "
+            "project ({}). Do you want to reuse this container?"
             .format(existing_db_data_container_id),
             default=True,
         )
@@ -140,8 +140,8 @@ def create_workspace(client, website_slug, path=None):
         )
 
     instructions = [
-        'Finished setting up your project\'s workspace!',
-        'To start the project, please:',
+        "Finished setting up your project's workspace!",
+        "To start the project, please:",
     ]
 
     if path:

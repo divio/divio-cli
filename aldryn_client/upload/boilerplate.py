@@ -1,30 +1,12 @@
-
 import os
-import subprocess
 import tarfile
 from io import StringIO
 
-import click
-
 from .. import settings
-from ..utils import dev_null, tar_add_stringio, create_temp_dir
+from ..utils import tar_add_stringio
 from ..validators.common import load_config, is_valid_file_name
 from ..validators.boilerplate import validate_boilerplate
 from .common import add_meta_files
-
-
-def package_addon(path):
-    temp_dir = create_temp_dir()
-    with dev_null() as devnull:
-        subprocess.check_call(
-            ['python', 'setup.py', 'sdist', '-d', temp_dir],
-            cwd=path, stdout=devnull,
-        )
-    for filename in os.listdir(temp_dir):
-        if filename.endswith('.tar.gz'):
-            return os.path.join(temp_dir, filename)
-
-    raise click.ClickException('Packaged addon could not be found')
 
 
 def add_boilerplate_files(path, tar, **complex_extra):
