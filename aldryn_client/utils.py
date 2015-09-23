@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import subprocess
 import tarfile
+import tempfile
 import os
 import sys
 from contextlib import contextmanager

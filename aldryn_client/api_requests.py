@@ -77,6 +77,11 @@ class TextResponse(object):
         return response.text
 
 
+class RawResponse(object):
+    def echo(self, response):
+        return response
+
+
 class LoginRequest(APIRequest):
     default_error_message = messages.AUTH_SERVER_ERROR
     url = '/api/v1/login-with-token/'
@@ -133,7 +138,7 @@ class IDToSlugRequest(APIRequest):
         return response.json().get('slug')
 
 
-class DownloadDBRequest(APIRequest):
+class DownloadDBRequest(RawResponse, APIRequest):
     url = '/api/v1/workspace/{website_slug}/download/db/'
     headers = {'accept': 'application/x-tar-gz'}
 
