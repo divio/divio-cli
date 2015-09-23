@@ -35,6 +35,9 @@ class APIRequest(object):
         self.data = data or {}
         self.files = files or {}
 
+    def __call__(self, *args, **kwargs):
+        return self.request(*args, **kwargs)
+
     def get_url(self):
         return self.url.format(**self.url_kwargs)
 

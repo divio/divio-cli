@@ -42,7 +42,7 @@ class CloudClient(object):
             data={'token': token}
         )
 
-        user_data = request.request()
+        user_data = request()
 
         first_name = user_data.get('first_name')
         last_name = user_data.get('last_name')
@@ -62,42 +62,42 @@ class CloudClient(object):
 
     def get_projects(self):
         request = api_requests.ProjectListRequest(self.session)
-        return request.request()
+        return request()
 
     def get_project(self, website_id):
         request = api_requests.ProjectDetailRequest(
             self.session,
             url_kwargs={'website_id': website_id},
         )
-        return request.request()
+        return request()
 
     def upload_addon(self, archive_obj):
         request = api_requests.UploadAddonRequest(
             self.session,
             files={'app': archive_obj}
         )
-        return request.request()
+        return request()
 
     def upload_boilerplate(self, archive_obj):
         request = api_requests.UploadBoilerplateRequest(
             self.session,
             files={'boilerplate': archive_obj}
         )
-        return request.request()
+        return request()
 
     def get_website_id_for_slug(self, slug):
         request = api_requests.SlugToIDRequest(
             self.session,
             url_kwargs={'website_slug': slug}
         )
-        return request.request()
+        return request()
 
     def get_website_slug_for_id(self, website_id):
         request = api_requests.IDToSlugRequest(
             self.session,
             url_kwargs={'website_id': website_id}
         )
-        return request.request()
+        return request()
 
 
 class WritableNetRC(netrc):
