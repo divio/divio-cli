@@ -76,7 +76,7 @@ def project_list(obj):
         organisations.get(project_data['organisation_id'], 'Personal'),
     ) for project_data in data['websites']]
 
-    header = ['#', 'ID', 'Name', 'Organisation']
+    header = ['ID', 'Slug', 'Name', 'Organisation']
     click.echo_via_pager(table(projects, header))
 
 
