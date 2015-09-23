@@ -1,37 +1,38 @@
 import os
 from netrc import netrc
+from urlparse import urlparse
 
 from . import settings
 from . import messages
 from . import api_requests
 
 
-class CloudClient(object):
-    host = 'control.aldryn.com'
+DEFAULT_ENDPOINT = 'https://control.aldryn.com'
 
-    def __init__(self):
+
+class CloudClient(object):
+    def __init__(self, endpoint=DEFAULT_ENDPOINT):
+        self.endpoint = endpoint
         self.netrc = WritableNetRC()
         self.session = self.init_session()
 
     # Helpers
     def get_auth_header(self):
-        data = self.netrc.hosts.get(self.host)
+        host = urlparse(self.endpoint).hostname
+        data = self.netrc.hosts.get(host)
         if data:
             return {'Authorization': 'Basic {}'.format(data[2])}
         return {}
 
     def get_access_token_url(self):
-        return 'https://{}/{}'.format(
-            self.host.rstrip('/'),
+        return '{}/{}'.format(
+            self.endpoint.rstrip('/'),
             settings.ACCESS_TOKEN_URL_PATH.lstrip('/')
         )
 
-    def get_host_url(self):
-        return 'https://{}'.format(self.host)
-
     def init_session(self):
         return api_requests.SingleHostSession(
-            self.get_host_url(),
+            self.endpoint,
             headers=self.get_auth_header(),
             trust_env=False
         )
@@ -55,7 +56,7 @@ class CloudClient(object):
         else:
             greeting = email
 
-        self.netrc.add(self.host, email, None, token)
+        self.netrc.add(urlparse(self.endpoint).hostname, email, None, token)
         self.netrc.write()
 
         return messages.LOGIN_SUCCESSFUL.format(greeting=greeting)
