@@ -8,6 +8,7 @@ except ImportError:
 import click
 
 from .cloud import CloudClient
+from .check_system import check_requirements
 from .utils import hr, table
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -128,3 +129,8 @@ def boilerplate_upload(ctx):
     ret = upload_boilerplate(ctx.obj, ctx.parent.params['path'])
     click.echo(ret)
 
+
+@cli.command(name='check-system')
+def check_system():
+    click.echo('Verifying your system\'s setup')
+    check_requirements()
