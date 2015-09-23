@@ -72,12 +72,13 @@ def project_list(obj):
 
     projects = [(
         project_data['id'],
+        project_data['domain'],
         project_data['name'],
         organisations.get(project_data['organisation_id'], 'Personal'),
     ) for project_data in data['websites']]
 
-    header = ['ID', 'Name', 'Organisation']
-    click.echo(table(projects, header))
+    header = ['ID', 'Slug', 'Name', 'Organisation']
+    click.echo_via_pager(table(projects, header))
 
 
 @project.command(name='info')

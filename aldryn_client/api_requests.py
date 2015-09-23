@@ -35,6 +35,9 @@ class APIRequest(object):
         self.data = data or {}
         self.files = files or {}
 
+    def __call__(self, *args, **kwargs):
+        return self.request(*args, **kwargs)
+
     def get_url(self):
         return self.url.format(**self.url_kwargs)
 
@@ -94,3 +97,17 @@ class UploadAddonRequest(TextResponse, APIRequest):
 class UploadBoilerplateRequest(TextResponse, APIRequest):
     url = '/api/v1/boilerplates/'
     method = 'POST'
+
+
+class SlugToIDRequest(APIRequest):
+    url = '/api/v1/slug-to-id/{website_slug}/'
+
+    def echo(self, response):
+        return response.json().get('id')
+
+
+class IDToSlugRequest(APIRequest):
+    url = '/api/v1/id-to-slug/{website_id}/'
+
+    def echo(self, response):
+        return response.json().get('slug')
