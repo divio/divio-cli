@@ -99,6 +99,24 @@ class UploadBoilerplateRequest(TextResponse, APIRequest):
     method = 'POST'
 
 
+class ProjectLockQueryRequest(APIRequest):
+    url = '/api/v1/website/{website_id}/lock/'
+    method = 'GET'
+
+    def echo(self, response):
+        return response.json('is_locked')
+
+
+class ProjectLockRequest(TextResponse, APIRequest):
+    url = '/api/v1/website/{website_id}/lock/'
+    method = 'PUT'
+
+
+class ProjectUnlockRequest(TextResponse, APIRequest):
+    url = '/api/v1/website/{website_id}/lock/'
+    method = 'DELETE'
+
+
 class SlugToIDRequest(APIRequest):
     url = '/api/v1/slug-to-id/{website_slug}/'
 

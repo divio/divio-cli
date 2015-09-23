@@ -76,6 +76,27 @@ class CloudClient(object):
         )
         return request()
 
+    def is_project_locked(self, website_id):
+        request = api_requests.ProjectLockQueryRequest(
+            self.session,
+            url_kwargs={'website_id': website_id},
+        )
+        return request()
+
+    def lock_project(self, website_id):
+        request = api_requests.ProjectLockRequest(
+            self.session,
+            url_kwargs={'website_id': website_id},
+        )
+        return request()
+
+    def unlock_project(self, website_id):
+        request = api_requests.ProjectUnlockRequest(
+            self.session,
+            url_kwargs={'website_id': website_id},
+        )
+        return request()
+
     def upload_addon(self, archive_obj):
         request = api_requests.UploadAddonRequest(
             self.session,
