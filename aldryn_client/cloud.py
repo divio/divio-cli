@@ -37,13 +37,15 @@ class CloudClient(object):
             trust_env=False
         )
 
-    def login(self, token):
+    def authenticate(self, token):
         request = api_requests.LoginRequest(
             self.session,
             data={'token': token}
         )
+        return request()
 
-        user_data = request()
+    def login(self, token):
+        user_data = self.authenticate(token)
 
         first_name = user_data.get('first_name')
         last_name = user_data.get('last_name')
