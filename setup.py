@@ -6,9 +6,9 @@ from aldryn_client import __version__
 
 
 INSTALL_REQUIRES = [
-    'requests>=1',
-    'pyyaml',
-    'docker-py'
+    'click',
+    'requests',
+    'tabulate',
 ]
 
 
