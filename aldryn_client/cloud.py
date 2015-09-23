@@ -85,6 +85,20 @@ class CloudClient(object):
         )
         return request.request()
 
+    def get_website_id_for_slug(self, slug):
+        request = api_requests.SlugToIDRequest(
+            self.session,
+            url_kwargs={'website_slug': slug}
+        )
+        return request.request()
+
+    def get_website_slug_for_id(self, website_id):
+        request = api_requests.IDToSlugRequest(
+            self.session,
+            url_kwargs={'website_id': website_id}
+        )
+        return request.request()
+
 
 class WritableNetRC(netrc):
     def __init__(self, *args, **kwargs):
