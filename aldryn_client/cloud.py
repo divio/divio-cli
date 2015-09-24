@@ -1,6 +1,4 @@
 import os
-import tarfile
-from StringIO import StringIO
 from netrc import netrc
 from urlparse import urlparse
 
@@ -128,17 +126,23 @@ class CloudClient(object):
         )
         return request()
 
-    def download_db(self, website_slug, target_path=None):
+    def download_db(self, website_slug, filename=None, directory=None):
         request = api_requests.DownloadDBRequest(
             self.session,
             url_kwargs={'website_slug': website_slug},
         )
-        path = target_path or create_temp_dir()
+        dump_path = os.path.join(
+            directory or create_temp_dir(),
+            filename or 'db_dump.tar.gz',
+        )
+
         response = request()
-        response_fobj = StringIO(response.content)
-        with tarfile.open(fileobj=response_fobj, mode='r:gz') as tar:
-            tar.extractall(path=path)
-        return os.path.join(path, 'database.dump')
+        with open(dump_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:  # filter out keep-alive new chunks
+                    f.write(chunk)
+                    f.flush()
+        return dump_path
 
 
 class WritableNetRC(netrc):
