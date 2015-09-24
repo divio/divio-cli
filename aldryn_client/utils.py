@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import subprocess
 import tarfile
+import tempfile
 import os
 import sys
 from contextlib import contextmanager
@@ -56,6 +57,10 @@ def silence_stdout():
             yield
     finally:
         sys.stderr = sys.__stdout__
+
+
+def create_temp_dir():
+    return tempfile.mkdtemp(prefix='tmp_aldryn_client_')
 
 
 def tar_add_stringio(tar, string_io, name):

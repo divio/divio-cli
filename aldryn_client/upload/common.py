@@ -1,5 +1,5 @@
 import json
-from StringIO import StringIO
+from io import StringIO
 
 from ..utils import tar_add_stringio
 from ..validators.common import load_config, get_license

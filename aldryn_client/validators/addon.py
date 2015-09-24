@@ -1,5 +1,4 @@
 import shutil
-import tempfile
 import imp
 import time
 import os
@@ -8,7 +7,7 @@ import click
 
 from .. import settings
 from .. import messages
-from ..utils import silence_stderr
+from ..utils import silence_stderr, create_temp_dir
 from .common import validate_package_config, load_config
 
 
@@ -20,7 +19,7 @@ ADDON_REQUIRED_CONFIG_KEYS = (
 def validate_aldryn_config_py(path):
     aldryn_config_path = os.path.join(path, 'aldryn_config.py')
     if os.path.exists(aldryn_config_path):
-        temp_dir = tempfile.mkdtemp(prefix='tmp_aldryn_client_')
+        temp_dir = create_temp_dir()
         try:
             shutil.copy(aldryn_config_path, temp_dir)
             temp_path = os.path.join(temp_dir, 'aldryn_config.py')

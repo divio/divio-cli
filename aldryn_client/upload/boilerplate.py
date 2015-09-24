@@ -1,31 +1,12 @@
-from ..validators.boilerplate import validate_boilerplate
-
 import os
-import tempfile
-import subprocess
 import tarfile
-from StringIO import StringIO
-
-import click
+from io import StringIO
 
 from .. import settings
-from ..utils import dev_null, tar_add_stringio
-from .common import add_meta_files
+from ..utils import tar_add_stringio
 from ..validators.common import load_config, is_valid_file_name
-
-
-def package_addon(path):
-    temp_dir = tempfile.mkdtemp(prefix='tmp_aldryn_client_')
-    with dev_null() as devnull:
-        subprocess.check_call(
-            ['python', 'setup.py', 'sdist', '-d', temp_dir],
-            cwd=path, stdout=devnull,
-        )
-    for filename in os.listdir(temp_dir):
-        if filename.endswith('.tar.gz'):
-            return os.path.join(temp_dir, filename)
-
-    raise click.ClickException('Packaged addon could not be found')
+from ..validators.boilerplate import validate_boilerplate
+from .common import add_meta_files
 
 
 def add_boilerplate_files(path, tar, **complex_extra):

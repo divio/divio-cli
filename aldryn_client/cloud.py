@@ -5,6 +5,7 @@ from urlparse import urlparse
 from . import settings
 from . import messages
 from . import api_requests
+from .utils import create_temp_dir
 
 
 DEFAULT_ENDPOINT = 'https://control.aldryn.com'
@@ -124,6 +125,24 @@ class CloudClient(object):
             url_kwargs={'website_id': website_id}
         )
         return request()
+
+    def download_db(self, website_slug, filename=None, directory=None):
+        request = api_requests.DownloadDBRequest(
+            self.session,
+            url_kwargs={'website_slug': website_slug},
+        )
+        dump_path = os.path.join(
+            directory or create_temp_dir(),
+            filename or 'db_dump.tar.gz',
+        )
+
+        response = request()
+        with open(dump_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:  # filter out keep-alive new chunks
+                    f.write(chunk)
+                    f.flush()
+        return dump_path
 
 
 class WritableNetRC(netrc):
