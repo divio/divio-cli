@@ -29,8 +29,18 @@ def create_workspace(client, website_slug, path=None):
     )
 
     docker_compose = get_docker_compose_cmd(path)
-
     website_git_path = GIT_CLONE_URL.format(slug=website_slug)
+
+    try:
+        click.echo(' - cloning project repository')
+        clone_args = ['git', 'clone', website_git_path]
+        if path:
+            clone_args.append(path)
+        subprocess.check_output(clone_args, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as exc:
+        raise click.ClickException(exc.output)
+
+    click.echo('\nCreating workspace...')
 
     existing_db_container_id = subprocess.check_output(
         docker_compose('ps', '-q', 'db')
@@ -45,17 +55,6 @@ def create_workspace(client, website_slug, path=None):
             .format(existing_db_container_id),
             default=True,
         )
-
-    try:
-        click.echo(' - cloning project repository')
-        clone_args = ['git', 'clone', website_git_path]
-        if path:
-            clone_args.append(path)
-        subprocess.check_output(clone_args, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as exc:
-        raise click.ClickException(exc.output)
-
-    click.echo('\nCreating workspace...')
 
     # stop all running for project
     subprocess.check_output(docker_compose('stop'))
