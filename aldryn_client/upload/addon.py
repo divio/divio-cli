@@ -1,7 +1,7 @@
 import os
 import subprocess
 import tarfile
-from io import StringIO
+from StringIO import StringIO
 
 import click
 

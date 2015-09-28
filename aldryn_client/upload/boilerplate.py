@@ -1,6 +1,6 @@
 import os
 import tarfile
-from io import StringIO
+from StringIO import StringIO
 
 from .. import settings
 from ..utils import tar_add_stringio
