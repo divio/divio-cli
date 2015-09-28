@@ -7,7 +7,7 @@ except ImportError:
 
 import click
 
-from .localdev.main import create_workspace
+from .localdev.main import create_workspace, develop_package
 from .cloud import CloudClient
 from .check_system import check_requirements
 from .utils import hr, table
@@ -95,7 +95,14 @@ def project_info(obj, project_id):
 @click.option('-p', '--path', default='.', help='install project to path', type=click.Path(writable=True, readable=True))
 @click.pass_obj
 def project_workon(obj, project_id, path):
-    click.echo(create_workspace(obj, project_id, path))
+    create_workspace(obj, project_id, path)
+
+
+@project.command(name='develop')
+@click.argument('package', 'package')
+@click.pass_obj
+def project_develop(obj, package,):
+    develop_package(package)
 
 
 @cli.group()

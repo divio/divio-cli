@@ -1,9 +1,11 @@
+import re
 import os
 import subprocess
 
 import click
 
 from ..utils import dev_null
+from . import utils
 
 
 GIT_CLONE_URL = 'git@git.aldryn.com:{slug}.git'
@@ -137,3 +139,68 @@ def create_workspace(client, website_slug, path=None):
     instructions.append(' - run docker-compose up')
 
     click.secho('\n\n{}'.format(os.linesep.join(instructions)), fg='green')
+
+
+def develop_package(package):
+    """
+    :param package: package name in addons-dev folder
+    """
+
+    project_home = utils.get_project_home()
+    addons_dev_dir = os.path.join(project_home, 'addons-dev')
+
+    if not os.path.isdir(os.path.join(addons_dev_dir, package)):
+        raise click.ClickException(
+            'Package {} could not be found in {}. Please make '
+            'sure it exists and try again.'
+            .format(package, addons_dev_dir)
+        )
+
+    url_pattern = re.compile('(\S*/{}/\S*)'.format(package))
+    new_package_path = '-e /app/addons-dev/{}\n'.format(package)
+
+    # add package to requirements.in for dependencies
+    requirements_file = os.path.join(project_home, 'requirements.in')
+    # open file with 'universal newline support'
+    # https://docs.python.org/2/library/functions.html#open
+    with open(requirements_file, 'rU') as fh:
+        addons = fh.readlines()
+
+    replaced = False
+
+    for counter, addon in enumerate(addons):
+        if re.match(url_pattern, addon) or addon == new_package_path:
+            addons[counter] = new_package_path
+            replaced = True
+            break
+
+    if not replaced:
+        # Not replaced, append to generated part of requirements
+        for counter, addon in enumerate(addons):
+            if '</INSTALLED_ADDONS>' in addon:
+                addons.insert(counter, new_package_path)
+                replaced = True
+                break
+
+    if not replaced:
+        # fallback: generated section seems to be missing, appending
+        addons.append(new_package_path)
+
+    with open(requirements_file, 'w') as fh:
+        fh.writelines(addons)
+
+    # build web again
+    docker_compose = get_docker_compose_cmd(project_home)
+
+    try:
+        subprocess.check_output(
+            docker_compose('build', 'web'),
+            stderr=subprocess.STDOUT,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise click.ClickException(exc.output)
+
+    click.secho(
+        'The package {} has been added to your local development project!'
+        .format(package)
+    )
