@@ -52,17 +52,20 @@ def login_token_helper(ctx, param, value):
 @click.argument('token', required=False, callback=login_token_helper)
 @click.pass_obj
 def login(obj, token):
+    """Authorize your machine with Aldryn"""
     click.echo(obj.login(token))
 
 
 @cli.group()
 def project():
+    """Manage your projects"""
     pass
 
 
 @project.command(name='list')
 @click.pass_obj
 def project_list(obj):
+    """List all your projects"""
     data = obj.get_projects()
 
     organisations = {
@@ -72,36 +75,39 @@ def project_list(obj):
     }
 
     projects = [(
-        project_data['id'],
         project_data['domain'],
         project_data['name'],
         organisations.get(project_data['organisation_id'], 'Personal'),
     ) for project_data in data['websites']]
 
-    header = ['ID', 'Slug', 'Name', 'Organisation']
+    header = ['Slug', 'Name', 'Organisation']
     click.echo_via_pager(table(projects, header))
 
 
 @project.command(name='info')
-@click.argument('project_id', 'id')
+@click.argument('slug')
 @click.pass_obj
-def project_info(obj, project_id):
+def project_info(obj, slug):
+    """Show info about a project"""
     # TODO: proper formatting
-    click.echo(obj.get_project(project_id))
+    website_id = obj.get_website_id_for_slug(slug)
+    click.echo(obj.get_project(website_id))
 
 
 @project.command(name='workon')
-@click.argument('project_id', 'id')
+@click.argument('slug')
 @click.option('-p', '--path', default='.', help='install project to path', type=click.Path(writable=True, readable=True))
 @click.pass_obj
-def project_workon(obj, project_id, path):
-    create_workspace(obj, project_id, path)
+def project_workon(obj, slug, path):
+    """Set up a development environment for an Aldryn Cloud project"""
+    create_workspace(obj, slug, path)
 
 
 @project.command(name='develop')
 @click.argument('package', 'package')
 @click.pass_obj
 def project_develop(obj, package,):
+    """Add a package 'package' to your local project environment"""
     develop_package(package)
 
 
@@ -109,12 +115,14 @@ def project_develop(obj, package,):
 @click.option('-p', '--path', default='.', help='Addon directory')
 @click.pass_obj
 def addon(obj, path):
+    """Validate and upload addon packages to Aldryn"""
     pass
 
 
 @addon.command(name='validate')
 @click.pass_context
 def addon_validate(ctx):
+    """Validate addon configuration"""
     validate_addon(ctx.parent.params['path'])
     click.echo('Addon is valid!')
 
@@ -122,6 +130,7 @@ def addon_validate(ctx):
 @addon.command(name='upload')
 @click.pass_context
 def addon_upload(ctx):
+    """Upload addon to Aldryn"""
     ret = upload_addon(ctx.obj, ctx.parent.params['path'])
     click.echo(ret)
 
@@ -130,12 +139,14 @@ def addon_upload(ctx):
 @click.option('-p', '--path', default='.', help='Boilerplate directory')
 @click.pass_obj
 def boilerplate(obj, path):
+    """Validate and upload boilerplate packages to Aldryn"""
     pass
 
 
 @boilerplate.command(name='validate')
 @click.pass_context
 def boilerplate_validate(ctx):
+    """Validate boilerplate configuration"""
     validate_boilerplate(ctx.parent.params['path'])
     click.echo('Boilerplate is valid!')
 
@@ -143,11 +154,13 @@ def boilerplate_validate(ctx):
 @boilerplate.command(name='upload')
 @click.pass_context
 def boilerplate_upload(ctx):
+    """Upload boilerplate to Aldryn"""
     ret = upload_boilerplate(ctx.obj, ctx.parent.params['path'])
     click.echo(ret)
 
 
 @cli.command(name='check-system')
 def check_system():
+    """Check if your system meets the requirements for Aldryn local development"""
     click.echo('Verifying your system\'s setup')
     check_requirements()
