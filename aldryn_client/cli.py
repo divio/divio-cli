@@ -105,10 +105,11 @@ def project_workon(obj, slug, path):
 
 @project.command(name='develop')
 @click.argument('package', 'package')
+@click.option('--no-rebuild', is_flag=True, default=False, help='Addon directory')
 @click.pass_obj
-def project_develop(obj, package,):
+def project_develop(obj, package, no_rebuild):
     """Add a package 'package' to your local project environment"""
-    develop_package(package)
+    develop_package(package, no_rebuild)
 
 
 @cli.group()

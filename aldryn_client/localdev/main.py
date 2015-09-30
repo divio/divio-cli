@@ -140,7 +140,7 @@ def create_workspace(client, website_slug, path=None):
     click.secho('\n\n{}'.format(os.linesep.join(instructions)), fg='green')
 
 
-def develop_package(package):
+def develop_package(package, no_rebuild=False):
     """
     :param package: package name in addons-dev folder
     """
@@ -188,16 +188,17 @@ def develop_package(package):
     with open(requirements_file, 'w') as fh:
         fh.writelines(addons)
 
-    # build web again
-    docker_compose = get_docker_compose_cmd(project_home)
+    if not no_rebuild:
+        # build web again
+        docker_compose = get_docker_compose_cmd(project_home)
 
-    try:
-        subprocess.check_output(
-            docker_compose('build', 'web'),
-            stderr=subprocess.STDOUT,
-        )
-    except subprocess.CalledProcessError as exc:
-        raise click.ClickException(exc.output)
+        try:
+            subprocess.check_output(
+                docker_compose('build', 'web'),
+                stderr=subprocess.STDOUT,
+            )
+        except subprocess.CalledProcessError as exc:
+            raise click.ClickException(exc.output)
 
     click.secho(
         'The package {} has been added to your local development project!'
