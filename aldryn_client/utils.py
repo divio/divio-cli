@@ -26,9 +26,9 @@ def indent(text, spaces=4):
 
 def get_package_version(path):
     with dev_null() as devnull:
-        version = subprocess.check_output(
+        version = execute(
             ['python', 'setup.py', '--version'],
-            cwd=path, stderr=devnull
+            cwd=path, stderr=devnull, silent=True,
         )
         return version.strip()
 
@@ -70,3 +70,26 @@ def tar_add_stringio(tar, string_io, name):
     string_io.seek(0)
     tar.addfile(tarinfo=info, fileobj=string_io)
 
+
+def execute(*popenargs, **kwargs):
+    """
+    Modified version of subprocess.check_output that prints
+    stdout as soon as it's available instead of holding it back
+    """
+    if 'stdout' in kwargs:
+        raise ValueError('stdout argument not allowed, it will be overridden.')
+    silence_output = kwargs.pop('silent', False)
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    if not silence_output:
+        lines_iterator = iter(process.stdout.readline, b'')
+        for line in lines_iterator:
+            click.echo(line, nl=False)
+
+    output, unused_err = process.communicate()
+    retcode = process.poll()
+    if retcode:
+        cmd = kwargs.get('args')
+        if cmd is None:
+            cmd = popenargs[0]
+        raise subprocess.CalledProcessError(retcode, cmd, output=output)
+    return output
