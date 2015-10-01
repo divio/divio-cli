@@ -7,7 +7,10 @@ except ImportError:
 
 import click
 
-from .localdev.main import create_workspace, develop_package
+from .localdev.main import (
+    create_workspace, develop_package, load_database_dump, start_project,
+    open_project, stop_project
+)
 from .cloud import CloudClient
 from .check_system import check_requirements
 from .utils import hr, table
@@ -94,6 +97,27 @@ def project_info(obj, slug):
     click.echo(obj.get_project(website_id))
 
 
+@project.command(name='up')
+@click.pass_obj
+def project_up(obj):
+    """Start local project"""
+    start_project()
+
+
+@project.command(name='open')
+@click.pass_obj
+def project_open(obj):
+    """Open local project in browser"""
+    open_project()
+
+
+@project.command(name='stop')
+@click.pass_obj
+def project_stop(obj):
+    """Stop local project"""
+    stop_project()
+
+
 @project.command(name='workon')
 @click.argument('slug')
 @click.option('-p', '--path', default='.', help='install project to path', type=click.Path(writable=True, readable=True))
@@ -101,6 +125,19 @@ def project_info(obj, slug):
 def project_workon(obj, slug, path):
     """Set up a development environment for an Aldryn Cloud project"""
     create_workspace(obj, slug, path)
+
+
+@project.group(name='pull')
+def project_pull():
+    """Pull db or files from Aldryn"""
+    pass
+
+
+@project_pull.command(name='db')
+@click.argument('slug')
+@click.pass_obj
+def pull_db(obj, slug):
+    load_database_dump(obj, slug)
 
 
 @project.command(name='develop')

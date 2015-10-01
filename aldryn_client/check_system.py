@@ -4,6 +4,8 @@ import subprocess
 
 import click
 
+from .utils import execute
+
 
 def check_requirements():
     checks = [
@@ -18,7 +20,7 @@ def check_requirements():
     for check, cmd in checks:
         error_msg = None
         try:
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            execute(cmd, silent=True, stderr=subprocess.STDOUT)
         except OSError as exc:
             if exc.errno == os.errno.ENOENT:
                 error_msg = 'executable {} not found'.format(cmd[0])

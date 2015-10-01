@@ -3,13 +3,13 @@ import os
 import click
 
 
-def get_project_home():
+def get_project_home(path=None):
     """
     find project root by traversing up the tree looking for
     the '.aldryn' file
     """
     previous_path = None
-    current_path = os.getcwd()
+    current_path = path or os.getcwd()
 
     # loop until we're at the root of the volume
     while current_path != previous_path:
