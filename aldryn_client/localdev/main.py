@@ -1,3 +1,4 @@
+import json
 import re
 import os
 import subprocess
@@ -19,7 +20,7 @@ def get_git_host():
     if git_host:
         click.secho('Using custom git host {}\n'.format(git_host), fg='yellow')
     else:
-        git_host = DEFAULT_GIT_HOST.format(get_aldryn_host())
+        git_host = DEFAULT_GIT_HOST.format(aldryn_host=get_aldryn_host())
     return git_host
 
 
@@ -47,6 +48,7 @@ def create_workspace(client, website_slug, path=None):
     )
 
     docker_compose = get_docker_compose_cmd(path)
+    website_id = client.get_website_id_for_slug(website_slug)
     website_git_url = get_git_clone_url(website_slug)
 
     try:
@@ -65,6 +67,11 @@ def create_workspace(client, website_slug, path=None):
             "Aldryn local development only works with projects using "
             "baseproject version 3 and have a valid 'docker-compose.yml' file."
         )
+
+    # create .aldryn file
+    website_data = {'id': website_id, 'slug': website_slug}
+    with open(os.path.join(path, '.aldryn'), 'w+') as fh:
+        json.dump(website_data, fh)
 
     existing_db_container_id = execute(
         docker_compose('ps', '-q', 'db'),
