@@ -297,7 +297,7 @@ def open_project(open_browser=True):
 def start_project():
     docker_compose = get_docker_compose_cmd(utils.get_project_home())
     execute(docker_compose('up', '-d'))
-    return open_project(open_browser=False)
+    return open_project(open_browser=True)
 
 
 def stop_project():
