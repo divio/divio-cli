@@ -87,18 +87,15 @@ class TextResponse(object):
 
 
 class FileResponse(object):
-    filename = None
-    directory = None
-
-    def request(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.filename = kwargs.pop('filename', None)
         self.directory = kwargs.pop('directory', None)
-        return super(FileResponse, self).request(*args, **kwargs)
+        super(FileResponse, self).__init__(*args, **kwargs)
 
     def process(self, response):
         dump_path = os.path.join(
             self.directory or create_temp_dir(),
-            self.filename or 'db_dump.tar.gz',
+            self.filename or 'data.tar.gz',
         )
 
         with open(dump_path, 'wb') as f:
