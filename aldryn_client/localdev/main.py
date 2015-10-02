@@ -109,6 +109,11 @@ def create_workspace(client, website_slug, path=None):
     # sync & migrate database
     docker_compose('run', 'web', './migrate.sh')
 
+    # enable debug mode
+    env_file = os.path.join(path, '.env')
+    with open(env_file, 'w+') as fh:
+        fh.write('DEBUG = True')
+
     instructions = [
         "Finished setting up your project's workspace!",
         "To start the project, please:",
