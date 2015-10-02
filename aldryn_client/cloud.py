@@ -2,18 +2,47 @@ import os
 from netrc import netrc
 from urlparse import urlparse
 
+import click
+
 from . import settings
 from . import messages
 from . import api_requests
 from .utils import create_temp_dir
 
 
-DEFAULT_ENDPOINT = 'https://control.aldryn.com'
+ENDPOINT = 'https://control.{host}'
+DEFAULT_HOST = 'aldryn.com'
+
+
+def get_aldryn_host():
+    host = os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
+
+    # check for aldryn-client v1 syntax
+    if host.startswith('http'):
+        old_style = host
+        proto, domain = host.split('://')
+        parts = domain.split('.')
+        host = '.'.join(parts[-3:])
+        click.secho(
+            'You are using old ALDRYN_HOST syntax. Please change {} to {}'
+            .format(old_style, host),
+            fg='red'
+        )
+
+    return host
+
+
+def get_endpoint(host=None):
+    target_host = host or get_aldryn_host()
+    endpoint = ENDPOINT.format(host=target_host)
+    if target_host != DEFAULT_HOST:
+        click.secho('Using custom endpoint {}\n'.format(endpoint), fg='yellow')
+    return endpoint
 
 
 class CloudClient(object):
-    def __init__(self, endpoint=DEFAULT_ENDPOINT):
-        self.endpoint = endpoint
+    def __init__(self, host=None):
+        self.endpoint = get_endpoint(host)
         self.netrc = WritableNetRC()
         self.session = self.init_session()
 

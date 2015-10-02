@@ -6,10 +6,25 @@ from time import sleep
 import click
 
 from ..utils import dev_null, execute
+from ..cloud import get_aldryn_host
 from . import utils
 
 
-GIT_CLONE_URL = 'git@git.aldryn.com:{slug}.git'
+DEFAULT_GIT_HOST = 'git@git.{aldryn_host}'
+GIT_CLONE_URL = '{git_host}:{project_slug}.git'
+
+
+def get_git_host():
+    git_host = os.environ.get('ALDRYN_GIT_HOST')
+    if git_host:
+        click.secho('Using custom git host {}\n'.format(git_host), fg='yellow')
+    else:
+        git_host = DEFAULT_GIT_HOST.format(get_aldryn_host())
+    return git_host
+
+
+def get_git_clone_url(slug):
+    return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
 
 
 def get_docker_compose_cmd(path):
@@ -32,7 +47,7 @@ def create_workspace(client, website_slug, path=None):
     )
 
     docker_compose = get_docker_compose_cmd(path)
-    website_git_url = GIT_CLONE_URL.format(slug=website_slug)
+    website_git_url = get_git_clone_url(website_slug)
 
     try:
         click.secho('\ncloning project repository', fg='green')
@@ -122,7 +137,8 @@ def load_database_dump(client, website_slug, path=None, recreate=False):
     # strip path from dump_path for use in the docker container
     db_dump_path = db_dump_path.replace(path, '')
 
-    # waiting another 10 seconds to make sure the db has enough time to start
+    # waiting another 10 seconds to make sure
+    # the db has enough time to start
     sleep(10)
 
     # create empty db
@@ -150,7 +166,6 @@ def load_database_dump(client, website_slug, path=None, recreate=False):
                 ' | pg_restore -U postgres -d db'
                 .format(db_dump_path)
             )
-
             subprocess.call((
                 'docker', 'exec', db_container_id,
                 '/bin/bash', '-c', piped_restore,

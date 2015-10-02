@@ -11,7 +11,7 @@ from .localdev.main import (
     create_workspace, develop_package, load_database_dump, start_project,
     open_project, stop_project
 )
-from .cloud import CloudClient
+from .cloud import CloudClient, get_aldryn_host
 from .check_system import check_requirements
 from .utils import hr, table
 from .validators.addon import validate_addon
@@ -39,7 +39,7 @@ def cli(ctx, debug):
             pdb.post_mortem(traceback)
         sys.excepthook = exception_handler
 
-    ctx.obj = CloudClient()
+    ctx.obj = CloudClient(get_aldryn_host())
 
 
 def login_token_helper(ctx, param, value):
@@ -120,7 +120,10 @@ def project_stop(obj):
 
 @project.command(name='workon')
 @click.argument('slug')
-@click.option('-p', '--path', default='.', help='install project to path', type=click.Path(writable=True, readable=True))
+@click.option(
+    '-p', '--path', default='.', help='install project to path',
+    type=click.Path(writable=True, readable=True)
+)
 @click.pass_obj
 def project_workon(obj, slug, path):
     """Set up a development environment for an Aldryn Cloud project"""
@@ -142,7 +145,9 @@ def pull_db(obj, slug):
 
 @project.command(name='develop')
 @click.argument('package', 'package')
-@click.option('--no-rebuild', is_flag=True, default=False, help='Addon directory')
+@click.option(
+    '--no-rebuild', is_flag=True, default=False, help='Addon directory'
+)
 @click.pass_obj
 def project_develop(obj, package, no_rebuild):
     """Add a package 'package' to your local project environment"""
@@ -199,6 +204,7 @@ def boilerplate_upload(ctx):
 
 @cli.command(name='check-system')
 def check_system():
-    """Check if your system meets the requirements for Aldryn local development"""
+    """Check if your system meets the requirements
+    for Aldryn local development"""
     click.echo('Verifying your system\'s setup')
     check_requirements()
