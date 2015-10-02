@@ -7,7 +7,6 @@ import click
 from . import settings
 from . import messages
 from . import api_requests
-from .utils import create_temp_dir
 
 
 ENDPOINT = 'https://control.{host}'
@@ -159,19 +158,10 @@ class CloudClient(object):
         request = api_requests.DownloadDBRequest(
             self.session,
             url_kwargs={'website_slug': website_slug},
+            filename=filename,
+            directory=directory,
         )
-        dump_path = os.path.join(
-            directory or create_temp_dir(),
-            filename or 'db_dump.tar.gz',
-        )
-
-        response = request()
-        with open(dump_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=1024):
-                if chunk:  # filter out keep-alive new chunks
-                    f.write(chunk)
-                    f.flush()
-        return dump_path
+        return request()
 
 
 class WritableNetRC(netrc):
