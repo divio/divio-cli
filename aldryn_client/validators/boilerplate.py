@@ -47,7 +47,9 @@ def validate_boilerplate_config(config, path):
     for required_file in BOILERPLATE_REQUIRED_FILES:
         fpath = os.path.join(path, required_file)
         if not os.path.exists(fpath):
-            raise click.ClickException('Required file {} not found.'.format(fpath))
+            raise click.ClickException(
+                'Required file {} not found.'.format(fpath)
+            )
 
     errors = validate_package_config(
         config=config,

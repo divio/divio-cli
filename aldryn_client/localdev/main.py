@@ -59,7 +59,8 @@ def create_workspace(client, website_slug, path=None):
         raise click.ClickException(exc.output)
 
     # Detect old style or invalid projects
-    if not os.path.isfile(os.path.join(path or website_slug, 'docker-compose.yml')):
+    compose_config = os.path.join(path or website_slug, 'docker-compose.yml')
+    if not os.path.isfile(compose_config):
         raise click.ClickException(
             "Aldryn local development only works with projects using "
             "baseproject version 3 and have a valid 'docker-compose.yml' file."
@@ -263,8 +264,8 @@ def open_project(open_browser=True):
     if host == '0.0.0.0':
         docker_host_url = os.environ.get('DOCKER_HOST')
         if docker_host_url:
-            proto, server_host_port = os.environ.get('DOCKER_HOST').split('://')
-            host = server_host_port.split(':')[0]
+            proto, host_port = os.environ.get('DOCKER_HOST').split('://')
+            host = host_port.split(':')[0]
 
     addr = 'http://{host}:{port}/'.format(
         host=host.replace(os.linesep, ''),

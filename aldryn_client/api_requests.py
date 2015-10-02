@@ -30,7 +30,8 @@ class APIRequest(object):
     url = None
     headers = {}
 
-    def __init__(self, session, url_kwargs=None, data=None, files=None, *args, **kwargs):
+    def __init__(self, session, url_kwargs=None, data=None, files=None,
+                 *args, **kwargs):
         self.session = session
         self.url_kwargs = url_kwargs or {}
         self.data = data or {}

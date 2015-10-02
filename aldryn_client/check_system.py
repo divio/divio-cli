@@ -25,7 +25,10 @@ def check_requirements():
             if exc.errno == os.errno.ENOENT:
                 error_msg = 'executable {} not found'.format(cmd[0])
             else:
-                error_msg = 'unknown error while trying to run {}: {}'.format(cmd, exc.message)
+                error_msg = (
+                    'unknown error while trying to run {}: {}'
+                    .format(cmd, exc.message)
+                )
         except subprocess.CalledProcessError as exc:
             error_msg = exc.output or str(exc)
         finally:

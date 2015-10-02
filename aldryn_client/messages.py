@@ -1,7 +1,15 @@
 SESSION_EXPIRED = 'Session expired. Please log in again.'
-NETWORK_ERROR_MESSAGE = 'Network error. Please check your connection and try again.'
-AUTH_SERVER_ERROR = 'A problem occured while trying to authenticate with aldryn.com. Please try again later'
-SERVER_ERROR = 'A problem occured while trying to communicate with aldryn.com. Please try again later'
+NETWORK_ERROR_MESSAGE = (
+    'Network error. Please check your connection and try again.'
+)
+AUTH_SERVER_ERROR = (
+    'A problem occured while trying to authenticate with aldryn.com. '
+    'Please try again later'
+)
+SERVER_ERROR = (
+    'A problem occured while trying to communicate with aldryn.com. '
+    'Please try again later'
+)
 AUTH_INVALID_TOKEN = 'Login failed. Invalid token specified'
 RESOURCE_NOT_FOUND = 'Requested resource could not be found'
 LOGIN_SUCCESSFUL = 'Welcome to Aldryn. You are now logged in as {greeting}'
