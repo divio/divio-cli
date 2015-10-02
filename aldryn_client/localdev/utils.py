@@ -1,6 +1,15 @@
+import json
 import os
 
 import click
+
+from .. import settings
+
+
+def get_aldryn_project_settings(path):
+    project_home = get_project_home(path)
+    with open(os.path.join(project_home, settings.ALDRYN_DOT_FILE)) as fh:
+        return json.load(fh)
 
 
 def get_project_home(path=None):
@@ -15,7 +24,8 @@ def get_project_home(path=None):
     while current_path != previous_path:
 
         # check if '.aldryn' file exists in current directory
-        if os.path.exists(os.path.join(current_path, '.aldryn')):
+        dotfile = os.path.join(current_path, settings.ALDRYN_DOT_FILE)
+        if os.path.exists(dotfile):
             return current_path
 
         # traversing up the tree
