@@ -106,6 +106,9 @@ def create_workspace(client, website_slug, path=None):
     click.secho('creating new database container', fg='green')
     load_database_dump(client, path, recreate=True)
 
+    # sync & migrate database
+    docker_compose('run', 'web', './migrate.sh')
+
     instructions = [
         "Finished setting up your project's workspace!",
         "To start the project, please:",
