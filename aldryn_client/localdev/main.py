@@ -8,6 +8,7 @@ import click
 
 from ..utils import dev_null, execute
 from ..cloud import get_aldryn_host
+from .. import settings
 from . import utils
 
 
@@ -70,7 +71,7 @@ def create_workspace(client, website_slug, path=None):
 
     # create .aldryn file
     website_data = {'id': website_id, 'slug': website_slug}
-    with open(os.path.join(path, '.aldryn'), 'w+') as fh:
+    with open(os.path.join(path, settings.ALDRYN_DOT_FILE), 'w+') as fh:
         json.dump(website_data, fh)
 
     existing_db_container_id = execute(
@@ -103,7 +104,7 @@ def create_workspace(client, website_slug, path=None):
         )
 
     click.secho('creating new database container', fg='green')
-    load_database_dump(client, website_slug, path, recreate=True)
+    load_database_dump(client, path, recreate=True)
 
     instructions = [
         "Finished setting up your project's workspace!",
@@ -117,8 +118,9 @@ def create_workspace(client, website_slug, path=None):
     click.secho('\n\n{}'.format(os.linesep.join(instructions)), fg='green')
 
 
-def load_database_dump(client, website_slug, path=None, recreate=False):
+def load_database_dump(client, path=None, recreate=False):
     path = path or utils.get_project_home(path)
+    website_slug = utils.get_aldryn_project_settings(path)['slug']
     docker_compose = get_docker_compose_cmd(path)
 
     start_db_cmd = ['up', '-d']

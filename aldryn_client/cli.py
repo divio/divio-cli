@@ -137,10 +137,9 @@ def project_pull():
 
 
 @project_pull.command(name='db')
-@click.argument('slug')
 @click.pass_obj
-def pull_db(obj, slug):
-    load_database_dump(obj, slug)
+def pull_db(obj):
+    load_database_dump(obj)
 
 
 @project.command(name='develop')
