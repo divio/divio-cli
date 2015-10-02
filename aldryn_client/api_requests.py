@@ -1,7 +1,10 @@
+import os
+
 import click
 import requests
 
 from . import messages
+from .utils import create_temp_dir
 
 
 class SingleHostSession(requests.Session):
@@ -55,9 +58,9 @@ class APIRequest(object):
                 requests.exceptions.Timeout):
             raise click.ClickException(messages.NETWORK_ERROR_MESSAGE)
 
-        return self.process(response)
+        return self.verify(response)
 
-    def process(self, response):
+    def verify(self, response):
         if not response.ok:
             error_msg = self.response_code_error_map.get(response.status_code)
             if not error_msg:
@@ -67,20 +70,43 @@ class APIRequest(object):
                 )
             raise click.ClickException(error_msg)
 
-        return self.echo(response)
+        return self.process(response)
 
-    def echo(self, response):
+    def process(self, response):
         return response.json()
 
 
+class RawResponse(object):
+    def process(self, response):
+        return response
+
+
 class TextResponse(object):
-    def echo(self, response):
+    def process(self, response):
         return response.text
 
 
-class RawResponse(object):
-    def echo(self, response):
-        return response
+class FileResponse(object):
+    filename = None
+    directory = None
+
+    def request(self, *args, **kwargs):
+        self.filename = kwargs.pop('filename', None)
+        self.directory = kwargs.pop('directory', None)
+        return super(FileResponse, self).request(*args, **kwargs)
+
+    def process(self, response):
+        dump_path = os.path.join(
+            self.directory or create_temp_dir(),
+            self.filename or 'db_dump.tar.gz',
+        )
+
+        with open(dump_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:  # filter out keep-alive new chunks
+                    f.write(chunk)
+                    f.flush()
+        return dump_path
 
 
 class LoginRequest(APIRequest):
@@ -111,7 +137,7 @@ class ProjectLockQueryRequest(APIRequest):
     url = '/api/v1/website/{website_id}/lock/'
     method = 'GET'
 
-    def echo(self, response):
+    def process(self, response):
         return response.json('is_locked')
 
 
@@ -128,18 +154,18 @@ class ProjectUnlockRequest(TextResponse, APIRequest):
 class SlugToIDRequest(APIRequest):
     url = '/api/v1/slug-to-id/{website_slug}/'
 
-    def echo(self, response):
+    def process(self, response):
         return response.json().get('id')
 
 
 class IDToSlugRequest(APIRequest):
     url = '/api/v1/id-to-slug/{website_id}/'
 
-    def echo(self, response):
+    def process(self, response):
         return response.json().get('slug')
 
 
-class DownloadDBRequest(RawResponse, APIRequest):
+class DownloadDBRequest(FileResponse, APIRequest):
     url = '/api/v1/workspace/{website_slug}/download/db/'
     headers = {'accept': 'application/x-tar-gz'}
 
