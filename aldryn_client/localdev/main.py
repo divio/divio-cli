@@ -10,12 +10,21 @@ from ..cloud import get_aldryn_host
 from . import utils
 
 
-GIT_CLONE_URL = 'git@git.{aldryn_host}:{project_slug}.git'
+DEFAULT_GIT_HOST = 'git@git.{aldryn_host}'
+GIT_CLONE_URL = '{git_host}:{project_slug}.git'
+
+
+def get_git_host():
+    git_host = os.environ.get('ALDRYN_GIT_HOST')
+    if git_host:
+        click.secho('Using custom git host {}\n'.format(git_host), fg='yellow')
+    else:
+        git_host = DEFAULT_GIT_HOST.format(get_aldryn_host())
+    return git_host
 
 
 def get_git_clone_url(slug):
-    aldryn_host = get_aldryn_host()
-    return GIT_CLONE_URL.format(aldryn_host=aldryn_host, project_slug=slug)
+    return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
 
 
 def get_docker_compose_cmd(path):
