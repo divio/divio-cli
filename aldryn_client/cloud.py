@@ -15,19 +15,28 @@ DEFAULT_HOST = 'aldryn.com'
 
 
 def get_aldryn_host():
-    return os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
+    host = os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
+
+    # check for aldryn-client v1 syntax
+    if host.startswith('http'):
+        old_style = host
+        proto, domain = host.split('://')
+        parts = domain.split('.')
+        host = '.'.join(parts[-3:])
+        click.secho(
+            'You are using old ALDRYN_HOST syntax. Please change {} to {}'
+            .format(old_style, host),
+            fg='red'
+        )
+
+    return host
 
 
 def get_endpoint(host=None):
     target_host = host or get_aldryn_host()
     endpoint = ENDPOINT.format(host=target_host)
     if target_host != DEFAULT_HOST:
-        endpoint_warning = 'Warning: Using custom endpoint {}'.format(endpoint)
-        underline = '-' * len(endpoint_warning)
-        click.secho(
-            os.linesep.join((endpoint_warning, underline, '')),
-            fg='yellow',
-        )
+        click.secho('Using custom endpoint {}\n'.format(endpoint), fg='yellow')
     return endpoint
 
 
