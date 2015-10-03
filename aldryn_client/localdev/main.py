@@ -5,6 +5,7 @@ import subprocess
 from time import sleep
 
 import click
+import requests
 
 from ..utils import dev_null, execute
 from ..cloud import get_aldryn_host
@@ -108,11 +109,6 @@ def create_workspace(client, website_slug, path=None):
 
     # sync & migrate database
     docker_compose('run', 'web', './migrate.sh')
-
-    # enable debug mode
-    env_file = os.path.join(path, '.env')
-    with open(env_file, 'w+') as fh:
-        fh.write('DEBUG = True')
 
     instructions = [
         "Finished setting up your project's workspace!",
@@ -271,10 +267,8 @@ def open_project(open_browser=True):
     try:
         addr = execute(docker_compose('port', 'web', '80'), silent=True)
     except subprocess.CalledProcessError:
-        click.secho(
-            "Your project is not running. Please start it using "
-            "'aldryn project up'.", fg='red'
-        )
+        if click.prompt('Your project is not running. Do you want to start it now?'):
+            return start_project()
         return
     host, port = addr.split(':')
 
@@ -288,9 +282,32 @@ def open_project(open_browser=True):
         host=host.replace(os.linesep, ''),
         port=port.replace(os.linesep, ''),
     )
+
+    click.secho(
+        'Your project is configured to run at {}'.format(addr),
+        fg='green'
+    )
+
+    click.secho('Waiting for project to start..', fg='green', nl=False)
+    # wait 30s for runserver to startup
+    seconds = 30
+    for attempt in range(seconds):
+        click.secho('.', fg='green', nl=False)
+        try:
+            response = requests.head(addr)
+            if response.ok:
+                break
+        except requests.ConnectionError:
+            sleep(1)
+
+        if attempt == seconds - 1:
+            click.secho(
+                "\nProject failed to start. Please run 'docker-compose logs' "
+                "to get more information."
+            )
+
     if open_browser:
         click.launch(addr)
-    click.secho('Your project is running at {}'.format(addr), fg='green')
     return addr
 
 
