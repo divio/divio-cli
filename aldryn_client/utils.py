@@ -41,22 +41,34 @@ def dev_null():
 
 @contextmanager
 def silence_stderr():
-    try:
-        with dev_null() as devnull:
-            sys.stderr = devnull
-            yield
-    finally:
-        sys.stderr = sys.__stderr__
+    with dev_null() as devnull:
+        redirect_stderr(devnull)
 
 
 @contextmanager
 def silence_stdout():
+    with dev_null() as devnull:
+        redirect_stdout(devnull)
+
+
+@contextmanager
+def redirect_stdout(new_stream):
+    original_stream = sys.stdout
+    sys.stdout = new_stream
     try:
-        with dev_null() as devnull:
-            sys.stdout = devnull
-            yield
+        yield
     finally:
-        sys.stderr = sys.__stdout__
+        sys.stdout = original_stream
+
+
+@contextmanager
+def redirect_stderr(new_stream):
+    original_stream = sys.stderr
+    sys.stderr = new_stream
+    try:
+        yield
+    finally:
+        sys.stderr = original_stream
 
 
 def create_temp_dir():
