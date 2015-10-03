@@ -154,6 +154,15 @@ class CloudClient(object):
         )
         return request()
 
+    def download_backup(self, website_slug, filename=None, directory=None):
+        request = api_requests.DownloadBackupRequest(
+            self.session,
+            url_kwargs={'website_slug': website_slug},
+            filename=filename,
+            directory=directory,
+        )
+        return request()
+
     def download_db(self, website_slug, filename=None, directory=None):
         request = api_requests.DownloadDBRequest(
             self.session,
