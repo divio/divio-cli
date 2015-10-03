@@ -1,4 +1,6 @@
 import json
+import tarfile
+
 import re
 import os
 import subprocess
@@ -194,6 +196,22 @@ def load_database_dump(client, path=None, recreate=False):
         silent=True,
         stderr=subprocess.STDOUT,
     )
+
+
+def download_media(client, path=None):
+    path = path or os.path.join(utils.get_project_home(path), 'data/media')
+    website_slug = utils.get_aldryn_project_settings(path)['slug']
+    click.secho('fetching media files', fg='green')
+    backup_path = client.download_backup(website_slug)
+    with tarfile.open(backup_path, 'r:gz') as backup_archive:
+        media_archive_name = 'media_files.tar.gz'
+        if media_archive_name not in backup_archive.getnames():
+            click.secho('Media archive empty', fg='yellow')
+            return
+        media_fobj = backup_archive.extractfile(media_archive_name)
+        with tarfile.open(fileobj=media_fobj, mode='r:gz') as media_archive:
+            media_archive.extractall(path=path)
+        click.secho('Downloaded media files into {}'.format(path), fg='green')
 
 
 def develop_package(package, no_rebuild=False):

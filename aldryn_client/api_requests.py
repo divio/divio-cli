@@ -105,6 +105,10 @@ class FileResponse(object):
                     f.flush()
         return dump_path
 
+    def request(self, *args, **kwargs):
+        kwargs['stream'] = True
+        return super(FileResponse, self).request(*args, **kwargs)
+
 
 class LoginRequest(APIRequest):
     default_error_message = messages.AUTH_SERVER_ERROR
@@ -162,10 +166,11 @@ class IDToSlugRequest(APIRequest):
         return response.json().get('slug')
 
 
+class DownloadBackupRequest(FileResponse, APIRequest):
+    url = '/api/v1/workspace/{website_slug}/download/backup/'
+    headers = {'accept': 'application/x-tar-gz'}
+
+
 class DownloadDBRequest(FileResponse, APIRequest):
     url = '/api/v1/workspace/{website_slug}/download/db/'
     headers = {'accept': 'application/x-tar-gz'}
-
-    def request(self, *args, **kwargs):
-        kwargs['stream'] = True
-        return super(DownloadDBRequest, self).request(*args, **kwargs)

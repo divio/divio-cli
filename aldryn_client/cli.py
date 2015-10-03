@@ -9,7 +9,7 @@ import click
 
 from .localdev.main import (
     create_workspace, develop_package, load_database_dump, start_project,
-    open_project, stop_project
+    open_project, stop_project, download_media,
 )
 from .cloud import CloudClient, get_aldryn_host
 from .check_system import check_requirements
@@ -140,6 +140,12 @@ def project_pull():
 @click.pass_obj
 def pull_db(obj):
     load_database_dump(obj)
+
+
+@project_pull.command(name='media')
+@click.pass_obj
+def pull_media(obj):
+    download_media(obj)
 
 
 @project.command(name='develop')
