@@ -254,7 +254,7 @@ def develop_package(package, no_rebuild=False):
         try:
             execute(
                 docker_compose('build', 'web'),
-                silent=True,
+                silent=False,
                 stderr=subprocess.STDOUT,
             )
         except subprocess.CalledProcessError as exc:
