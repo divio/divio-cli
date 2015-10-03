@@ -2,11 +2,13 @@ import json
 import re
 import os
 import subprocess
+from StringIO import StringIO
 from time import sleep
 
 import click
+import requests
 
-from ..utils import dev_null, execute
+from ..utils import dev_null, execute, redirect_stdout
 from ..cloud import get_aldryn_host
 from .. import settings
 from . import utils
@@ -108,11 +110,6 @@ def create_workspace(client, website_slug, path=None):
 
     # sync & migrate database
     docker_compose('run', 'web', './migrate.sh')
-
-    # enable debug mode
-    env_file = os.path.join(path, '.env')
-    with open(env_file, 'w+') as fh:
-        fh.write('DEBUG = True')
 
     instructions = [
         "Finished setting up your project's workspace!",
@@ -271,10 +268,9 @@ def open_project(open_browser=True):
     try:
         addr = execute(docker_compose('port', 'web', '80'), silent=True)
     except subprocess.CalledProcessError:
-        click.secho(
-            "Your project is not running. Please start it using "
-            "'aldryn project up'.", fg='red'
-        )
+        if click.prompt('Your project is not running. Do you want to start '
+                        'it now?'):
+            return start_project()
         return
     host, port = addr.split(':')
 
@@ -288,15 +284,53 @@ def open_project(open_browser=True):
         host=host.replace(os.linesep, ''),
         port=port.replace(os.linesep, ''),
     )
+
+    click.secho(
+        'Your project is configured to run at {}'.format(addr),
+        fg='green'
+    )
+
+    click.secho('Waiting for project to start..', fg='green', nl=False)
+    # wait 30s for runserver to startup
+    seconds = 30
+    for attempt in range(seconds):
+        click.secho('.', fg='green', nl=False)
+        try:
+            requests.head(addr)
+        except requests.ConnectionError:
+            sleep(1)
+        else:
+            break
+
+        if attempt == seconds - 1:
+            raise click.ClickException(
+                "\nProject failed to start. Please run 'docker-compose logs' "
+                "to get more information."
+            )
+
     if open_browser:
         click.launch(addr)
-    click.secho('Your project is running at {}'.format(addr), fg='green')
     return addr
 
 
 def start_project():
     docker_compose = get_docker_compose_cmd(utils.get_project_home())
-    execute(docker_compose('up', '-d'))
+    my_stdout = StringIO()
+    try:
+        with redirect_stdout(my_stdout):
+            execute(docker_compose('up', '-d'), stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        my_stdout.seek(0)
+        output = my_stdout.read()
+        if 'port is already allocated' in output:
+            click.secho(
+                "There's already another program running on this project's "
+                "port. Please either stop the other program or change the"
+                "port in the 'docker-compose.yml' file and try again.\n",
+                fg='red'
+            )
+        raise click.ClickException(output)
+
     return open_project(open_browser=True)
 
 
