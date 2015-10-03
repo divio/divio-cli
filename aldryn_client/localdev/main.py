@@ -106,6 +106,14 @@ def create_workspace(client, website_slug, path=None):
     click.secho('creating new database container', fg='green')
     load_database_dump(client, path, recreate=True)
 
+    # sync & migrate database
+    docker_compose('run', 'web', './migrate.sh')
+
+    # enable debug mode
+    env_file = os.path.join(path, '.env')
+    with open(env_file, 'w+') as fh:
+        fh.write('DEBUG = True')
+
     instructions = [
         "Finished setting up your project's workspace!",
         "To start the project, please:",
@@ -259,7 +267,7 @@ def develop_package(package, no_rebuild=False):
 
 
 def open_project(open_browser=True):
-    docker_compose = get_docker_compose_cmd(os.getcwd())
+    docker_compose = get_docker_compose_cmd(utils.get_project_home())
     try:
         addr = execute(docker_compose('port', 'web', '80'), silent=True)
     except subprocess.CalledProcessError:
@@ -287,11 +295,11 @@ def open_project(open_browser=True):
 
 
 def start_project():
-    docker_compose = get_docker_compose_cmd(os.getcwd())
+    docker_compose = get_docker_compose_cmd(utils.get_project_home())
     execute(docker_compose('up', '-d'))
-    return open_project(open_browser=False)
+    return open_project(open_browser=True)
 
 
 def stop_project():
-    docker_compose = get_docker_compose_cmd(os.getcwd())
+    docker_compose = get_docker_compose_cmd(utils.get_project_home())
     execute(docker_compose('stop'))
