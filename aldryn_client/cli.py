@@ -1,3 +1,4 @@
+import os
 import sys
 
 try:
@@ -8,8 +9,9 @@ except ImportError:
 import click
 
 from .localdev.main import (
-    create_workspace, develop_package, load_database_dump, start_project,
-    open_project, stop_project, download_media,
+    create_workspace, develop_package, start_project, open_project,
+    stop_project, load_database_dump, download_media, upload_database,
+    upload_media
 )
 from .cloud import CloudClient, get_aldryn_host
 from .check_system import check_requirements
@@ -146,6 +148,69 @@ def pull_db(obj):
 @click.pass_obj
 def pull_media(obj):
     download_media(obj)
+
+
+@project.group(name='push')
+def project_push():
+    """Push db or files to Aldryn"""
+    pass
+
+
+@project_push.command(name='db')
+@click.pass_obj
+def push_db(obj):
+    warning = (
+        'WARNING',
+        '=======',
+
+        '\nYou are about to push your local database to the test server on '
+        'Aldryn. This will replace ALL data on the test server with the '
+        'data you are about to push, including (but not limited to):',
+        '  - User Accounts',
+        '  - CMS Pages & Plugins',
+
+        '\nYou will also loose all changes that have been made on the test '
+        'server since you have last downloaded the database from the '
+        'test server up until now.',
+
+        '\nA database backup will be created before restoring this dump; '
+        'and this is also the only way of undoing this database restore!',
+
+        '\nPlease proceed with caution!'
+    )
+
+    click.secho(os.linesep.join(warning), fg='red')
+    if not click.confirm('\nAre you sure you want to continue?'):
+        return
+    upload_database(obj)
+
+
+@project_push.command(name='media')
+@click.pass_obj
+def push_media(obj):
+    warning = (
+        'WARNING',
+        '=======',
+
+        '\nYou are about to push your local media files to the test server on '
+        'Aldryn. This going to remove ALL existing media files and insert '
+        'the ones you are uploading.',
+
+        '\nYou will also loose all changes that have been made on the test '
+        'server since you have last downloaded the media files from the '
+        'test server up until now.',
+
+        '\nA backup of all media files will be created before restoring this '
+        'archive; and this is also the only way of undoing this restore!',
+
+        '\nPlease proceed with caution!'
+    )
+
+    click.secho(os.linesep.join(warning), fg='red')
+    if not click.confirm('\nAre you sure you want to continue?'):
+        return
+    upload_database(obj)
+    upload_media(obj)
 
 
 @project.command(name='develop')

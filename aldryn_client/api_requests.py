@@ -174,3 +174,13 @@ class DownloadBackupRequest(FileResponse, APIRequest):
 class DownloadDBRequest(FileResponse, APIRequest):
     url = '/api/v1/workspace/{website_slug}/download/db/'
     headers = {'accept': 'application/x-tar-gz'}
+
+
+class UploadDBRequest(TextResponse, APIRequest):
+    url = '/api/v1/website/{website_id}/upload/db/'
+    method = 'POST'
+
+
+class UploadMediaFilesRequest(TextResponse, APIRequest):
+    url = '/api/v1/website/{website_id}/upload/media/'
+    method = 'POST'

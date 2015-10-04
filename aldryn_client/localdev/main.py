@@ -33,17 +33,6 @@ def get_git_clone_url(slug):
     return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
 
 
-def get_docker_compose_cmd(path):
-    docker_compose_base = [
-        'docker-compose', '-f', os.path.join(path, 'docker-compose.yml')
-    ]
-
-    def docker_compose(*commands):
-        return docker_compose_base + [cmd for cmd in commands]
-
-    return docker_compose
-
-
 def create_workspace(client, website_slug, path=None):
     click.secho('Creating workspace...', fg='green')
 
@@ -52,7 +41,7 @@ def create_workspace(client, website_slug, path=None):
         if path else website_slug
     )
 
-    docker_compose = get_docker_compose_cmd(path)
+    docker_compose = utils.get_docker_compose_cmd(path)
     website_id = client.get_website_id_for_slug(website_slug)
     website_git_url = get_git_clone_url(website_slug)
 
@@ -78,10 +67,7 @@ def create_workspace(client, website_slug, path=None):
     with open(os.path.join(path, settings.ALDRYN_DOT_FILE), 'w+') as fh:
         json.dump(website_data, fh)
 
-    existing_db_container_id = execute(
-        docker_compose('ps', '-q', 'db'),
-        silent=True,
-    ).replace(os.linesep, '')
+    existing_db_container_id = utils.get_db_container_id(path)
 
     # stop all running for project
     execute(docker_compose('stop'), silent=True)
@@ -128,7 +114,7 @@ def create_workspace(client, website_slug, path=None):
 def load_database_dump(client, path=None, recreate=False):
     path = path or utils.get_project_home(path)
     website_slug = utils.get_aldryn_project_settings(path)['slug']
-    docker_compose = get_docker_compose_cmd(path)
+    docker_compose = utils.get_docker_compose_cmd(path)
 
     start_db_cmd = ['up', '-d']
     if recreate:
@@ -143,11 +129,7 @@ def load_database_dump(client, path=None, recreate=False):
     )
 
     # get db container id
-    db_container_id = execute(
-        docker_compose('ps', '-q', 'db'),
-        stderr=subprocess.STDOUT,
-        silent=True,
-    ).replace(os.linesep, '')
+    db_container_id = utils.get_db_container_id(path)
 
     click.secho('fetching database dump', fg='green')
     db_dump_path = client.download_db(website_slug, directory=path)
@@ -199,19 +181,70 @@ def load_database_dump(client, path=None, recreate=False):
 
 
 def download_media(client, path=None):
+    click.secho('fetching media files', fg='green')
+
     path = path or os.path.join(utils.get_project_home(path), 'data/media')
     website_slug = utils.get_aldryn_project_settings(path)['slug']
-    click.secho('fetching media files', fg='green')
     backup_path = client.download_backup(website_slug)
+
     with tarfile.open(backup_path, 'r:gz') as backup_archive:
         media_archive_name = 'media_files.tar.gz'
         if media_archive_name not in backup_archive.getnames():
             click.secho('Media archive empty', fg='yellow')
             return
+
         media_fobj = backup_archive.extractfile(media_archive_name)
         with tarfile.open(fileobj=media_fobj, mode='r:gz') as media_archive:
             media_archive.extractall(path=path)
+
         click.secho('Downloaded media files into {}'.format(path), fg='green')
+
+
+def upload_database(client):
+    project_home = utils.get_project_home()
+    website_id = utils.get_aldryn_project_settings(project_home)['id']
+    dump_filename = 'local_db.sql'
+    archive_filename = 'local_db.tar.gz'
+    archive_path = os.path.join(project_home, archive_filename)
+
+    # take dump of database
+    click.secho('Dumping local database', fg='green')
+    db_container_id = utils.get_db_container_id(project_home)
+
+    subprocess.call((
+        'docker', 'exec', db_container_id,
+        'pg_dump', '-U', 'postgres', '-d', 'db',
+        '-f', os.path.join('/app/', dump_filename)
+    ))
+
+    click.secho('Creating archive of SQL dump', fg='green')
+    with tarfile.open(archive_path, mode='w:gz') as tar:
+        tar.add(os.path.join(project_home, dump_filename))
+
+    click.secho('Pushing database to Aldryn', fg='green')
+    client.upload_db(website_id, archive_path)
+
+    # clean up
+    for temp_file in (dump_filename, archive_filename):
+        os.remove(os.path.join(project_home, temp_file))
+    click.secho('Done', fg='green')
+
+
+def upload_media(client):
+    project_home = utils.get_project_home()
+    website_id = utils.get_aldryn_project_settings(project_home)['id']
+    archive_path = os.path.join(project_home, 'local_media.tar.gz')
+
+    click.secho('Creating archive of local media folder', fg='green')
+    with tarfile.open(archive_path, mode='w:gz') as tar:
+        tar.add(os.path.join(project_home, 'data/media'))
+
+    click.secho('Pushing archive to Aldryn', fg='green')
+    client.upload_media_files(website_id, archive_path)
+
+    # clean up
+    os.remove(archive_path)
+    click.secho('Done', fg='green')
 
 
 def develop_package(package, no_rebuild=False):
@@ -264,7 +297,7 @@ def develop_package(package, no_rebuild=False):
 
     if not no_rebuild:
         # build web again
-        docker_compose = get_docker_compose_cmd(project_home)
+        docker_compose = utils.get_docker_compose_cmd(project_home)
 
         try:
             execute(
@@ -282,7 +315,7 @@ def develop_package(package, no_rebuild=False):
 
 
 def open_project(open_browser=True):
-    docker_compose = get_docker_compose_cmd(utils.get_project_home())
+    docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
     try:
         addr = execute(docker_compose('port', 'web', '80'), silent=True)
     except subprocess.CalledProcessError:
@@ -332,7 +365,7 @@ def open_project(open_browser=True):
 
 
 def start_project():
-    docker_compose = get_docker_compose_cmd(utils.get_project_home())
+    docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
     my_stdout = StringIO()
     try:
         with redirect_stdout(my_stdout):
@@ -353,5 +386,5 @@ def start_project():
 
 
 def stop_project():
-    docker_compose = get_docker_compose_cmd(utils.get_project_home())
+    docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
     execute(docker_compose('stop'))

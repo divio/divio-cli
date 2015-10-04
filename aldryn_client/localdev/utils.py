@@ -1,8 +1,10 @@
 import json
+import subprocess
 import os
 
 import click
 
+from ..utils import execute
 from .. import settings
 
 
@@ -36,3 +38,23 @@ def get_project_home(path=None):
         "Aldryn project file '.aldryn' could not be found! Please make sure "
         "you're in an Aldryn project folder and the file exists."
     )
+
+
+def get_docker_compose_cmd(path):
+    docker_compose_base = [
+        'docker-compose', '-f', os.path.join(path, 'docker-compose.yml')
+    ]
+
+    def docker_compose(*commands):
+        return docker_compose_base + [cmd for cmd in commands]
+
+    return docker_compose
+
+
+def get_db_container_id(path):
+    docker_compose = get_docker_compose_cmd(path)
+    return execute(
+        docker_compose('ps', '-q', 'db'),
+        stderr=subprocess.STDOUT,
+        silent=True,
+    ).replace(os.linesep, '')
