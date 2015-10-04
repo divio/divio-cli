@@ -219,11 +219,13 @@ def upload_database(client):
 
     click.secho('Creating archive of SQL dump', fg='green')
     with tarfile.open(archive_path, mode='w:gz') as tar:
-        tar.add(os.path.join(project_home, dump_filename))
+        tar.add(
+            os.path.join(project_home, dump_filename),
+            arcname=dump_filename
+        )
 
     click.secho('Pushing database to Aldryn', fg='green')
     client.upload_db(website_id, archive_path)
-
     # clean up
     for temp_file in (dump_filename, archive_filename):
         os.remove(os.path.join(project_home, temp_file))
@@ -237,7 +239,7 @@ def upload_media(client):
 
     click.secho('Creating archive of local media folder', fg='green')
     with tarfile.open(archive_path, mode='w:gz') as tar:
-        tar.add(os.path.join(project_home, 'data/media'))
+        tar.add(os.path.join(project_home, 'data/media'), arcname='media')
 
     click.secho('Pushing archive to Aldryn', fg='green')
     client.upload_media_files(website_id, archive_path)

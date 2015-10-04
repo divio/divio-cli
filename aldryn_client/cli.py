@@ -209,7 +209,7 @@ def push_media(obj):
     click.secho(os.linesep.join(warning), fg='red')
     if not click.confirm('\nAre you sure you want to continue?'):
         return
-    upload_database(obj)
+
     upload_media(obj)
 
 
