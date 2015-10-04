@@ -172,6 +172,22 @@ class CloudClient(object):
         )
         return request()
 
+    def upload_db(self, website_id, archive_path):
+        request = api_requests.UploadDBRequest(
+            self.session,
+            url_kwargs={'website_id': website_id},
+            files={'db_dump': open(archive_path, 'rb')}
+        )
+        return request()
+
+    def upload_media_files(self, website_id, archive_path):
+        request = api_requests.UploadMediaFilesRequest(
+            self.session,
+            url_kwargs={'website_id': website_id},
+            files={'media_files': open(archive_path, 'rb')}
+        )
+        return request()
+
 
 class WritableNetRC(netrc):
     def __init__(self, *args, **kwargs):
