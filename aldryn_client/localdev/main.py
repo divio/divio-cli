@@ -145,9 +145,23 @@ def load_database_dump(client, path=None, recreate=False):
     # strip path from dump_path for use in the docker container
     db_dump_path = db_dump_path.replace(path, '')
 
-    # waiting another 10 seconds to make sure
-    # the db has enough time to start
-    sleep(10)
+    # Wait for Postgres to start
+    attempts = 0
+    while True:
+        attempts = attempts + 1
+        try:
+            execute([
+                'docker', 'exec', db_container_id,
+                'psql', '-U', 'postgres',
+            ], silent=True, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError:
+            sleep(attempts)
+        else:
+            break
+        if attempts > 10:
+            raise Exception(
+                "Couldn't connect to database container. "
+                "Database server may not have started.")
 
     # create empty db
     try:
