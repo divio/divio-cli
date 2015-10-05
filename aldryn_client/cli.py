@@ -14,9 +14,10 @@ from .localdev.main import (
     stop_project, load_database_dump, download_media, upload_database,
     upload_media, show_project_status,
 )
+from .localdev.utils import get_aldryn_project_settings
 from .cloud import CloudClient, get_aldryn_host
 from .check_system import check_requirements
-from .utils import hr, table
+from .utils import hr, table, open_project_cloud_site
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
 from .upload.addon import upload_addon
@@ -90,14 +91,23 @@ def project_list(obj):
     click.echo_via_pager(table(projects, header))
 
 
-@project.command(name='info')
-@click.argument('slug')
+# @project.command(name='info')
+# @click.argument('slug')
+# @click.pass_obj
+# def project_info(obj, slug):
+#     """Show info about a project"""
+#     # TODO: proper formatting
+#     website_id = obj.get_website_id_for_slug(slug)
+#     click.echo(obj.get_project(website_id))
+
+
+@project.command(name='dashboard')
 @click.pass_obj
-def project_info(obj, slug):
-    """Show info about a project"""
-    # TODO: proper formatting
-    website_id = obj.get_website_id_for_slug(slug)
-    click.echo(obj.get_project(website_id))
+def project_dashboard(obj):
+    """Open project dashboard"""
+    project_settings = get_aldryn_project_settings()
+    project_data = obj.get_project(project_settings['id'])
+    click.launch(project_data['dashboard_url'])
 
 
 @project.command(name='up')
@@ -112,6 +122,20 @@ def project_up(obj):
 def project_open(obj):
     """Open local project in browser"""
     open_project()
+
+
+@project.command(name='test')
+@click.pass_obj
+def project_open_test(obj):
+    """Open project test dashboard"""
+    open_project_cloud_site(obj, 'test')
+
+
+@project.command(name='live')
+@click.pass_obj
+def project_open_live(obj):
+    """Open project live dashboard"""
+    open_project_cloud_site(obj, 'live')
 
 
 @project.command(name='status')

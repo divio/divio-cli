@@ -120,7 +120,7 @@ class ProjectListRequest(APIRequest):
 
 
 class ProjectDetailRequest(APIRequest):
-    url = '/api/v1/website/{website_id}/info/'
+    url = '/api/v1/website/{website_id}/detail/'
 
 
 class UploadAddonRequest(TextResponse, APIRequest):

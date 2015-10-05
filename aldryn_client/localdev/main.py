@@ -57,8 +57,9 @@ def create_workspace(client, website_slug, path=None):
     compose_config = os.path.join(path or website_slug, 'docker-compose.yml')
     if not os.path.isfile(compose_config):
         raise click.ClickException(
-            "Valid 'docker-compose.yml' file not found. Please make sure that this"
-            "project has been updated on Aldryn to use Base Project version 3."
+            "Valid 'docker-compose.yml' file not found. Please make sure that "
+            "this project has been updated on Aldryn to use Base Project "
+            "version 3."
         )
 
     # create .aldryn file
@@ -395,7 +396,7 @@ def start_project():
     try:
         with redirect_stdout(my_stdout):
             execute(docker_compose('up', '-d'), stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         my_stdout.seek(0)
         output = my_stdout.read()
         if 'port is already allocated' in output:
@@ -408,6 +409,7 @@ def start_project():
         raise click.ClickException(output)
 
     return open_project(open_browser=True)
+
 
 def show_project_status():
     docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
