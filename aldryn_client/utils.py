@@ -42,13 +42,15 @@ def dev_null():
 @contextmanager
 def silence_stderr():
     with dev_null() as devnull:
-        redirect_stderr(devnull)
+        with redirect_stderr(devnull):
+            yield
 
 
 @contextmanager
 def silence_stdout():
     with dev_null() as devnull:
-        redirect_stdout(devnull)
+        with redirect_stdout(devnull):
+            yield
 
 
 @contextmanager
