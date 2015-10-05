@@ -57,8 +57,8 @@ def create_workspace(client, website_slug, path=None):
     compose_config = os.path.join(path or website_slug, 'docker-compose.yml')
     if not os.path.isfile(compose_config):
         raise click.ClickException(
-            "Aldryn local development only works with projects using "
-            "baseproject version 3 and have a valid 'docker-compose.yml' file."
+            "Valid 'docker-compose.yml' file not found. Please make sure that this"
+            "project has been updated on Aldryn to use Base Project version 3."
         )
 
     # create .aldryn file
