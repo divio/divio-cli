@@ -107,3 +107,16 @@ def execute(*popenargs, **kwargs):
             cmd = popenargs[0]
         raise subprocess.CalledProcessError(retcode, cmd, output=output)
     return output
+
+
+def open_project_cloud_site(client, stage):
+    from .localdev.utils import get_aldryn_project_settings
+
+    assert stage in ('test', 'live')
+    project_settings = get_aldryn_project_settings()
+    project_data = client.get_project(project_settings['id'])
+    url = project_data['{}_status'.format(stage)]['site_url']
+    if url:
+        click.launch(url)
+    else:
+        click.secho('No {} server deployed yet.'.format(stage), fg='yellow')

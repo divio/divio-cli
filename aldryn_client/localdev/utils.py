@@ -8,7 +8,7 @@ from ..utils import execute
 from .. import settings
 
 
-def get_aldryn_project_settings(path):
+def get_aldryn_project_settings(path=None):
     project_home = get_project_home(path)
     with open(os.path.join(project_home, settings.ALDRYN_DOT_FILE)) as fh:
         return json.load(fh)
