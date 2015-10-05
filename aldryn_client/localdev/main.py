@@ -1,6 +1,5 @@
 import json
 import tarfile
-
 import re
 import os
 import subprocess
@@ -197,7 +196,8 @@ def download_media(client, path=None):
         with tarfile.open(fileobj=media_fobj, mode='r:gz') as media_archive:
             media_archive.extractall(path=path)
 
-        click.secho('Downloaded media files into {}'.format(path), fg='green')
+    os.remove(backup_path)
+    click.secho('Downloaded media files into {}'.format(path), fg='green')
 
 
 def upload_database(client):
