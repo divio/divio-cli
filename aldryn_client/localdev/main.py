@@ -239,7 +239,9 @@ def upload_media(client):
 
     click.secho('Creating archive of local media folder', fg='green')
     with tarfile.open(archive_path, mode='w:gz') as tar:
-        tar.add(os.path.join(project_home, 'data/media'), arcname='media')
+        media_dir = os.path.join(project_home, 'data/media')
+        for item in os.listdir(media_dir):
+            tar.add(os.path.join(media_dir, item), arcname=item)
 
     click.secho('Pushing archive to Aldryn', fg='green')
     client.upload_media_files(website_id, archive_path)
