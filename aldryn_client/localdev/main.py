@@ -105,6 +105,8 @@ def create_workspace(client, website_slug, path=None):
         silent=True,  # silent=False raises
     )
 
+    download_media(client, path)
+
     instructions = [
         "Finished setting up your project's workspace!",
         "To start the project, please:",
@@ -189,9 +191,13 @@ def load_database_dump(client, path=None, recreate=False):
 def download_media(client, path=None):
     click.secho('fetching media files', fg='green')
 
-    path = path or os.path.join(utils.get_project_home(path), 'data/media')
+    path = os.path.join(utils.get_project_home(path), 'data', 'media')
     website_slug = utils.get_aldryn_project_settings(path)['slug']
     backup_path = client.download_backup(website_slug)
+
+    if not backup_path:
+        # no backup yet, skipping
+        return
 
     with tarfile.open(backup_path, 'r:gz') as backup_archive:
         media_archive_name = 'media_files.tar.gz'
