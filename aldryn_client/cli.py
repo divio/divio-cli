@@ -1,3 +1,4 @@
+import subprocess
 import os
 import sys
 
@@ -270,6 +271,23 @@ def boilerplate_upload(ctx):
     """Upload boilerplate to Aldryn"""
     ret = upload_boilerplate(ctx.obj, ctx.parent.params['path'])
     click.echo(ret)
+
+
+@cli.command()
+def version():
+    """Show version info"""
+    from . import __version__
+    click.echo('package version: {}'.format(__version__))
+
+    # try to get git revision
+    script_home = os.path.dirname(__file__)
+    git_dir = os.path.join(script_home, '..', '.git')
+    if os.path.exists(git_dir):
+        revision = subprocess.check_output([
+            'git', '--git-dir', git_dir,
+            'rev-parse', '--short', 'HEAD'
+        ]).strip()
+        click.echo('git revision:    {}'.format(revision))
 
 
 @cli.command(name='check-system')
