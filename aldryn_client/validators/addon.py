@@ -39,10 +39,12 @@ def validate_aldryn_config_py(path):
             except Exception:
                 # intentionally catch every exception
                 import traceback
-                raise click.ClickException(
-                    'Exception in aldryn_config.py\n\n{}'
-                    .format(traceback.format_exc())
+                click.secho(
+                    "An error occurred during validating 'aldryn_config.py'. "
+                    "Please check the exception below:\n",
+                    fg='red'
                 )
+                raise click.ClickException(traceback.format_exc())
         finally:
             shutil.rmtree(temp_dir)
 
