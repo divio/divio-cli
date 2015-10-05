@@ -213,6 +213,14 @@ def upload_database(client):
     dump_filename = 'local_db.sql'
     archive_filename = 'local_db.tar.gz'
     archive_path = os.path.join(project_home, archive_filename)
+    docker_compose = utils.get_docker_compose_cmd(project_home)
+
+    # start db
+    execute(
+        docker_compose('up', '-d', 'db'),
+        stderr=subprocess.STDOUT,
+        silent=True,
+    )
 
     # take dump of database
     click.secho('Dumping local database', fg='green')
