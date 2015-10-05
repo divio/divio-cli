@@ -403,6 +403,10 @@ def start_project():
 
     return open_project(open_browser=True)
 
+def show_project_status():
+    docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+    execute(docker_compose('ps'))
+
 
 def stop_project():
     docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
