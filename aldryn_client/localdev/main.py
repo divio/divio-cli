@@ -1,6 +1,5 @@
 import json
 import tarfile
-
 import re
 import os
 import subprocess
@@ -197,7 +196,8 @@ def download_media(client, path=None):
         with tarfile.open(fileobj=media_fobj, mode='r:gz') as media_archive:
             media_archive.extractall(path=path)
 
-        click.secho('Downloaded media files into {}'.format(path), fg='green')
+    os.remove(backup_path)
+    click.secho('Downloaded media files into {}'.format(path), fg='green')
 
 
 def upload_database(client):
@@ -239,7 +239,9 @@ def upload_media(client):
 
     click.secho('Creating archive of local media folder', fg='green')
     with tarfile.open(archive_path, mode='w:gz') as tar:
-        tar.add(os.path.join(project_home, 'data/media'), arcname='media')
+        media_dir = os.path.join(project_home, 'data', 'media')
+        for item in os.listdir(media_dir):
+            tar.add(os.path.join(media_dir, item), arcname=item)
 
     click.secho('Pushing archive to Aldryn', fg='green')
     client.upload_media_files(website_id, archive_path)
