@@ -95,8 +95,15 @@ def create_workspace(client, website_slug, path=None):
     click.secho('creating new database container', fg='green')
     load_database_dump(client, path, recreate=True)
 
-    # sync & migrate database
-    docker_compose('run', 'web', './migrate.sh')
+    click.secho('sync and migrate database', fg='green')
+    # FIXME: Running this command with silent=False raises:
+    #   IOError: [Errno 35] Resource temporarily unavailable
+    #   see http://trac.edgewall.org/ticket/2066
+    execute(
+        docker_compose('run', 'web', './migrate.sh'),
+        stderr=subprocess.STDOUT,
+        silent=True,  # silent=False raises
+    )
 
     instructions = [
         "Finished setting up your project's workspace!",
