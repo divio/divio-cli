@@ -69,7 +69,6 @@ class APIRequest(object):
                     response.content[:300],
                 )
             raise click.ClickException(error_msg)
-
         return self.process(response)
 
     def process(self, response):
@@ -169,6 +168,12 @@ class IDToSlugRequest(APIRequest):
 class DownloadBackupRequest(FileResponse, APIRequest):
     url = '/api/v1/workspace/{website_slug}/download/backup/'
     headers = {'accept': 'application/x-tar-gz'}
+
+    def verify(self, response):
+        if response.status_code == requests.codes.not_found:
+            # no backups yet, ignore
+            return None
+        return super(DownloadBackupRequest, self).verify(response)
 
 
 class DownloadDBRequest(FileResponse, APIRequest):
