@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 
 
@@ -55,9 +54,15 @@ class CharField(BaseField):
             value = ''
         length = len(value)
         if self.min_length and length < self.min_length:
-            raise ValidationError("Value must be at least %s characters, got %s characters" % (self.min_length, length))
+            raise ValidationError(
+                'Value must be at least {} characters, got {} characters'
+                .format(self.min_length, length)
+            )
         if self.max_length and length > self.max_length:
-            raise ValidationError("Value must be less than %s characters, got %s characters" % (self.max_length, length))
+            raise ValidationError(
+                'Value must be less than {} characters, got {} characters'
+                .format(self.max_length, length)
+            )
         return value
 
     def serialize(self):
@@ -100,12 +105,16 @@ class NumberField(BaseField):
         if not value:
             return value
         if not value.isdigit():
-            raise ValidationError("Expected number, but got %s" % value)
+            raise ValidationError('Expected number, but got {}'.format(value))
         value = int(value)
         if self.min_value is not None and value < self.min_value:
-            raise ValidationError("Must be bigger than %s" % self.min_value)
+            raise ValidationError(
+                'Must be bigger than{}'.format(self.min_value)
+            )
         if self.max_value is not None and value > self.max_value:
-            raise ValidationError("Must be smaller than %s" % self.max_value)
+            raise ValidationError(
+                'Must be smaller than {}'.format(self.max_value)
+            )
         return value
 
 
@@ -121,7 +130,10 @@ class StaticFileField(BaseField):
             return value
         extension = os.path.splitext(value)[1][1:]
         if self.extensions is not None and extension not in self.extensions:
-            raise ValidationError("Please choose a file with one of the following extensions: %s." % ', '.join(self.extensions))
+            raise ValidationError(
+                'Please choose a file with one of the following extensions: '
+                .format(', '.join(self.extensions))
+            )
         return value
 
     def serialize(self):
@@ -166,7 +178,7 @@ class BaseForm(object):
         for name, field in self._fields:
             value = self.data.get(name, None)
             if field.required and value is None:
-                self.errors[name] = "This field is required"
+                self.errors[name] = 'This field is required'
             else:
                 try:
                     self.cleaned_data[name] = field.clean(value)

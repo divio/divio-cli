@@ -1,32 +1,15 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
+
 from aldryn_client import __version__
 
 
 INSTALL_REQUIRES = [
-    'GitPython==0.3.2.RC1',
-    'requests>=1',
-    'docopt',
-    'pyyaml',
+    'click',
+    'requests',
+    'tabulate',
 ]
-DEPENDENCY_LINKS = [
-    'https://bitbucket.org/pygame/pygame/get/df48571.zip#egg=pygame-1.9.2',
-]
-EXTRAS_REQUIRE = {
-    'gui': [
-        'Kivy==1.7.2',
-        'plyer==1.2.1',
-        'pygame',
-    ],
-    'docker': [
-        'docker-py',
-    ]
-}
-try:
-    import json
-except ImportError:
-    INSTALL_REQUIRES.append('simplejson')
+
 
 CLASSIFIERS = [
     'Development Status :: 5 - Production/Stable',
@@ -54,10 +37,8 @@ setup(
     license='BSD',
     platforms=['OS Independent'],
     install_requires=INSTALL_REQUIRES,
-    extras_require=EXTRAS_REQUIRE,
-    dependency_links=DEPENDENCY_LINKS,
     entry_points="""
     [console_scripts]
-    aldryn = aldryn_client.cli:main
+    aldryn = aldryn_client.cli:cli
     """,
 )
