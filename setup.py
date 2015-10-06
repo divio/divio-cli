@@ -8,6 +8,7 @@ INSTALL_REQUIRES = [
     'click',
     'requests',
     'tabulate',
+    'pyyaml',
 ]
 
 
