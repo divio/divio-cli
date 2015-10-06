@@ -9,7 +9,7 @@ from time import sleep
 import click
 import requests
 
-from ..utils import dev_null, execute, redirect_stdout
+from ..utils import redirect_stdout, check_call, check_output
 from ..cloud import get_aldryn_host
 from .. import settings
 from . import utils
@@ -44,14 +44,11 @@ def create_workspace(client, website_slug, path=None):
     website_id = client.get_website_id_for_slug(website_slug)
     website_git_url = get_git_clone_url(website_slug)
 
-    try:
-        click.secho('\ncloning project repository', fg='green')
-        clone_args = ['git', 'clone', website_git_url]
-        if path:
-            clone_args.append(path)
-        subprocess.call(clone_args, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as exc:
-        raise click.ClickException(exc.output)
+    click.secho('\ncloning project repository', fg='green')
+    clone_args = ['git', 'clone', website_git_url]
+    if path:
+        clone_args.append(path)
+    check_call(clone_args)
 
     # Detect old style or invalid projects
     compose_config = os.path.join(path or website_slug, 'docker-compose.yml')
@@ -70,41 +67,26 @@ def create_workspace(client, website_slug, path=None):
     existing_db_container_id = utils.get_db_container_id(path)
 
     # stop all running for project
-    execute(docker_compose('stop'), silent=True)
+    check_call(docker_compose('stop'))
 
     # pull docker images
     click.secho('downloading remote docker images', fg='green')
-    execute(docker_compose('pull'), silent=False, stderr=subprocess.STDOUT)
+    check_call(docker_compose('pull'))
 
     # build docker images
     click.secho('building local docker images', fg='green')
-    execute(docker_compose('build'), silent=False, stderr=subprocess.STDOUT)
+    check_call(docker_compose('build'))
 
     if existing_db_container_id:
         click.secho('removing old database container', fg='green')
-        execute(
-            docker_compose('stop', 'db'),
-            stderr=subprocess.STDOUT,
-            silent=False,
-        )
-        execute(
-            docker_compose('rm', '-f', 'db'),
-            stderr=subprocess.STDOUT,
-            silent=False,
-        )
+        check_call(docker_compose('stop', 'db'))
+        check_call(docker_compose('rm', '-f', 'db'))
 
     click.secho('creating new database container', fg='green')
     load_database_dump(client, path, recreate=True)
 
     click.secho('sync and migrate database', fg='green')
-    # FIXME: Running this command with silent=False raises:
-    #   IOError: [Errno 35] Resource temporarily unavailable
-    #   see http://trac.edgewall.org/ticket/2066
-    execute(
-        docker_compose('run', 'web', './migrate.sh'),
-        stderr=subprocess.STDOUT,
-        silent=True,  # silent=False raises
-    )
+    check_call(docker_compose('run', 'web', './migrate.sh'))
 
     download_media(client, path)
 
@@ -114,8 +96,8 @@ def create_workspace(client, website_slug, path=None):
     ]
 
     if path:
-        instructions.append(' - change directory into {}'.format(path))
-    instructions.append(' - run aldryn project up')
+        instructions.append(" - change directory into '{}'".format(path))
+    instructions.append(" - run 'aldryn project up'")
 
     click.secho('\n\n{}'.format(os.linesep.join(instructions)), fg='green')
 
@@ -131,11 +113,7 @@ def load_database_dump(client, path=None, recreate=False):
     start_db_cmd.append('db')
 
     # start db
-    execute(
-        docker_compose(*start_db_cmd),
-        stderr=subprocess.STDOUT,
-        silent=True,
-    )
+    check_call(docker_compose(*start_db_cmd))
 
     # get db container id
     db_container_id = utils.get_db_container_id(path)
@@ -149,10 +127,10 @@ def load_database_dump(client, path=None, recreate=False):
     attempts = 10
     for attempt in range(attempts):
         try:
-            execute([
+            check_call([
                 'docker', 'exec', db_container_id,
                 'psql', '-U', 'postgres',
-            ], silent=True, stderr=subprocess.STDOUT)
+            ])
         except subprocess.CalledProcessError:
             sleep(attempts)
         else:
@@ -164,43 +142,35 @@ def load_database_dump(client, path=None, recreate=False):
         )
 
     # create empty db
-    try:
-        execute([
-            'docker', 'exec', db_container_id,
-            'dropdb', '-U', 'postgres', 'db',
-        ], silent=True, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError:
-        pass
+    subprocess.call([
+        'docker', 'exec', db_container_id,
+        'dropdb', '-U', 'postgres', 'db',
+    ])
 
-    execute([
+    check_call([
         'docker', 'exec', db_container_id,
         'createdb', '-U', 'postgres', 'db',
-    ], silent=True, stderr=subprocess.STDOUT)
+    ])
 
     click.secho('inserting database dump', fg='green')
     # FIXME: because of different ownership,
     # this spits a lot of warnings which can
     # ignored but we can't really validate success
-    with dev_null() as devnull:
-        try:
-            piped_restore = (
-                'tar -xzOf /app/{}'
-                ' | pg_restore -U postgres -d db'
-                .format(db_dump_path)
-            )
-            subprocess.call((
-                'docker', 'exec', db_container_id,
-                '/bin/bash', '-c', piped_restore,
-            ), stdout=devnull, stderr=devnull)
-        except subprocess.CalledProcessError:
-            pass
+    try:
+        piped_restore = (
+            'tar -xzOf /app/{}'
+            ' | pg_restore -U postgres -d db'
+            .format(db_dump_path)
+        )
+        subprocess.call((
+            'docker', 'exec', db_container_id,
+            '/bin/bash', '-c', piped_restore,
+        ))
+    except subprocess.CalledProcessError:
+        pass
 
     # stop db
-    execute(
-        docker_compose('stop'),
-        silent=True,
-        stderr=subprocess.STDOUT,
-    )
+    check_call(docker_compose('stop'))
 
 
 def download_media(client, path=None):
@@ -237,11 +207,7 @@ def upload_database(client):
     docker_compose = utils.get_docker_compose_cmd(project_home)
 
     # start db
-    execute(
-        docker_compose('up', '-d', 'db'),
-        stderr=subprocess.STDOUT,
-        silent=True,
-    )
+    check_call(docker_compose('up', '-d', 'db'))
 
     # take dump of database
     click.secho('Dumping local database', fg='green')
@@ -339,14 +305,7 @@ def develop_package(package, no_rebuild=False):
         # build web again
         docker_compose = utils.get_docker_compose_cmd(project_home)
 
-        try:
-            execute(
-                docker_compose('build', 'web'),
-                silent=False,
-                stderr=subprocess.STDOUT,
-            )
-        except subprocess.CalledProcessError as exc:
-            raise click.ClickException(exc.output)
+        check_call(docker_compose('build', 'web'))
 
     click.secho(
         'The package {} has been added to your local development project!'
@@ -357,7 +316,7 @@ def develop_package(package, no_rebuild=False):
 def open_project(open_browser=True):
     docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
     try:
-        addr = execute(docker_compose('port', 'web', '80'), silent=True)
+        addr = check_output(docker_compose('port', 'web', '80'), catch=False)
     except subprocess.CalledProcessError:
         if click.prompt('Your project is not running. Do you want to start '
                         'it now?'):
@@ -391,6 +350,7 @@ def open_project(open_browser=True):
         except requests.ConnectionError:
             sleep(1)
         else:
+            click.echo()
             break
     else:
         raise click.ClickException(
@@ -408,7 +368,7 @@ def start_project():
     my_stdout = StringIO()
     try:
         with redirect_stdout(my_stdout):
-            execute(docker_compose('up', '-d'), stderr=subprocess.STDOUT)
+            check_call(docker_compose('up', '-d'), catch=False)
     except subprocess.CalledProcessError:
         my_stdout.seek(0)
         output = my_stdout.read()
@@ -426,9 +386,9 @@ def start_project():
 
 def show_project_status():
     docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
-    execute(docker_compose('ps'))
+    check_call(docker_compose('ps'))
 
 
 def stop_project():
     docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
-    execute(docker_compose('stop'))
+    check_call(docker_compose('stop'))

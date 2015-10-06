@@ -4,7 +4,7 @@ import subprocess
 
 import click
 
-from .utils import execute
+from .utils import check_call
 
 
 def check_requirements():
@@ -20,7 +20,7 @@ def check_requirements():
     for check, cmd in checks:
         error_msg = None
         try:
-            execute(cmd, silent=True, stderr=subprocess.STDOUT)
+            check_call(cmd)
         except OSError as exc:
             if exc.errno == os.errno.ENOENT:
                 error_msg = 'executable {} not found'.format(cmd[0])

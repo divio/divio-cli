@@ -1,10 +1,9 @@
 import json
-import subprocess
 import os
 
 import click
 
-from ..utils import execute
+from ..utils import check_output
 from .. import settings
 
 
@@ -53,7 +52,5 @@ def get_docker_compose_cmd(path):
 
 def get_db_container_id(path):
     docker_compose = get_docker_compose_cmd(path)
-    return execute(
-        docker_compose('ps', '-q', 'db'),
-        silent=True,
-    ).replace(os.linesep, '')
+    output = check_output(docker_compose('ps', '-q', 'db'))
+    return output.replace(os.linesep, '')

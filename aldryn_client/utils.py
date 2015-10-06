@@ -25,12 +25,10 @@ def indent(text, spaces=4):
 
 
 def get_package_version(path):
-    with dev_null() as devnull:
-        version = execute(
-            ['python', 'setup.py', '--version'],
-            cwd=path, stderr=devnull, silent=True,
-        )
-        return version.strip()
+    return check_output(
+        ['python', 'setup.py', '--version'],
+        cwd=path
+    ).strip()
 
 
 @contextmanager
@@ -85,28 +83,31 @@ def tar_add_stringio(tar, string_io, name):
     tar.addfile(tarinfo=info, fileobj=string_io)
 
 
-def execute(*popenargs, **kwargs):
-    """
-    Modified version of subprocess.check_output that prints
-    stdout as soon as it's available instead of holding it back
-    """
-    if 'stdout' in kwargs:
-        raise ValueError('stdout argument not allowed, it will be overridden.')
-    silence_output = kwargs.pop('silent', False)
-    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
-    if not silence_output:
-        lines_iterator = iter(process.stdout.readline, b'')
-        for line in lines_iterator:
-            click.echo(line, nl=False)
+def execute(func, *popenargs, **kwargs):
+    catch = kwargs.pop('catch', True)
+    try:
+        return func(*popenargs, **kwargs)
+    except subprocess.CalledProcessError as exc:
+        if not catch:
+            raise
+        output = (
+            'There was an error trying to run a command. This is most likely',
+            'not an issue with aldryn-client, but the called program itself.',
+            'Try checking the output of the command above.',
+            'The command was:',
+            '  {command}'.format(command=' '.join(exc.cmd))
+        )
+        hr(fg='red')
+        click.secho(os.linesep.join(output), fg='red')
+        exit(-1)
 
-    output, unused_err = process.communicate()
-    retcode = process.poll()
-    if retcode:
-        cmd = kwargs.get('args')
-        if cmd is None:
-            cmd = popenargs[0]
-        raise subprocess.CalledProcessError(retcode, cmd, output=output)
-    return output
+
+def check_call(*popenargs, **kwargs):
+    return execute(subprocess.check_call, *popenargs, **kwargs)
+
+
+def check_output(*popenargs, **kwargs):
+    return execute(subprocess.check_output, *popenargs, **kwargs)
 
 
 def open_project_cloud_site(client, stage):
