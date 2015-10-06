@@ -20,7 +20,7 @@ def check_requirements():
     for check, cmd in checks:
         error_msg = None
         try:
-            check_call(cmd)
+            check_call(cmd, catch=False, silent=True)
         except OSError as exc:
             if exc.errno == os.errno.ENOENT:
                 error_msg = 'executable {} not found'.format(cmd[0])

@@ -85,6 +85,13 @@ def tar_add_stringio(tar, string_io, name):
 
 def execute(func, *popenargs, **kwargs):
     catch = kwargs.pop('catch', True)
+    if kwargs.pop('silent', False):
+        if 'stdout' not in kwargs:
+            kwargs['stdout'] = open(os.devnull, 'w')
+            # close file descriptor devnull after exit
+            kwargs['close_fds'] = True
+        if 'stderr' not in kwargs:
+            kwargs['stderr'] = subprocess.STDOUT
     try:
         return func(*popenargs, **kwargs)
     except subprocess.CalledProcessError as exc:
