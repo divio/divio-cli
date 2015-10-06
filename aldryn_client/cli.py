@@ -184,7 +184,7 @@ def pull_media(obj):
 
 @project.group(name='push')
 def project_push():
-    """Push db or files to Aldryn"""
+    """Push db or media files to Aldryn"""
     pass
 
 
