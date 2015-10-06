@@ -127,14 +127,14 @@ def project_open(obj):
 @project.command(name='test')
 @click.pass_obj
 def project_open_test(obj):
-    """Open project test dashboard"""
+    """Open project test site"""
     open_project_cloud_site(obj, 'test')
 
 
 @project.command(name='live')
 @click.pass_obj
 def project_open_live(obj):
-    """Open project live dashboard"""
+    """Open project live site"""
     open_project_cloud_site(obj, 'live')
 
 
