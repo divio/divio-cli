@@ -136,7 +136,7 @@ def load_database_dump(client, path=None, recreate=False):
         else:
             break
     else:
-        raise click.ClickException(
+        exit(
             "Couldn't connect to database container. "
             "Database server may not have started."
         )
