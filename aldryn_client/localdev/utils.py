@@ -55,6 +55,5 @@ def get_db_container_id(path):
     docker_compose = get_docker_compose_cmd(path)
     return execute(
         docker_compose('ps', '-q', 'db'),
-        stderr=subprocess.STDOUT,
         silent=True,
     ).replace(os.linesep, '')
