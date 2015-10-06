@@ -49,7 +49,7 @@ def create_workspace(client, website_slug, path=None):
         clone_args = ['git', 'clone', website_git_url]
         if path:
             clone_args.append(path)
-        execute(clone_args, silent=False, stderr=subprocess.STDOUT)
+        subprocess.call(clone_args, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
         raise click.ClickException(exc.output)
 
@@ -145,10 +145,9 @@ def load_database_dump(client, path=None, recreate=False):
     # strip path from dump_path for use in the docker container
     db_dump_path = db_dump_path.replace(path, '')
 
-    # Wait for Postgres to start
-    attempts = 0
-    while True:
-        attempts = attempts + 1
+    # wait for postgres in db container to start
+    attempts = 10
+    for attempt in range(attempts):
         try:
             execute([
                 'docker', 'exec', db_container_id,
@@ -158,10 +157,11 @@ def load_database_dump(client, path=None, recreate=False):
             sleep(attempts)
         else:
             break
-        if attempts > 10:
-            raise Exception(
-                "Couldn't connect to database container. "
-                "Database server may not have started.")
+    else:
+        raise click.ClickException(
+            "Couldn't connect to database container. "
+            "Database server may not have started."
+        )
 
     # create empty db
     try:
@@ -392,12 +392,11 @@ def open_project(open_browser=True):
             sleep(1)
         else:
             break
-
-        if attempt == seconds - 1:
-            raise click.ClickException(
-                "\nProject failed to start. Please run 'docker-compose logs' "
-                "to get more information."
-            )
+    else:
+        raise click.ClickException(
+            "\nProject failed to start. Please run 'docker-compose logs' "
+            "to get more information."
+        )
 
     if open_browser:
         click.launch(addr)
