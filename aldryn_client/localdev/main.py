@@ -123,6 +123,11 @@ def load_database_dump(client, path=None, recreate=False):
     # strip path from dump_path for use in the docker container
     db_dump_path = db_dump_path.replace(path, '')
 
+    # FIXME: hack/fix for db timeout
+    # sometimes, the command below doesn't work
+    # sleep again for 20secs to make sure its *really* up
+    sleep(20)
+
     # wait for postgres in db container to start
     attempts = 10
     for attempt in range(attempts):
@@ -132,7 +137,7 @@ def load_database_dump(client, path=None, recreate=False):
                 'psql', '-U', 'postgres',
             ], catch=False, silent=True)
         except subprocess.CalledProcessError:
-            sleep(attempts)
+            sleep(attempt)
         else:
             break
     else:
