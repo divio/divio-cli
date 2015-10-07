@@ -257,6 +257,18 @@ def upload_media(client):
     click.secho('Done', fg='green')
 
 
+def update_local_project():
+    project_home = utils.get_project_home()
+    docker_compose = utils.get_docker_compose_cmd(project_home)
+
+    click.secho('Pulling changes from git remote', fg='green')
+    check_call(('git', 'pull'))
+    click.secho('Pulling docker images', fg='green')
+    check_call(docker_compose('pull'))
+    click.secho('Building local docker images', fg='green')
+    check_call(docker_compose('build'))
+
+
 def develop_package(package, no_rebuild=False):
     """
     :param package: package name in addons-dev folder
