@@ -166,14 +166,14 @@ def project_cheatsheet(obj):
     click.launch(get_project_cheatsheet_url(obj))
 
 
-@project.command(name='workon')
+@project.command(name='setup')
 @click.argument('slug')
 @click.option(
     '-p', '--path', default='.', help='install project to path',
     type=click.Path(writable=True, readable=True)
 )
 @click.pass_obj
-def project_workon(obj, slug, path):
+def project_setup(obj, slug, path):
     """Set up a development environment for an Aldryn project"""
     create_workspace(obj, slug, path)
 
