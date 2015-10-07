@@ -209,18 +209,19 @@ def push_db(obj):
         'WARNING',
         '=======',
 
-        '\nYou are about to push your local database to the test server on '
-        'Aldryn. This will replace ALL data on the test server with the '
-        'data you are about to push, including (but not limited to):',
-        '  - User Accounts',
+        '\nYou are about to push your local database to the test server on ',
+        'Aldryn. This will replace ALL data on the Aldryn test server with ',
+        'the data you are about to push, including (but not limited to):',
+        '  - User accounts',
         '  - CMS Pages & Plugins',
 
-        '\nYou will also loose all changes that have been made on the test '
-        'server since you have last downloaded the database from the '
-        'test server up until now.',
+        '\nYou will also lose any changes that have been made on the test ',
+        'server since you pulled its database to your local environment. ',
 
-        '\nA database backup will be created before restoring this dump; '
-        'and this is also the only way of undoing this database restore!',
+        '\nA database backup will be created before your Aldryn test server ',
+        'database is overwritten, in case you need to undo this operation.',
+        'You will find this database amongst other database backups in the ',
+        '"Manage Project" section of the Aldryn Control Panel.',
 
         '\nPlease proceed with caution!'
     )
@@ -238,16 +239,17 @@ def push_media(obj):
         'WARNING',
         '=======',
 
-        '\nYou are about to push your local media files to the test server on '
-        'Aldryn. This going to remove ALL existing media files and insert '
-        'the ones you are uploading.',
+        '\nYou are about to push your local media files to the test server on ',
+        'Aldryn. This will replace ALL existing media files with the ones you ',
+        'are about to push.',
 
-        '\nYou will also loose all changes that have been made on the test '
-        'server since you have last downloaded the media files from the '
-        'test server up until now.',
+        '\nYou will also lose any changes that have been made on the test ',
+        'server since you pulled its files to your local environment. ',
 
-        '\nA backup of all media files will be created before restoring this '
-        'archive; and this is also the only way of undoing this restore!',
+        '\nA backup of all media files will be created before your Aldryn test ',
+        'server media files are overwritten, in case you need to undo this operation.',
+        'You will find this backup amongst other media file backups in the ',
+        '"Manage Project" section of the Aldryn Control Panel.',
 
         '\nPlease proceed with caution!'
     )
