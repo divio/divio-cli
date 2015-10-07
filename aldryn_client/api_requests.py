@@ -46,6 +46,9 @@ class APIRequest(object):
     def get_url(self):
         return self.url.format(**self.url_kwargs)
 
+    def get_error_code_map(self):
+        return self.response_code_error_map
+
     def request(self, *args, **kwargs):
         try:
             response = self.session.request(
@@ -62,7 +65,7 @@ class APIRequest(object):
 
     def verify(self, response):
         if not response.ok:
-            error_msg = self.response_code_error_map.get(response.status_code)
+            error_msg = self.get_error_code_map().get(response.status_code)
             if not error_msg:
                 error_msg = '{}\n\n{}'.format(
                     self.default_error_message,
@@ -184,6 +187,26 @@ class DownloadDBRequest(FileResponse, APIRequest):
 class UploadDBRequest(TextResponse, APIRequest):
     url = '/api/v1/website/{website_id}/upload/db/'
     method = 'POST'
+
+    def get_error_code_map(self):
+        error_codes = super(UploadDBRequest, self).get_error_code_map()
+        error_codes[requests.codes.bad_request] = messages.INVALID_DB_SUBMITTED
+        return error_codes
+
+    def verify(self, response):
+        if response.status_code < 500:
+            click.secho('Database dump successfully uploaded.', fg='green')
+        if response.status_code == requests.codes.bad_request:
+            try:
+                db_log = response.json()['message']
+            except (TypeError, IndexError):
+                pass
+            else:
+                logfile = os.path.join(os.getcwd(), 'db_upload.log')
+                with open(logfile, 'w+') as fh:
+                    fh.write(db_log)
+
+        return super(UploadDBRequest, self).verify(response)
 
 
 class UploadMediaFilesRequest(TextResponse, APIRequest):
