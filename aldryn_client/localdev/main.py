@@ -3,13 +3,12 @@ import tarfile
 import re
 import os
 import subprocess
-from StringIO import StringIO
 from time import sleep
 
 import click
 import requests
 
-from ..utils import redirect_stdout, check_call, check_output
+from ..utils import check_call, check_output
 from ..cloud import get_aldryn_host
 from .. import settings
 from . import utils
@@ -370,21 +369,17 @@ def open_project(open_browser=True):
 
 def start_project():
     docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
-    my_stdout = StringIO()
     try:
-        with redirect_stdout(my_stdout):
-            check_call(docker_compose('up', '-d'), catch=False)
-    except subprocess.CalledProcessError:
-        my_stdout.seek(0)
-        output = my_stdout.read()
-        if 'port is already allocated' in output:
+        check_output(docker_compose('up', '-d'), catch=False, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as exc:
+        if 'port is already allocated' in exc.output:
             click.secho(
                 "There's already another program running on this project's "
-                "port. Please either stop the other program or change the"
+                "port. Please either stop the other program or change the "
                 "port in the 'docker-compose.yml' file and try again.\n",
                 fg='red'
             )
-        raise click.ClickException(output)
+        raise click.ClickException(exc.output)
 
     return open_project(open_browser=True)
 
