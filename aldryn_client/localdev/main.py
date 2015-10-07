@@ -130,7 +130,7 @@ def load_database_dump(client, path=None, recreate=False):
             check_call([
                 'docker', 'exec', db_container_id,
                 'psql', '-U', 'postgres',
-            ])
+            ], catch=False, silent=True)
         except subprocess.CalledProcessError:
             sleep(attempts)
         else:
