@@ -5,6 +5,7 @@ import tempfile
 import os
 import sys
 from contextlib import contextmanager
+from urlparse import urljoin
 
 import click
 from tabulate import tabulate
@@ -128,3 +129,16 @@ def open_project_cloud_site(client, stage):
         click.launch(url)
     else:
         click.secho('No {} server deployed yet.'.format(stage), fg='yellow')
+
+
+def get_dashboard_url(client):
+    from .localdev.utils import get_aldryn_project_settings
+
+    project_settings = get_aldryn_project_settings()
+    project_data = client.get_project(project_settings['id'])
+    return project_data['dashboard_url']
+
+
+def get_project_cheatsheet_url(client):
+    dashboard = get_dashboard_url(client)
+    return urljoin(dashboard, 'local-development/')

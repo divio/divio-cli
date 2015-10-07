@@ -14,10 +14,12 @@ from .localdev.main import (
     stop_project, load_database_dump, download_media, upload_database,
     upload_media, show_project_status,
 )
-from .localdev.utils import get_aldryn_project_settings
 from .cloud import CloudClient, get_aldryn_host
 from .check_system import check_requirements
-from .utils import hr, table, open_project_cloud_site
+from .utils import (
+    hr, table, open_project_cloud_site, get_dashboard_url,
+    get_project_cheatsheet_url,
+)
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
 from .upload.addon import upload_addon
@@ -105,9 +107,7 @@ def project_list(obj):
 @click.pass_obj
 def project_dashboard(obj):
     """Open project dashboard"""
-    project_settings = get_aldryn_project_settings()
-    project_data = obj.get_project(project_settings['id'])
-    click.launch(project_data['dashboard_url'])
+    click.launch(get_dashboard_url(obj))
 
 
 @project.command(name='up')
@@ -152,6 +152,13 @@ def project_stop(obj):
     stop_project()
 
 
+@project.command(name='cheatsheet')
+@click.pass_obj
+def project_cheatsheet(obj):
+    """Show useful commands for your project"""
+    click.launch(get_project_cheatsheet_url(obj))
+
+
 @project.command(name='workon')
 @click.argument('slug')
 @click.option(
@@ -160,7 +167,7 @@ def project_stop(obj):
 )
 @click.pass_obj
 def project_workon(obj, slug, path):
-    """Set up a development environment for an Aldryn Cloud project"""
+    """Set up a development environment for an Aldryn project"""
     create_workspace(obj, slug, path)
 
 
