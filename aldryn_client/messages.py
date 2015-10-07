@@ -15,3 +15,7 @@ RESOURCE_NOT_FOUND = 'Requested resource could not be found'
 LOGIN_SUCCESSFUL = 'Welcome to Aldryn. You are now logged in as {greeting}'
 CONFIG_FILE_NOT_FOUND = 'Config file could not be not found at location: {}'
 FILE_NOT_FOUND = 'File could not be found: {}'
+INVALID_DB_SUBMITTED = (
+    "The database dump you have uploaded contains an error. "
+    "Please check the file 'db_upload.log' for errors and try again"
+)

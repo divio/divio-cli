@@ -230,7 +230,7 @@ def upload_database(client):
             arcname=dump_filename
         )
 
-    click.secho('Pushing database to Aldryn', fg='green')
+    click.secho('Uploading database to Aldryn', fg='green')
     client.upload_db(website_id, archive_path)
     # clean up
     for temp_file in (dump_filename, archive_filename):
