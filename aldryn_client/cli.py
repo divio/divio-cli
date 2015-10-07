@@ -12,7 +12,7 @@ import click
 from .localdev.main import (
     create_workspace, develop_package, start_project, open_project,
     stop_project, load_database_dump, download_media, upload_database,
-    upload_media, show_project_status,
+    upload_media, show_project_status, update_local_project,
 )
 from .cloud import CloudClient, get_aldryn_host
 from .check_system import check_requirements
@@ -122,6 +122,13 @@ def project_up(obj):
 def project_open(obj):
     """Open local project in browser"""
     open_project()
+
+
+@project.command(name='update')
+@click.pass_obj
+def project_update(obj):
+    """Update project with latest changes from the Cloud"""
+    update_local_project()
 
 
 @project.command(name='test')
