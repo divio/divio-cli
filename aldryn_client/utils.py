@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import subprocess
 import tarfile
 import tempfile
@@ -11,7 +10,7 @@ import click
 from tabulate import tabulate
 
 
-def hr(char='─', width=None, **kwargs):
+def hr(char='-', width=None, **kwargs):
     if width is None:
         width = click.get_terminal_size()[0]
     click.secho(char * width, **kwargs)
@@ -89,8 +88,13 @@ def execute(func, *popenargs, **kwargs):
     if kwargs.pop('silent', False):
         if 'stdout' not in kwargs:
             kwargs['stdout'] = open(os.devnull, 'w')
-            # close file descriptor devnull after exit
-            kwargs['close_fds'] = True
+            if not is_windows():
+                # close file descriptor devnull after exit
+                # unfortunately, close_fds is not supported on Windows
+                # platforms if you redirect stdin/stdout/stderr
+                # => http://svn.python.org/projects/python/
+                #    branches/py3k/Lib/subprocess.py
+                kwargs['close_fds'] = True
         if 'stderr' not in kwargs:
             kwargs['stderr'] = subprocess.STDOUT
     try:
@@ -142,3 +146,7 @@ def get_dashboard_url(client):
 def get_project_cheatsheet_url(client):
     dashboard = get_dashboard_url(client)
     return urljoin(dashboard, 'local-development/')
+
+
+def is_windows():
+    return sys.platform == 'win32'

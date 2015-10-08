@@ -1,9 +1,11 @@
 import json
+import sys
 import os
 
 import click
+import yaml
 
-from ..utils import check_output
+from ..utils import check_output, is_windows
 from .. import settings
 
 
@@ -39,15 +41,89 @@ def get_project_home(path=None):
     )
 
 
+UNIX_DOCKER_COMPOSE_FILENAME = 'docker-compose.yml'
+WINDOWS_DOCKER_COMPOSE_FILENAME = 'docker-compose-windows.yml'
+
+
 def get_docker_compose_cmd(path):
+    if not is_windows():
+        docker_compose_filename = WINDOWS_DOCKER_COMPOSE_FILENAME
+        ensure_windows_docker_compose_file_exists(path)
+    else:
+        docker_compose_filename = UNIX_DOCKER_COMPOSE_FILENAME
+
     docker_compose_base = [
-        'docker-compose', '-f', os.path.join(path, 'docker-compose.yml')
+        'docker-compose', '-f', os.path.join(path, docker_compose_filename)
     ]
 
     def docker_compose(*commands):
         return docker_compose_base + [cmd for cmd in commands]
 
     return docker_compose
+
+
+def ensure_windows_docker_compose_file_exists(path):
+    """
+    Unfortunately, docker-compose is not yet officially released
+     for Windows There's still some rough edges, and volume
+     configuration is one. There's also some open issues in
+     boot2docker for windows which makes things difficult.
+
+    We have to change the volume specifications to a very specific
+     format:
+
+     - absolute paths: relative one's are not yet supported
+     - currently only works if the project is running on the C:\ drive
+     - unix style paths: need to replace '\' with '/'
+     - paths have to start with /c/ instead of C:\ otherwise
+        docker-compose gets confused because they use : as separation
+
+    Example:
+      unix format:  .:/app:rw
+      cwd:          C:\Users\aldryn\acme-portfolio
+      windows:     /c/Users/aldryn/acme-portfolio:/app:rw
+
+    Hope that's all. And of course, I'm sorry.
+    """
+
+    windows_path = os.path.join(path, WINDOWS_DOCKER_COMPOSE_FILENAME)
+    if os.path.isfile(windows_path):
+        return
+
+    unix_path = os.path.join(path, UNIX_DOCKER_COMPOSE_FILENAME)
+    if not os.path.isfile(unix_path):
+        exit('docker-compose.yml not found')
+
+    with open(unix_path, 'r') as fh:
+        config = yaml.load(fh)
+
+    for component, sections in config.iteritems():
+        if 'volumes' not in sections:
+            continue
+        volumes = []
+        for volume in sections['volumes']:
+            parts = volume.split(':')
+            if len(parts) == 2:
+                old_host, container = parts
+                mode = None
+            else:
+                old_host, container, mode = parts
+
+            # assuming relative path's for old_host
+            new_host = os.path.abspath(os.path.join(path, old_host))
+            # replace C:\ with /c/, because, docker on windows
+            new_host = new_host.replace('C:\\', '/c/')
+            # change to unix paths
+            new_host = new_host.replace('\\', '/')
+            new_volume = [new_host, container]
+            if mode:
+                new_volume.append(mode)
+            volumes.append(':'.join(new_volume))
+
+        config[component]['volumes'] = volumes
+
+    with open(windows_path, 'w+') as fh:
+        yaml.dump(config, fh)
 
 
 def get_db_container_id(path):

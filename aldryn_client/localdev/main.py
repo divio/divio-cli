@@ -8,7 +8,7 @@ from time import sleep
 import click
 import requests
 
-from ..utils import check_call, check_output
+from ..utils import check_call, check_output, is_windows
 from ..cloud import get_aldryn_host
 from .. import settings
 from . import utils
@@ -39,7 +39,6 @@ def create_workspace(client, website_slug, path=None):
         if path else website_slug
     )
 
-    docker_compose = utils.get_docker_compose_cmd(path)
     website_id = client.get_website_id_for_slug(website_slug)
     website_git_url = get_git_clone_url(website_slug)
 
@@ -48,6 +47,8 @@ def create_workspace(client, website_slug, path=None):
     if path:
         clone_args.append(path)
     check_call(clone_args)
+
+    docker_compose = utils.get_docker_compose_cmd(path)
 
     # Detect old style or invalid projects
     compose_config = os.path.join(path or website_slug, 'docker-compose.yml')
@@ -82,10 +83,18 @@ def create_workspace(client, website_slug, path=None):
         check_call(docker_compose('rm', '-f', 'db'))
 
     click.secho('creating new database container', fg='green')
-    load_database_dump(client, path, recreate=True)
+    load_database_dump(client, path)
 
     click.secho('sync and migrate database', fg='green')
-    check_call(docker_compose('run', 'web', './migrate.sh'))
+
+    if is_windows():
+        # interactive mode is not yet supported with docker-compose
+        # on windows. that's why we have to call it as daemon
+        # and just wait a sane time
+        check_call(docker_compose('run', '-d', 'web', 'start', 'migrate'))
+        sleep(30)
+    else:
+        check_call(docker_compose('run', 'web', 'start', 'migrate'))
 
     download_media(client, path)
 
@@ -101,18 +110,13 @@ def create_workspace(client, website_slug, path=None):
     click.secho('\n\n{}'.format(os.linesep.join(instructions)), fg='green')
 
 
-def load_database_dump(client, path=None, recreate=False):
+def load_database_dump(client, path=None):
     path = path or utils.get_project_home(path)
     website_slug = utils.get_aldryn_project_settings(path)['slug']
     docker_compose = utils.get_docker_compose_cmd(path)
 
-    start_db_cmd = ['up', '-d']
-    if recreate:
-        start_db_cmd.append('--force-recreate')
-    start_db_cmd.append('db')
-
     # start db
-    check_call(docker_compose(*start_db_cmd))
+    check_call(docker_compose('up', '-d', 'db'))
 
     # get db container id
     db_container_id = utils.get_db_container_id(path)
@@ -149,7 +153,7 @@ def load_database_dump(client, path=None, recreate=False):
     subprocess.call([
         'docker', 'exec', db_container_id,
         'dropdb', '-U', 'postgres', 'db',
-    ])
+    ])  # TODO: silence me
 
     check_call([
         'docker', 'exec', db_container_id,
