@@ -46,7 +46,7 @@ WINDOWS_DOCKER_COMPOSE_FILENAME = 'docker-compose-windows.yml'
 
 
 def get_docker_compose_cmd(path):
-    if not is_windows():
+    if is_windows():
         docker_compose_filename = WINDOWS_DOCKER_COMPOSE_FILENAME
         ensure_windows_docker_compose_file_exists(path)
     else:
