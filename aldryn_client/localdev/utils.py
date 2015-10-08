@@ -63,7 +63,29 @@ def get_docker_compose_cmd(path):
 
 
 def ensure_windows_docker_compose_file_exists(path):
-    """ I'm sorry """
+    """
+    Unfortunately, docker-compose is not yet officially released
+     for Windows There's still some rough edges, and volume
+     configuration is one. There's also some open issues in
+     boot2docker for windows which makes things difficult.
+
+    We have to change the volume specifications to a very specific
+     format:
+
+     - absolute paths: relative one's are not yet supported
+     - currently only works if the project is running on the C:\ drive
+     - unix style paths: need to replace '\' with '/'
+     - paths have to start with /c/ instead of C:\ otherwise
+        docker-compose gets confused because they use : as separation
+
+    Example:
+      unix format:  .:/app:rw
+      cwd:          C:\Users\aldryn\acme-portfolio
+      windows:     /c/Users/aldryn/acme-portfolio:/app:rw
+
+    Hope that's all. And of course, I'm sorry.
+    """
+
     windows_path = os.path.join(path, WINDOWS_DOCKER_COMPOSE_FILENAME)
     if os.path.isfile(windows_path):
         return
