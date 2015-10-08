@@ -46,7 +46,7 @@ WINDOWS_DOCKER_COMPOSE_FILENAME = 'docker-compose-windows.yml'
 
 
 def get_docker_compose_cmd(path):
-    if is_windows():
+    if not is_windows():
         docker_compose_filename = WINDOWS_DOCKER_COMPOSE_FILENAME
         ensure_windows_docker_compose_file_exists(path)
     else:
@@ -98,29 +98,29 @@ def ensure_windows_docker_compose_file_exists(path):
         config = yaml.load(fh)
 
     for component, sections in config.iteritems():
-            if 'volumes' not in sections:
-                continue
-            volumes = []
-            for volume in sections['volumes']:
-                parts = volume.split(':')
-                if len(parts) == 2:
-                    old_host, container = parts
-                    mode = None
-                else:
-                    old_host, container, mode = parts
+        if 'volumes' not in sections:
+            continue
+        volumes = []
+        for volume in sections['volumes']:
+            parts = volume.split(':')
+            if len(parts) == 2:
+                old_host, container = parts
+                mode = None
+            else:
+                old_host, container, mode = parts
 
-                # assuming relative path's for old_host
-                new_host = os.path.abspath(os.path.join(path, old_host))
-                # replace C:\ with /c/, because, docker on windows
-                new_host = new_host.replace('C:\\', '/c/')
-                # change to unix paths
-                new_host = new_host.replace('\\', '/')
-                new_volume = [new_host, container]
-                if mode:
-                    new_volume.append(mode)
-                volumes.append(':'.join(new_volume))
+            # assuming relative path's for old_host
+            new_host = os.path.abspath(os.path.join(path, old_host))
+            # replace C:\ with /c/, because, docker on windows
+            new_host = new_host.replace('C:\\', '/c/')
+            # change to unix paths
+            new_host = new_host.replace('\\', '/')
+            new_volume = [new_host, container]
+            if mode:
+                new_volume.append(mode)
+            volumes.append(':'.join(new_volume))
 
-            config[component]['volumes'] = volumes
+        config[component]['volumes'] = volumes
 
     with open(windows_path, 'w+') as fh:
         yaml.dump(config, fh)

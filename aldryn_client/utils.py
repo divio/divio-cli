@@ -88,7 +88,7 @@ def execute(func, *popenargs, **kwargs):
     if kwargs.pop('silent', False):
         if 'stdout' not in kwargs:
             kwargs['stdout'] = open(os.devnull, 'w')
-            if not sys.platform == 'win32':
+            if not is_windows():
                 # close file descriptor devnull after exit
                 # unfortunately, close_fds is not supported on Windows
                 # platforms if you redirect stdin/stdout/stderr
