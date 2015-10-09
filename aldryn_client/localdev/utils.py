@@ -123,7 +123,7 @@ def ensure_windows_docker_compose_file_exists(path):
         config[component]['volumes'] = volumes
 
     with open(windows_path, 'w+') as fh:
-        yaml.dump(config, fh)
+        yaml.safe_dump(config, fh)
 
 
 def get_db_container_id(path):
