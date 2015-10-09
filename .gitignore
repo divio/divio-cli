@@ -3,15 +3,8 @@
 *.pyc
 *.pyo
 
-Aldryn.pkg
-aldryngui.ini
-requirements_venv.txt
 sync.log
 build/
 aldryn_client.egg-info/
 dist/
 env/
-
-/aldryn_client/packaging/
-/aldryn_client/temp
-/KIVY/

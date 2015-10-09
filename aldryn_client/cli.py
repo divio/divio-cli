@@ -1,166 +1,345 @@
-# -*- coding: utf-8 -*-
-import imp
-import platform
+import subprocess
+import os
 import sys
 
-import docopt
-
-from . import __version__ as version
-from .client import Client
-from .utils import cli_confirm
-
 try:
-    imp.find_module('kivy')
+    import ipdb as pdb
 except ImportError:
-    GUI = False
-else:
-    GUI = True
+    import pdb
 
-doc_draft = """Aldryn client.
+import click
 
-Usage:%(extra_commands)s
-    aldryn login [--with-token]
-    aldryn boilerplate upload
-    aldryn boilerplate validate
-    aldryn addon upload
-    aldryn addon validate
-    aldryn sync [--sitename=<sitename>]
-    aldryn workspace create --sitename=<sitename> [--path=<sitename>] [--docker] [--db-name=<database_name>]  [--db-host=<database_host>] [--db-port=<database_port>] [--db-user=<database_user>] [--db-pass=<database_password>]
-    aldryn sites
-    aldryn newest_version
-
-Options:
-    -h --help                        Show this screen.
-    --version                        Show version.
-    --sitename=<sitename>            Name of your site, eg your-project-name
-    --db-name=<database_name>        Database Name
-    --db-host=<database_host>        Database Host [default: 127.0.0.1]
-    --db-port=<database_port>        Database Port [default: 5432]
-    --db-user=<database_user>        Database User [default: postgres]
-    --db-pass=<database_password>    Database Password [default: '']
-"""
-
-gui_command = """
-    aldryn gui"""
-
-if GUI:
-    __doc__ = doc_draft % {'extra_commands': gui_command}
-else:
-    __doc__ = doc_draft % {'extra_commands': ''}
+from .localdev.main import (
+    create_workspace, develop_package, start_project, open_project,
+    stop_project, load_database_dump, download_media, upload_database,
+    upload_media, show_project_status, update_local_project,
+)
+from .cloud import CloudClient, get_aldryn_host
+from .check_system import check_requirements
+from .utils import (
+    hr, table, open_project_cloud_site, get_dashboard_url,
+    get_project_cheatsheet_url,
+)
+from .validators.addon import validate_addon
+from .validators.boilerplate import validate_boilerplate
+from .upload.addon import upload_addon
+from .upload.boilerplate import upload_boilerplate
 
 
-def _network_error_callback(message, on_confirm, on_cancel):
-    question = 'Retry syncing the file?'
-    if cli_confirm(question, message=message, default=True):
-        on_confirm()
-    else:
-        on_cancel()
+@click.group()
+@click.option('-d', '--debug/--no-debug', default=False,
+              help=('Drop into the debugger if the command execution raises '
+                    'an exception.'))
+@click.pass_context
+def cli(ctx, debug):
+    if debug:
+        def exception_handler(type, value, traceback):
+            click.secho(
+                '\nAn exception occurred while executing the requested '
+                'command:', fg='red'
+            )
+            hr(fg='red')
+            sys.__excepthook__(type, value, traceback)
+            click.secho('\nStarting interactive debugging session:', fg='red')
+            hr(fg='red')
+            pdb.post_mortem(traceback)
+        sys.excepthook = exception_handler
+
+    ctx.obj = CloudClient(get_aldryn_host())
 
 
-def _protected_file_change_callback(message):
-    print '!!!'
-    print message
-    print '!!!'
+def login_token_helper(ctx, param, value):
+    if not value:
+        url = ctx.obj.get_access_token_url()
+        click.secho('Your browser has been opened to visit: {}'.format(url))
+        click.launch(url)
+        value = click.prompt('Please copy the access token and paste it here')
+    return value
 
 
-def _sync_error_callback(message, title=None):
-    if title:
-        print title
-    print message
+@cli.command()
+@click.argument('token', required=False, callback=login_token_helper)
+@click.pass_obj
+def login(obj, token):
+    """Authorize your machine with Aldryn"""
+    click.echo(obj.login(token))
 
 
-def main():
-    args = docopt.docopt(__doc__, version=version)
-    client = Client(
-        Client.get_host_url(),
-        interactive=True,
-        database_name=args['--db-name'],
-        database_host=args['--db-host'],
-        database_port=args['--db-port'],
-        database_user=args['--db-user'],
-        database_password=args['--db-pass'],
+@cli.group()
+def project():
+    """Manage your projects"""
+    pass
+
+
+@project.command(name='list')
+@click.pass_obj
+def project_list(obj):
+    """List all your projects"""
+    data = obj.get_projects()
+
+    organisations = {
+        account['id']: account['name']
+        for account in data['accounts']
+        if account['type'] == 'organisation'
+    }
+
+    projects = [(
+        project_data['domain'],
+        project_data['name'],
+        organisations.get(project_data['organisation_id'], 'Personal'),
+    ) for project_data in data['websites']]
+
+    header = ['Slug', 'Name', 'Organisation']
+    click.echo_via_pager(table(projects, header))
+
+
+# @project.command(name='info')
+# @click.argument('slug')
+# @click.pass_obj
+# def project_info(obj, slug):
+#     """Show info about a project"""
+#     # TODO: proper formatting
+#     website_id = obj.get_website_id_for_slug(slug)
+#     click.echo(obj.get_project(website_id))
+
+
+@project.command(name='dashboard')
+@click.pass_obj
+def project_dashboard(obj):
+    """Open project dashboard"""
+    click.launch(get_dashboard_url(obj))
+
+
+@project.command(name='up')
+@click.pass_obj
+def project_up(obj):
+    """Start local project"""
+    start_project()
+
+
+@project.command(name='open')
+@click.pass_obj
+def project_open(obj):
+    """Open local project in browser"""
+    open_project()
+
+
+@project.command(name='update')
+@click.pass_obj
+def project_update(obj):
+    """Update project with latest changes from the Cloud"""
+    update_local_project()
+
+
+@project.command(name='test')
+@click.pass_obj
+def project_open_test(obj):
+    """Open project test site"""
+    open_project_cloud_site(obj, 'test')
+
+
+@project.command(name='live')
+@click.pass_obj
+def project_open_live(obj):
+    """Open project live site"""
+    open_project_cloud_site(obj, 'live')
+
+
+@project.command(name='status')
+@click.pass_obj
+def project_status(obj):
+    """Show local project status"""
+    show_project_status()
+
+
+@project.command(name='stop')
+@click.pass_obj
+def project_stop(obj):
+    """Stop local project"""
+    stop_project()
+
+
+@project.command(name='cheatsheet')
+@click.pass_obj
+def project_cheatsheet(obj):
+    """Show useful commands for your project"""
+    click.launch(get_project_cheatsheet_url(obj))
+
+
+@project.command(name='setup')
+@click.argument('slug')
+@click.option(
+    '-p', '--path', default='.', help='install project to path',
+    type=click.Path(writable=True, readable=True)
+)
+@click.pass_obj
+def project_setup(obj, slug, path):
+    """Set up a development environment for an Aldryn project"""
+    create_workspace(obj, slug, path)
+
+
+@project.group(name='pull')
+def project_pull():
+    """Pull db or files from Aldryn"""
+    pass
+
+
+@project_pull.command(name='db')
+@click.pass_obj
+def pull_db(obj):
+    load_database_dump(obj)
+
+
+@project_pull.command(name='media')
+@click.pass_obj
+def pull_media(obj):
+    download_media(obj)
+
+
+@project.group(name='push')
+def project_push():
+    """Push db or media files to Aldryn"""
+    pass
+
+
+@project_push.command(name='db')
+@click.pass_obj
+def push_db(obj):
+    warning = (
+        'WARNING',
+        '=======',
+
+        '\nYou are about to push your local database to the test server on ',
+        'Aldryn. This will replace ALL data on the Aldryn test server with ',
+        'the data you are about to push, including (but not limited to):',
+        '  - User accounts',
+        '  - CMS Pages & Plugins',
+
+        '\nYou will also lose any changes that have been made on the test ',
+        'server since you pulled its database to your local environment. ',
+
+        '\nA database backup will be created before your Aldryn test server ',
+        'database is overwritten, in case you need to undo this operation.',
+        'You will find this database amongst other database backups in the ',
+        '"Manage Project" section of the Aldryn Control Panel.',
+
+        '\nPlease proceed with caution!'
     )
-    retval = True
-    msg = None
-    if GUI and args['gui']:
-        from main import AldrynGUIApp
-        AldrynGUIApp().run()
-    elif args['login']:
-        if args['--with-token']:
-            retval, msg = client.login_with_token()
-        else:
-            retval, msg = client.login()
-    elif args['boilerplate']:
-        if args['upload']:
-            retval, msg = client.upload_boilerplate()
-        elif args['validate']:
-            retval, msg = client.validate_boilerplate()
-    elif args['addon']:
-        if args['upload']:
-            retval, msg = client.upload_app()
-        elif args['validate']:
-            retval, msg = client.validate_app()
-    elif args['sync']:
-        retval, msg = client.sync(
-            _network_error_callback,
-            _sync_error_callback,
-            _protected_file_change_callback,
-            sitename=args.get('--sitename', None))
-    elif args['sites']:
-        retval, msg = client.sites()
-    elif args['newest_version']:
-        print 'Current version: %s' % version
-        retval, version_data = client.newest_version()
-        if retval:
-            if version_data:
-                newest_version = version_data['version']
-            else:
-                newest_version = None
-            if newest_version and newest_version > version:
-                system = platform.system()
-                if True or system == 'Darwin':
-                    link = version_data['osx_link']
-                elif system == 'Windows':
-                    link = version_data['windows_link']
-                elif system == 'Linux':
-                    if platform.architecture().startswith('32'):
-                        link = version_data['linux32_link']
-                    else:
-                        link = version_data['linux64_link']
-                else:
-                    link = None
-                if link:
-                    msg = 'You can download the newest version (%s) from here:\n%s' % (
-                        newest_version, link)
-                else:
-                    msg = 'Newer version is available (%s).' % newest_version
-            else:
-                msg = 'You are using the latest version.'
-    elif args['workspace']:
-        if args['create']:
-            if args.get('--docker'):
-                try:
-                    import docker
-                except ImportError:
-                    exit(
-                        "\033[91mIn order to use the experimental Docker "
-                        "support you need to install the package with docker "
-                        "dependencies: pip install aldryn-client[docker]"
-                        "\033[0m"
-                    )
-                sys.stdout.write(
-                    "\033[91mCaution: Docker support is still experimental!"
-                    "\033[0m\n"
-                )
-                retval, msg = client.create_docker_workspace(
-                    sitename=args.get('--sitename', None),
-                    path=args.get('--path', None),
-                )
-            else:
-                retval, msg = client.create_workspace(
-                    sitename=args.get('--sitename', None),
-                    path=args.get('--path', None),
-                )
-    if msg:
-        print '\n{}'.format(msg)
-    sys.exit(int(retval))
+
+    click.secho(os.linesep.join(warning), fg='red')
+    if not click.confirm('\nAre you sure you want to continue?'):
+        return
+    upload_database(obj)
+
+
+@project_push.command(name='media')
+@click.pass_obj
+def push_media(obj):
+    warning = (
+        'WARNING',
+        '=======',
+
+        '\nYou are about to push your local media files to the test server on ',
+        'Aldryn. This will replace ALL existing media files with the ones you ',
+        'are about to push.',
+
+        '\nYou will also lose any changes that have been made on the test ',
+        'server since you pulled its files to your local environment. ',
+
+        '\nA backup of all media files will be created before your Aldryn test ',
+        'server media files are overwritten, in case you need to undo this operation.',
+        'You will find this backup amongst other media file backups in the ',
+        '"Manage Project" section of the Aldryn Control Panel.',
+
+        '\nPlease proceed with caution!'
+    )
+
+    click.secho(os.linesep.join(warning), fg='red')
+    if not click.confirm('\nAre you sure you want to continue?'):
+        return
+
+    upload_media(obj)
+
+
+@project.command(name='develop')
+@click.argument('package', 'package')
+@click.option(
+    '--no-rebuild', is_flag=True, default=False, help='Addon directory'
+)
+@click.pass_obj
+def project_develop(obj, package, no_rebuild):
+    """Add a package 'package' to your local project environment"""
+    develop_package(package, no_rebuild)
+
+
+@cli.group()
+@click.option('-p', '--path', default='.', help='Addon directory')
+@click.pass_obj
+def addon(obj, path):
+    """Validate and upload addon packages to Aldryn"""
+    pass
+
+
+@addon.command(name='validate')
+@click.pass_context
+def addon_validate(ctx):
+    """Validate addon configuration"""
+    validate_addon(ctx.parent.params['path'])
+    click.echo('Addon is valid!')
+
+
+@addon.command(name='upload')
+@click.pass_context
+def addon_upload(ctx):
+    """Upload addon to Aldryn"""
+    ret = upload_addon(ctx.obj, ctx.parent.params['path'])
+    click.echo(ret)
+
+
+@cli.group()
+@click.option('-p', '--path', default='.', help='Boilerplate directory')
+@click.pass_obj
+def boilerplate(obj, path):
+    """Validate and upload boilerplate packages to Aldryn"""
+    pass
+
+
+@boilerplate.command(name='validate')
+@click.pass_context
+def boilerplate_validate(ctx):
+    """Validate boilerplate configuration"""
+    validate_boilerplate(ctx.parent.params['path'])
+    click.echo('Boilerplate is valid!')
+
+
+@boilerplate.command(name='upload')
+@click.pass_context
+def boilerplate_upload(ctx):
+    """Upload boilerplate to Aldryn"""
+    ret = upload_boilerplate(ctx.obj, ctx.parent.params['path'])
+    click.echo(ret)
+
+
+@cli.command()
+def version():
+    """Show version info"""
+    from . import __version__
+    click.echo('package version: {}'.format(__version__))
+
+    # try to get git revision
+    script_home = os.path.dirname(__file__)
+    git_dir = os.path.join(script_home, '..', '.git')
+    if os.path.exists(git_dir):
+        revision = subprocess.check_output([
+            'git', '--git-dir', git_dir,
+            'rev-parse', '--short', 'HEAD'
+        ]).strip()
+        click.echo('git revision:    {}'.format(revision))
+
+
+@cli.command(name='check-system')
+def check_system():
+    """Check if your system meets the requirements
+    for Aldryn local development"""
+    click.echo('Verifying your system\'s setup')
+    check_requirements()
