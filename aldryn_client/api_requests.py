@@ -184,6 +184,11 @@ class DownloadDBRequest(FileResponse, APIRequest):
     headers = {'accept': 'application/x-tar-gz'}
 
 
+class DownloadMediaRequest(FileResponse, APIRequest):
+    url = '/api/v1/workspace/{website_slug}/download/media/'
+    headers = {'accept': 'application/x-tar-gz'}
+
+
 class UploadDBRequest(TextResponse, APIRequest):
     url = '/api/v1/website/{website_id}/upload/db/'
     method = 'POST'
@@ -195,7 +200,7 @@ class UploadDBRequest(TextResponse, APIRequest):
 
     def verify(self, response):
         if response.status_code < 500:
-            click.secho('Database dump successfully uploaded.', fg='green')
+            click.secho('Database dump successfully uploaded')
         if response.status_code == requests.codes.bad_request:
             try:
                 db_log = response.json()['message']

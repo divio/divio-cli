@@ -7,6 +7,7 @@ from time import sleep
 
 import click
 import requests
+import shutil
 
 from ..utils import check_call, check_output, is_windows
 from ..cloud import get_aldryn_host
@@ -114,18 +115,27 @@ def load_database_dump(client, path=None):
     path = path or utils.get_project_home(path)
     website_slug = utils.get_aldryn_project_settings(path)['slug']
     docker_compose = utils.get_docker_compose_cmd(path)
+    stage = 'test'
 
+    click.secho(
+        ' ---> Pulling database from {} {} server'.format(
+            website_slug,
+            stage,
+        ),
+    )
+
+    click.secho('Starting local database server...')
     # start db
     check_call(docker_compose('up', '-d', 'db'))
 
     # get db container id
     db_container_id = utils.get_db_container_id(path)
 
-    click.secho('fetching database dump', fg='green')
+    click.secho('Downloading database...')
     db_dump_path = client.download_db(website_slug, directory=path)
     # strip path from dump_path for use in the docker container
     db_dump_path = db_dump_path.replace(path, '')
-
+    click.secho('Waiting for local database server...')
     # FIXME: hack/fix for db timeout
     # sometimes, the command below doesn't work
     # sleep again for 20secs to make sure its *really* up
@@ -149,6 +159,7 @@ def load_database_dump(client, path=None):
             "Database server may not have started."
         )
 
+    click.secho('Removing local database...')
     # create empty db
     subprocess.call([
         'docker', 'exec', db_container_id,
@@ -160,14 +171,15 @@ def load_database_dump(client, path=None):
         'createdb', '-U', 'postgres', 'db',
     ])
 
-    click.secho('inserting database dump', fg='green')
+    click.secho('Importing database...')
     # FIXME: because of different ownership,
     # this spits a lot of warnings which can
     # ignored but we can't really validate success
     try:
         piped_restore = (
             'tar -xzOf /app/{}'
-            ' | pg_restore -U postgres -d db'
+            ' | pg_restore -U postgres --dbname=db -n public '
+            '--no-owner --exit-on-error'
             .format(db_dump_path)
         )
         subprocess.call((
@@ -177,33 +189,35 @@ def load_database_dump(client, path=None):
     except subprocess.CalledProcessError:
         pass
 
-    # stop db
-    check_call(docker_compose('stop'))
+    click.secho('Done', fg='green')
 
 
 def download_media(client, path=None):
-    click.secho('fetching media files', fg='green')
-
     path = os.path.join(utils.get_project_home(path), 'data', 'media')
     website_slug = utils.get_aldryn_project_settings(path)['slug']
-    backup_path = client.download_backup(website_slug)
+    stage = 'test'
 
+    click.secho(
+        ' ---> Pulling media files from {} {} server'.format(
+            website_slug,
+            stage,
+        ),
+    )
+    click.secho('Downloading media files'.format(path))
+    backup_path = client.download_media(website_slug)
     if not backup_path:
         # no backup yet, skipping
         return
 
-    with tarfile.open(backup_path, 'r:gz') as backup_archive:
-        media_archive_name = 'media_files.tar.gz'
-        if media_archive_name not in backup_archive.getnames():
-            click.secho('Media archive empty', fg='yellow')
-            return
+    click.secho('Removing local files')
+    shutil.rmtree(path)
 
-        media_fobj = backup_archive.extractfile(media_archive_name)
-        with tarfile.open(fileobj=media_fobj, mode='r:gz') as media_archive:
+    click.secho('Extracting files to {}'.format(path))
+    with open(backup_path, 'rb') as fobj:
+        with tarfile.open(fileobj=fobj, mode='r:gz') as media_archive:
             media_archive.extractall(path=path)
-
     os.remove(backup_path)
-    click.secho('Downloaded media files into {}'.format(path), fg='green')
+    click.secho('Done', fg='green')
 
 
 def upload_database(client):
@@ -213,12 +227,22 @@ def upload_database(client):
     archive_filename = 'local_db.tar.gz'
     archive_path = os.path.join(project_home, archive_filename)
     docker_compose = utils.get_docker_compose_cmd(project_home)
+    website_slug = utils.get_aldryn_project_settings(project_home)['slug']
+    stage = 'test'
+
+    click.secho(
+        ' ---> Pushing local database to {} {} server'.format(
+            website_slug,
+            stage,
+        ),
+    )
 
     # start db
+    click.secho('Starting local database server...')
     check_call(docker_compose('up', '-d', 'db'))
 
     # take dump of database
-    click.secho('Dumping local database', fg='green')
+    click.secho('Dumping local database...')
     db_container_id = utils.get_db_container_id(project_home)
 
     subprocess.call((
@@ -227,14 +251,14 @@ def upload_database(client):
         '-f', os.path.join('/app/', dump_filename)
     ))
 
-    click.secho('Creating archive of SQL dump', fg='green')
+    click.secho('Compressing SQL dump...')
     with tarfile.open(archive_path, mode='w:gz') as tar:
         tar.add(
             os.path.join(project_home, dump_filename),
             arcname=dump_filename
         )
 
-    click.secho('Uploading database to Aldryn', fg='green')
+    click.secho('Uploading...')
     client.upload_db(website_id, archive_path)
     # clean up
     for temp_file in (dump_filename, archive_filename):
@@ -246,14 +270,21 @@ def upload_media(client):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     archive_path = os.path.join(project_home, 'local_media.tar.gz')
-
-    click.secho('Creating archive of local media folder', fg='green')
+    website_slug = utils.get_aldryn_project_settings(project_home)['slug']
+    stage = 'test'
+    click.secho(
+        ' ---> Pushing local media to {} {} server'.format(
+            website_slug,
+            stage,
+        ),
+    )
+    click.secho('Conmpressing local media folder...')
     with tarfile.open(archive_path, mode='w:gz') as tar:
         media_dir = os.path.join(project_home, 'data', 'media')
         for item in os.listdir(media_dir):
             tar.add(os.path.join(media_dir, item), arcname=item)
 
-    click.secho('Pushing archive to Aldryn', fg='green')
+    click.secho('Uploading...')
     client.upload_media_files(website_id, archive_path)
 
     # clean up
