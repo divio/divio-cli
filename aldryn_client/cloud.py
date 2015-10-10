@@ -172,6 +172,15 @@ class CloudClient(object):
         )
         return request()
 
+    def download_media(self, website_slug, filename=None, directory=None):
+        request = api_requests.DownloadMediaRequest(
+            self.session,
+            url_kwargs={'website_slug': website_slug},
+            filename=filename,
+            directory=directory,
+        )
+        return request()
+
     def upload_db(self, website_id, archive_path):
         request = api_requests.UploadDBRequest(
             self.session,
