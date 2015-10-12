@@ -4,7 +4,7 @@ import subprocess
 
 import click
 
-from .utils import check_call
+from . import utils
 
 
 def check_requirements():
@@ -20,7 +20,7 @@ def check_requirements():
     for check, cmd in checks:
         error_msg = None
         try:
-            check_call(cmd, catch=False, silent=True)
+            utils.check_call(cmd, catch=False, silent=True)
         except OSError as exc:
             if exc.errno == os.errno.ENOENT:
                 error_msg = 'executable {} not found'.format(cmd[0])
@@ -34,10 +34,17 @@ def check_requirements():
         finally:
             if error_msg:
                 errors.append((check, error_msg))
-                click.secho(' ✖', fg='red', nl=False)
+
+            is_windows = utils.is_windows()
+            if error_msg:
+                symbol = ' ERR ' if is_windows else ' ✖  '
+                color = 'red'
             else:
-                click.secho(' ✓', fg='green', nl=False)
-            click.secho(' {}'.format(check))
+                symbol = ' OK  ' if is_windows else ' ✓  '
+                color = 'green'
+            click.secho(symbol, fg=color, nl=False)
+
+            click.secho('{}'.format(check))
 
     if errors:
         click.secho('\nThe following errors happened:', fg='red')

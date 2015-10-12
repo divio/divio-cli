@@ -3,7 +3,6 @@ import sys
 import os
 
 import click
-import yaml
 
 from ..utils import check_output, is_windows
 from .. import settings
@@ -85,6 +84,8 @@ def ensure_windows_docker_compose_file_exists(path):
 
     Hope that's all. And of course, I'm sorry.
     """
+
+    import yaml
 
     windows_path = os.path.join(path, WINDOWS_DOCKER_COMPOSE_FILENAME)
     if os.path.isfile(windows_path):
