@@ -1,8 +1,9 @@
 #!/usr/bin/env python
+import sys
+
 from setuptools import setup, find_packages
 
 from aldryn_client import __version__
-from aldryn_client.utils import is_windows
 
 
 INSTALL_REQUIRES = [
@@ -11,7 +12,7 @@ INSTALL_REQUIRES = [
     'tabulate',
 ]
 
-if is_windows():
+if sys.platform == 'win32':
     INSTALL_REQUIRES += [
         'pyyaml',  # converting docker-compose configs
         'colorama',  # colored output
