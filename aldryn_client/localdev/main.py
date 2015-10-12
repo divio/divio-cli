@@ -32,27 +32,21 @@ def get_git_clone_url(slug):
     return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
 
 
-def create_workspace(client, website_slug, path=None):
-    click.secho('Creating workspace...', fg='green')
-
-    path = os.path.abspath(
-        os.path.join(path, website_slug)
-        if path else website_slug
-    )
-
-    website_id = client.get_website_id_for_slug(website_slug)
-    website_git_url = get_git_clone_url(website_slug)
-
+def clone_project(website_slug, path):
     click.secho('\ncloning project repository', fg='green')
+    website_git_url = get_git_clone_url(website_slug)
     clone_args = ['git', 'clone', website_git_url]
     if path:
         clone_args.append(path)
+
     check_call(clone_args)
 
-    docker_compose = utils.get_docker_compose_cmd(path)
+
+def configure_project(website_slug, path, client):
+    website_id = client.get_website_id_for_slug(website_slug)
 
     # Detect old style or invalid projects
-    compose_config = os.path.join(path or website_slug, 'docker-compose.yml')
+    compose_config = os.path.join(path, 'docker-compose.yml')
     if not os.path.isfile(compose_config):
         raise click.ClickException(
             "Valid 'docker-compose.yml' file not found. Please make sure that "
@@ -64,6 +58,10 @@ def create_workspace(client, website_slug, path=None):
     website_data = {'id': website_id, 'slug': website_slug}
     with open(os.path.join(path, settings.ALDRYN_DOT_FILE), 'w+') as fh:
         json.dump(website_data, fh)
+
+
+def setup_website_containers(client, path):
+    docker_compose = utils.get_docker_compose_cmd(path)
 
     existing_db_container_id = utils.get_db_container_id(path)
 
@@ -97,16 +95,58 @@ def create_workspace(client, website_slug, path=None):
     else:
         check_call(docker_compose('run', 'web', 'start', 'migrate'))
 
-    download_media(client, path)
 
-    instructions = [
+def create_workspace(client, website_slug, path=None):
+    click.secho('Creating workspace...', fg='green')
+
+    path = os.path.abspath(
+        os.path.join(path, website_slug)
+        if path else website_slug
+    )
+
+    if os.path.exists(path) and (not os.path.isdir(path) or os.listdir(path)):
+        if click.confirm(
+                'The path {} already exists and is not an empty directory. '
+                'Do you want to remove it and continue?'.format(path)
+        ):
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
+        else:
+            click.secho('Aborting', fg='red')
+            exit(-1)
+
+    # wrap the the code into a big try..except
+    # to remove the folder if setup failed
+    try:
+        # clone git project
+        clone_project(website_slug, path)
+
+        # check for new baseproject + add .aldryn
+        configure_project(website_slug, path, client)
+
+        # setup docker website containers
+        setup_website_containers(client, path)
+
+        # download media files
+        download_media(client, path)
+
+    except:
+        if click.confirm(
+            'There was an error while setting up the project. We recommend '
+            'deleting the directory and trying again. '
+            'Do you want do delete {}?'.format(path)
+        ):
+            shutil.rmtree(path)
+        raise
+
+    instructions = (
         "Finished setting up your project's workspace!",
         "To start the project, please:",
-    ]
-
-    if path:
-        instructions.append(" - change directory into '{}'".format(path))
-    instructions.append(" - run 'aldryn project up'")
+        " - change directory into '{}'".format(path),
+        " - run 'aldryn project up'",
+    )
 
     click.secho('\n\n{}'.format(os.linesep.join(instructions)), fg='green')
 
