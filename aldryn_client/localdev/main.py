@@ -249,8 +249,9 @@ def download_media(client, path=None):
         # no backup yet, skipping
         return
 
-    click.secho('Removing local files')
-    shutil.rmtree(path)
+    if os.path.isdir(path):
+        click.secho('Removing local files')
+        shutil.rmtree(path)
 
     click.secho('Extracting files to {}'.format(path))
     with open(backup_path, 'rb') as fobj:
