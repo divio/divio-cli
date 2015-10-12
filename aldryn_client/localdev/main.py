@@ -323,6 +323,10 @@ def upload_media(client):
     with tarfile.open(archive_path, mode='w:gz') as tar:
         media_dir = os.path.join(project_home, 'data', 'media')
         for item in os.listdir(media_dir):
+            if item == 'MANIFEST':
+                # partial uploads are currently not supported
+                # not including MANIFEST to do a full restore
+                continue
             tar.add(os.path.join(media_dir, item), arcname=item)
 
     click.secho('Uploading...')
