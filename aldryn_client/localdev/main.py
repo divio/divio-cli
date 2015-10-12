@@ -133,11 +133,7 @@ def create_workspace(client, website_slug, path=None):
         download_media(client, path)
 
     except:
-        if click.confirm(
-            'There was an error while setting up the project. We recommend '
-            'deleting the directory and trying again. '
-            'Do you want do delete {}?'.format(path)
-        ):
+        if os.path.isdir(path):
             shutil.rmtree(path)
         raise
 
