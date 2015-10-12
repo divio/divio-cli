@@ -134,7 +134,7 @@ def create_workspace(client, website_slug, path=None):
 
     except:
         if os.path.isdir(path):
-            shutil.rmtree(path)
+            shutil.rmtree(path, ignore_errors=True)
         raise
 
     instructions = (
