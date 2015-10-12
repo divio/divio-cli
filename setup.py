@@ -2,15 +2,20 @@
 from setuptools import setup, find_packages
 
 from aldryn_client import __version__
+from aldryn_client.utils import is_windows
 
 
 INSTALL_REQUIRES = [
     'click',
     'requests',
     'tabulate',
-    'pyyaml',
 ]
 
+if is_windows():
+    INSTALL_REQUIRES += [
+        'pyyaml',  # converting docker-compose configs
+        'colorama',  # colored output
+    ]
 
 CLASSIFIERS = [
     'Development Status :: 5 - Production/Stable',
