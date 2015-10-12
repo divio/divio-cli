@@ -7,7 +7,7 @@ import click
 from . import utils
 
 
-def check_requirements():
+def check_requirements(silent=False):
     checks = [
         ('git client', ['git', '--version']),
         ('docker client', ['docker', '--version']),
@@ -35,18 +35,20 @@ def check_requirements():
             if error_msg:
                 errors.append((check, error_msg))
 
-            is_windows = utils.is_windows()
-            if error_msg:
-                symbol = ' ERR ' if is_windows else ' ✖  '
-                color = 'red'
-            else:
-                symbol = ' OK  ' if is_windows else ' ✓  '
-                color = 'green'
-            click.secho(symbol, fg=color, nl=False)
+            if not silent:
+                is_windows = utils.is_windows()
+                if error_msg:
+                    symbol = ' ERR ' if is_windows else ' ✖  '
+                    color = 'red'
+                else:
+                    symbol = ' OK  ' if is_windows else ' ✓  '
+                    color = 'green'
+                click.secho(symbol, fg=color, nl=False)
+                click.secho('{}'.format(check))
 
-            click.secho('{}'.format(check))
-
-    if errors:
+    if errors and not silent:
         click.secho('\nThe following errors happened:', fg='red')
         for error, msg in errors:
             click.secho(' {}:\n > {}'.format(error, msg))
+
+    return not bool(errors)
