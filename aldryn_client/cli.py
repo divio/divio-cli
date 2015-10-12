@@ -337,9 +337,9 @@ def version():
         click.echo('git revision:    {}'.format(revision))
 
 
-@cli.command(name='check-system')
-def check_system():
+@cli.command()
+def doctor():
     """Check if your system meets the requirements
     for Aldryn local development"""
-    click.echo('Verifying your system\'s setup')
+    click.echo('Verifying your system setup')
     check_requirements()
