@@ -175,6 +175,13 @@ def project_cheatsheet(obj):
 @click.pass_obj
 def project_setup(obj, slug, path):
     """Set up a development environment for an Aldryn project"""
+    if not check_requirements(silent=True):
+        click.secho(
+            "There was a problem while checking your system. Please run "
+            "'aldryn doctor'.", fg='red'
+        )
+        exit(1)
+
     create_workspace(obj, slug, path)
 
 
@@ -342,4 +349,4 @@ def doctor():
     """Check if your system meets the requirements
     for Aldryn local development"""
     click.echo('Verifying your system setup')
-    check_requirements()
+    exit(0 if check_requirements() else 1)
