@@ -1,6 +1,7 @@
 import subprocess
 import os
 import sys
+from distutils.version import StrictVersion
 
 try:
     import ipdb as pdb
@@ -8,6 +9,7 @@ except ImportError:
     import pdb
 
 import click
+import requests
 
 from .localdev.main import (
     create_workspace, develop_package, start_project, open_project,
@@ -328,7 +330,15 @@ def boilerplate_upload(ctx):
 
 
 @cli.command()
-def version():
+@click.option(
+    '-s', '--skip-check',  is_flag=True, default=False,
+    help="don't check PyPi for newer version",
+)
+@click.option(
+    '-e', '--show-error',  is_flag=True, default=False,
+    help="show error if PyPi check fails",
+)
+def version(skip_check, show_error):
     """Show version info"""
     from . import __version__
     click.echo('package version: {}'.format(__version__))
@@ -342,6 +352,33 @@ def version():
             'rev-parse', '--short', 'HEAD'
         ]).strip()
         click.echo('git revision:    {}'.format(revision))
+
+    if not skip_check:
+        # check pypi for a newer version
+        try:
+            current_version = StrictVersion(__version__)
+            response = requests.get(
+                'https://pypi.python.org/pypi/aldryn-client/json'
+            )
+            response.raise_for_status()
+            new_version = StrictVersion(response.json()['info']['version'])
+
+            if new_version == current_version:
+                click.echo('\nYou have the latest version of aldryn-client!')
+
+            elif new_version > __version__:
+                click.echo(
+                    "\nNew version ({new_version}) available on PyPi. Update "
+                    "now using 'pip install aldryn-client=={new_version}'"
+                    .format(new_version=new_version)
+                )
+        except (requests.RequestException, KeyError, ValueError) as exc:
+            if show_error:
+                click.secho(
+                    '\nThere was an error while trying to retrieve the latest '
+                    'version from pypi.python.org:\n', fg='red'
+                )
+                click.echo(exc)
 
 
 @cli.command()
