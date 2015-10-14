@@ -227,10 +227,9 @@ def push_db(obj):
         '\nYou will also lose any changes that have been made on the test ',
         'server since you pulled its database to your local environment. ',
 
-        '\nA database backup will be created before your Aldryn test server ',
-        'database is overwritten, in case you need to undo this operation.',
-        'You will find this database amongst other database backups in the ',
-        '"Manage Project" section of the Aldryn Control Panel.',
+        '\nIt is recommended to go the project settings on control.aldryn.com',
+        'and take a backup before restoring the database. You can find this ',
+        'action in the "Manage Project" section.',
 
         '\nPlease proceed with caution!'
     )
@@ -255,10 +254,9 @@ def push_media(obj):
         '\nYou will also lose any changes that have been made on the test ',
         'server since you pulled its files to your local environment. ',
 
-        '\nA backup of all media files will be created before your Aldryn test ',
-        'server media files are overwritten, in case you need to undo this operation.',
-        'You will find this backup amongst other media file backups in the ',
-        '"Manage Project" section of the Aldryn Control Panel.',
+        '\nIt is recommended to go the project settings on control.aldryn.com',
+        'and take a backup before restoring media files. You can find this ',
+        'action in the "Manage Project" section.',
 
         '\nPlease proceed with caution!'
     )
