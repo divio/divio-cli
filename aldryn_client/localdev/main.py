@@ -3,8 +3,8 @@ import tarfile
 import re
 import os
 import subprocess
-from time import sleep
 import sys
+from time import sleep
 
 import click
 import requests
@@ -230,7 +230,8 @@ def load_database_dump(client, path=None):
 
 
 def download_media(client, path=None):
-    path = os.path.join(utils.get_project_home(path), 'data', 'media')
+    project_home = utils.get_project_home(path)
+    path = os.path.join(project_home, 'data', 'media')
     website_slug = utils.get_aldryn_project_settings(path)['slug']
     stage = 'test'
 
@@ -255,11 +256,13 @@ def download_media(client, path=None):
         # created from within the container will be owned by root. As a
         # workaround, make the folder permissions more permissive, to
         # allow the invoking user to create files inside it.
-        docker_compose = utils.get_docker_compose_cmd(
-            utils.get_project_home(path))
+        docker_compose = utils.get_docker_compose_cmd(project_home)
         check_call(
             docker_compose(
-                'run', '--rm', 'web', 'chown', '-R', str(os.getuid()), 'data'))
+                'run', '--rm', 'web',
+                'chown', '-R', str(os.getuid()), 'data'
+            )
+        )
 
     click.secho('Extracting files to {}'.format(path))
     with open(backup_path, 'rb') as fobj:
