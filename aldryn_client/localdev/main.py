@@ -4,6 +4,7 @@ import re
 import os
 import subprocess
 from time import sleep
+import sys
 
 import click
 import requests
@@ -248,6 +249,16 @@ def download_media(client, path=None):
     if os.path.isdir(path):
         click.secho('Removing local files')
         shutil.rmtree(path)
+
+    if 'linux' in sys.platform:
+        # On Linux, Docker typically runs as root, so files and folders
+        # created from within the container will be owned by root. As a
+        # workaround, make the folder permissions more permissive, to
+        # allow the invoking user to create files inside it.
+        subprocess.call([
+            'docker', 'exec',
+            utils.get_db_container_id(utils.get_project_home(path)),
+            'chmod', '777', '/app/data'])
 
     click.secho('Extracting files to {}'.format(path))
     with open(backup_path, 'rb') as fobj:
