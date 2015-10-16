@@ -118,25 +118,17 @@ def create_workspace(client, website_slug, path=None):
             click.secho('Aborting', fg='red')
             exit(-1)
 
-    # wrap the the code into a big try..except
-    # to remove the folder if setup failed
-    try:
-        # clone git project
-        clone_project(website_slug, path)
+    # clone git project
+    clone_project(website_slug, path)
 
-        # check for new baseproject + add .aldryn
-        configure_project(website_slug, path, client)
+    # check for new baseproject + add .aldryn
+    configure_project(website_slug, path, client)
 
-        # setup docker website containers
-        setup_website_containers(client, path)
+    # setup docker website containers
+    setup_website_containers(client, path)
 
-        # download media files
-        download_media(client, path)
-
-    except:
-        if os.path.isdir(path):
-            shutil.rmtree(path, ignore_errors=True)
-        raise
+    # download media files
+    download_media(client, path)
 
     instructions = (
         "Finished setting up your project's workspace!",
