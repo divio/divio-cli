@@ -255,10 +255,11 @@ def download_media(client, path=None):
         # created from within the container will be owned by root. As a
         # workaround, make the folder permissions more permissive, to
         # allow the invoking user to create files inside it.
-        subprocess.call([
-            'docker', 'exec',
-            utils.get_db_container_id(utils.get_project_home(path)),
-            'chmod', '777', '/app/data'])
+        docker_compose = utils.get_docker_compose_cmd(
+            utils.get_project_home(path))
+        check_call(
+            docker_compose(
+                'run', '--rm', 'web', 'chown', '-R', str(os.getuid()), 'data'))
 
     click.secho('Extracting files to {}'.format(path))
     with open(backup_path, 'rb') as fobj:
