@@ -264,49 +264,56 @@ def download_media(client, path=None):
     click.secho('Done', fg='green')
 
 
-def upload_database(client):
+def upload_database(client, existing_dump_path=None):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)['id']
-    dump_filename = 'local_db.sql'
-    archive_filename = 'local_db.tar.gz'
-    archive_path = os.path.join(project_home, archive_filename)
-    docker_compose = utils.get_docker_compose_cmd(project_home)
-    website_slug = utils.get_aldryn_project_settings(project_home)['slug']
-    stage = 'test'
 
-    click.secho(
-        ' ---> Pushing local database to {} {} server'.format(
-            website_slug,
-            stage,
-        ),
-    )
+    if existing_dump_path:
+        dump_taken_from_container = False
+        archive_path = existing_dump_path
+    else:
+        dump_taken_from_container = True
+        dump_filename = 'local_db.sql'
+        archive_filename = 'local_db.tar.gz'
+        archive_path = os.path.join(project_home, archive_filename)
+        docker_compose = utils.get_docker_compose_cmd(project_home)
+        website_slug = utils.get_aldryn_project_settings(project_home)['slug']
+        stage = 'test'
 
-    # start db
-    click.secho('Starting local database server...')
-    check_call(docker_compose('up', '-d', 'db'))
-
-    # take dump of database
-    click.secho('Dumping local database...')
-    db_container_id = utils.get_db_container_id(project_home)
-
-    subprocess.call((
-        'docker', 'exec', db_container_id,
-        'pg_dump', '-U', 'postgres', '-d', 'db',
-        '-f', os.path.join('/app/', dump_filename)
-    ))
-
-    click.secho('Compressing SQL dump...')
-    with tarfile.open(archive_path, mode='w:gz') as tar:
-        tar.add(
-            os.path.join(project_home, dump_filename),
-            arcname=dump_filename
+        click.secho(
+            ' ---> Pushing local database to {} {} server'.format(
+                website_slug,
+                stage,
+            ),
         )
+
+        # start db
+        click.secho('Starting local database server...')
+        check_call(docker_compose('up', '-d', 'db'))
+
+        # take dump of database
+        click.secho('Dumping local database...')
+        db_container_id = utils.get_db_container_id(project_home)
+
+        subprocess.call((
+            'docker', 'exec', db_container_id,
+            'pg_dump', '-U', 'postgres', '-d', 'db',
+            '-f', os.path.join('/app/', dump_filename)
+        ))
+
+        click.secho('Compressing SQL dump...')
+        with tarfile.open(archive_path, mode='w:gz') as tar:
+            tar.add(
+                os.path.join(project_home, dump_filename),
+                arcname=dump_filename
+            )
 
     click.secho('Uploading...')
     client.upload_db(website_id, archive_path)
-    # clean up
-    for temp_file in (dump_filename, archive_filename):
-        os.remove(os.path.join(project_home, temp_file))
+    if dump_taken_from_container:
+        # clean up
+        for temp_file in (dump_filename, archive_filename):
+            os.remove(os.path.join(project_home, temp_file))
     click.secho('Done', fg='green')
 
 
