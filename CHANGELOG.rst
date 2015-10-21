@@ -1,16 +1,11 @@
 Changelog
 =========
 
-Development
------------
-* Add changelog
-
-
 2.0.2 (2015-10-21)
 ------------------
-* Fix for local directory permissions on Linux
+* Fix for local directory permissions on Linux (https://github.com/aldryn/aldryn-client/pull/98)
 * Don't automatically delete a project after a failed setup.
-  Users are prompted to delete the project if trying to set it up agagin.
+  Users are prompted to delete the project if trying to set it up again.
 
 
 2.0.1 (2015-10-14)
