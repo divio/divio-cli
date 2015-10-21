@@ -5,6 +5,14 @@ Development
 -----------
 * Add changelog
 
+
+2.0.2 (2015-10-21)
+------------------
+* Fix for local directory permissions on Linux
+* Don't automatically delete a project after a failed setup.
+  Users are prompted to delete the project if trying to set it up agagin.
+
+
 2.0.1 (2015-10-14)
 ------------------
 * Change push database / media confirmation texts to represent the actual state
