@@ -212,8 +212,9 @@ def project_push():
 
 
 @project_push.command(name='db')
+@click.option('-p', '--dump-path', default='.', help='external dump path')
 @click.pass_obj
-def push_db(obj):
+def push_db(obj, dump_path):
     warning = (
         'WARNING',
         '=======',
@@ -237,7 +238,7 @@ def push_db(obj):
     click.secho(os.linesep.join(warning), fg='red')
     if not click.confirm('\nAre you sure you want to continue?'):
         return
-    upload_database(obj)
+    upload_database(obj, dump_path)
 
 
 @project_push.command(name='media')
