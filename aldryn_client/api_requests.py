@@ -33,9 +33,11 @@ class APIRequest(object):
     url = None
     headers = {}
 
-    def __init__(self, session, url_kwargs=None, data=None, files=None,
+    def __init__(self, session, url=None, url_kwargs=None, data=None, files=None,
                  *args, **kwargs):
         self.session = session
+        if url:
+            self.url = url
         self.url_kwargs = url_kwargs or {}
         self.data = data or {}
         self.files = files or {}
@@ -58,8 +60,8 @@ class APIRequest(object):
                 *args, **kwargs
             )
         except (requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout):
-            raise click.ClickException(messages.NETWORK_ERROR_MESSAGE)
+                requests.exceptions.Timeout) as e:
+            raise click.ClickException(messages.NETWORK_ERROR_MESSAGE + unicode(e))
 
         return self.verify(response)
 
@@ -86,6 +88,11 @@ class RawResponse(object):
 class TextResponse(object):
     def process(self, response):
         return response.text
+
+
+class JsonResponse(object):
+    def process(self, response):
+        return response.json()
 
 
 class FileResponse(object):
@@ -179,9 +186,31 @@ class DownloadBackupRequest(FileResponse, APIRequest):
         return super(DownloadBackupRequest, self).verify(response)
 
 
+# Download DB
+
+class DownloadDBRequestRequest(JsonResponse, APIRequest):
+    url = '/api/v1/website/{website_id}/download/db/request/'
+    method = 'POST'
+
+
+class DownloadDBProgressRequest(JsonResponse, APIRequest):
+    method = 'GET'
+
+
 class DownloadDBRequest(FileResponse, APIRequest):
     url = '/api/v1/workspace/{website_slug}/download/db/'
     headers = {'accept': 'application/x-tar-gz'}
+
+
+# Download Media
+
+class DownloadMediaRequestRequest(JsonResponse, APIRequest):
+    url = '/api/v1/website/{website_id}/download/media/request/'
+    method = 'POST'
+
+
+class DownloadMediaProgressRequest(JsonResponse, APIRequest):
+    method = 'GET'
 
 
 class DownloadMediaRequest(FileResponse, APIRequest):
@@ -189,7 +218,9 @@ class DownloadMediaRequest(FileResponse, APIRequest):
     headers = {'accept': 'application/x-tar-gz'}
 
 
-class UploadDBRequest(TextResponse, APIRequest):
+# Upload DB
+
+class UploadDBRequest(JsonResponse, APIRequest):
     url = '/api/v1/website/{website_id}/upload/db/'
     method = 'POST'
 
@@ -200,7 +231,7 @@ class UploadDBRequest(TextResponse, APIRequest):
 
     def verify(self, response):
         if response.status_code < 500:
-            click.secho('Database dump successfully uploaded')
+            pass
         if response.status_code == requests.codes.bad_request:
             try:
                 db_log = response.json()['message'].encode('utf-8')
@@ -214,6 +245,16 @@ class UploadDBRequest(TextResponse, APIRequest):
         return super(UploadDBRequest, self).verify(response)
 
 
-class UploadMediaFilesRequest(TextResponse, APIRequest):
+class UploadDBProgressRequest(JsonResponse, APIRequest):
+    method = 'GET'
+
+
+# Upload Media
+
+class UploadMediaFilesRequest(JsonResponse, APIRequest):
     url = '/api/v1/website/{website_id}/upload/media/'
     method = 'POST'
+
+
+class UploadMediaFilesProgressRequest(JsonResponse, APIRequest):
+    method = 'GET'
