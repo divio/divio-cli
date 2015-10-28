@@ -231,8 +231,6 @@ class UploadDBRequest(JsonResponse, APIRequest):
         return error_codes
 
     def verify(self, response):
-        if response.status_code < 500:
-            pass
         if response.status_code == requests.codes.bad_request:
             try:
                 db_log = response.json()['message'].encode('utf-8')
