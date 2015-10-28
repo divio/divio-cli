@@ -148,7 +148,7 @@ def pull_db(client, path=None):
     stage = 'test'
 
     click.secho(
-        ' ---> Pulling database from {} {} server'.format(
+        ' ===> Pulling database from {} {} server'.format(
             website_slug,
             stage,
         ),
@@ -157,27 +157,35 @@ def pull_db(client, path=None):
 
     # start db
     start_db = time()
-    click.secho('Starting local database server...', nl=False)
+    click.secho(' ---> Starting local database server...')
+    click.secho('      ', nl=False)
     check_call(docker_compose('up', '-d', 'db'))
     # get db container id
     db_container_id = utils.get_db_container_id(path)
     db_time = int(time() - start_db)
-    click.echo(' [{}s]'.format(db_time))
+    click.secho('      [{}s]'.format(db_time))
 
-    click.secho('Preparing download...', nl=False)
+    click.secho(' ---> Preparing download...', nl=False)
     start_preparation = time()
-    response = client.download_db_request(website_id)
+    response = client.download_db_request(website_id) or {}
     progress_url = response.get('progress_url')
+    if not progress_url:
+        click.secho(' error!', color='red')
+        exit()
 
     progress = {'success': None}
     while progress.get('success') is None:
         sleep(2)
         progress = client.download_db_progress(url=progress_url)
+    if not progress.get('success'):
+        click.secho(' error!', color='red')
+        click.secho(progress.get('result') or '')
+        exit()
     download_url = progress.get('result') or None
     preparation_time = int(time() - start_preparation)
     click.echo(' [{}s]'.format(preparation_time))
 
-    click.secho('Downloading database...', nl=False)
+    click.secho(' ---> Downloading database...', nl=False)
     start_download = time()
     db_dump_path = client.download_db(website_slug, url=download_url, directory=path)
     download_time = int(time() - start_download)
@@ -185,16 +193,9 @@ def pull_db(client, path=None):
 
     # strip path from dump_path for use in the docker container
     db_dump_path = db_dump_path.replace(path, '')
-    click.secho('Waiting for local database server...', nl=False)
+    click.secho(' ---> Waiting for local database server...', nl=False)
     start_wait = time()
-    # FIXME: hack/fix for db timeout
-    # sometimes, the command below doesn't work
-    # sleep again for 20secs to make sure its *really* up
-    # CHECK: is this really necessary? Its had time to start up while the whole
-    #        download happened. And there even is a loop with checks below.
-    sleep(20)
-
-    # wait for postgres in db container to start
+    # check for postgres in db container to start
     attempts = 10
     for attempt in range(attempts):
         try:
@@ -203,7 +204,7 @@ def pull_db(client, path=None):
                 'psql', '-U', 'postgres',
             ], catch=False, silent=True)
         except subprocess.CalledProcessError:
-            sleep(attempt)
+            sleep(5)
         else:
             break
     else:
@@ -214,12 +215,12 @@ def pull_db(client, path=None):
     wait_time = int(time() - start_wait)
     click.echo(' [{}s]'.format(wait_time))
 
-    click.secho('Removing local database...', nl=False)
+    click.secho(' ---> Removing local database...', nl=False)
     start_remove = time()
     # create empty db
     subprocess.call([
         'docker', 'exec', db_container_id,
-        'dropdb', '-U', 'postgres', 'db',
+        'dropdb', '-U', 'postgres', 'db', '--if-exists',
     ])  # TODO: silence me
 
     check_call([
@@ -229,7 +230,7 @@ def pull_db(client, path=None):
     remove_time = int(time() - start_remove)
     click.echo(' [{}s]'.format(remove_time))
 
-    click.secho('Importing database...', nl=False)
+    click.secho(' ---> Importing database...', nl=False)
     start_import = time()
     # FIXME: because of different ownership,
     # this spits a lot of warnings which can
@@ -263,26 +264,33 @@ def pull_media(client, path=None):
     stage = 'test'
 
     click.secho(
-        ' ---> Pulling media files from {} {} server'.format(
+        ' ===> Pulling media files from {} {} server'.format(
             website_slug,
             stage,
         ),
     )
     start_time = time()
-    click.secho('Preparing download...', nl=False)
+    click.secho(' ---> Preparing download...', nl=False)
     start_preparation = time()
-    response = client.download_media_request(website_id)
+    response = client.download_media_request(website_id) or {}
     progress_url = response.get('progress_url')
+    if not progress_url:
+        click.secho(' error!', color='red')
+        exit()
 
     progress = {'success': None}
     while progress.get('success') is None:
         sleep(2)
         progress = client.download_media_progress(url=progress_url)
+    if not progress.get('success'):
+        click.secho(' error!', color='red')
+        click.secho(progress.get('result') or '')
+        exit()
     download_url = progress.get('result') or None
     preparation_time = int(time() - start_preparation)
     click.echo(' [{}s]'.format(preparation_time))
 
-    click.secho('Downloading...', nl=False)
+    click.secho(' ---> Downloading...', nl=False)
     start_download = time()
     backup_path = client.download_media(website_slug, url=download_url)
     if not backup_path:
@@ -293,7 +301,7 @@ def pull_media(client, path=None):
 
     if os.path.isdir(path):
         start_remove = time()
-        click.secho('Removing local files...', nl=False)
+        click.secho(' ---> Removing local files...', nl=False)
         shutil.rmtree(path)
         remove_time = int(time() - start_remove)
         click.echo(' [{}s]'.format(remove_time))
@@ -311,7 +319,7 @@ def pull_media(client, path=None):
             )
         )
 
-    click.secho('Extracting files to {}...'.format(path), nl=False)
+    click.secho(' ---> Extracting files to {}...'.format(path), nl=False)
     start_extract = time()
     with open(backup_path, 'rb') as fobj:
         with tarfile.open(fileobj=fobj, mode='r:*') as media_archive:
@@ -335,7 +343,7 @@ def push_db(client):
     stage = 'test'
 
     click.secho(
-        ' ---> Pushing local database to {} {} server'.format(
+        ' ===> Pushing local database to {} {} server'.format(
             website_slug,
             stage,
         ),
@@ -344,13 +352,14 @@ def push_db(client):
 
     # start db
     start_db = time()
-    click.secho('Starting local database server...', nl=False)
+    click.secho(' ---> Starting local database server...')
+    click.secho('      ', nl=False)
     check_call(docker_compose('up', '-d', 'db'))
     db_time = int(time() - start_db)
-    click.echo(' [{}s]'.format(db_time))
+    click.secho('      [{}s]'.format(db_time))
 
     # take dump of database
-    click.secho('Dumping local database...', nl=False)
+    click.secho(' ---> Dumping local database...', nl=False)
     start_dump = time()
     # TODO: show total table and row count
     db_container_id = utils.get_db_container_id(project_home)
@@ -364,7 +373,7 @@ def push_db(client):
 
     sql_dump_size = os.path.getsize(dump_filename)
     click.secho(
-        'Compressing SQL dump ({})...'.format(
+        ' ---> Compressing SQL dump ({})...'.format(
             pretty_size(sql_dump_size)
         ),
         nl=False,
@@ -384,20 +393,27 @@ def push_db(client):
         )
     )
 
-    click.secho('Uploading...', nl=False)
+    click.secho(' ---> Uploading...', nl=False)
     start_upload = time()
-    response = client.upload_db(website_id, archive_path)
+    response = client.upload_db(website_id, archive_path) or {}
     upload_time = int(time() - start_upload)
     click.echo(' [{}s]'.format(upload_time))
 
     progress_url = response.get('progress_url')
+    if not progress_url:
+        click.secho(' error!', color='red')
+        exit()
 
-    click.secho('Processing...', nl=False)
+    click.secho(' ---> Processing...', nl=False)
     start_processing = time()
     progress = {'success': None}
     while progress.get('success') is None:
         sleep(2)
         progress = client.upload_db_progress(url=progress_url)
+    if not progress.get('success'):
+        click.secho(' error!', color='red')
+        click.secho(progress.get('result') or '')
+        exit()
     processing_time = int(time() - start_processing)
     click.echo(' [{}s]'.format(processing_time))
 
@@ -449,10 +465,13 @@ def push_media(client):
     )
     click.secho('Uploading...', nl=False)
     start_upload = time()
-    response = client.upload_media(website_id, archive_path)
+    response = client.upload_media(website_id, archive_path) or {}
     upload_time = int(time() - start_upload)
     click.echo(' [{}s]'.format(upload_time))
     progress_url = response.get('progress_url')
+    if not progress_url:
+        click.secho(' error!', color='red')
+        exit()
 
     click.secho('Processing...', nl=False)
     start_processing = time()
@@ -460,6 +479,10 @@ def push_media(client):
     while progress.get('success') is None:
         sleep(2)
         progress = client.upload_media_progress(url=progress_url)
+    if not progress.get('success'):
+        click.secho(' error!', color='red')
+        click.secho(progress.get('result') or '')
+        exit()
     processing_time = int(time() - start_processing)
     click.echo(' [{}s]'.format(processing_time))
 
