@@ -1,4 +1,5 @@
 import os
+from urlparse import urljoin
 
 import click
 import requests
@@ -15,7 +16,7 @@ class SingleHostSession(requests.Session):
             setattr(self, key, value)
 
     def request(self, method, url, *args, **kwargs):
-        url = self.host + url
+        url = urljoin(self.host, url)
         return super(SingleHostSession, self).request(
             method, url, *args, **kwargs
         )
