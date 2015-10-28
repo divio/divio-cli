@@ -322,7 +322,7 @@ def upload_media(client):
             stage,
         ),
     )
-    click.secho('Conmpressing local media folder...')
+    click.secho('Compressing local media folder...')
     with tarfile.open(archive_path, mode='w:gz') as tar:
         media_dir = os.path.join(project_home, 'data', 'media')
         for item in os.listdir(media_dir):

@@ -203,7 +203,7 @@ class UploadDBRequest(TextResponse, APIRequest):
             click.secho('Database dump successfully uploaded')
         if response.status_code == requests.codes.bad_request:
             try:
-                db_log = response.json()['message']
+                db_log = response.json()['message'].encode('utf-8')
             except (TypeError, IndexError):
                 pass
             else:
