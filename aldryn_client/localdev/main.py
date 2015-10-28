@@ -314,7 +314,7 @@ def pull_media(client, path=None):
     click.secho('Extracting files to {}...'.format(path), nl=False)
     start_extract = time()
     with open(backup_path, 'rb') as fobj:
-        with tarfile.open(fileobj=fobj, mode='r:gz') as media_archive:
+        with tarfile.open(fileobj=fobj, mode='r:*') as media_archive:
             media_archive.extractall(path=path)
     os.remove(backup_path)
     extract_time = int(time() - start_extract)
