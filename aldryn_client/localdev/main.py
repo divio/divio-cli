@@ -439,7 +439,6 @@ def push_media(client):
     )
     start_time = time()
     click.secho('Compressing local media folder...',  nl=False)
-    file_count = 0
     uncompressed_size = 0
     start_compression = time()
     with tarfile.open(archive_path, mode='w:gz') as tar:
@@ -451,8 +450,8 @@ def push_media(client):
                 continue
             file_path = os.path.join(media_dir, item)
             tar.add(file_path, arcname=item)
-            file_count += 1
             uncompressed_size += os.path.getsize(file_path)
+        file_count = len(tar.getmembers())
     compress_time = int(time() - start_compression)
     click.echo(
         ' {} {} ({}) compressed to {} [{}s]'.format(
