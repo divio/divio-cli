@@ -4,13 +4,13 @@ import re
 import os
 import subprocess
 import sys
-from time import sleep
+from time import sleep, time
 
 import click
 import requests
 import shutil
 
-from ..utils import check_call, check_output, is_windows
+from ..utils import check_call, check_output, is_windows, pretty_size
 from ..cloud import get_aldryn_host
 from .. import settings
 from . import utils
@@ -83,7 +83,7 @@ def setup_website_containers(client, path):
         check_call(docker_compose('rm', '-f', 'db'))
 
     click.secho('creating new database container', fg='green')
-    load_database_dump(client, path)
+    pull_db(client, path)
 
     click.secho('sync and migrate database', fg='green')
 
@@ -128,7 +128,7 @@ def create_workspace(client, website_slug, path=None):
     setup_website_containers(client, path)
 
     # download media files
-    download_media(client, path)
+    pull_media(client, path)
 
     instructions = (
         "Finished setting up your project's workspace!",
@@ -140,37 +140,62 @@ def create_workspace(client, website_slug, path=None):
     click.secho('\n\n{}'.format(os.linesep.join(instructions)), fg='green')
 
 
-def load_database_dump(client, path=None):
+def pull_db(client, path=None):
     path = path or utils.get_project_home(path)
+    website_id = utils.get_aldryn_project_settings(path)['id']
     website_slug = utils.get_aldryn_project_settings(path)['slug']
     docker_compose = utils.get_docker_compose_cmd(path)
     stage = 'test'
 
     click.secho(
-        ' ---> Pulling database from {} {} server'.format(
+        ' ===> Pulling database from {} {} server'.format(
             website_slug,
             stage,
         ),
     )
+    start_time = time()
 
-    click.secho('Starting local database server...')
     # start db
+    start_db = time()
+    click.secho(' ---> Starting local database server...')
+    click.secho('      ', nl=False)
     check_call(docker_compose('up', '-d', 'db'))
-
     # get db container id
     db_container_id = utils.get_db_container_id(path)
+    db_time = int(time() - start_db)
+    click.secho('      [{}s]'.format(db_time))
 
-    click.secho('Downloading database...')
-    db_dump_path = client.download_db(website_slug, directory=path)
+    click.secho(' ---> Preparing download...', nl=False)
+    start_preparation = time()
+    response = client.download_db_request(website_id) or {}
+    progress_url = response.get('progress_url')
+    if not progress_url:
+        click.secho(' error!', color='red')
+        exit()
+
+    progress = {'success': None}
+    while progress.get('success') is None:
+        sleep(2)
+        progress = client.download_db_progress(url=progress_url)
+    if not progress.get('success'):
+        click.secho(' error!', color='red')
+        click.secho(progress.get('result') or '')
+        exit()
+    download_url = progress.get('result') or None
+    preparation_time = int(time() - start_preparation)
+    click.echo(' [{}s]'.format(preparation_time))
+
+    click.secho(' ---> Downloading database...', nl=False)
+    start_download = time()
+    db_dump_path = client.download_db(website_slug, url=download_url, directory=path)
+    download_time = int(time() - start_download)
+    click.echo(' [{}s]'.format(download_time))
+
     # strip path from dump_path for use in the docker container
     db_dump_path = db_dump_path.replace(path, '')
-    click.secho('Waiting for local database server...')
-    # FIXME: hack/fix for db timeout
-    # sometimes, the command below doesn't work
-    # sleep again for 20secs to make sure its *really* up
-    sleep(20)
-
-    # wait for postgres in db container to start
+    click.secho(' ---> Waiting for local database server...', nl=False)
+    start_wait = time()
+    # check for postgres in db container to start
     attempts = 10
     for attempt in range(attempts):
         try:
@@ -179,7 +204,7 @@ def load_database_dump(client, path=None):
                 'psql', '-U', 'postgres',
             ], catch=False, silent=True)
         except subprocess.CalledProcessError:
-            sleep(attempt)
+            sleep(5)
         else:
             break
     else:
@@ -187,20 +212,26 @@ def load_database_dump(client, path=None):
             "Couldn't connect to database container. "
             "Database server may not have started."
         )
+    wait_time = int(time() - start_wait)
+    click.echo(' [{}s]'.format(wait_time))
 
-    click.secho('Removing local database...')
+    click.secho(' ---> Removing local database...', nl=False)
+    start_remove = time()
     # create empty db
     subprocess.call([
         'docker', 'exec', db_container_id,
-        'dropdb', '-U', 'postgres', 'db',
+        'dropdb', '-U', 'postgres', 'db', '--if-exists',
     ])  # TODO: silence me
 
     check_call([
         'docker', 'exec', db_container_id,
         'createdb', '-U', 'postgres', 'db',
     ])
+    remove_time = int(time() - start_remove)
+    click.echo(' [{}s]'.format(remove_time))
 
-    click.secho('Importing database...')
+    click.secho(' ---> Importing database...', nl=False)
+    start_import = time()
     # FIXME: because of different ownership,
     # this spits a lot of warnings which can
     # ignored but we can't really validate success
@@ -217,31 +248,63 @@ def load_database_dump(client, path=None):
         ))
     except subprocess.CalledProcessError:
         pass
+    import_time = int(time() - start_import)
+    click.echo(' [{}s]'.format(import_time))
 
-    click.secho('Done', fg='green')
+    click.secho('Done', fg='green', nl=False)
+    total_time = int(time() - start_time)
+    click.echo(' [{}s]'.format(total_time))
 
 
-def download_media(client, path=None):
+def pull_media(client, path=None):
     project_home = utils.get_project_home(path)
     path = os.path.join(project_home, 'data', 'media')
+    website_id = utils.get_aldryn_project_settings(path)['id']
     website_slug = utils.get_aldryn_project_settings(path)['slug']
     stage = 'test'
 
     click.secho(
-        ' ---> Pulling media files from {} {} server'.format(
+        ' ===> Pulling media files from {} {} server'.format(
             website_slug,
             stage,
         ),
     )
-    click.secho('Downloading media files'.format(path))
-    backup_path = client.download_media(website_slug)
+    start_time = time()
+    click.secho(' ---> Preparing download...', nl=False)
+    start_preparation = time()
+    response = client.download_media_request(website_id) or {}
+    progress_url = response.get('progress_url')
+    if not progress_url:
+        click.secho(' error!', color='red')
+        exit()
+
+    progress = {'success': None}
+    while progress.get('success') is None:
+        sleep(2)
+        progress = client.download_media_progress(url=progress_url)
+    if not progress.get('success'):
+        click.secho(' error!', color='red')
+        click.secho(progress.get('result') or '')
+        exit()
+    download_url = progress.get('result') or None
+    preparation_time = int(time() - start_preparation)
+    click.echo(' [{}s]'.format(preparation_time))
+
+    click.secho(' ---> Downloading...', nl=False)
+    start_download = time()
+    backup_path = client.download_media(website_slug, url=download_url)
     if not backup_path:
         # no backup yet, skipping
         return
+    download_time = int(time() - start_download)
+    click.echo(' [{}s]'.format(download_time))
 
     if os.path.isdir(path):
-        click.secho('Removing local files')
+        start_remove = time()
+        click.secho(' ---> Removing local files...', nl=False)
         shutil.rmtree(path)
+        remove_time = int(time() - start_remove)
+        click.echo(' [{}s]'.format(remove_time))
 
     if 'linux' in sys.platform:
         # On Linux, Docker typically runs as root, so files and folders
@@ -256,15 +319,20 @@ def download_media(client, path=None):
             )
         )
 
-    click.secho('Extracting files to {}'.format(path))
+    click.secho(' ---> Extracting files to {}...'.format(path), nl=False)
+    start_extract = time()
     with open(backup_path, 'rb') as fobj:
-        with tarfile.open(fileobj=fobj, mode='r:gz') as media_archive:
+        with tarfile.open(fileobj=fobj, mode='r:*') as media_archive:
             media_archive.extractall(path=path)
     os.remove(backup_path)
-    click.secho('Done', fg='green')
+    extract_time = int(time() - start_extract)
+    click.echo(' [{}s]'.format(extract_time))
+    click.secho('Done', fg='green', nl=False)
+    total_time = int(time() - start_time)
+    click.echo(' [{}s]'.format(total_time))
 
 
-def upload_database(client):
+def push_db(client):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     dump_filename = 'local_db.sql'
@@ -275,42 +343,89 @@ def upload_database(client):
     stage = 'test'
 
     click.secho(
-        ' ---> Pushing local database to {} {} server'.format(
+        ' ===> Pushing local database to {} {} server'.format(
             website_slug,
             stage,
         ),
     )
+    start_time = time()
 
     # start db
-    click.secho('Starting local database server...')
+    start_db = time()
+    click.secho(' ---> Starting local database server...')
+    click.secho('      ', nl=False)
     check_call(docker_compose('up', '-d', 'db'))
+    db_time = int(time() - start_db)
+    click.secho('      [{}s]'.format(db_time))
 
     # take dump of database
-    click.secho('Dumping local database...')
+    click.secho(' ---> Dumping local database...', nl=False)
+    start_dump = time()
+    # TODO: show total table and row count
     db_container_id = utils.get_db_container_id(project_home)
-
     subprocess.call((
         'docker', 'exec', db_container_id,
         'pg_dump', '-U', 'postgres', '-d', 'db',
         '-f', os.path.join('/app/', dump_filename)
     ))
+    dump_time = int(time() - start_dump)
+    click.echo(' [{}s]'.format(dump_time))
 
-    click.secho('Compressing SQL dump...')
+    sql_dump_size = os.path.getsize(dump_filename)
+    click.secho(
+        ' ---> Compressing SQL dump ({})...'.format(
+            pretty_size(sql_dump_size)
+        ),
+        nl=False,
+    )
+    start_compress = time()
     with tarfile.open(archive_path, mode='w:gz') as tar:
         tar.add(
             os.path.join(project_home, dump_filename),
             arcname=dump_filename
         )
+    compressed_size = os.path.getsize(archive_filename)
+    compress_time = int(time() - start_compress)
+    click.echo(
+        ' {} [{}s]'.format(
+            pretty_size(compressed_size),
+            compress_time,
+        )
+    )
 
-    click.secho('Uploading...')
-    client.upload_db(website_id, archive_path)
+    click.secho(' ---> Uploading...', nl=False)
+    start_upload = time()
+    response = client.upload_db(website_id, archive_path) or {}
+    upload_time = int(time() - start_upload)
+    click.echo(' [{}s]'.format(upload_time))
+
+    progress_url = response.get('progress_url')
+    if not progress_url:
+        click.secho(' error!', color='red')
+        exit()
+
+    click.secho(' ---> Processing...', nl=False)
+    start_processing = time()
+    progress = {'success': None}
+    while progress.get('success') is None:
+        sleep(2)
+        progress = client.upload_db_progress(url=progress_url)
+    if not progress.get('success'):
+        click.secho(' error!', color='red')
+        click.secho(progress.get('result') or '')
+        exit()
+    processing_time = int(time() - start_processing)
+    click.echo(' [{}s]'.format(processing_time))
+
     # clean up
     for temp_file in (dump_filename, archive_filename):
         os.remove(os.path.join(project_home, temp_file))
-    click.secho('Done', fg='green')
+    click.secho('Done', fg='green', nl=False)
+    total_time = int(time() - start_time)
+    click.echo(' [{}s]'.format(total_time))
 
 
-def upload_media(client):
+def push_media(client):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     archive_path = os.path.join(project_home, 'local_media.tar.gz')
@@ -322,7 +437,10 @@ def upload_media(client):
             stage,
         ),
     )
-    click.secho('Compressing local media folder...')
+    start_time = time()
+    click.secho('Compressing local media folder...',  nl=False)
+    uncompressed_size = 0
+    start_compression = time()
     with tarfile.open(archive_path, mode='w:gz') as tar:
         media_dir = os.path.join(project_home, 'data', 'media')
         for item in os.listdir(media_dir):
@@ -330,14 +448,48 @@ def upload_media(client):
                 # partial uploads are currently not supported
                 # not including MANIFEST to do a full restore
                 continue
-            tar.add(os.path.join(media_dir, item), arcname=item)
+            file_path = os.path.join(media_dir, item)
+            tar.add(file_path, arcname=item)
+            uncompressed_size += os.path.getsize(file_path)
+        file_count = len(tar.getmembers())
+    compress_time = int(time() - start_compression)
+    click.echo(
+        ' {} {} ({}) compressed to {} [{}s]'.format(
+            file_count,
+            'files' if file_count > 1 else 'file',
+            pretty_size(uncompressed_size),
+            pretty_size(os.path.getsize(archive_path)),
+            compress_time,
+        )
+    )
+    click.secho('Uploading...', nl=False)
+    start_upload = time()
+    response = client.upload_media(website_id, archive_path) or {}
+    upload_time = int(time() - start_upload)
+    click.echo(' [{}s]'.format(upload_time))
+    progress_url = response.get('progress_url')
+    if not progress_url:
+        click.secho(' error!', color='red')
+        exit()
 
-    click.secho('Uploading...')
-    client.upload_media_files(website_id, archive_path)
+    click.secho('Processing...', nl=False)
+    start_processing = time()
+    progress = {'success': None}
+    while progress.get('success') is None:
+        sleep(2)
+        progress = client.upload_media_progress(url=progress_url)
+    if not progress.get('success'):
+        click.secho(' error!', color='red')
+        click.secho(progress.get('result') or '')
+        exit()
+    processing_time = int(time() - start_processing)
+    click.echo(' [{}s]'.format(processing_time))
 
     # clean up
     os.remove(archive_path)
-    click.secho('Done', fg='green')
+    click.secho('Done', fg='green', nl=False)
+    total_time = int(time() - start_time)
+    click.echo(' [{}s]'.format(total_time))
 
 
 def update_local_project():

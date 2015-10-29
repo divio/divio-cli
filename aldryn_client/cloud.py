@@ -163,18 +163,49 @@ class CloudClient(object):
         )
         return request()
 
-    def download_db(self, website_slug, filename=None, directory=None):
+    def download_db_request(self, website_id):
+        request = api_requests.DownloadDBRequestRequest(
+            self.session,
+            url_kwargs={'website_id': website_id},
+        )
+        return request()
+
+    def download_db_progress(self, url):
+        request = api_requests.DownloadDBProgressRequest(
+            self.session,
+            url=url,
+        )
+        return request()
+
+    def download_db(self, website_slug, url=None, filename=None, directory=None):
         request = api_requests.DownloadDBRequest(
             self.session,
+            url=url,
             url_kwargs={'website_slug': website_slug},
             filename=filename,
             directory=directory,
         )
         return request()
 
-    def download_media(self, website_slug, filename=None, directory=None):
+    def download_media_request(self, website_id):
+        request = api_requests.DownloadMediaRequestRequest(
+            self.session,
+            url_kwargs={'website_id': website_id},
+        )
+        return request()
+
+    def download_media_progress(self, url):
+        request = api_requests.DownloadMediaProgressRequest(
+            self.session,
+            url=url,
+        )
+        return request()
+
+    def download_media(self, website_slug, url=None,
+                       filename=None, directory=None):
         request = api_requests.DownloadMediaRequest(
             self.session,
+            url=url,
             url_kwargs={'website_slug': website_slug},
             filename=filename,
             directory=directory,
@@ -189,11 +220,25 @@ class CloudClient(object):
         )
         return request()
 
-    def upload_media_files(self, website_id, archive_path):
+    def upload_db_progress(self, url):
+        request = api_requests.UploadDBProgressRequest(
+            self.session,
+            url=url,
+        )
+        return request()
+
+    def upload_media(self, website_id, archive_path):
         request = api_requests.UploadMediaFilesRequest(
             self.session,
             url_kwargs={'website_id': website_id},
             files={'media_files': open(archive_path, 'rb')}
+        )
+        return request()
+
+    def upload_media_progress(self, url):
+        request = api_requests.UploadMediaFilesProgressRequest(
+            self.session,
+            url=url,
         )
         return request()
 

@@ -5,6 +5,7 @@ import os
 import sys
 from contextlib import contextmanager
 from urlparse import urljoin
+from math import log
 
 import click
 from tabulate import tabulate
@@ -150,3 +151,24 @@ def get_project_cheatsheet_url(client):
 
 def is_windows():
     return sys.platform == 'win32'
+
+
+unit_list = zip(
+    ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
+    [0, 0, 1, 2, 2, 2],
+)
+
+
+def pretty_size(num):
+    """Human friendly file size"""
+    # http://stackoverflow.com/a/10171475
+    if num > 1:
+        exponent = min(int(log(num, 1024)), len(unit_list) - 1)
+        quotient = float(num) / 1024**exponent
+        unit, num_decimals = unit_list[exponent]
+        format_string = '{:.%sf} {}' % (num_decimals)
+        return format_string.format(quotient, unit)
+    elif num == 0:
+        return '0 bytes'
+    elif num == 1:
+        return '1 byte'
