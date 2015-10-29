@@ -1,9 +1,10 @@
 Changelog
 =========
 
-Next release
-------------
+2.0.3 (2015-10-29)
+------------------
 
+* More robust push/pull commands for db and media
 * Encode database dump log into utf-8 before writing the file.
 
 
