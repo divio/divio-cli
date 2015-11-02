@@ -172,3 +172,24 @@ def pretty_size(num):
         return '0 bytes'
     elif num == 1:
         return '1 byte'
+
+
+def get_size(start_path):
+    """
+    Get size of the file or directory specified by start_path in bytes.
+
+    If ``start_path`` points to a file - get it's size, if it points to a
+    directory - calculate total size of all the files within it
+    (including subdirectories).
+    """
+    # http://stackoverflow.com/a/1392549/176490
+
+    if os.path.isfile(start_path):
+        return os.path.getsize(start_path)
+
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(start_path):
+        for filename in filenames:
+            fp = os.path.join(dirpath, filename)
+            total_size += os.path.getsize(fp)
+    return total_size

@@ -10,7 +10,7 @@ import click
 import requests
 import shutil
 
-from ..utils import check_call, check_output, is_windows, pretty_size
+from ..utils import check_call, check_output, is_windows, pretty_size, get_size
 from ..cloud import get_aldryn_host
 from .. import settings
 from . import utils
@@ -451,7 +451,7 @@ def push_media(client):
                 continue
             file_path = os.path.join(media_dir, item)
             tar.add(file_path, arcname=item)
-            uncompressed_size += os.path.getsize(file_path)
+            uncompressed_size += get_size(file_path)
         file_count = len(tar.getmembers())
     compress_time = int(time() - start_compression)
     click.echo(
