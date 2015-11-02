@@ -264,7 +264,7 @@ def push_media(obj):
 
 
 @project.command(name='develop')
-@click.argument('package', 'package')
+@click.argument('package')
 @click.option(
     '--no-rebuild', is_flag=True, default=False, help='Addon directory'
 )
@@ -295,6 +295,18 @@ def addon_validate(ctx):
 def addon_upload(ctx):
     """Upload addon to Aldryn"""
     ret = upload_addon(ctx.obj, ctx.parent.params['path'])
+    click.echo(ret)
+
+
+@addon.command(name='register')
+@click.argument('name')
+@click.argument('package_name')
+@click.argument('license_id', required=False)
+@click.argument('organisation_id', required=False)
+@click.pass_context
+def addon_register(ctx, name, package_name, license_id, organisation_id):
+    """Register addon on Aldryn"""
+    ret = ctx.obj.register_addon(name, package_name, license_id, organisation_id)
     click.echo(ret)
 
 

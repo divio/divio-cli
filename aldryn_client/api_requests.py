@@ -134,6 +134,11 @@ class ProjectDetailRequest(APIRequest):
     url = '/api/v1/website/{website_id}/detail/'
 
 
+class RegisterAddonRequest(JsonResponse, APIRequest):
+    url = '/api/v1/addon/register/'
+    method = 'POST'
+
+
 class UploadAddonRequest(TextResponse, APIRequest):
     url = '/api/v1/apps/'
     method = 'POST'
