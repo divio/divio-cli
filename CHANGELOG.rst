@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2.0.4 (2015-11-05)
+------------------
+
+* Don't set DB permissions when uploading the database
+
+
 2.0.3 (2015-10-29)
 ------------------
 
