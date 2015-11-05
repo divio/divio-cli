@@ -366,6 +366,7 @@ def push_db(client):
     subprocess.call((
         'docker', 'exec', db_container_id,
         'pg_dump', '-U', 'postgres', '-d', 'db',
+        '--no-owner', '--no-privileges',
         '-f', os.path.join('/app/', dump_filename)
     ))
     dump_time = int(time() - start_dump)
