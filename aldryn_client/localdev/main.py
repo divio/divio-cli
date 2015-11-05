@@ -365,9 +365,14 @@ def push_db(client):
     db_container_id = utils.get_db_container_id(project_home)
     subprocess.call((
         'docker', 'exec', db_container_id,
-        'pg_dump', '-U', 'postgres', '-d', 'db',
+        'pg_dump', '-U', 'postgres', '-d', 'db', '--no-owner',
         '-f', os.path.join('/app/', dump_filename)
     ))
+    subprocess.call((
+        'cat local_db.sql | grep -v GRANT | grep -v REVOKE > '
+        'local_db_no_permissions.sql && '
+        'mv local_db_no_permissions.sql local_db.sql',
+    ), shell=True)
     dump_time = int(time() - start_dump)
     click.echo(' [{}s]'.format(dump_time))
 
