@@ -25,7 +25,7 @@ def get_aldryn_host():
         click.secho(
             'You are using old ALDRYN_HOST syntax. Please change {} to {}'
             .format(old_style, host),
-            fg='red'
+            fg='yellow'
         )
 
     return host
