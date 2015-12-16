@@ -4,6 +4,7 @@ Changelog
 Next release
 ------------
 
+* Issue a warning instead of failing on missing boilerplate files
 * Fix ``media`` directory size calculation during ``aldryn project push media``.
 
 
