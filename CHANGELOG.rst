@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Next release
+------------
+
+* Fix ``media`` directory size calculation during ``aldryn project push media``.
+
+
 2.0.4 (2015-11-05)
 ------------------
 
