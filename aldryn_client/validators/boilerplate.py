@@ -53,7 +53,8 @@ def validate_boilerplate_config(config, path):
     if missing_files:
         click.secho(
             'The following required files were not found:\n{}'.format(
-            '\n'.join(missing_files)), fg='yellow')
+                '\n'.join(missing_files)),
+            fg='yellow')
 
     errors = validate_package_config(
         config=config,
