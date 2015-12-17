@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Next release
-------------
+2.0.5 (2015-12-17)
+------------------
 
 * Issue a warning instead of failing on missing boilerplate files.
 * Fix ``media`` directory size calculation during ``aldryn project push media``.
