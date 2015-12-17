@@ -44,12 +44,17 @@ def validate_protected_files(config, path):
 
 
 def validate_boilerplate_config(config, path):
+    missing_files = []
     for required_file in BOILERPLATE_REQUIRED_FILES:
         fpath = os.path.join(path, required_file)
         if not os.path.exists(fpath):
-            raise click.ClickException(
-                'Required file {} not found.'.format(fpath)
-            )
+            missing_files.append(fpath)
+
+    if missing_files:
+        click.secho(
+            'The following required files were not found:\n{}'.format(
+                '\n'.join(missing_files)),
+            fg='yellow')
 
     errors = validate_package_config(
         config=config,
