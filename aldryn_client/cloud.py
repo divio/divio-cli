@@ -126,13 +126,12 @@ class CloudClient(object):
         )
         return request()
 
-    def register_addon(self, name, package_name, license_id=None, organisation_id=None):
+    def register_addon(self, package_name, verbose_name, organisation_id=None):
         request = api_requests.RegisterAddonRequest(
             self.session,
             data={
-                'name': name,
                 'package_name': package_name,
-                'license_id': license_id,
+                'name': verbose_name,
                 'organisation': organisation_id,
             }
         )

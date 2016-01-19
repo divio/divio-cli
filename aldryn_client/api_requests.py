@@ -96,6 +96,26 @@ class JsonResponse(object):
         return response.json()
 
 
+class DjangoFormMixin(object):
+    success_message = 'Request successful'
+
+    def verify(self, response):
+        if response.ok:
+            return self.success_message
+        elif response.status_code == requests.codes.bad_request:
+            formatted = (
+                'There was an error submitting your request:\n'
+                '-------------------------------------------\n\n'
+            )
+            for field, errors in response.json().items():
+                formatted += ' - {}\n'.format(field)
+                for error in errors:
+                    formatted += '   - {}\n'.format(error)
+                formatted += '\n'
+            return formatted.strip('\n')
+        return super(DjangoFormMixin, self).verify(response)
+
+
 class FileResponse(object):
     def __init__(self, *args, **kwargs):
         self.filename = kwargs.pop('filename', None)
@@ -134,9 +154,10 @@ class ProjectDetailRequest(APIRequest):
     url = '/api/v1/website/{website_id}/detail/'
 
 
-class RegisterAddonRequest(JsonResponse, APIRequest):
+class RegisterAddonRequest(DjangoFormMixin, JsonResponse, APIRequest):
     url = '/api/v1/addon/register/'
     method = 'POST'
+    success_message = 'Addon successfully registered'
 
 
 class UploadAddonRequest(TextResponse, APIRequest):

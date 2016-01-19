@@ -299,14 +299,16 @@ def addon_upload(ctx):
 
 
 @addon.command(name='register')
-@click.argument('name')
+@click.argument('verbose_name')
 @click.argument('package_name')
-@click.argument('license_id', required=False)
-@click.argument('organisation_id', required=False)
+@click.option('-o', '--organisation', help='Register for an organisation', type=int)
 @click.pass_context
-def addon_register(ctx, name, package_name, license_id, organisation_id):
-    """Register addon on Aldryn"""
-    ret = ctx.obj.register_addon(name, package_name, license_id, organisation_id)
+def addon_register(ctx, package_name, verbose_name, organisation):
+    """Register your addon on Aldryn\n
+    - Verbose Name:        Name of the Addon as it appears in the Marketplace.
+    - Package Name:        System wide unique Python package name
+    """
+    ret = ctx.obj.register_addon(verbose_name, package_name, organisation)
     click.echo(ret)
 
 
