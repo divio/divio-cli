@@ -57,10 +57,10 @@ class Config(object):
             elif newest_version is False:
                 # fail silently, nothing the user can do about this
                 self.config.pop(version_key, None)
-                pass
 
-        newer_version = StrictVersion(self.config.get(version_key, None))
-        if newer_version:
+        newer_version_string = self.config.get(version_key, None)
+        if newer_version_string:
+            newer_version = StrictVersion(newer_version_string)
             if newer_version == current_version:
                 self.config.pop(version_key)
             else:
