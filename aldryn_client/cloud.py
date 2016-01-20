@@ -126,6 +126,17 @@ class CloudClient(object):
         )
         return request()
 
+    def register_addon(self, package_name, verbose_name, organisation_id=None):
+        request = api_requests.RegisterAddonRequest(
+            self.session,
+            data={
+                'package_name': package_name,
+                'name': verbose_name,
+                'organisation': organisation_id,
+            }
+        )
+        return request()
+
     def upload_addon(self, archive_obj):
         request = api_requests.UploadAddonRequest(
             self.session,
