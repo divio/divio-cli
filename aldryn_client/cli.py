@@ -9,14 +9,13 @@ except ImportError:
     import pdb
 
 import click
-import requests
 
 import localdev.main
 from .cloud import CloudClient, get_aldryn_host
 from .check_system import check_requirements
 from .utils import (
     hr, table, open_project_cloud_site, get_dashboard_url,
-    get_project_cheatsheet_url,
+    get_project_cheatsheet_url, get_latest_version_from_pypi,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -44,6 +43,11 @@ def cli(ctx, debug):
         sys.excepthook = exception_handler
 
     ctx.obj = CloudClient(get_aldryn_host())
+
+    # skip if 'aldryn version' is run
+    if not ctx.args == ['version']:
+        # check for newer versions
+        ctx.obj.config.check_for_updates()
 
 
 def login_token_helper(ctx, param, value):
@@ -362,30 +366,27 @@ def version(skip_check, show_error):
 
     if not skip_check:
         # check pypi for a newer version
-        try:
-            current_version = StrictVersion(__version__)
-            response = requests.get(
-                'https://pypi.python.org/pypi/aldryn-client/json'
+        current_version = StrictVersion(__version__)
+        newest_version, exc = get_latest_version_from_pypi()
+
+        if newest_version and newest_version == current_version:
+            click.echo('\nYou have the latest version of aldryn-client!')
+
+        elif newest_version and newest_version > current_version:
+            click.echo(
+                "\nNew version ({newest_version}) available on PyPi. Update "
+                "now using 'pip install aldryn-client=={newest_version}'"
+                .format(newest_version=newest_version)
             )
-            response.raise_for_status()
-            new_version = StrictVersion(response.json()['info']['version'])
-
-            if new_version == current_version:
-                click.echo('\nYou have the latest version of aldryn-client!')
-
-            elif new_version > __version__:
-                click.echo(
-                    "\nNew version ({new_version}) available on PyPi. Update "
-                    "now using 'pip install aldryn-client=={new_version}'"
-                    .format(new_version=new_version)
-                )
-        except (requests.RequestException, KeyError, ValueError) as exc:
+        elif newest_version is False:
             if show_error:
                 click.secho(
-                    '\nThere was an error while trying to retrieve the latest '
-                    'version from pypi.python.org:\n', fg='red'
+                    'There was an error while trying to check for the latest '
+                    'version on pypi.python.org',
+                    fg='red'
                 )
-                click.echo(exc)
+                if exc:
+                    click.echo(exc)
 
 
 @cli.command()

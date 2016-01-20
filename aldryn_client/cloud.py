@@ -7,6 +7,7 @@ import click
 from . import settings
 from . import messages
 from . import api_requests
+from .config import Config
 
 
 ENDPOINT = 'https://control.{host}'
@@ -41,6 +42,7 @@ def get_endpoint(host=None):
 
 class CloudClient(object):
     def __init__(self, host=None):
+        self.config = Config()
         self.endpoint = get_endpoint(host)
         self.netrc = WritableNetRC()
         self.session = self.init_session()

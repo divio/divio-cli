@@ -1,6 +1,8 @@
 import subprocess
 import tarfile
 import tempfile
+from distutils.version import StrictVersion
+
 import os
 import sys
 from contextlib import contextmanager
@@ -8,6 +10,7 @@ from urlparse import urljoin
 from math import log
 
 import click
+import requests
 from tabulate import tabulate
 
 
@@ -27,8 +30,8 @@ def indent(text, spaces=4):
 
 def get_package_version(path):
     return check_output(
-        ['python', 'setup.py', '--version'],
-        cwd=path
+            ['python', 'setup.py', '--version'],
+            cwd=path
     ).strip()
 
 
@@ -154,8 +157,8 @@ def is_windows():
 
 
 unit_list = zip(
-    ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
-    [0, 0, 1, 2, 2, 2],
+        ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
+        [0, 0, 1, 2, 2, 2],
 )
 
 
@@ -164,7 +167,7 @@ def pretty_size(num):
     # http://stackoverflow.com/a/10171475
     if num > 1:
         exponent = min(int(log(num, 1024)), len(unit_list) - 1)
-        quotient = float(num) / 1024**exponent
+        quotient = float(num) / 1024 ** exponent
         unit, num_decimals = unit_list[exponent]
         format_string = '{:.%sf} {}' % (num_decimals)
         return format_string.format(quotient, unit)
@@ -193,3 +196,17 @@ def get_size(start_path):
             fp = os.path.join(dirpath, filename)
             total_size += os.path.getsize(fp)
     return total_size
+
+
+def get_latest_version_from_pypi():
+    try:
+        response = requests.get(
+            'https://pypi.python.org/pypi/aldryn-client/json'
+        )
+        response.raise_for_status()
+        newest_version = StrictVersion(response.json()['info']['version'])
+        return newest_version, None
+    except requests.RequestException as exc:
+        return False, exc
+    except (KeyError, ValueError):
+        return False, None
