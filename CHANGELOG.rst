@@ -1,6 +1,17 @@
 Changelog
 =========
 
+
+2.1 (2016-01-20)
+------------------
+
+* Python 3 support (experimental)
+* Automated update checker
+* New command ``aldryn addon register``
+* Improve ordering and grouping of ``aldryn project list``
+* Introduces a system for a config file
+
+
 2.0.5 (2015-12-17)
 ------------------
 
