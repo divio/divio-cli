@@ -1,4 +1,5 @@
 import subprocess
+import itertools
 import os
 import sys
 from distutils.version import StrictVersion
@@ -74,25 +75,70 @@ def project():
 
 
 @project.command(name='list')
+@click.option(
+    '-g', '--grouped', is_flag=True, default=False,
+    help='Group by organisation'
+)
 @click.pass_obj
-def project_list(obj):
+def project_list(obj, grouped):
     """List all your projects"""
-    data = obj.get_projects()
+    api_response = obj.get_projects()
+    header = ('Slug', 'Name', 'Organisation')
 
-    organisations = {
-        account['id']: account['name']
-        for account in data['accounts']
-        if account['type'] == 'organisation'
+    # get all users + organisations
+    groups = {
+        'users': {
+            account['id']: {'name': 'Personal', 'projects': []}
+            for account in api_response['accounts']
+            if account['type'] == 'user'
+        },
+        'organisations': {
+            account['id']: {'name': account['name'], 'projects': []}
+            for account in api_response['accounts']
+            if account['type'] == 'organisation'
+        }
     }
 
-    projects = [(
-        project_data['domain'],
-        project_data['name'],
-        organisations.get(project_data['organisation_id'], 'Personal'),
-    ) for project_data in data['websites']]
+    # sort websites into groups
+    for website in api_response['websites']:
+        organisation_id = website['organisation_id']
+        if organisation_id:
+            owner = groups['organisations'][website['organisation_id']]
+        else:
+            owner = groups['users'][website['owner_id']]
+        owner['projects'].append((website['domain'], website['name']))
 
-    header = ['Slug', 'Name', 'Organisation']
-    click.echo_via_pager(table(projects, header))
+    accounts = itertools.chain(
+        groups['users'].items(),
+        groups['organisations'].items()
+    )
+
+    def sort_projects(items):
+        return sorted(items, key=lambda x: x[0].lower())
+
+    # print via pager
+    if grouped:
+        output_items = []
+        for group, data in accounts:
+            projects = data['projects']
+            if projects:
+                output_items.append(
+                    u'{title}\n{line}\n\n{table}\n\n'.format(
+                        title=data['name'],
+                        line='=' * len(data['name']),
+                        table=table(sort_projects(projects), header[:2])
+                    )
+                )
+        output = os.linesep.join(output_items).rstrip(os.linesep)
+    else:
+        # add account name to all projects
+        projects = [
+            each + (data['name'],) for group, data in accounts
+            for each in data['projects']
+        ]
+        output = table(sort_projects(projects), header)
+
+    click.echo_via_pager(output)
 
 
 # @project.command(name='info')
