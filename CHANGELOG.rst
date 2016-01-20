@@ -1,10 +1,17 @@
 Changelog
 =========
 
+2.1.2 (2016-01-20)
+------------------
+
+* Fixes bug in version checker where it failed if there's no newer version available
+
+
 2.1.1 (2016-01-20)
 ------------------
 
 * PyPi errored during upload, reuploading with patch 2.1.1
+
 
 2.1 (2016-01-20)
 ------------------
