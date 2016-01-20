@@ -1,8 +1,8 @@
 import os
 from netrc import netrc
-from urlparse import urlparse
 
 import click
+from six.moves.urllib_parse import urlparse
 
 from . import settings
 from . import messages
@@ -261,7 +261,7 @@ class WritableNetRC(netrc):
         netrc_path = self.get_netrc_path()
         if not os.path.exists(netrc_path):
             open(netrc_path, 'a').close()
-            os.chmod(netrc_path, 0600)
+            os.chmod(netrc_path, 600)
         netrc.__init__(self, *args, **kwargs)
 
     def get_netrc_path(self):

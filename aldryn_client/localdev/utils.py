@@ -79,7 +79,7 @@ def ensure_windows_docker_compose_file_exists(path):
 
     Example:
       unix format:  .:/app:rw
-      cwd:          C:\Users\aldryn\acme-portfolio
+      cwd:          C:\\Users\\aldryn\\acme-portfolio
       windows:     /c/Users/aldryn/acme-portfolio:/app:rw
 
     Hope that's all. And of course, I'm sorry.

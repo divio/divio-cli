@@ -1,8 +1,8 @@
 import os
-from urlparse import urljoin
 
 import click
 import requests
+from six.moves.urllib_parse import urljoin
 
 from . import messages
 from .utils import create_temp_dir
