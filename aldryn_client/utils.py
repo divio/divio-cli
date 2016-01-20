@@ -1,17 +1,16 @@
 import subprocess
 import tarfile
 import tempfile
-from distutils.version import StrictVersion
-
 import os
 import sys
 from contextlib import contextmanager
-from urlparse import urljoin
+from distutils.version import StrictVersion
 from math import log
 
 import click
 import requests
 from tabulate import tabulate
+from six.moves.urllib_parse import urljoin
 
 
 def hr(char='-', width=None, **kwargs):

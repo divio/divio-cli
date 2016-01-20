@@ -10,6 +10,7 @@ INSTALL_REQUIRES = [
     'click',
     'requests',
     'tabulate',
+    'six',
 ]
 
 if sys.platform == 'win32':

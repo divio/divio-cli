@@ -1,9 +1,9 @@
 import os
 import subprocess
 import tarfile
-from StringIO import StringIO
 
 import click
+from six import StringIO
 
 from .. import settings
 from ..utils import (

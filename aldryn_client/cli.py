@@ -11,7 +11,7 @@ except ImportError:
 
 import click
 
-import localdev.main
+from . import localdev
 from .cloud import CloudClient, get_aldryn_host
 from .check_system import check_requirements
 from .utils import (
@@ -162,21 +162,21 @@ def project_dashboard(obj):
 @click.pass_obj
 def project_up(obj):
     """Start local project"""
-    localdev.main.start_project()
+    localdev.start_project()
 
 
 @project.command(name='open')
 @click.pass_obj
 def project_open(obj):
     """Open local project in browser"""
-    localdev.main.open_project()
+    localdev.open_project()
 
 
 @project.command(name='update')
 @click.pass_obj
 def project_update(obj):
     """Update project with latest changes from the Cloud"""
-    localdev.main.update_local_project()
+    localdev.update_local_project()
 
 
 @project.command(name='test')
@@ -197,14 +197,14 @@ def project_open_live(obj):
 @click.pass_obj
 def project_status(obj):
     """Show local project status"""
-    localdev.main.show_project_status()
+    localdev.show_project_status()
 
 
 @project.command(name='stop')
 @click.pass_obj
 def project_stop(obj):
     """Stop local project"""
-    localdev.main.stop_project()
+    localdev.stop_project()
 
 
 @project.command(name='cheatsheet')
@@ -230,7 +230,7 @@ def project_setup(obj, slug, path):
         )
         exit(1)
 
-    localdev.main.create_workspace(obj, slug, path)
+    localdev.create_workspace(obj, slug, path)
 
 
 @project.group(name='pull')
@@ -242,13 +242,13 @@ def project_pull():
 @project_pull.command(name='db')
 @click.pass_obj
 def pull_db(obj):
-    localdev.main.pull_db(obj)
+    localdev.pull_db(obj)
 
 
 @project_pull.command(name='media')
 @click.pass_obj
 def pull_media(obj):
-    localdev.main.pull_media(obj)
+    localdev.pull_media(obj)
 
 
 @project.group(name='push')
@@ -283,7 +283,7 @@ def push_db(obj):
     click.secho(os.linesep.join(warning), fg='red')
     if not click.confirm('\nAre you sure you want to continue?'):
         return
-    localdev.main.push_db(obj)
+    localdev.push_db(obj)
 
 
 @project_push.command(name='media')
@@ -310,7 +310,7 @@ def push_media(obj):
     click.secho(os.linesep.join(warning), fg='red')
     if not click.confirm('\nAre you sure you want to continue?'):
         return
-    localdev.main.push_media(obj)
+    localdev.push_media(obj)
 
 
 @project.command(name='develop')
@@ -321,7 +321,7 @@ def push_media(obj):
 @click.pass_obj
 def project_develop(obj, package, no_rebuild):
     """Add a package 'package' to your local project environment"""
-    localdev.main.develop_package(package, no_rebuild)
+    localdev.develop_package(package, no_rebuild)
 
 
 @cli.group()
