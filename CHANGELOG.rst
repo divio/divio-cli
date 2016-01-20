@@ -1,6 +1,10 @@
 Changelog
 =========
 
+2.1.1 (2016-01-20)
+------------------
+
+* PyPi errored during upload, reuploading with patch 2.1.1
 
 2.1 (2016-01-20)
 ------------------
