@@ -358,7 +358,7 @@ def addon_register(ctx, package_name, verbose_name, organisation):
     - Verbose Name:        Name of the Addon as it appears in the Marketplace.
     - Package Name:        System wide unique Python package name
     """
-    ret = ctx.obj.register_addon(verbose_name, package_name, organisation)
+    ret = ctx.obj.register_addon(package_name, verbose_name, organisation)
     click.echo(ret)
 
 
