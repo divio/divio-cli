@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2.1.4 (2016-02-01)
+------------------
+
+* Adds a workaround for postgres hstore support
+
+
 2.1.3 (2016-01-27)
 ------------------
 
