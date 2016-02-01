@@ -227,6 +227,13 @@ def pull_db(client, path=None):
         'docker', 'exec', db_container_id,
         'createdb', '-U', 'postgres', 'db',
     ])
+    # Workaround to add the hstore extension
+    # TODO: solve extensions in a generic way in harmony with server side db-api
+    check_call([
+        'docker', 'exec', db_container_id,
+        'psql', '-U', 'postgres', '--dbname=db',
+        '-c', 'CREATE EXTENSION IF NOT EXISTS hstore;',
+    ])
     remove_time = int(time() - start_remove)
     click.echo(' [{}s]'.format(remove_time))
 
