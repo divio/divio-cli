@@ -239,9 +239,7 @@ def pull_db(client, path=None):
 
     click.secho(' ---> Importing database...', nl=False)
     start_import = time()
-    # FIXME: because of different ownership,
-    # this spits a lot of warnings which can
-    # ignored but we can't really validate success
+    # TODO: use same dump-type detection like server side on db-api
     try:
         piped_restore = (
             'tar -xzOf /app/{}'
