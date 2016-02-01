@@ -227,14 +227,19 @@ def pull_db(client, path=None):
         'docker', 'exec', db_container_id,
         'createdb', '-U', 'postgres', 'db',
     ])
+    # Workaround to add the hstore extension
+    # TODO: solve extensions in a generic way in harmony with server side db-api
+    check_call([
+        'docker', 'exec', db_container_id,
+        'psql', '-U', 'postgres', '--dbname=db',
+        '-c', 'CREATE EXTENSION IF NOT EXISTS hstore;',
+    ])
     remove_time = int(time() - start_remove)
     click.echo(' [{}s]'.format(remove_time))
 
     click.secho(' ---> Importing database...', nl=False)
     start_import = time()
-    # FIXME: because of different ownership,
-    # this spits a lot of warnings which can
-    # ignored but we can't really validate success
+    # TODO: use same dump-type detection like server side on db-api
     try:
         piped_restore = (
             'tar -xzOf /app/{}'
