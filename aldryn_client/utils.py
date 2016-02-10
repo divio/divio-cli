@@ -122,7 +122,7 @@ def check_call(*popenargs, **kwargs):
 
 
 def check_output(*popenargs, **kwargs):
-    return execute(subprocess.check_output, *popenargs, **kwargs)
+    return execute(subprocess.check_output, *popenargs, **kwargs).decode()
 
 
 def open_project_cloud_site(client, stage):

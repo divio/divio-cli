@@ -131,4 +131,4 @@ def ensure_windows_docker_compose_file_exists(path):
 def get_db_container_id(path):
     docker_compose = get_docker_compose_cmd(path)
     output = check_output(docker_compose('ps', '-q', 'db'))
-    return output.replace(os.linesep, '')
+    return output.rstrip(os.linesep)

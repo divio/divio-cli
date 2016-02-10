@@ -579,7 +579,7 @@ def open_project(open_browser=True):
                         'it now?'):
             return start_project()
         return
-    host, port = addr.split(':')
+    host, port = addr.rstrip(os.linesep).split(':')
 
     if host == '0.0.0.0':
         docker_host_url = os.environ.get('DOCKER_HOST')
@@ -587,10 +587,7 @@ def open_project(open_browser=True):
             proto, host_port = os.environ.get('DOCKER_HOST').split('://')
             host = host_port.split(':')[0]
 
-    addr = 'http://{host}:{port}/'.format(
-        host=host.replace(os.linesep, ''),
-        port=port.replace(os.linesep, ''),
-    )
+    addr = 'http://{}:{}/'.format(host, port)
 
     click.secho(
         'Your project is configured to run at {}'.format(addr),
@@ -625,14 +622,15 @@ def start_project():
     try:
         check_output(docker_compose('up', '-d'), catch=False, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
-        if 'port is already allocated' in exc.output:
+        output = exc.output.decode()
+        if 'port is already allocated' in output:
             click.secho(
                 "There's already another program running on this project's "
                 "port. Please either stop the other program or change the "
                 "port in the 'docker-compose.yml' file and try again.\n",
                 fg='red'
             )
-        raise click.ClickException(exc.output)
+        raise click.ClickException(output)
 
     return open_project(open_browser=True)
 
