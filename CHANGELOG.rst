@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2.1.5 (2016-02-10)
+------------------
+
+* Fixes various bugs with Python 3 bytes vs strings
+
+
 2.1.4 (2016-02-01)
 ------------------
 
