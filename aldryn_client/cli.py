@@ -12,6 +12,7 @@ except ImportError:
 import click
 
 from . import localdev
+from .localdev.utils import get_aldryn_project_settings
 from .cloud import CloudClient, get_aldryn_host
 from .check_system import check_requirements
 from .utils import (
@@ -149,6 +150,15 @@ def project_list(obj, grouped):
 #     # TODO: proper formatting
 #     website_id = obj.get_website_id_for_slug(slug)
 #     click.echo(obj.get_project(website_id))
+
+
+@project.command(name='deploy')
+@click.argument('stage', default='test')
+@click.pass_obj
+def project_deploy(obj, stage):
+    """Deploy project"""
+    website_id = get_aldryn_project_settings()['id']
+    obj.deploy_project_or_get_progress(website_id, stage)
 
 
 @project.command(name='dashboard')

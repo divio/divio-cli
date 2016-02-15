@@ -154,6 +154,16 @@ class ProjectDetailRequest(APIRequest):
     url = '/api/v1/website/{website_id}/detail/'
 
 
+class DeployProjectProgressRequest(JsonResponse, APIRequest):
+    url = '/api/v1/website/{website_id}/deploy/'
+    method = 'GET'
+
+
+class DeployProjectRequest(JsonResponse, APIRequest):
+    url = '/api/v1/website/{website_id}/deploy/'
+    method = 'POST'
+
+
 class RegisterAddonRequest(DjangoFormMixin, JsonResponse, APIRequest):
     url = '/api/v1/addon/register/'
     method = 'POST'
