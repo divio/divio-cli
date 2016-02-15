@@ -273,8 +273,11 @@ class WritableNetRC(netrc):
             )
 
     def get_netrc_path(self):
-        # netrc uses os.environ['HOME'], which isn't defined on Windows
-        home = os.environ['HOME'] = os.path.expanduser('~')
+        """
+        netrc uses os.environ['HOME'] for path detection which is
+        not defined on Windows. Detecting the correct path ourselves
+        """
+        home = os.path.expanduser('~')
         return os.path.join(home, '.netrc')
 
     def add(self, host, login, account, password):
