@@ -263,7 +263,14 @@ class WritableNetRC(netrc):
             open(netrc_path, 'a').close()
             os.chmod(netrc_path, 600)
         kwargs['file'] = netrc_path
-        netrc.__init__(self, *args, **kwargs)
+        try:
+            netrc.__init__(self, *args, **kwargs)
+        except IOError:
+            raise click.ClickException(
+                "Please make sure your netrc config file ('{}') can be read "
+                "and written by the current user."
+                .format(netrc_path)
+            )
 
     def get_netrc_path(self):
         # netrc uses os.environ['HOME'], which isn't defined on Windows
