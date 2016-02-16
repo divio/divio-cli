@@ -1,6 +1,14 @@
 Changelog
 =========
 
+2.1.6 (2016-02-16)
+------------------
+
+* ``aldryn project deploy`` command
+* netrc: catch errors
+* netrc: fix regression introduced in 2.1.5
+
+
 2.1.5 (2016-02-10)
 ------------------
 
