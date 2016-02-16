@@ -1,5 +1,6 @@
 import os
 from netrc import netrc
+from time import sleep
 
 import click
 from six.moves.urllib_parse import urlparse
@@ -98,6 +99,61 @@ class CloudClient(object):
 
     def get_projects(self):
         request = api_requests.ProjectListRequest(self.session)
+        return request()
+
+    def deploy_project_or_get_progress(self, website_id, stage):
+        def fmt_progress(data):
+            if not data:
+                return 'Connecting to remote'
+            return '{} ({})'.format(
+                data['verbose_state'],
+                data['heartbeat_ago_formatted']
+            )
+
+        response = self.deploy_project_progress(website_id, stage)
+        if response['is_deploying']:
+            click.secho(
+                'Already deploying {} server, attaching to running '
+                'deployment'.format(stage),
+                fg='yellow'
+            )
+        else:
+            click.secho('Deploying {} server'.format(stage), fg='green')
+            self.deploy_project(website_id, stage)
+            sleep(1)
+            response = self.deploy_project_progress(website_id, stage)
+        try:
+            with click.progressbar(
+                    length=100, show_percent=True,
+                    show_eta=False, item_show_func=fmt_progress) as bar:
+                while response['is_deploying']:
+                    response = self.deploy_project_progress(website_id, stage)
+                    bar.current_item = progress = response['deploy_progress']
+                    bar.update(
+                        # update the difference of the current percentage
+                        # to the new percentage
+                        progress['main_percent'] +
+                        progress['extra_percent'] -
+                        bar.pos
+                    )
+                    sleep(3)
+        except KeyboardInterrupt:
+            click.secho('Disconnected')
+
+    def deploy_project_progress(self, website_id, stage):
+        request = api_requests.DeployProjectProgressRequest(
+            self.session,
+            url_kwargs={'website_id': website_id},
+        )
+        data = request()
+        return data[stage]
+
+    def deploy_project(self, website_id, stage):
+        request = api_requests.DeployProjectRequest(
+            self.session,
+            url_kwargs={'website_id': website_id},
+            data={'stage': stage}
+        )
         return request()
 
     def get_project(self, website_id):
