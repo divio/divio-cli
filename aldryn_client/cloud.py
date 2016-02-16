@@ -317,7 +317,7 @@ class WritableNetRC(netrc):
         netrc_path = self.get_netrc_path()
         if not os.path.exists(netrc_path):
             open(netrc_path, 'a').close()
-            os.chmod(netrc_path, 600)
+            os.chmod(netrc_path, 0o600)
         kwargs['file'] = netrc_path
         try:
             netrc.__init__(self, *args, **kwargs)
