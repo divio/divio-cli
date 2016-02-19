@@ -238,7 +238,7 @@ def project_setup(obj, slug, path):
             "There was a problem while checking your system. Please run "
             "'aldryn doctor'.", fg='red'
         )
-        exit(1)
+        sys.exit(1)
 
     localdev.create_workspace(obj, slug, path)
 
@@ -450,4 +450,4 @@ def doctor():
     """Check if your system meets the requirements
     for Aldryn local development"""
     click.echo('Verifying your system setup')
-    exit(0 if check_requirements() else 1)
+    sys.exit(0 if check_requirements() else 1)
