@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.1.7 (2016-02-19)
+------------------
+
+* Do not mangle the hostname when using the client as a library
+* Fix a bug in the update notification
+
+
 2.1.6 (2016-02-16)
 ------------------
 
@@ -24,7 +31,7 @@ Changelog
 2.1.3 (2016-01-27)
 ------------------
 
-* Fixes a bug in ``aldryn addon register`` where the passed args were in the wrong order 
+* Fixes a bug in ``aldryn addon register`` where the passed args were in the wrong order
 
 
 2.1.2 (2016-01-20)
