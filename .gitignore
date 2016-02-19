@@ -4,7 +4,11 @@
 *.pyo
 
 sync.log
+aldryn*.spec
+
+*.egg-info/
 build/
-aldryn_client.egg-info/
 dist/
 env/
+venv*
+binary/
