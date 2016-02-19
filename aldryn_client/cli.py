@@ -13,7 +13,7 @@ import click
 
 from . import localdev
 from .localdev.utils import get_aldryn_project_settings
-from .cloud import CloudClient, get_aldryn_host
+from .cloud import CloudClient, get_endpoint
 from .check_system import check_requirements
 from .utils import (
     hr, table, open_project_cloud_site, get_dashboard_url,
@@ -44,7 +44,7 @@ def cli(ctx, debug):
             pdb.post_mortem(traceback)
         sys.excepthook = exception_handler
 
-    ctx.obj = CloudClient(get_aldryn_host())
+    ctx.obj = CloudClient(get_endpoint())
 
     # skip if 'aldryn version' is run
     if not ctx.args == ['version']:
