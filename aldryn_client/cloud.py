@@ -20,21 +20,7 @@ def is_http_url(url):
 
 
 def get_aldryn_host():
-    host = os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
-
-    # check for aldryn-client v1 syntax
-    if is_http_url(host):
-        old_style = host
-        proto, domain = host.split('://')
-        parts = domain.split('.')
-        host = '.'.join(parts[-3:])
-        click.secho(
-            'You are using old ALDRYN_HOST syntax. Please change {} to {}'
-            .format(old_style, host),
-            fg='yellow'
-        )
-
-    return host
+    return os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
 
 
 def get_endpoint(host=None):
