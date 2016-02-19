@@ -34,6 +34,8 @@ def get_aldryn_host():
 
 
 def get_endpoint(host=None):
+    if host and (host.startswith('http://') or host.startswith('https://')):
+        return host
     target_host = host or get_aldryn_host()
     endpoint = ENDPOINT.format(host=target_host)
     if target_host != DEFAULT_HOST:
