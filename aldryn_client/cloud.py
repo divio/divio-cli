@@ -1,4 +1,5 @@
 import os
+import re
 from netrc import netrc
 from time import sleep
 
@@ -16,35 +17,26 @@ DEFAULT_HOST = 'aldryn.com'
 
 
 def get_aldryn_host():
-    host = os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
-
-    # check for aldryn-client v1 syntax
-    if host.startswith('http'):
-        old_style = host
-        proto, domain = host.split('://')
-        parts = domain.split('.')
-        host = '.'.join(parts[-3:])
-        click.secho(
-            'You are using old ALDRYN_HOST syntax. Please change {} to {}'
-            .format(old_style, host),
-            fg='yellow'
-        )
-
-    return host
+    return os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
 
 
 def get_endpoint(host=None):
-    target_host = host or get_aldryn_host()
-    endpoint = ENDPOINT.format(host=target_host)
-    if target_host != DEFAULT_HOST:
+    if not host:
+        host = get_aldryn_host()
+    if re.match('^https?://', host):
+        endpoint = host
+    else:
+        endpoint = ENDPOINT.format(host=host)
+
+    if host != DEFAULT_HOST:
         click.secho('Using custom endpoint {}\n'.format(endpoint), fg='yellow')
     return endpoint
 
 
 class CloudClient(object):
-    def __init__(self, host=None):
+    def __init__(self, endpoint):
         self.config = Config()
-        self.endpoint = get_endpoint(host)
+        self.endpoint = endpoint
         self.netrc = WritableNetRC()
         self.session = self.init_session()
 
