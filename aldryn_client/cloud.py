@@ -23,7 +23,7 @@ def get_aldryn_host():
     host = os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
 
     # check for aldryn-client v1 syntax
-    if is_http_url('http'):
+    if is_http_url(host):
         old_style = host
         proto, domain = host.split('://')
         parts = domain.split('.')
