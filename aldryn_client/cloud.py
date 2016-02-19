@@ -15,25 +15,17 @@ ENDPOINT = 'https://control.{host}'
 DEFAULT_HOST = 'aldryn.com'
 
 
+def is_http_url(url):
+    return url.startswith('http://') or url.startswith('https://')
+
+
 def get_aldryn_host():
-    host = os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
-
-    # check for aldryn-client v1 syntax
-    if host.startswith('http'):
-        old_style = host
-        proto, domain = host.split('://')
-        parts = domain.split('.')
-        host = '.'.join(parts[-3:])
-        click.secho(
-            'You are using old ALDRYN_HOST syntax. Please change {} to {}'
-            .format(old_style, host),
-            fg='yellow'
-        )
-
-    return host
+    return os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
 
 
 def get_endpoint(host=None):
+    if host and is_http_url(host):
+        return host
     target_host = host or get_aldryn_host()
     endpoint = ENDPOINT.format(host=target_host)
     if target_host != DEFAULT_HOST:
