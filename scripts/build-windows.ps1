@@ -20,7 +20,7 @@ $ErrorActionPreference = "Continue"
 .\venv\Scripts\pip install --no-deps .
 .\venv\Scripts\pip install --allow-external pyinstaller -r requirements-build.txt
 
-git rev-parse --short HEAD | out-file -encoding ASCII compose\GITSHA
+git rev-parse --short HEAD | out-file -encoding ASCII aldryn_client\GITSHA
 
 # Build binary
 .\venv\Scripts\pyinstaller .\aldryn.spec
