@@ -1,0 +1,13 @@
+#!/bin/bash
+set -ex
+rm -rf build dist
+rm -rf aldryn_client.egg-info
+rm -rf build-osx-venv
+virtualenv build-osx-venv
+. build-osx-venv/bin/activate
+pip install -r requirements.txt -r requirements-build.txt
+python setup.py bdist_wheel
+pip install dist/*
+pyinstaller -F -y build-osx-venv/bin/aldryn
+mkdir -p binary
+mv dist/aldryn binary/aldryn-darwin

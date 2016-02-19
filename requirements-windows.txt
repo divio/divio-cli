@@ -1,0 +1,2 @@
+pyyaml  # converting docker-compose configs
+colorama  # colored output

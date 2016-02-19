@@ -1,0 +1,14 @@
+#!/bin/bash
+set -ex
+rm -rf build dist
+rm -rf aldryn_client.egg-info
+/venv/bin/python setup.py bdist_wheel
+
+mkdir /build
+/venv/bin/pip freeze
+
+/venv/bin/pip install /code/dist/*
+
+/venv/bin/pyinstaller -F -y /venv/bin/aldryn
+mkdir -p binary
+mv dist/aldryn binary/aldryn-linux
