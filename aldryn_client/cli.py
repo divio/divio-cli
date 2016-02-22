@@ -1,3 +1,4 @@
+import json
 import subprocess
 import itertools
 import os
@@ -14,7 +15,7 @@ import click
 from . import localdev
 from .localdev.utils import get_aldryn_project_settings
 from .cloud import CloudClient, get_endpoint
-from .check_system import check_requirements
+from .check_system import check_requirements, check_requirements_human
 from .utils import (
     hr, table, open_project_cloud_site, get_dashboard_url,
     get_project_cheatsheet_url, get_latest_version_from_pypi,
@@ -446,8 +447,27 @@ def version(skip_check, show_error):
 
 
 @cli.command()
-def doctor():
+@click.option(
+    '-m', '--machine-readable', is_flag=True, default=False,
+)
+@click.option('-c', '--checks', default=None)
+def doctor(machine_readable, checks):
     """Check if your system meets the requirements
     for Aldryn local development"""
-    click.echo('Verifying your system setup')
-    exit(0 if check_requirements() else 1)
+
+    if checks:
+        checks = checks.split(',')
+
+    if machine_readable:
+        errors = {
+            check: error
+            for check, check_name, error
+            in check_requirements(checks)
+        }
+        exitcode = 1 if any(errors.values()) else 0
+        click.echo(json.dumps(errors), nl=False)
+    else:
+        click.echo('Verifying your system setup')
+        exitcode = 0 if check_requirements_human(checks) else 1
+
+    sys.exit(exitcode)
