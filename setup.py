@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import sys
 
 from setuptools import setup, find_packages
@@ -6,18 +7,13 @@ from setuptools import setup, find_packages
 from aldryn_client import __version__
 
 
-INSTALL_REQUIRES = [
-    'click',
-    'requests',
-    'tabulate',
-    'six',
-]
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
 
 if sys.platform == 'win32':
-    INSTALL_REQUIRES += [
-        'pyyaml',  # converting docker-compose configs
-        'colorama',  # colored output
-    ]
+    with open('requirements-windows.txt') as f:
+        requirements += f.read().splitlines()
+
 
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',
@@ -46,7 +42,7 @@ setup(
     zip_safe=False,
     license='BSD',
     platforms=['OS Independent'],
-    install_requires=INSTALL_REQUIRES,
+    install_requires=requirements,
     entry_points="""
     [console_scripts]
     aldryn = aldryn_client.cli:cli

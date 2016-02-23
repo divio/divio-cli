@@ -239,7 +239,7 @@ def project_setup(obj, slug, path):
             "There was a problem while checking your system. Please run "
             "'aldryn doctor'.", fg='red'
         )
-        exit(1)
+        sys.exit(1)
 
     localdev.create_workspace(obj, slug, path)
 
