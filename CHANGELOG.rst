@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.2 (UNRELEASED)
+------------------
+
+* Release binary package for Linux, OS X and Windows
+* Improve ``aldryn doctor`` command
+
+
 2.1.7 (2016-02-19)
 ------------------
 
