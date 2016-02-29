@@ -234,7 +234,7 @@ def project_cheatsheet(obj):
 @click.pass_obj
 def project_setup(obj, slug, path):
     """Set up a development environment for an Aldryn project"""
-    if not check_requirements(silent=True):
+    if not check_requirements_human(silent=True):
         click.secho(
             "There was a problem while checking your system. Please run "
             "'aldryn doctor'.", fg='red'
