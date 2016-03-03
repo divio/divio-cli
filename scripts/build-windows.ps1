@@ -1,11 +1,14 @@
+# stop on first error
+$ErrorActionPreference = "Stop"
+
 $ARCH = "Windows"
 $VENV = "venv-" + $ARCH
 
 # cleanup
-Remove-Item -Recurse -Force -ErrorAction Ignore build
-Remove-Item -Recurse -Force -ErrorAction Ignore dist
-Remove-Item -Recurse -Force -ErrorAction Ignore aldryn_client.egg-info
-Remove-Item -Recurse -Force -ErrorAction Ignore $VENV
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue dist
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue aldryn_client.egg-info
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $VENV
 
 # create new venv
 C:\Python27\Scripts\pip.exe install --upgrade pip
