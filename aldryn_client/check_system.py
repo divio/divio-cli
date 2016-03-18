@@ -2,35 +2,47 @@
 import os
 import subprocess
 from collections import OrderedDict
+from sys import platform
 
 import click
 
 from . import utils
 
+
+def errorhint_docker_server():
+    """This function provides additional hints and suggestions if the `docker ps` command fails."""
+    errors = []
+    if platform == "linux" or platform == "linux2":
+        if not os.access("/var/run/docker.sock", os.R_OK):
+            errors.append("No read permissions to /var/run/docker.sock. docker must be able to operate as your user without root permissions. Check the docker installation guide: https://docs.docker.com/engine/installation/linux/")
+    return errors
+
+
 ALL_CHECKS = OrderedDict([
-    ('git', ('Git', ['git', '--version'])),
-    ('docker-client', ('Docker Client', ['docker', '--version'])),
-    ('docker-machine', ('Docker Machine', ['docker-machine', '--version'])),
-    ('docker-compose', ('Docker Compose', ['docker-compose', '--version'])),
-    ('docker-server', ('Docker Server Connectivity', ['docker', 'ps'])),
+    ('git', ('Git', ['git', '--version'], None)),
+    ('docker-client', ('Docker Client', ['docker', '--version'], None)),
+    ('docker-machine', ('Docker Machine', ['docker-machine', '--version'], None)),
+    ('docker-compose', ('Docker Compose', ['docker-compose', '--version'], None)),
+    ('docker-server', ('Docker Server Connectivity', ['docker', 'ps'], errorhint_docker_server)),
 ])
 
+    
 
 def check_command(command):
-    error_msg = None
+    errors = []
     try:
         utils.check_call(command, catch=False, silent=True)
     except OSError as exc:
         if exc.errno == os.errno.ENOENT:
-            error_msg = 'executable {} not found'.format(command[0])
+            errors.append('executable {} not found'.format(command[0]))
         else:
-            error_msg = (
+            errors.append(
                 'unknown error while trying to run {}: {}'
                 .format(command, exc.message)
             )
     except subprocess.CalledProcessError as exc:
-        error_msg = exc.output or str(exc)
-    return error_msg
+        errors.append(exc.output or str(exc))
+    return errors
 
 
 def check_requirements(checks=None):
@@ -38,8 +50,11 @@ def check_requirements(checks=None):
         checks = ALL_CHECKS.keys()
 
     for check in checks:
-        check_name, cmd = ALL_CHECKS[check]
-        yield check, check_name, check_command(cmd)
+        check_name, cmd, error_hint = ALL_CHECKS[check]
+        errors = check_command(cmd)
+        if errors and error_hint:
+            errors += error_hint()
+        yield check, check_name, errors
 
 
 def check_requirements_human(checks=None, silent=False):
@@ -61,7 +76,9 @@ def check_requirements_human(checks=None, silent=False):
 
     if errors and not silent:
         click.secho('\nThe following errors occurred:', fg='red')
-        for check_name, msg in errors:
-            click.secho(' {}:\n > {}'.format(check_name, msg))
+        for check_name, msgs in errors:
+            click.secho(' {}:'.format(check_name))
+            for msg in msgs:
+                click.secho(' > {}'.format(msg))
 
     return not bool(errors)
