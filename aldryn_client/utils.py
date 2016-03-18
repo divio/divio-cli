@@ -114,7 +114,7 @@ def execute(func, *popenargs, **kwargs):
         )
         hr(fg='red')
         click.secho(os.linesep.join(output), fg='red')
-        exit(-1)
+        sys.exit(1)
 
 
 def check_call(*popenargs, **kwargs):

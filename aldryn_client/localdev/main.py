@@ -116,7 +116,7 @@ def create_workspace(client, website_slug, path=None):
                 os.remove(path)
         else:
             click.secho('Aborting', fg='red')
-            exit(-1)
+            sys.exit(1)
 
     # clone git project
     clone_project(website_slug, path)
@@ -171,7 +171,7 @@ def pull_db(client, path=None):
     progress_url = response.get('progress_url')
     if not progress_url:
         click.secho(' error!', color='red')
-        exit()
+        sys.exit(1)
 
     progress = {'success': None}
     while progress.get('success') is None:
@@ -180,7 +180,7 @@ def pull_db(client, path=None):
     if not progress.get('success'):
         click.secho(' error!', color='red')
         click.secho(progress.get('result') or '')
-        exit()
+        sys.exit(1)
     download_url = progress.get('result') or None
     preparation_time = int(time() - start_preparation)
     click.echo(' [{}s]'.format(preparation_time))
@@ -208,10 +208,12 @@ def pull_db(client, path=None):
         else:
             break
     else:
-        exit(
+        click.secho(
             "Couldn't connect to database container. "
-            "Database server may not have started."
+            "Database server may not have started.",
+            color='red',
         )
+        sys.exit(1)
     wait_time = int(time() - start_wait)
     click.echo(' [{}s]'.format(wait_time))
 
@@ -281,7 +283,7 @@ def pull_media(client, path=None):
     progress_url = response.get('progress_url')
     if not progress_url:
         click.secho(' error!', color='red')
-        exit()
+        sys.exit(1)
 
     progress = {'success': None}
     while progress.get('success') is None:
@@ -290,7 +292,7 @@ def pull_media(client, path=None):
     if not progress.get('success'):
         click.secho(' error!', color='red')
         click.secho(progress.get('result') or '')
-        exit()
+        sys.exit(1)
     download_url = progress.get('result') or None
     preparation_time = int(time() - start_preparation)
     click.echo(' [{}s]'.format(preparation_time))
@@ -408,7 +410,7 @@ def push_db(client):
     progress_url = response.get('progress_url')
     if not progress_url:
         click.secho(' error!', color='red')
-        exit()
+        sys.exit(1)
 
     click.secho(' ---> Processing...', nl=False)
     start_processing = time()
@@ -419,7 +421,7 @@ def push_db(client):
     if not progress.get('success'):
         click.secho(' error!', color='red')
         click.secho(progress.get('result') or '')
-        exit()
+        sys.exit(1)
     processing_time = int(time() - start_processing)
     click.echo(' [{}s]'.format(processing_time))
 
@@ -476,7 +478,7 @@ def push_media(client):
     progress_url = response.get('progress_url')
     if not progress_url:
         click.secho(' error!', color='red')
-        exit()
+        sys.exit(1)
 
     click.secho('Processing...', nl=False)
     start_processing = time()
@@ -487,7 +489,7 @@ def push_media(client):
     if not progress.get('success'):
         click.secho(' error!', color='red')
         click.secho(progress.get('result') or '')
-        exit()
+        sys.exit(1)
     processing_time = int(time() - start_processing)
     click.echo(' [{}s]'.format(processing_time))
 
