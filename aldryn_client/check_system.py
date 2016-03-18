@@ -2,59 +2,130 @@
 import os
 import subprocess
 from collections import OrderedDict
-from sys import platform
 
 import click
 
 from . import utils
 
 
-def errorhint_docker_server():
-    """This function provides additional hints and suggestions if the `docker ps` command fails."""
-    errors = []
-    if platform == "linux" or platform == "linux2":
-        if not os.access("/var/run/docker.sock", os.R_OK):
-            errors.append("No read permissions to /var/run/docker.sock. docker must be able to operate as your user without root permissions. Check the docker installation guide: https://docs.docker.com/engine/installation/linux/")
-    return errors
+class Check(object):
+    name = None
+    command = None
+
+    def run_check(self):
+        errors = []
+        try:
+            utils.check_call(self.command, catch=False, silent=True)
+        except OSError as exc:
+            if exc.errno == os.errno.ENOENT:
+                errors.append('executable {} not found'.format(self.command[0]))
+            else:
+                msg = (
+                    "Command '{}' returned non-zero exit status {}"
+                    .format(self.fmt_command(), exc.errno)
+                )
+                if hasattr(exc, 'strerror'):
+                    msg += ': {}'.format(exc.strerror)
+
+                errors.append(msg)
+        except subprocess.CalledProcessError as exc:
+            errors += self.fmt_exception(exc)
+        return errors
+
+    def fmt_command(self):
+        return ' '.join(self.command)
+
+    def fmt_exception(self, exc):
+        command_output = exc.output
+
+        if command_output:
+            message = command_output
+        else:
+            message = (
+                "Command '{}' returned non-zero exit status {}"
+                .format(self.fmt_command(), exc.returncode)
+            )
+
+        return [message]
+
+
+class GitCheck(Check):
+    name = 'Git'
+    command = ('git', '--version')
+
+
+class DockerClientCheck(Check):
+    name = 'Docker Client'
+    command = ('docker', '--version')
+
+
+class DockerMachineCheck(Check):
+    name = 'Docker Machine'
+    command = ('docker-machine', '--version')
+
+
+class DockerComposeCheck(Check):
+    name = 'Docker Compose'
+    command = ('docker-compose', '--version')
+
+
+class DockerServerCheck(Check):
+    name = 'Docker Server Connectivity'
+    command = (
+        'docker', 'run', '--rm', 'busybox', 'ping', '-c', '1', '8.8.8.8'
+    )
+
+    def fmt_exception(self, exc):
+        errors = super(DockerServerCheck, self).fmt_exception(exc)
+        if utils.is_linux():
+            default_host_path = '/var/run/docker.sock'
+            default_host_url = 'unix://{}'.format(default_host_path)
+            current_host_url = os.environ.get('DOCKER_HOST')
+
+            # run additional checks if it user is running default config
+            if not current_host_url or current_host_url == default_host_url:
+
+                # check if docker socket exists
+                if not os.path.exists(default_host_path):
+                    errors.append(
+                        'Could not find docker server socket at {}. Please '
+                        'make sure your docker server is setup correctly and '
+                        'check the docker installation guide: '
+                        'https://docs.docker.com/engine/installation/linux/'
+                        .format(default_host_path)
+                    )
+
+                elif not os.access(default_host_path, os.R_OK):
+                    # check if docker socket is readable
+                    errors.append(
+                        'No read permissions on {}. Please make sure the unix '
+                        'socket can be accessed without root permissions. '
+                        'More information can be found in the docker '
+                        'installation guide: https://docs.docker.com/engine/'
+                        'installation/linux/ubuntulinux/#create-a-docker-group'
+                        .format(default_host_path)
+                    )
+
+        return errors
 
 
 ALL_CHECKS = OrderedDict([
-    ('git', ('Git', ['git', '--version'], None)),
-    ('docker-client', ('Docker Client', ['docker', '--version'], None)),
-    ('docker-machine', ('Docker Machine', ['docker-machine', '--version'], None)),
-    ('docker-compose', ('Docker Compose', ['docker-compose', '--version'], None)),
-    ('docker-server', ('Docker Server Connectivity', ['docker', 'ps'], errorhint_docker_server)),
+    ('git', GitCheck),
+    ('docker-client', DockerClientCheck),
+    ('docker-machine', DockerMachineCheck),
+    ('docker-compose', DockerComposeCheck),
+    ('docker-server', DockerServerCheck),
 ])
-
-    
-
-def check_command(command):
-    errors = []
-    try:
-        utils.check_call(command, catch=False, silent=True)
-    except OSError as exc:
-        if exc.errno == os.errno.ENOENT:
-            errors.append('executable {} not found'.format(command[0]))
-        else:
-            errors.append(
-                'unknown error while trying to run {}: {}'
-                .format(command, exc.message)
-            )
-    except subprocess.CalledProcessError as exc:
-        errors.append(exc.output or str(exc))
-    return errors
 
 
 def check_requirements(checks=None):
     if checks is None:
         checks = ALL_CHECKS.keys()
 
-    for check in checks:
-        check_name, cmd, error_hint = ALL_CHECKS[check]
-        errors = check_command(cmd)
-        if errors and error_hint:
-            errors += error_hint()
-        yield check, check_name, errors
+    for check_key in checks:
+        check = ALL_CHECKS[check_key]()
+        errors = check.run_check()
+        yield check_key, check.name, errors
 
 
 def check_requirements_human(checks=None, silent=False):
