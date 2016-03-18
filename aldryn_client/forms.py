@@ -3,6 +3,7 @@ import os
 
 VALID_FIELD_TYPES = [
     'text',
+    'password',
     'checkbox',
     'number',
     'select',
@@ -70,6 +71,10 @@ class CharField(BaseField):
         data['min_length'] = self.min_length
         data['max_length'] = self.max_length
         return data
+
+
+class PasswordField(CharField):
+    field_type = 'password'
 
 
 class CheckboxField(BaseField):
