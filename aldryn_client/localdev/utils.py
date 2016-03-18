@@ -94,7 +94,11 @@ def ensure_windows_docker_compose_file_exists(path):
     unix_path = os.path.join(path, UNIX_DOCKER_COMPOSE_FILENAME)
     if not os.path.isfile(unix_path):
         # TODO: use correct exit from click
-        sys.exit('docker-compose.yml not found at {}'.format(unix_path))
+        click.secho(
+            'docker-compose.yml not found at {}'.format(unix_path),
+            fg='red',
+        )
+        sys.exit(1)
 
     with open(unix_path, 'r') as fh:
         config = yaml.load(fh)
