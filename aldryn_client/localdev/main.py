@@ -170,7 +170,7 @@ def pull_db(client, path=None):
     response = client.download_db_request(website_id) or {}
     progress_url = response.get('progress_url')
     if not progress_url:
-        click.secho(' error!', color='red')
+        click.secho(' error!', fg='red')
         sys.exit(1)
 
     progress = {'success': None}
@@ -178,7 +178,7 @@ def pull_db(client, path=None):
         sleep(2)
         progress = client.download_db_progress(url=progress_url)
     if not progress.get('success'):
-        click.secho(' error!', color='red')
+        click.secho(' error!', fg='red')
         click.secho(progress.get('result') or '')
         sys.exit(1)
     download_url = progress.get('result') or None
@@ -211,7 +211,7 @@ def pull_db(client, path=None):
         click.secho(
             "Couldn't connect to database container. "
             "Database server may not have started.",
-            color='red',
+            fg='red',
         )
         sys.exit(1)
     wait_time = int(time() - start_wait)
@@ -282,7 +282,7 @@ def pull_media(client, path=None):
     response = client.download_media_request(website_id) or {}
     progress_url = response.get('progress_url')
     if not progress_url:
-        click.secho(' error!', color='red')
+        click.secho(' error!', fg='red')
         sys.exit(1)
 
     progress = {'success': None}
@@ -290,7 +290,7 @@ def pull_media(client, path=None):
         sleep(2)
         progress = client.download_media_progress(url=progress_url)
     if not progress.get('success'):
-        click.secho(' error!', color='red')
+        click.secho(' error!', fg='red')
         click.secho(progress.get('result') or '')
         sys.exit(1)
     download_url = progress.get('result') or None
@@ -409,7 +409,7 @@ def push_db(client):
 
     progress_url = response.get('progress_url')
     if not progress_url:
-        click.secho(' error!', color='red')
+        click.secho(' error!', fg='red')
         sys.exit(1)
 
     click.secho(' ---> Processing...', nl=False)
@@ -419,7 +419,7 @@ def push_db(client):
         sleep(2)
         progress = client.upload_db_progress(url=progress_url)
     if not progress.get('success'):
-        click.secho(' error!', color='red')
+        click.secho(' error!', fg='red')
         click.secho(progress.get('result') or '')
         sys.exit(1)
     processing_time = int(time() - start_processing)
@@ -477,7 +477,7 @@ def push_media(client):
     click.echo(' [{}s]'.format(upload_time))
     progress_url = response.get('progress_url')
     if not progress_url:
-        click.secho(' error!', color='red')
+        click.secho(' error!', fg='red')
         sys.exit(1)
 
     click.secho('Processing...', nl=False)
@@ -487,7 +487,7 @@ def push_media(client):
         sleep(2)
         progress = client.upload_media_progress(url=progress_url)
     if not progress.get('success'):
-        click.secho(' error!', color='red')
+        click.secho(' error!', fg='red')
         click.secho(progress.get('result') or '')
         sys.exit(1)
     processing_time = int(time() - start_processing)
