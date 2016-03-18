@@ -6,6 +6,7 @@ Changelog
 
 * Release binary package for Linux, OS X and Windows
 * Improve ``aldryn doctor`` command
+* Replaced usage of ``exit`` with ``sys.exit`` for compatibility
 
 
 2.1.7 (2016-02-19)
