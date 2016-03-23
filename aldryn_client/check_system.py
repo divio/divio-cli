@@ -72,7 +72,7 @@ class DockerComposeCheck(Check):
 class DockerServerCheck(Check):
     name = 'Docker Server Connectivity'
     command = (
-        'docker', 'run', '--rm', 'busybox', 'ping', '-c', '1', '8.8.8.8'
+        'docker', 'run', '--rm', 'busybox', 'true'
     )
 
     def fmt_exception(self, exc):
@@ -109,12 +109,41 @@ class DockerServerCheck(Check):
         return errors
 
 
+class DockerInternetCheck(Check):
+    name = 'Docker Internet Connectivity'
+    command = (
+        'docker', 'run', '--rm', 'busybox', 'ping', '-c', '1', '8.8.8.8'
+    )
+
+    def fmt_exception(self, exc):
+        errors = super(DockerInternetCheck, self).fmt_exception(exc)
+        errors.append("The 'ping' command inside docker is not able to ping "
+            "8.8.8.8. This might be due to missing internet connectivity, "
+            "a firewall or a network configuration problem.")
+        return errors
+
+class DockerDNSCheck(Check):
+    name = 'Docker DNS Connectivity'
+    command = (
+        'docker', 'run', '--rm', 'busybox',  'nslookup', 'www.aldryn.com'
+    )
+
+    def fmt_exception(self, exc):
+        errors = super(DockerDNSCheck, self).fmt_exception(exc)
+        errors.append("The DNS resolution inside docker is not able to resolve "
+            "www.aldryn.com. This might be due to missing internet "
+            "connectivity, a firewall or a network configuration problem.")
+        return errors
+
+
 ALL_CHECKS = OrderedDict([
     ('git', GitCheck),
     ('docker-client', DockerClientCheck),
     ('docker-machine', DockerMachineCheck),
     ('docker-compose', DockerComposeCheck),
     ('docker-server', DockerServerCheck),
+    ('docker-internet', DockerInternetCheck),
+    ('docker-dns', DockerDNSCheck),
 ])
 
 
