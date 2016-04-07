@@ -125,14 +125,17 @@ class DockerEngineCheck(DockerEngineBaseCheck):
         return errors
 
 
-class DockerEngineInternetCheck(DockerEngineBaseCheck):
+class DockerEnginePingCheck(DockerEngineBaseCheck):
     name = 'Docker Engine Internet Connectivity'
     command = (
-        'docker', 'run', '--rm', 'busybox', 'ping', '-c', '1', '8.8.8.8'
+        'docker', 'run', '--rm', 'busybox', 'ping',
+        '-c', '1',  # stop after one packet response
+        '-W', '5',  # timeout of 5 seconds
+        '8.8.8.8',
     )
 
     def fmt_exception(self, exc):
-        errors = super(DockerEngineInternetCheck, self).fmt_exception(exc)
+        errors = super(DockerEnginePingCheck, self).fmt_exception(exc)
         errors.append(
             "The 'ping' command inside docker is not able to ping "
             '8.8.8.8. This might be due to missing internet connectivity, '
@@ -143,7 +146,11 @@ class DockerEngineInternetCheck(DockerEngineBaseCheck):
 
 class DockerEngineDNSCheck(DockerEngineBaseCheck):
     name = 'Docker Engine DNS Connectivity'
-    command = ('docker', 'run', '--rm', 'busybox',  'nslookup', 'aldryn.com')
+    command = (
+        'docker', 'run', '--rm', 'busybox',  'nslookup',
+        '-timeout=5',  # timeout of 5 seconds
+        'aldryn.com',
+    )
 
     def fmt_exception(self, exc):
         errors = super(DockerEngineDNSCheck, self).fmt_exception(exc)
@@ -161,7 +168,7 @@ ALL_CHECKS = OrderedDict([
     ('docker-machine', DockerMachineCheck),
     ('docker-compose', DockerComposeCheck),
     ('docker-server', DockerEngineCheck),
-    ('docker-server-internet', DockerEngineInternetCheck),
+    ('docker-server-ping', DockerEnginePingCheck),
     ('docker-server-dns', DockerEngineDNSCheck),
 ])
 
