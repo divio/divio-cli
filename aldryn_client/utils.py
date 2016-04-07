@@ -155,6 +155,10 @@ def is_windows():
     return sys.platform == 'win32'
 
 
+def is_linux():
+    return sys.platform.startswith('linux')
+
+
 unit_list = zip(
         ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
         [0, 0, 1, 2, 2, 2],
