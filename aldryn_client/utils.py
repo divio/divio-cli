@@ -156,7 +156,7 @@ def is_windows():
 
 
 def is_linux():
-    return sys.platform in ('linux', 'linux2')
+    return sys.platform.startswith('linux')
 
 
 unit_list = zip(
