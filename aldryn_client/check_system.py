@@ -147,8 +147,9 @@ class DockerEnginePingCheck(DockerEngineBaseCheck):
 class DockerEngineDNSCheck(DockerEngineBaseCheck):
     name = 'Docker Engine DNS Connectivity'
     command = (
-        # FIXME: add a timeout here
-        'docker', 'run', '--rm', 'busybox',  'nslookup', 'aldryn.com',
+        'docker', 'run', '--rm', 'busybox',
+        'timeout', '-t', '5',  # timeout of 5 seconds
+        'nslookup', 'aldryn.com',
     )
 
     def fmt_exception(self, exc):
