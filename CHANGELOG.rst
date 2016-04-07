@@ -1,12 +1,13 @@
 Changelog
 =========
 
-2.2 (UNRELEASED)
+2.2 (2016-04-07)
 ------------------
 
 * Release binary package for Linux, OS X and Windows
 * Improve ``aldryn doctor`` command
 * Replaced usage of ``exit`` with ``sys.exit`` for compatibility
+* Fixes an issue in local dev setup with newer Docker version (docker exec changed)
 
 
 2.1.7 (2016-02-19)
