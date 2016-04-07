@@ -77,7 +77,7 @@ class DockerServerCheck(Check):
 
     def fmt_exception(self, exc):
         errors = super(DockerServerCheck, self).fmt_exception(exc)
-        if utils.is_linux():
+        if not utils.is_windows():
             default_host_path = '/var/run/docker.sock'
             default_host_url = 'unix://{}'.format(default_host_path)
             current_host_url = os.environ.get('DOCKER_HOST')
@@ -91,7 +91,7 @@ class DockerServerCheck(Check):
                         'Could not find docker server socket at {}. Please '
                         'make sure your docker server is setup correctly and '
                         'check the docker installation guide: '
-                        'https://docs.docker.com/engine/installation/linux/'
+                        'https://docs.docker.com/engine/installation/'
                         .format(default_host_path)
                     )
 
