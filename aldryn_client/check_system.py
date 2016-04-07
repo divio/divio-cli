@@ -69,27 +69,43 @@ class DockerComposeCheck(Check):
     command = ('docker-compose', '--version')
 
 
-class DockerServerCheck(Check):
-    name = 'Docker Server Connectivity'
-    command = (
-        'docker', 'run', '--rm', 'busybox', 'true'
-    )
+def get_engine_down_error():
+    msg = "Couldn't connect to Docker daemon. "
+    if utils.is_linux():
+        msg += 'Please start the docker service.'
+    else:
+        msg += 'You might need to run `docker-machine start`.'
+    return msg
+
+
+class DockerEngineBaseCheck(Check):
+    def fmt_exception(self, exc):
+        errors = super(DockerEngineBaseCheck, self).fmt_exception(exc)
+        if exc.returncode == 125:
+            errors.append(get_engine_down_error())
+        return errors
+
+
+class DockerEngineCheck(DockerEngineBaseCheck):
+    name = 'Docker Engine Connectivity'
+    command = ('docker', 'run', '--rm', 'busybox', 'true')
 
     def fmt_exception(self, exc):
-        errors = super(DockerServerCheck, self).fmt_exception(exc)
+        errors = super(DockerEngineCheck, self).fmt_exception(exc)
         if not utils.is_windows():
             default_host_path = '/var/run/docker.sock'
             default_host_url = 'unix://{}'.format(default_host_path)
             current_host_url = os.environ.get('DOCKER_HOST')
+            current_host_is_default = current_host_url == default_host_url
 
             # run additional checks if it user is running default config
-            if not current_host_url or current_host_url == default_host_url:
+            if not current_host_url or current_host_is_default:
 
                 # check if docker socket exists
                 if not os.path.exists(default_host_path):
                     errors.append(
-                        'Could not find docker server socket at {}. Please '
-                        'make sure your docker server is setup correctly and '
+                        'Could not find docker engine socket at {}. Please '
+                        'make sure your docker engine is setup correctly and '
                         'check the docker installation guide: '
                         'https://docs.docker.com/engine/installation/'
                         .format(default_host_path)
@@ -109,30 +125,33 @@ class DockerServerCheck(Check):
         return errors
 
 
-class DockerInternetCheck(Check):
-    name = 'Docker Internet Connectivity'
+class DockerEngineInternetCheck(DockerEngineBaseCheck):
+    name = 'Docker Engine Internet Connectivity'
     command = (
         'docker', 'run', '--rm', 'busybox', 'ping', '-c', '1', '8.8.8.8'
     )
 
     def fmt_exception(self, exc):
-        errors = super(DockerInternetCheck, self).fmt_exception(exc)
-        errors.append("The 'ping' command inside docker is not able to ping "
-            "8.8.8.8. This might be due to missing internet connectivity, "
-            "a firewall or a network configuration problem.")
+        errors = super(DockerEngineInternetCheck, self).fmt_exception(exc)
+        errors.append(
+            "The 'ping' command inside docker is not able to ping "
+            '8.8.8.8. This might be due to missing internet connectivity, '
+            'a firewall or a network configuration problem.'
+        )
         return errors
 
-class DockerDNSCheck(Check):
-    name = 'Docker DNS Connectivity'
-    command = (
-        'docker', 'run', '--rm', 'busybox',  'nslookup', 'www.aldryn.com'
-    )
+
+class DockerEngineDNSCheck(DockerEngineBaseCheck):
+    name = 'Docker Engine DNS Connectivity'
+    command = ('docker', 'run', '--rm', 'busybox',  'nslookup', 'aldryn.com')
 
     def fmt_exception(self, exc):
-        errors = super(DockerDNSCheck, self).fmt_exception(exc)
-        errors.append("The DNS resolution inside docker is not able to resolve "
-            "www.aldryn.com. This might be due to missing internet "
-            "connectivity, a firewall or a network configuration problem.")
+        errors = super(DockerEngineDNSCheck, self).fmt_exception(exc)
+        errors.append(
+            'The DNS resolution inside docker is not able to resolve '
+            'aldryn.com. This might be due to missing internet connectivity, '
+            'a firewall or a network configuration problem.'
+        )
         return errors
 
 
@@ -141,9 +160,9 @@ ALL_CHECKS = OrderedDict([
     ('docker-client', DockerClientCheck),
     ('docker-machine', DockerMachineCheck),
     ('docker-compose', DockerComposeCheck),
-    ('docker-server', DockerServerCheck),
-    ('docker-internet', DockerInternetCheck),
-    ('docker-dns', DockerDNSCheck),
+    ('docker-server', DockerEngineCheck),
+    ('docker-server-internet', DockerEngineInternetCheck),
+    ('docker-server-dns', DockerEngineDNSCheck),
 ])
 
 
@@ -157,6 +176,17 @@ def check_requirements(checks=None):
         yield check_key, check.name, errors
 
 
+def get_prefix(success):
+    is_windows = utils.is_windows()
+    if success:
+        symbol = ' OK  ' if is_windows else ' ✓  '
+        color = 'green'
+    else:
+        symbol = ' ERR ' if is_windows else ' ✖  '
+        color = 'red'
+    return symbol, color
+
+
 def check_requirements_human(checks=None, silent=False):
     errors = []
 
@@ -164,20 +194,14 @@ def check_requirements_human(checks=None, silent=False):
         if error:
             errors.append((check_name, error))
         if not silent:
-            is_windows = utils.is_windows()
-            if error:
-                symbol = ' ERR ' if is_windows else ' ✖  '
-                color = 'red'
-            else:
-                symbol = ' OK  ' if is_windows else ' ✓  '
-                color = 'green'
+            symbol, color = get_prefix(not error)
             click.secho(symbol, fg=color, nl=False)
             click.secho(check_name)
 
     if errors and not silent:
         click.secho('\nThe following errors occurred:', fg='red')
         for check_name, msgs in errors:
-            click.secho(' {}:'.format(check_name))
+            click.secho('\n {}:'.format(check_name))
             for msg in msgs:
                 click.secho(' > {}'.format(msg))
 
