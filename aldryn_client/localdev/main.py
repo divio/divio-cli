@@ -196,12 +196,18 @@ def pull_db(client, path=None):
     click.secho(' ---> Waiting for local database server...', nl=False)
     start_wait = time()
     # check for postgres in db container to start
+
+    # sleep 5 seconds initially because the server is quickly
+    # available during startup, but will go down again to
+    # create the initial database. We're giving postgres a head start
+    sleep(5)
+
     attempts = 10
     for attempt in range(attempts):
         try:
             check_call([
                 'docker', 'exec', db_container_id,
-                'psql', '-U', 'postgres',
+                'ls', '/var/run/postgresql/.s.PGSQL.5432',
             ], catch=False, silent=True)
         except subprocess.CalledProcessError:
             sleep(5)
