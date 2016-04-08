@@ -148,8 +148,8 @@ class DockerEngineDNSCheck(DockerEngineBaseCheck):
     name = 'Docker Engine DNS Connectivity'
     command = (
         'docker', 'run', '--rm', 'busybox',
-        'timeout', '-t', '5',  # timeout of 5 seconds
-        'nslookup', 'aldryn.com',
+        'sh', '-c',  # run in new a shell to avoid problems with timeout
+        '"timeout -t 5 nslookup aldryn.com"',
     )
 
     def fmt_exception(self, exc):
