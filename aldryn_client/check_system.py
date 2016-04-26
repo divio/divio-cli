@@ -7,10 +7,14 @@ import click
 
 from . import utils
 
+ERROR = 1
+WARNING = 0
+
 
 class Check(object):
     name = None
     command = None
+    error_level = ERROR
 
     def run_check(self):
         errors = []
@@ -62,6 +66,7 @@ class DockerClientCheck(Check):
 class DockerMachineCheck(Check):
     name = 'Docker Machine'
     command = ('docker-machine', '--version')
+    error_level = WARNING
 
 
 class DockerComposeCheck(Check):
@@ -199,17 +204,21 @@ def check_requirements_human(checks=None, silent=False):
 
     for check, check_name, error in check_requirements(checks):
         if error:
-            errors.append((check_name, error))
+            errors.append((check, check_name, error))
         if not silent:
             symbol, color = get_prefix(not error)
             click.secho(symbol, fg=color, nl=False)
             click.secho(check_name)
 
-    if errors and not silent:
+    if not errors:
+        return True
+
+    if not silent:
         click.secho('\nThe following errors occurred:', fg='red')
-        for check_name, msgs in errors:
+        for check, check_name, msgs in errors:
             click.secho('\n {}:'.format(check_name))
             for msg in msgs:
                 click.secho(' > {}'.format(msg))
 
-    return not bool(errors)
+    max_error_level = max([ALL_CHECKS[e[0]].error_level for e in errors])
+    return True if max_error_level == 0 else False
