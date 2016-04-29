@@ -176,6 +176,9 @@ ALL_CHECKS = OrderedDict([
     ('docker-server-ping', DockerEnginePingCheck),
     ('docker-server-dns', DockerEngineDNSCheck),
 ])
+if utils.is_linux():
+    # On Linux Docker runs natively, no need to check for Docker Machine
+    del ALL_CHECKS['docker-machine']
 
 
 def check_requirements(checks=None):
