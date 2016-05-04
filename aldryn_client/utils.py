@@ -159,10 +159,10 @@ def is_linux():
     return sys.platform.startswith('linux')
 
 
-unit_list = zip(
+unit_list = list(zip(
         ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
         [0, 0, 1, 2, 2, 2],
-)
+))
 
 
 def pretty_size(num):
