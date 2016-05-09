@@ -37,8 +37,8 @@ class APIRequest(object):
     }
     headers = {}
 
-    def __init__(self, session, url=None, url_kwargs=None, data=None, files=None,
-                 *args, **kwargs):
+    def __init__(self, session, url=None, url_kwargs=None, data=None,
+                 files=None, *args, **kwargs):
         self.session = session
         if url:
             self.url = url
@@ -70,7 +70,9 @@ class APIRequest(object):
             )
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout) as e:
-            raise click.ClickException(messages.NETWORK_ERROR_MESSAGE + unicode(e))
+            raise click.ClickException(
+                messages.NETWORK_ERROR_MESSAGE + unicode(e)
+            )
 
         return self.verify(response)
 

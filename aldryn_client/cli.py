@@ -400,11 +400,11 @@ def boilerplate_upload(ctx):
 @cli.command()
 @click.option(
     '-s', '--skip-check',  is_flag=True, default=False,
-    help="don't check PyPi for newer version",
+    help="don't check PyPI for newer version",
 )
 @click.option(
     '-e', '--show-error',  is_flag=True, default=False,
-    help="show error if PyPi check fails",
+    help="show error if PyPI check fails",
 )
 def version(skip_check, show_error):
     """Show version info"""
@@ -431,7 +431,7 @@ def version(skip_check, show_error):
 
         elif newest_version and newest_version > current_version:
             click.echo(
-                "\nNew version ({newest_version}) available on PyPi. Update "
+                "\nNew version ({newest_version}) available on PyPI. Update "
                 "now using 'pip install aldryn-client=={newest_version}'"
                 .format(newest_version=newest_version)
             )
