@@ -1,4 +1,5 @@
 import subprocess
+import platform
 import tarfile
 import tempfile
 import os
@@ -11,6 +12,8 @@ import click
 import requests
 from tabulate import tabulate
 from six.moves.urllib_parse import urljoin
+
+from . import __version__
 
 
 def hr(char='-', width=None, **kwargs):
@@ -213,3 +216,13 @@ def get_latest_version_from_pypi():
         return False, exc
     except (KeyError, ValueError):
         return False, None
+
+
+def get_user_agent():
+    client = 'aldryn-client/{}'.format(__version__)
+    os = '{}/{}'.format(platform.system(), platform.release())
+    python = '{}/{}'.format(
+        platform.python_implementation(),
+        platform.python_version(),
+    )
+    return '{} ({}; {})'.format(client, os, python)
