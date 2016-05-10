@@ -218,8 +218,26 @@ def get_latest_version_from_pypi():
         return False, None
 
 
+def get_git_commit():
+    script_home = os.path.dirname(__file__)
+    git_dir = os.path.join(script_home, '..', '.git')
+    if os.path.exists(git_dir):
+        try:
+            return subprocess.check_output([
+                'git', '--git-dir', git_dir,
+                'rev-parse', '--short', 'HEAD'
+            ]).strip()
+        except:
+            pass
+
+
 def get_user_agent():
-    client = 'aldryn-client/{}'.format(__version__)
+    revision = get_git_commit()
+    if revision:
+        client = 'aldryn-client/{}-{}'.format(__version__, revision)
+    else:
+        client = 'aldryn-client/{}'.format(__version__)
+
     os = '{}/{}'.format(platform.system(), platform.release())
     python = '{}/{}'.format(
         platform.python_implementation(),

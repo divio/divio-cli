@@ -19,6 +19,7 @@ from .check_system import check_requirements, check_requirements_human
 from .utils import (
     hr, table, open_project_cloud_site, get_dashboard_url,
     get_project_cheatsheet_url, get_latest_version_from_pypi,
+    get_git_commit,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -412,14 +413,9 @@ def version(skip_check, show_error):
     click.echo('package version: {}'.format(__version__))
 
     # try to get git revision
-    script_home = os.path.dirname(__file__)
-    git_dir = os.path.join(script_home, '..', '.git')
-    if os.path.exists(git_dir):
-        revision = subprocess.check_output([
-            'git', '--git-dir', git_dir,
-            'rev-parse', '--short', 'HEAD'
-        ]).strip()
-        click.echo('git revision:    {}'.format(revision))
+    git_commit = get_git_commit()
+    if git_commit:
+        click.echo('git revision:    {}'.format(git_commit))
 
     if not skip_check:
         # check pypi for a newer version
