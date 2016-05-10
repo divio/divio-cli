@@ -103,7 +103,7 @@ def ensure_windows_docker_compose_file_exists(path):
     with open(unix_path, 'r') as fh:
         config = yaml.load(fh)
 
-    for component, sections in config.iteritems():
+    for component, sections in config.items():
         if 'volumes' not in sections:
             continue
         volumes = []

@@ -1,6 +1,12 @@
 Changelog
 =========
 
+next (2016-xx-xx)
+-----------------
+
+* Fix some python3 compatibility issues
+
+
 2.2.1 (2016-04-26)
 ------------------
 
@@ -8,7 +14,7 @@ Changelog
 
 
 2.2 (2016-04-07)
-------------------
+----------------
 
 * Release binary package for Linux, OS X and Windows
 * Improve ``aldryn doctor`` command
@@ -62,7 +68,7 @@ Changelog
 
 
 2.1 (2016-01-20)
-------------------
+----------------
 
 * Python 3 support (experimental)
 * Automated update checker

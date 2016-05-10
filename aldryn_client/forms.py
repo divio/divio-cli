@@ -170,7 +170,7 @@ class BaseForm(object):
         self.errors = {}
         try:
             self.clean()
-        except ValidationError, e:
+        except ValidationError as e:
             self.errors[None] = e.message
         return not self.errors
 
@@ -182,7 +182,7 @@ class BaseForm(object):
             else:
                 try:
                     self.cleaned_data[name] = field.clean(value)
-                except ValidationError, e:
+                except ValidationError as e:
                     self.errors[name] = e.message
         return self.cleaned_data
 
