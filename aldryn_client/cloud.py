@@ -238,16 +238,6 @@ class CloudClient(object):
         )
         return request()
 
-    def download_db(self, website_slug, url=None, filename=None, directory=None):
-        request = api_requests.DownloadDBRequest(
-            self.session,
-            url=url,
-            url_kwargs={'website_slug': website_slug},
-            filename=filename,
-            directory=directory,
-        )
-        return request()
-
     def download_media_request(self, website_id):
         request = api_requests.DownloadMediaRequestRequest(
             self.session,
@@ -259,17 +249,6 @@ class CloudClient(object):
         request = api_requests.DownloadMediaProgressRequest(
             self.session,
             url=url,
-        )
-        return request()
-
-    def download_media(self, website_slug, url=None,
-                       filename=None, directory=None):
-        request = api_requests.DownloadMediaRequest(
-            self.session,
-            url=url,
-            url_kwargs={'website_slug': website_slug},
-            filename=filename,
-            directory=directory,
         )
         return request()
 
