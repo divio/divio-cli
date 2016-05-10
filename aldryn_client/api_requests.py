@@ -244,11 +244,6 @@ class DownloadDBProgressRequest(JsonResponse, APIRequest):
     method = 'GET'
 
 
-class DownloadDBRequest(FileResponse, APIRequest):
-    url = '/api/v1/workspace/{website_slug}/download/db/'
-    headers = {'accept': 'application/x-tar-gz'}
-
-
 # Download Media
 
 class DownloadMediaRequestRequest(JsonResponse, APIRequest):
@@ -258,11 +253,6 @@ class DownloadMediaRequestRequest(JsonResponse, APIRequest):
 
 class DownloadMediaProgressRequest(JsonResponse, APIRequest):
     method = 'GET'
-
-
-class DownloadMediaRequest(FileResponse, APIRequest):
-    url = '/api/v1/workspace/{website_slug}/download/media/'
-    headers = {'accept': 'application/x-tar-gz'}
 
 
 # Upload DB

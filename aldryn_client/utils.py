@@ -244,3 +244,19 @@ def get_user_agent():
         platform.python_version(),
     )
     return '{} ({}; {})'.format(client, os, python)
+
+
+def download_file(url, directory=None, filename=None):
+    response = requests.get(url, stream=True)
+
+    dump_path = os.path.join(
+        directory or create_temp_dir(),
+        filename or 'data.tar.gz',
+    )
+
+    with open(dump_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=1024):
+            if chunk:  # filter out keep-alive new chunks
+                f.write(chunk)
+                f.flush()
+    return dump_path

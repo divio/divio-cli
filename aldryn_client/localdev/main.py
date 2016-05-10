@@ -10,7 +10,10 @@ import click
 import requests
 import shutil
 
-from ..utils import check_call, check_output, is_windows, pretty_size, get_size
+from ..utils import (
+    check_call, check_output, is_windows, pretty_size, get_size,
+    download_file,
+)
 from ..cloud import get_aldryn_host
 from .. import settings
 from . import utils
@@ -187,7 +190,7 @@ def pull_db(client, path=None):
 
     click.secho(' ---> Downloading database...', nl=False)
     start_download = time()
-    db_dump_path = client.download_db(website_slug, url=download_url, directory=path)
+    db_dump_path = download_file(download_url, directory=path)
     download_time = int(time() - start_download)
     click.echo(' [{}s]'.format(download_time))
 
@@ -305,7 +308,7 @@ def pull_media(client, path=None):
 
     click.secho(' ---> Downloading...', nl=False)
     start_download = time()
-    backup_path = client.download_media(website_slug, url=download_url)
+    backup_path = download_file(download_url)
     if not backup_path:
         # no backup yet, skipping
         return
