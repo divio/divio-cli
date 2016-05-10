@@ -4,6 +4,8 @@ Changelog
 next (2016-xx-xx)
 -----------------
 
+* Use plain requests for media and database downloads
+* Send the user agent with API requests
 * Fix some python3 compatibility issues
 
 
