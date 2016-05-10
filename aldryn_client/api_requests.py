@@ -5,7 +5,7 @@ import requests
 from six.moves.urllib_parse import urljoin
 
 from . import messages
-from .utils import create_temp_dir
+from .utils import create_temp_dir, get_user_agent
 
 
 class SingleHostSession(requests.Session):
@@ -32,10 +32,13 @@ class APIRequest(object):
 
     method = 'GET'
     url = None
+    default_headers = {
+        'User-Agent': get_user_agent(),
+    }
     headers = {}
 
-    def __init__(self, session, url=None, url_kwargs=None, data=None, files=None,
-                 *args, **kwargs):
+    def __init__(self, session, url=None, url_kwargs=None, data=None,
+                 files=None, *args, **kwargs):
         self.session = session
         if url:
             self.url = url
@@ -52,17 +55,24 @@ class APIRequest(object):
     def get_error_code_map(self):
         return self.response_code_error_map
 
+    def get_headers(self):
+        headers = self.default_headers.copy()
+        headers.update(self.headers)
+        return headers
+
     def request(self, *args, **kwargs):
         try:
             response = self.session.request(
                 self.method, self.get_url(),
                 data=self.data, files=self.files,
-                headers=self.headers,
+                headers=self.get_headers(),
                 *args, **kwargs
             )
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout) as e:
-            raise click.ClickException(messages.NETWORK_ERROR_MESSAGE + unicode(e))
+            raise click.ClickException(
+                messages.NETWORK_ERROR_MESSAGE + unicode(e)
+            )
 
         return self.verify(response)
 

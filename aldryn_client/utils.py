@@ -1,4 +1,5 @@
 import subprocess
+import platform
 import tarfile
 import tempfile
 import os
@@ -11,6 +12,8 @@ import click
 import requests
 from tabulate import tabulate
 from six.moves.urllib_parse import urljoin
+
+from . import __version__
 
 
 def hr(char='-', width=None, **kwargs):
@@ -213,3 +216,31 @@ def get_latest_version_from_pypi():
         return False, exc
     except (KeyError, ValueError):
         return False, None
+
+
+def get_git_commit():
+    script_home = os.path.dirname(__file__)
+    git_dir = os.path.join(script_home, '..', '.git')
+    if os.path.exists(git_dir):
+        try:
+            return subprocess.check_output([
+                'git', '--git-dir', git_dir,
+                'rev-parse', '--short', 'HEAD'
+            ]).strip()
+        except:
+            pass
+
+
+def get_user_agent():
+    revision = get_git_commit()
+    if revision:
+        client = 'aldryn-client/{}-{}'.format(__version__, revision)
+    else:
+        client = 'aldryn-client/{}'.format(__version__)
+
+    os = '{}/{}'.format(platform.system(), platform.release())
+    python = '{}/{}'.format(
+        platform.python_implementation(),
+        platform.python_version(),
+    )
+    return '{} ({}; {})'.format(client, os, python)

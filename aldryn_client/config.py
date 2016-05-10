@@ -46,7 +46,7 @@ class Config(object):
         current_version = StrictVersion(__version__)
 
         if not last_checked or last_checked < now - (60 * 60 * 24):
-            # try to access PyPi to get the latest available version
+            # try to access PyPI to get the latest available version
             newest_version, _ = utils.get_latest_version_from_pypi()
 
             if newest_version:
@@ -66,7 +66,7 @@ class Config(object):
                 self.save()
             else:
                 click.secho(
-                    "New version ({version}) available on PyPi. Update "
+                    "New version ({version}) available on PyPI. Update "
                     "now using 'pip install aldryn-client=={version}'"
                     .format(version=newer_version),
                     fg='yellow'

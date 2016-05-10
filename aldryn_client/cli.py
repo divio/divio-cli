@@ -19,6 +19,7 @@ from .check_system import check_requirements, check_requirements_human
 from .utils import (
     hr, table, open_project_cloud_site, get_dashboard_url,
     get_project_cheatsheet_url, get_latest_version_from_pypi,
+    get_git_commit,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -400,11 +401,11 @@ def boilerplate_upload(ctx):
 @cli.command()
 @click.option(
     '-s', '--skip-check',  is_flag=True, default=False,
-    help="don't check PyPi for newer version",
+    help="don't check PyPI for newer version",
 )
 @click.option(
     '-e', '--show-error',  is_flag=True, default=False,
-    help="show error if PyPi check fails",
+    help="show error if PyPI check fails",
 )
 def version(skip_check, show_error):
     """Show version info"""
@@ -412,14 +413,9 @@ def version(skip_check, show_error):
     click.echo('package version: {}'.format(__version__))
 
     # try to get git revision
-    script_home = os.path.dirname(__file__)
-    git_dir = os.path.join(script_home, '..', '.git')
-    if os.path.exists(git_dir):
-        revision = subprocess.check_output([
-            'git', '--git-dir', git_dir,
-            'rev-parse', '--short', 'HEAD'
-        ]).strip()
-        click.echo('git revision:    {}'.format(revision))
+    git_commit = get_git_commit()
+    if git_commit:
+        click.echo('git revision:    {}'.format(git_commit))
 
     if not skip_check:
         # check pypi for a newer version
@@ -431,7 +427,7 @@ def version(skip_check, show_error):
 
         elif newest_version and newest_version > current_version:
             click.echo(
-                "\nNew version ({newest_version}) available on PyPi. Update "
+                "\nNew version ({newest_version}) available on PyPI. Update "
                 "now using 'pip install aldryn-client=={newest_version}'"
                 .format(newest_version=newest_version)
             )
