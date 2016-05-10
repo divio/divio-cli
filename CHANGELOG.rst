@@ -1,7 +1,7 @@
 Changelog
 =========
 
-next (2016-xx-xx)
+2.2.2 (2016-05-10)
 -----------------
 
 * Use plain requests for media and database downloads
