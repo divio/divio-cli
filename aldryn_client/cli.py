@@ -229,11 +229,15 @@ def project_cheatsheet(obj):
 @project.command(name='setup')
 @click.argument('slug')
 @click.option(
+    '-s', '--stage', default='test',
+    help='pull data from stage (test or live)',
+)
+@click.option(
     '-p', '--path', default='.', help='install project to path',
     type=click.Path(writable=True, readable=True)
 )
 @click.pass_obj
-def project_setup(obj, slug, path):
+def project_setup(obj, slug, stage, path):
     """Set up a development environment for an Aldryn project"""
     if not check_requirements_human(silent=True):
         click.secho(
@@ -242,7 +246,7 @@ def project_setup(obj, slug, path):
         )
         sys.exit(1)
 
-    localdev.create_workspace(obj, slug, path)
+    localdev.create_workspace(obj, slug, stage, path)
 
 
 @project.group(name='pull')
@@ -252,15 +256,25 @@ def project_pull():
 
 
 @project_pull.command(name='db')
+@click.argument('stage', default='test')
 @click.pass_obj
-def pull_db(obj):
-    localdev.pull_db(obj)
+def pull_db(obj, stage):
+    """
+    Pull database from your deployed website. Stage is either
+    test (default) or live
+    """
+    localdev.pull_db(obj, stage)
 
 
 @project_pull.command(name='media')
+@click.argument('stage', default='test')
 @click.pass_obj
-def pull_media(obj):
-    localdev.pull_media(obj)
+def pull_media(obj, stage):
+    """
+    Pull media files from your deployed website. Stage is either
+    test (default) or live
+    """
+    localdev.pull_media(obj, stage)
 
 
 @project.group(name='push')
@@ -270,19 +284,24 @@ def project_push():
 
 
 @project_push.command(name='db')
+@click.argument('stage', default='test')
 @click.pass_obj
-def push_db(obj):
+def push_db(obj, stage):
+    """
+    Push database to your deployed website. Stage is either
+    test (default) or live
+    """
     warning = (
         'WARNING',
         '=======',
 
-        '\nYou are about to push your local database to the test server on ',
-        'Aldryn. This will replace ALL data on the Aldryn test server with ',
+        '\nYou are about to push your local database to the {} server on '.format(stage),
+        'Aldryn. This will replace ALL data on the Aldryn {} server with '.format(stage),
         'the data you are about to push, including (but not limited to):',
         '  - User accounts',
         '  - CMS Pages & Plugins',
 
-        '\nYou will also lose any changes that have been made on the test ',
+        '\nYou will also lose any changes that have been made on the {} '.format(stage),
         'server since you pulled its database to your local environment. ',
 
         '\nIt is recommended to go the project settings on control.aldryn.com',
@@ -295,21 +314,26 @@ def push_db(obj):
     click.secho(os.linesep.join(warning), fg='red')
     if not click.confirm('\nAre you sure you want to continue?'):
         return
-    localdev.push_db(obj)
+    localdev.push_db(obj, stage)
 
 
 @project_push.command(name='media')
+@click.argument('stage', default='test')
 @click.pass_obj
-def push_media(obj):
+def push_media(obj, stage):
+    """
+    Push database to your deployed website. Stage is either
+    test (default) or live
+    """
     warning = (
         'WARNING',
         '=======',
 
-        '\nYou are about to push your local media files to the test server on ',
+        '\nYou are about to push your local media files to the {} server on '.format(stage),
         'Aldryn. This will replace ALL existing media files with the ones you ',
         'are about to push.',
 
-        '\nYou will also lose any changes that have been made on the test ',
+        '\nYou will also lose any changes that have been made on the {} '.format(stage),
         'server since you pulled its files to your local environment. ',
 
         '\nIt is recommended to go the project settings on control.aldryn.com',
@@ -322,7 +346,7 @@ def push_media(obj):
     click.secho(os.linesep.join(warning), fg='red')
     if not click.confirm('\nAre you sure you want to continue?'):
         return
-    localdev.push_media(obj)
+    localdev.push_media(obj, stage)
 
 
 @project.command(name='develop')

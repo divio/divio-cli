@@ -224,10 +224,11 @@ class CloudClient(object):
         )
         return request()
 
-    def download_db_request(self, website_id):
+    def download_db_request(self, website_id, stage):
         request = api_requests.DownloadDBRequestRequest(
             self.session,
             url_kwargs={'website_id': website_id},
+            data={'stage': stage},
         )
         return request()
 
@@ -238,10 +239,11 @@ class CloudClient(object):
         )
         return request()
 
-    def download_media_request(self, website_id):
+    def download_media_request(self, website_id, stage):
         request = api_requests.DownloadMediaRequestRequest(
             self.session,
             url_kwargs={'website_id': website_id},
+            data={'stage': stage},
         )
         return request()
 
@@ -252,10 +254,11 @@ class CloudClient(object):
         )
         return request()
 
-    def upload_db(self, website_id, archive_path):
+    def upload_db(self, website_id, stage, archive_path):
         request = api_requests.UploadDBRequest(
             self.session,
             url_kwargs={'website_id': website_id},
+            data={'stage': stage},
             files={'db_dump': open(archive_path, 'rb')}
         )
         return request()
@@ -267,10 +270,11 @@ class CloudClient(object):
         )
         return request()
 
-    def upload_media(self, website_id, archive_path):
+    def upload_media(self, website_id, stage, archive_path):
         request = api_requests.UploadMediaFilesRequest(
             self.session,
             url_kwargs={'website_id': website_id},
+            data={'stage': stage},
             files={'media_files': open(archive_path, 'rb')}
         )
         return request()
