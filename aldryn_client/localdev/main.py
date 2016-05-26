@@ -64,7 +64,7 @@ def configure_project(website_slug, path, client):
         json.dump(website_data, fh)
 
 
-def setup_website_containers(client, path):
+def setup_website_containers(client, stage, path):
     docker_compose = utils.get_docker_compose_cmd(path)
 
     existing_db_container_id = utils.get_db_container_id(path)
@@ -86,7 +86,7 @@ def setup_website_containers(client, path):
         check_call(docker_compose('rm', '-f', 'db'))
 
     click.secho('creating new database container', fg='green')
-    pull_db(client, path)
+    pull_db(client, stage, path)
 
     click.secho('sync and migrate database', fg='green')
 
@@ -100,7 +100,7 @@ def setup_website_containers(client, path):
         check_call(docker_compose('run', 'web', 'start', 'migrate'))
 
 
-def create_workspace(client, website_slug, path=None):
+def create_workspace(client, website_slug, stage, path=None):
     click.secho('Creating workspace...', fg='green')
 
     path = os.path.abspath(
@@ -128,10 +128,10 @@ def create_workspace(client, website_slug, path=None):
     configure_project(website_slug, path, client)
 
     # setup docker website containers
-    setup_website_containers(client, path)
+    setup_website_containers(client, stage, path)
 
     # download media files
-    pull_media(client, path)
+    pull_media(client, stage, path)
 
     instructions = (
         "Finished setting up your project's workspace!",
@@ -143,12 +143,11 @@ def create_workspace(client, website_slug, path=None):
     click.secho('\n\n{}'.format(os.linesep.join(instructions)), fg='green')
 
 
-def pull_db(client, path=None):
+def pull_db(client, stage, path=None):
     path = path or utils.get_project_home(path)
     website_id = utils.get_aldryn_project_settings(path)['id']
     website_slug = utils.get_aldryn_project_settings(path)['slug']
     docker_compose = utils.get_docker_compose_cmd(path)
-    stage = 'test'
 
     click.secho(
         ' ===> Pulling database from {} {} server'.format(
@@ -170,7 +169,7 @@ def pull_db(client, path=None):
 
     click.secho(' ---> Preparing download...', nl=False)
     start_preparation = time()
-    response = client.download_db_request(website_id) or {}
+    response = client.download_db_request(website_id, stage) or {}
     progress_url = response.get('progress_url')
     if not progress_url:
         click.secho(' error!', fg='red')
@@ -226,6 +225,16 @@ def pull_db(client, path=None):
     wait_time = int(time() - start_wait)
     click.echo(' [{}s]'.format(wait_time))
 
+    # drop any existing connections
+    check_call([
+        'docker', 'exec', db_container_id,
+        'psql', '-U', 'postgres', '-c',
+        "SELECT pg_terminate_backend(pg_stat_activity.pid) "
+        "FROM   pg_stat_activity "
+        "WHERE  pg_stat_activity.datname = 'db' "
+        "  AND  pid <> pg_backend_pid();",
+    ], silent=True)
+
     click.secho(' ---> Removing local database...', nl=False)
     start_remove = time()
     # create empty db
@@ -244,7 +253,7 @@ def pull_db(client, path=None):
         'docker', 'exec', db_container_id,
         'psql', '-U', 'postgres', '--dbname=db',
         '-c', 'CREATE EXTENSION IF NOT EXISTS hstore;',
-    ])
+    ], silent=True)
     remove_time = int(time() - start_remove)
     click.echo(' [{}s]'.format(remove_time))
 
@@ -272,12 +281,11 @@ def pull_db(client, path=None):
     click.echo(' [{}s]'.format(total_time))
 
 
-def pull_media(client, path=None):
+def pull_media(client, stage, path=None):
     project_home = utils.get_project_home(path)
     path = os.path.join(project_home, 'data', 'media')
     website_id = utils.get_aldryn_project_settings(path)['id']
     website_slug = utils.get_aldryn_project_settings(path)['slug']
-    stage = 'test'
 
     click.secho(
         ' ===> Pulling media files from {} {} server'.format(
@@ -288,7 +296,7 @@ def pull_media(client, path=None):
     start_time = time()
     click.secho(' ---> Preparing download...', nl=False)
     start_preparation = time()
-    response = client.download_media_request(website_id) or {}
+    response = client.download_media_request(website_id, stage) or {}
     progress_url = response.get('progress_url')
     if not progress_url:
         click.secho(' error!', fg='red')
@@ -348,7 +356,7 @@ def pull_media(client, path=None):
     click.echo(' [{}s]'.format(total_time))
 
 
-def push_db(client):
+def push_db(client, stage):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     dump_filename = 'local_db.sql'
@@ -356,7 +364,6 @@ def push_db(client):
     archive_path = os.path.join(project_home, archive_filename)
     docker_compose = utils.get_docker_compose_cmd(project_home)
     website_slug = utils.get_aldryn_project_settings(project_home)['slug']
-    stage = 'test'
 
     click.secho(
         ' ===> Pushing local database to {} {} server'.format(
@@ -412,7 +419,7 @@ def push_db(client):
 
     click.secho(' ---> Uploading...', nl=False)
     start_upload = time()
-    response = client.upload_db(website_id, archive_path) or {}
+    response = client.upload_db(website_id, stage, archive_path) or {}
     upload_time = int(time() - start_upload)
     click.echo(' [{}s]'.format(upload_time))
 
@@ -442,12 +449,11 @@ def push_db(client):
     click.echo(' [{}s]'.format(total_time))
 
 
-def push_media(client):
+def push_media(client, stage):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     archive_path = os.path.join(project_home, 'local_media.tar.gz')
     website_slug = utils.get_aldryn_project_settings(project_home)['slug']
-    stage = 'test'
     click.secho(
         ' ---> Pushing local media to {} {} server'.format(
             website_slug,
@@ -481,7 +487,7 @@ def push_media(client):
     )
     click.secho('Uploading...', nl=False)
     start_upload = time()
-    response = client.upload_media(website_id, archive_path) or {}
+    response = client.upload_media(website_id, stage, archive_path) or {}
     upload_time = int(time() - start_upload)
     click.echo(' [{}s]'.format(upload_time))
     progress_url = response.get('progress_url')
