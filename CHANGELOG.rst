@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.2.4 (2016-05-26)
+------------------
+
+* Fix an issue with quotes in the doctor's DNS check
+* Test if a check exists when using ``aldryn doctor -c``
+
+
 2.2.3 (2016-05-26)
 ------------------
 
