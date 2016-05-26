@@ -1,8 +1,17 @@
 Changelog
 =========
 
+2.2.3 (2016-05-26)
+------------------
+
+* Push and pull db/media from test or live stage
+* Check for login status in ``aldryn doctor``
+* Fix an issue on some platforms with timeout in the doctor's DNS check
+* freeze PyInstaller version to fix building the binaries
+
+
 2.2.2 (2016-05-10)
------------------
+------------------
 
 * Use plain requests for media and database downloads
 * Send the user agent with API requests
