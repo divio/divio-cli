@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import subprocess
+import sys
 from collections import OrderedDict
 
 import click
@@ -163,7 +164,7 @@ class DockerEngineDNSCheck(DockerEngineBaseCheck):
     command = (
         'docker', 'run', '--rm', 'busybox',
         'sh', '-c',  # run in new a shell to avoid problems with timeout
-        '"timeout -t 5 nslookup aldryn.com"',
+        'timeout -t 5 nslookup aldryn.com',
     )
 
     def fmt_exception(self, exc):
@@ -193,8 +194,14 @@ def check_requirements(checks=None):
         checks = ALL_CHECKS.keys()
 
     for check_key in checks:
-        check = ALL_CHECKS[check_key]()
-        errors = check.run_check()
+        check = ALL_CHECKS.get(check_key)
+        if not check:
+            click.secho(
+                'Invalid check {}'.format(check_key),
+                fg='red'
+            )
+            sys.exit(1)
+        errors = check().run_check()
         yield check_key, check.name, errors
 
 
