@@ -164,7 +164,7 @@ class DockerEngineDNSCheck(DockerEngineBaseCheck):
     command = (
         'docker', 'run', '--rm', 'busybox',
         'sh', '-c',  # run in new a shell to avoid problems with timeout
-        '"timeout -t 5 nslookup aldryn.com"',
+        'timeout -t 5 nslookup aldryn.com',
     )
 
     def fmt_exception(self, exc):
