@@ -89,6 +89,17 @@ class CloudClient(object):
 
         return messages.LOGIN_SUCCESSFUL.format(greeting=greeting)
 
+    def check_login_status(self):
+        request = api_requests.LoginStatusRequest(self.session)
+        response = request()
+
+        user_id = response.get('user_id')
+
+        if user_id:
+            return True, messages.LOGIN_CHECK_SUCCESSFUL
+        else:
+            return False, messages.LOGIN_CHECK_ERROR
+
     def get_projects(self):
         request = api_requests.ProjectListRequest(self.session)
         return request()
