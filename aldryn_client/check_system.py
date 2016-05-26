@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 import click
 
+from . import messages
 from . import utils
 
 ERROR = 1
@@ -51,6 +52,14 @@ class Check(object):
             )
 
         return [message]
+
+
+class LoginCheck(Check):
+    name = 'Login'
+    command = ('aldryn', 'login', '--check')
+
+    def fmt_exception(self, exc):
+        return [messages.LOGIN_CHECK_ERROR]
 
 
 class GitCheck(Check):
@@ -168,6 +177,7 @@ class DockerEngineDNSCheck(DockerEngineBaseCheck):
 
 
 ALL_CHECKS = OrderedDict([
+    ('login', LoginCheck),
     ('git', GitCheck),
     ('docker-client', DockerClientCheck),
     ('docker-machine', DockerMachineCheck),

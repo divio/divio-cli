@@ -19,3 +19,10 @@ INVALID_DB_SUBMITTED = (
     "The database dump you have uploaded contains an error. "
     "Please check the file 'db_upload.log' for errors and try again"
 )
+LOGIN_CHECK_SUCCESSFUL = (
+    'Authentication with server successful. You are logged in.'
+)
+LOGIN_CHECK_ERROR = (
+    'You are currently not logged in, '
+    'please log in using `aldryn login`.'
+)

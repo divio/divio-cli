@@ -1,5 +1,4 @@
 import json
-import subprocess
 import itertools
 import os
 import sys
@@ -54,7 +53,7 @@ def cli(ctx, debug):
         ctx.obj.config.check_for_updates()
 
 
-def login_token_helper(ctx, param, value):
+def login_token_helper(ctx, value):
     if not value:
         url = ctx.obj.get_access_token_url()
         click.secho('Your browser has been opened to visit: {}'.format(url))
@@ -64,11 +63,23 @@ def login_token_helper(ctx, param, value):
 
 
 @cli.command()
-@click.argument('token', required=False, callback=login_token_helper)
-@click.pass_obj
-def login(obj, token):
+@click.argument('token', required=False)
+@click.option(
+    '--check', is_flag=True, default=False,
+    help='Check for current login status',
+)
+@click.pass_context
+def login(ctx, token, check):
     """Authorize your machine with Aldryn"""
-    click.echo(obj.login(token))
+    success = True
+    if check:
+        success, msg = ctx.obj.check_login_status()
+    else:
+        token = login_token_helper(ctx, token)
+        msg = ctx.obj.login(token)
+
+    click.echo(msg)
+    sys.exit(0 if success else 1)
 
 
 @cli.group()

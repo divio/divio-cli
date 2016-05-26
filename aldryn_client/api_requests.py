@@ -156,6 +156,11 @@ class LoginRequest(APIRequest):
     method = 'POST'
 
 
+class LoginStatusRequest(APIRequest):
+    url = '/track/'
+    method = 'GET'
+
+
 class ProjectListRequest(APIRequest):
     url = '/api/v1/user-websites/'
 
