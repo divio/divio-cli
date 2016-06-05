@@ -1,5 +1,7 @@
 import os
 
+from six import with_metaclass
+
 
 VALID_FIELD_TYPES = [
     'text',
@@ -153,9 +155,7 @@ class FormMeta(type):
         return super(FormMeta, cls).__new__(cls, name, bases, attrs)
 
 
-class BaseForm(object):
-    __metaclass__ = FormMeta
-
+class BaseForm(with_metaclass(FormMeta, object)):
     def __init__(self, data=None):
         self.data = data or {}
 
