@@ -1,10 +1,7 @@
 import json
-import re
 import os
 
-import click
-
-
+from .. import exceptions
 from .. import messages
 
 
@@ -14,61 +11,6 @@ VALID_LICENSE_FILENAMES = (
     'license.txt',
     'license',
 )
-
-FILENAME_BASIC_RE = re.compile(
-    r'^[a-zA-Z0-9_@]+[a-zA-Z0-9._@-]*\.[a-zA-Z0-9]{1,23}$'
-)
-
-ALLOWED_EXTENSIONS = (
-    '.css',
-    '.gif',
-    '.htc',
-    '.htm',
-    '.html',
-    '.ico',
-    '.jpeg',
-    '.jpg',
-    '.js',
-    '.json',
-    '.less',
-    '.map',
-    '.png',
-    '.rb',
-    '.sass',
-    '.scss',
-    '.svg',
-    '.webm',
-    # font formats
-    '.eot',
-    '.ttf',
-    '.woff',
-    '.woff2',
-    '.otf',
-    # text formats
-    '.txt',
-    '.md',
-    '.rst',
-    # document formats
-    '.pdf',
-    '.ps',
-    '.djv',
-    '.djvu',
-    '.doc',
-    '.docx',
-    '.ppt',
-    '.pptx',
-    '.xls',
-    '.xlsx',
-)
-
-
-def is_valid_file_name(name):
-    if not FILENAME_BASIC_RE.match(name):
-        return False
-    ext = os.path.splitext(name)[-1]
-    if ext not in ALLOWED_EXTENSIONS:
-        return False
-    return True
 
 
 def get_license(path):
@@ -81,7 +23,7 @@ def get_license(path):
 def load_config(fname, path=None):
     config_fpath = os.path.join(path or '.', fname)
     if not os.path.exists(config_fpath):
-        raise click.ClickException(
+        raise exceptions.AldrynException(
             messages.FILE_NOT_FOUND.format(config_fpath)
         )
 
@@ -89,7 +31,7 @@ def load_config(fname, path=None):
         try:
             return json.load(f)
         except ValueError:
-            raise click.ClickException(
+            raise exceptions.AldrynException(
                 'Config file could not be loaded: Invalid JSON'
             )
 

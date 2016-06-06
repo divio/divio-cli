@@ -34,7 +34,8 @@ def get_endpoint(host=None):
 
 
 class CloudClient(object):
-    def __init__(self, endpoint):
+    def __init__(self, endpoint, debug=False):
+        self.debug = debug
         self.config = Config()
         self.endpoint = endpoint
         self.netrc = WritableNetRC()
@@ -58,7 +59,8 @@ class CloudClient(object):
         return api_requests.SingleHostSession(
             self.endpoint,
             headers=self.get_auth_header(),
-            trust_env=False
+            trust_env=False,
+            debug=self.debug,
         )
 
     def authenticate(self, token):

@@ -1,0 +1,2 @@
+class AldrynException(Exception):
+    pass

@@ -11,6 +11,7 @@ except ImportError:
 
 import click
 
+from . import exceptions
 from . import localdev
 from .localdev.utils import get_aldryn_project_settings
 from .cloud import CloudClient, get_endpoint
@@ -45,7 +46,7 @@ def cli(ctx, debug):
             pdb.post_mortem(traceback)
         sys.excepthook = exception_handler
 
-    ctx.obj = CloudClient(get_endpoint())
+    ctx.obj = CloudClient(get_endpoint(), debug)
 
     # skip if 'aldryn version' is run
     if not ctx.args == ['version']:
@@ -384,7 +385,10 @@ def addon(obj, path):
 @click.pass_context
 def addon_validate(ctx):
     """Validate addon configuration"""
-    validate_addon(ctx.parent.params['path'])
+    try:
+        validate_addon(ctx.parent.params['path'])
+    except exceptions.AldrynException as exc:
+        raise click.ClickException(*exc.args)
     click.echo('Addon is valid!')
 
 
@@ -392,7 +396,10 @@ def addon_validate(ctx):
 @click.pass_context
 def addon_upload(ctx):
     """Upload addon to Aldryn"""
-    ret = upload_addon(ctx.obj, ctx.parent.params['path'])
+    try:
+        ret = upload_addon(ctx.obj, ctx.parent.params['path'])
+    except exceptions.AldrynException as exc:
+        raise click.ClickException(*exc.args)
     click.echo(ret)
 
 
@@ -422,25 +429,32 @@ def boilerplate(obj, path):
 @click.pass_context
 def boilerplate_validate(ctx):
     """Validate boilerplate configuration"""
-    validate_boilerplate(ctx.parent.params['path'])
+    try:
+        validate_boilerplate(ctx.parent.params['path'])
+    except exceptions.AldrynException as exc:
+        raise click.ClickException(*exc.args)
     click.echo('Boilerplate is valid!')
 
 
 @boilerplate.command(name='upload')
+@click.option('--noinput', is_flag=True, default=False, help="Don't ask for confirmation")
 @click.pass_context
-def boilerplate_upload(ctx):
+def boilerplate_upload(ctx, noinput):
     """Upload boilerplate to Aldryn"""
-    ret = upload_boilerplate(ctx.obj, ctx.parent.params['path'])
+    try:
+        ret = upload_boilerplate(ctx.obj, ctx.parent.params['path'], noinput)
+    except exceptions.AldrynException as exc:
+        raise click.ClickException(*exc.args)
     click.echo(ret)
 
 
 @cli.command()
 @click.option(
-    '-s', '--skip-check',  is_flag=True, default=False,
+    '-s', '--skip-check', is_flag=True, default=False,
     help="don't check PyPI for newer version",
 )
 @click.option(
-    '-e', '--show-error',  is_flag=True, default=False,
+    '-e', '--show-error', is_flag=True, default=False,
     help="show error if PyPI check fails",
 )
 def version(skip_check, show_error):
