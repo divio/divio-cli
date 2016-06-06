@@ -46,7 +46,7 @@ def cli(ctx, debug):
             pdb.post_mortem(traceback)
         sys.excepthook = exception_handler
 
-    ctx.obj = CloudClient(get_endpoint())
+    ctx.obj = CloudClient(get_endpoint(), debug)
 
     # skip if 'aldryn version' is run
     if not ctx.args == ['version']:

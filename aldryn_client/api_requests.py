@@ -11,6 +11,7 @@ from .utils import create_temp_dir, get_user_agent
 class SingleHostSession(requests.Session):
     def __init__(self, host, **kwargs):
         super(SingleHostSession, self).__init__()
+        self.debug = kwargs.pop('debug', False)
         self.host = host.rstrip('/')
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -80,9 +81,12 @@ class APIRequest(object):
         if not response.ok:
             error_msg = self.get_error_code_map().get(response.status_code)
             if not error_msg:
+                response_content = response.content
+                if not self.session.debug:
+                    response_content = response_content[:300]
                 error_msg = '{}\n\n{}'.format(
                     self.default_error_message,
-                    response.content[:300],
+                    response_content,
                 )
             raise click.ClickException(error_msg)
         return self.process(response)
