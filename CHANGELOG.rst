@@ -1,6 +1,16 @@
 Changelog
 =========
 
+2.3.0 (2016-06-06)
+------------------
+
+* Cleanup and improve boilerplate upload
+* Boilerplate now uses ``excluded`` instead of ``protected`` to specify included files
+* ``--debug`` now shows more info on API request errors
+* Fix form meta in python 3 projects
+* Fix CLI description for ``addon develop``
+
+
 2.2.4 (2016-05-26)
 ------------------
 
