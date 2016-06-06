@@ -363,7 +363,8 @@ def push_media(obj, stage):
 @project.command(name='develop')
 @click.argument('package')
 @click.option(
-    '--no-rebuild', is_flag=True, default=False, help='Addon directory'
+    '--no-rebuild', is_flag=True, default=False,
+    help='Do not rebuild docker container automatically'
 )
 @click.pass_obj
 def project_develop(obj, package, no_rebuild):
