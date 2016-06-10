@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from .. import settings
 from .common import validate_package_config, load_config
 
