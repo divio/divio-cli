@@ -1,10 +1,10 @@
 Changelog
 =========
 
-Next release
-------------
+2.3.1 (2016-06-06)
+------------------
 
-* Use ``unicode_literals`` everywhere
+* Fix unicode issue in ``aldryn login``
 
 
 2.3.0 (2016-06-06)
