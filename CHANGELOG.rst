@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Next release
+------------
+
+* Use ``unicode_literals`` everywhere
+
+
 2.3.0 (2016-06-06)
 ------------------
 
