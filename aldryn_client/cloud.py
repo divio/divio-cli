@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import os
 import re
 from netrc import netrc
@@ -82,9 +80,9 @@ class CloudClient(object):
         email = user_data.get('email')
 
         if first_name and last_name:
-            greeting = '{} {} ({})'.format(first_name, last_name, email)
+            greeting = u'{} {} ({})'.format(first_name, last_name, email)
         elif first_name:
-            greeting = '{} ({})'.format(first_name, email)
+            greeting = u'{} ({})'.format(first_name, email)
         else:
             greeting = email
 
