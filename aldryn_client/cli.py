@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import json
 import itertools
 import os
@@ -140,7 +138,7 @@ def project_list(obj, grouped):
             projects = data['projects']
             if projects:
                 output_items.append(
-                    '{title}\n{line}\n\n{table}\n\n'.format(
+                    u'{title}\n{line}\n\n{table}\n\n'.format(
                         title=data['name'],
                         line='=' * len(data['name']),
                         table=table(sort_projects(projects), header[:2])

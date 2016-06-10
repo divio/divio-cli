@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 SESSION_EXPIRED = 'Session expired. Please log in again.'
 NETWORK_ERROR_MESSAGE = (
     'Network error. Please check your connection and try again.'
