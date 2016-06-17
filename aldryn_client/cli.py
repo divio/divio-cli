@@ -472,6 +472,10 @@ def version(skip_check, show_error):
         current_version = StrictVersion(__version__)
         newest_version, exc = get_latest_version_from_pypi()
 
+        # WARNING: The output is parsed by the Aldryn Desktop application
+        #          to determine if a update needs to be installed.
+        #          Be aware to update the regex in there as well.
+        # TODO: provide a machine readable version
         if newest_version and newest_version == current_version:
             click.echo('\nYou have the latest version of aldryn-client!')
 
