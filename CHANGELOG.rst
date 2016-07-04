@@ -1,6 +1,12 @@
 Changelog
 =========
 
+next
+----
+
+* enable postgis if local database supports it
+
+
 2.3.1 (2016-06-06)
 ------------------
 
@@ -44,7 +50,7 @@ Changelog
 2.2.1 (2016-04-26)
 ------------------
 
-* Fix ``aldryn doctor`` failing on the ``docker-machine`` step (it's not strictly required) 
+* Fix ``aldryn doctor`` failing on the ``docker-machine`` step (it's not strictly required)
 
 
 2.2 (2016-04-07)
