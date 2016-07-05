@@ -1,8 +1,8 @@
 Changelog
 =========
 
-next
-----
+2.3.2 (2016-07-05)
+------------------
 
 * enable postgis if local database supports it
 
