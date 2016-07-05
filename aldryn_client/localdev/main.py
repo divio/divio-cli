@@ -243,22 +243,37 @@ def pull_db(client, stage, path=None):
         'dropdb', '-U', 'postgres', 'db', '--if-exists',
     ])  # TODO: silence me
 
-    check_call([
-        'docker', 'exec', db_container_id,
-        'createdb', '-U', 'postgres', 'db',
-    ])
-    # Workaround to add the hstore extension
-    # TODO: solve extensions in a generic way in harmony with server side db-api
-    check_call([
-        'docker', 'exec', db_container_id,
-        'psql', '-U', 'postgres', '--dbname=db',
-        '-c', 'CREATE EXTENSION IF NOT EXISTS hstore;',
-    ], silent=True)
     remove_time = int(time() - start_remove)
     click.echo(' [{}s]'.format(remove_time))
 
     click.secho(' ---> Importing database...', nl=False)
     start_import = time()
+    check_call([
+        'docker', 'exec', db_container_id,
+        'createdb', '-U', 'postgres', 'db',
+    ])
+    # Workaround to add the required extensions
+    # TODO: solve extensions in a generic way in harmony with server side db-api
+    click.echo('\n      Enabling hstore extension...', nl=False)
+    check_call([
+        'docker', 'exec', db_container_id,
+        'psql', '-U', 'postgres', '--dbname=db',
+        '-c', 'CREATE EXTENSION IF NOT EXISTS hstore;',
+    ], silent=True)
+    # If the local database supports it enable the postgis extension.
+    available_extensions = check_output([
+        'docker', 'exec', db_container_id,
+        'psql', '-U', 'postgres', '--dbname=postgres',
+        '-c', 'SELECT name FROM pg_catalog.pg_available_extensions',
+    ])
+    if 'postgis\n' in available_extensions:
+        click.echo('\n      Enabling postgis extension...', nl=False)
+        check_call([
+            'docker', 'exec', db_container_id,
+            'psql', '-U', 'postgres', '--dbname=db',
+            '-c', 'CREATE EXTENSION IF NOT EXISTS postgis;',
+        ], silent=True)
+
     # TODO: use same dump-type detection like server side on db-api
     try:
         piped_restore = (
@@ -274,7 +289,7 @@ def pull_db(client, stage, path=None):
     except subprocess.CalledProcessError:
         pass
     import_time = int(time() - start_import)
-    click.echo(' [{}s]'.format(import_time))
+    click.echo('\n      [{}s]'.format(import_time))
 
     click.secho('Done', fg='green', nl=False)
     total_time = int(time() - start_time)
