@@ -1,10 +1,12 @@
 import json
 import sys
 import os
+from time import time
 
 import click
 
-from ..utils import check_output, is_windows
+from ..utils import check_output, is_windows, check_call
+from .. import exceptions
 from .. import settings
 
 
@@ -134,5 +136,15 @@ def ensure_windows_docker_compose_file_exists(path):
 
 def get_db_container_id(path):
     docker_compose = get_docker_compose_cmd(path)
-    output = check_output(docker_compose('ps', '-q', 'db'))
-    return output.rstrip(os.linesep)
+    output = check_output(docker_compose('ps', '-q', 'db')).rstrip(os.linesep)
+    if not output:
+        raise exceptions.AldrynException('Unable to find database container')
+    return output
+
+
+def start_database_server(docker_compose):
+    start_db = time()
+    click.secho(' ---> Starting local database server')
+    click.secho('      ', nl=False)
+    check_call(docker_compose('up', '-d', 'db'))
+    click.secho('      [{}s]'.format(int(time() - start_db)))
