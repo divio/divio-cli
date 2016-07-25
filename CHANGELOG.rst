@@ -1,6 +1,13 @@
 Changelog
 =========
 
+
+2.3.3 (unreleased)
+------------------
+
+* Make login status check more resilient by not relying on its own executable to be findable in `PATH`
+
+
 2.3.2 (2016-07-05)
 ------------------
 
