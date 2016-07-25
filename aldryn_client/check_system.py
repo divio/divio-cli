@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 import click
 
-from . import messages
+from . import cloud
 from . import utils
 
 ERROR = 1
@@ -57,10 +57,12 @@ class Check(object):
 
 class LoginCheck(Check):
     name = 'Login'
-    command = ('aldryn', 'login', '--check')
 
-    def fmt_exception(self, exc):
-        return [messages.LOGIN_CHECK_ERROR]
+    def run_check(self):
+        client = cloud.CloudClient(cloud.get_endpoint())
+        success, msg = client.check_login_status()
+        if not success:
+            return [msg]
 
 
 class GitCheck(Check):
