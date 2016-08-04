@@ -6,6 +6,7 @@ Changelog
 ------------------
 
 * Make login status check more resilient by not relying on its own executable to be findable in `PATH`
+* Add ``aldryn project import/export db`` commands
 
 
 2.3.2 (2016-07-05)
