@@ -275,7 +275,7 @@ def pull_db(obj, stage):
     Pull database from your deployed website. Stage is either
     test (default) or live
     """
-    localdev.pull_db(obj, stage)
+    localdev.ImportRemoteDatabase(client=obj, stage=stage)()
 
 
 @project_pull.command(name='media')
@@ -359,6 +359,36 @@ def push_media(obj, stage):
     if not click.confirm('\nAre you sure you want to continue?'):
         return
     localdev.push_media(obj, stage)
+
+
+@project.group(name='import')
+def project_import():
+    """Import local database dump"""
+    pass
+
+
+@project_import.command(name='db')
+@click.argument('dump-path', default=localdev.DEFAULT_DUMP_FILENAME, type=click.Path(exists=True))
+@click.pass_obj
+def import_db(obj, dump_path):
+    """
+    Load a database dump into your local database
+    """
+    localdev.ImportLocalDatabase(client=obj, custom_dump_path=dump_path)()
+
+
+@project.group(name='export')
+def project_export():
+    """Export local database dump"""
+    pass
+
+
+@project_export.command(name='db')
+def export_db():
+    """
+    Export a dump of your local database
+    """
+    localdev.export_db()
 
 
 @project.command(name='develop')

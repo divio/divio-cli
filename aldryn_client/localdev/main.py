@@ -86,7 +86,7 @@ def setup_website_containers(client, stage, path):
         check_call(docker_compose('rm', '-f', 'db'))
 
     click.secho('creating new database container', fg='green')
-    pull_db(client, stage, path)
+    ImportRemoteDatabase(client=client, stage=stage, path=path)()
 
     click.secho('sync and migrate database', fg='green')
 
@@ -101,7 +101,7 @@ def setup_website_containers(client, stage, path):
 
 
 def create_workspace(client, website_slug, stage, path=None):
-    click.secho('Creating workspace...', fg='green')
+    click.secho('Creating workspace', fg='green')
 
     path = os.path.abspath(
         os.path.join(path, website_slug)
@@ -143,157 +143,219 @@ def create_workspace(client, website_slug, stage, path=None):
     click.secho('\n\n{}'.format(os.linesep.join(instructions)), fg='green')
 
 
-def pull_db(client, stage, path=None):
-    path = path or utils.get_project_home(path)
-    website_id = utils.get_aldryn_project_settings(path)['id']
-    website_slug = utils.get_aldryn_project_settings(path)['slug']
-    docker_compose = utils.get_docker_compose_cmd(path)
-
-    click.secho(
-        ' ===> Pulling database from {} {} server'.format(
-            website_slug,
-            stage,
+class DatabaseImportBase(object):
+    database_extensions = ['hstore', 'postgis']
+    restore_commands = {
+        'sql': 'psql -U postgres db < {}',
+        'binary': (
+            'pg_restore -U postgres --dbname=db -n public '
+            '--no-owner --exit-on-error {}'
         ),
-    )
-    start_time = time()
-
-    # start db
-    start_db = time()
-    click.secho(' ---> Starting local database server...')
-    click.secho('      ', nl=False)
-    check_call(docker_compose('up', '-d', 'db'))
-    # get db container id
-    db_container_id = utils.get_db_container_id(path)
-    db_time = int(time() - start_db)
-    click.secho('      [{}s]'.format(db_time))
-
-    click.secho(' ---> Preparing download...', nl=False)
-    start_preparation = time()
-    response = client.download_db_request(website_id, stage) or {}
-    progress_url = response.get('progress_url')
-    if not progress_url:
-        click.secho(' error!', fg='red')
-        sys.exit(1)
-
-    progress = {'success': None}
-    while progress.get('success') is None:
-        sleep(2)
-        progress = client.download_db_progress(url=progress_url)
-    if not progress.get('success'):
-        click.secho(' error!', fg='red')
-        click.secho(progress.get('result') or '')
-        sys.exit(1)
-    download_url = progress.get('result') or None
-    preparation_time = int(time() - start_preparation)
-    click.echo(' [{}s]'.format(preparation_time))
-
-    click.secho(' ---> Downloading database...', nl=False)
-    start_download = time()
-    db_dump_path = download_file(download_url, directory=path)
-    download_time = int(time() - start_download)
-    click.echo(' [{}s]'.format(download_time))
-
-    # strip path from dump_path for use in the docker container
-    db_dump_path = db_dump_path.replace(path, '')
-    click.secho(' ---> Waiting for local database server...', nl=False)
-    start_wait = time()
-    # check for postgres in db container to start
-
-    # sleep 5 seconds initially because the server is quickly
-    # available during startup, but will go down again to
-    # create the initial database. We're giving postgres a head start
-    sleep(5)
-
-    attempts = 10
-    for attempt in range(attempts):
-        try:
-            check_call([
-                'docker', 'exec', db_container_id,
-                'ls', '/var/run/postgresql/.s.PGSQL.5432',
-            ], catch=False, silent=True)
-        except subprocess.CalledProcessError:
-            sleep(5)
-        else:
-            break
-    else:
-        click.secho(
-            "Couldn't connect to database container. "
-            "Database server may not have started.",
-            fg='red',
-        )
-        sys.exit(1)
-    wait_time = int(time() - start_wait)
-    click.echo(' [{}s]'.format(wait_time))
-
-    # drop any existing connections
-    check_call([
-        'docker', 'exec', db_container_id,
-        'psql', '-U', 'postgres', '-c',
-        "SELECT pg_terminate_backend(pg_stat_activity.pid) "
-        "FROM   pg_stat_activity "
-        "WHERE  pg_stat_activity.datname = 'db' "
-        "  AND  pid <> pg_backend_pid();",
-    ], silent=True)
-
-    click.secho(' ---> Removing local database...', nl=False)
-    start_remove = time()
-    # create empty db
-    subprocess.call([
-        'docker', 'exec', db_container_id,
-        'dropdb', '-U', 'postgres', 'db', '--if-exists',
-    ])  # TODO: silence me
-
-    remove_time = int(time() - start_remove)
-    click.echo(' [{}s]'.format(remove_time))
-
-    click.secho(' ---> Importing database...', nl=False)
-    start_import = time()
-    check_call([
-        'docker', 'exec', db_container_id,
-        'createdb', '-U', 'postgres', 'db',
-    ])
-    # Workaround to add the required extensions
-    # TODO: solve extensions in a generic way in harmony with server side db-api
-    click.echo('\n      Enabling hstore extension...', nl=False)
-    check_call([
-        'docker', 'exec', db_container_id,
-        'psql', '-U', 'postgres', '--dbname=db',
-        '-c', 'CREATE EXTENSION IF NOT EXISTS hstore;',
-    ], silent=True)
-    # If the local database supports it enable the postgis extension.
-    available_extensions = check_output([
-        'docker', 'exec', db_container_id,
-        'psql', '-U', 'postgres', '--dbname=postgres',
-        '-c', 'SELECT name FROM pg_catalog.pg_available_extensions',
-    ])
-    if 'postgis\n' in available_extensions:
-        click.echo('\n      Enabling postgis extension...', nl=False)
-        check_call([
-            'docker', 'exec', db_container_id,
-            'psql', '-U', 'postgres', '--dbname=db',
-            '-c', 'CREATE EXTENSION IF NOT EXISTS postgis;',
-        ], silent=True)
-
-    # TODO: use same dump-type detection like server side on db-api
-    try:
-        piped_restore = (
-            'tar -xzOf /app/{}'
+        'archived-binary': (
+            'tar -xzOf {}'
             ' | pg_restore -U postgres --dbname=db -n public '
             '--no-owner --exit-on-error'
-            .format(db_dump_path)
-        )
-        subprocess.call((
-            'docker', 'exec', db_container_id,
-            '/bin/bash', '-c', piped_restore,
-        ))
-    except subprocess.CalledProcessError:
-        pass
-    import_time = int(time() - start_import)
-    click.echo('\n      [{}s]'.format(import_time))
+        ),
+    }
 
-    click.secho('Done', fg='green', nl=False)
-    total_time = int(time() - start_time)
-    click.echo(' [{}s]'.format(total_time))
+    def __init__(self, *args, **kwargs):
+        super(DatabaseImportBase, self).__init__()
+        self.client = kwargs.pop('client')
+        self.path = kwargs.pop('path', None) or utils.get_project_home()
+        self.website_id = utils.get_aldryn_project_settings(self.path)['id']
+        self.website_slug = utils.get_aldryn_project_settings(self.path)['slug']
+        self.docker_compose = utils.get_docker_compose_cmd(self.path)
+
+        self.start_time = time()
+
+    def __call__(self, *args, **kwargs):
+        return self.run()
+
+    def setup(self):
+        raise NotImplementedError
+
+    def run(self):
+        self.setup()
+        self.prepare_db_server()
+        self.restore_db()
+        self.finish()
+
+    def prepare_db_server(self):
+        utils.start_database_server(self.docker_compose)
+
+        click.secho(' ---> Waiting for local database server', nl=False)
+
+        db_container_id = utils.get_db_container_id(self.path)
+
+        start_wait = time()
+        # check for postgres in db container to start
+
+        # sleep 5 seconds initially because the server is quickly
+        # available during startup, but will go down again to
+        # create the initial database. We're giving postgres a head start
+        sleep(5)
+
+        for attempt in range(10):
+            try:
+                check_call([
+                    'docker', 'exec', db_container_id,
+                    'ls', '/var/run/postgresql/.s.PGSQL.5432',
+                ], catch=False, silent=True)
+            except subprocess.CalledProcessError:
+                sleep(5)
+            else:
+                break
+        else:
+            click.secho(
+                "Couldn't connect to database container. "
+                "Database server may not have started.",
+                fg='red',
+            )
+            sys.exit(1)
+        click.echo(' [{}s]'.format(int(time() - start_wait)))
+
+        # drop any existing connections
+        check_call([
+            'docker', 'exec', db_container_id,
+            'psql', '-U', 'postgres', '-c',
+            "SELECT pg_terminate_backend(pg_stat_activity.pid) "
+            "FROM   pg_stat_activity "
+            "WHERE  pg_stat_activity.datname = 'db' "
+            "  AND  pid <> pg_backend_pid();",
+        ], silent=True)
+
+        click.secho(' ---> Removing local database', nl=False)
+        start_remove = time()
+        # create empty db
+        subprocess.call([
+            'docker', 'exec', db_container_id,
+            'dropdb', '-U', 'postgres', 'db', '--if-exists',
+        ])  # TODO: silence me
+
+        click.echo(' [{}s]'.format(int(time() - start_remove)))
+
+    def get_db_restore_command(self):
+        raise NotImplementedError
+
+    def restore_db(self):
+        click.secho(' ---> Importing database', nl=False)
+        start_import = time()
+
+        db_container_id = utils.get_db_container_id(self.path)
+
+        check_call([
+            'docker', 'exec', db_container_id,
+            'createdb', '-U', 'postgres', 'db',
+        ])
+
+        if self.database_extensions:
+            available_extensions = check_output([
+                'docker', 'exec', db_container_id,
+                'psql', '-U', 'postgres', '--dbname=postgres',
+                '-c', 'SELECT name FROM pg_catalog.pg_available_extensions',
+            ])
+
+            # TODO: solve extensions in a generic way in
+            # harmony with server side db-api
+            click.echo('')
+            for extension in self.database_extensions:
+                if extension in available_extensions:
+                    click.echo(
+                        '      Enabling extension: {}'.format(extension),
+                    )
+                    check_call([
+                        'docker', 'exec', db_container_id,
+                        'psql', '-U', 'postgres', '--dbname=db', '-c',
+                        'CREATE EXTENSION IF NOT EXISTS {};'.format(extension),
+                    ], silent=True)
+
+        restore_command = self.get_db_restore_command()
+
+        # TODO: use same dump-type detection like server side on db-api
+        try:
+            subprocess.call((
+                'docker', 'exec', db_container_id,
+                '/bin/bash', '-c', restore_command
+            ))
+        except subprocess.CalledProcessError:
+            pass
+
+        click.echo('\n      [{}s]'.format(int(time() - start_import)))
+
+    def finish(self):
+        click.secho('Done', fg='green', nl=False)
+        click.echo(' [{}s]'.format(int(time() - self.start_time)))
+
+
+class ImportLocalDatabase(DatabaseImportBase):
+    def __init__(self, *args, **kwargs):
+        self.custom_dump_path = kwargs.pop('custom_dump_path')
+        super(ImportLocalDatabase, self).__init__(*args, **kwargs)
+
+    def setup(self):
+        click.secho(
+            ' ===> Loading database dump {} into local database'
+            .format(self.custom_dump_path)
+        )
+        db_container_id = utils.get_db_container_id(self.path)
+
+        start_copy = time()
+
+        click.secho(' ---> Copying dump into container', nl=False)
+        check_call([
+            'docker', 'cp', self.custom_dump_path,
+            '{}:/tmp/dump'.format(db_container_id),
+        ], catch=False, silent=True)
+        click.echo(' [{}s]'.format(int(time() - start_copy)))
+        self.db_dump_path = '/tmp/dump'
+
+    def get_db_restore_command(self):
+        if self.custom_dump_path.endswith('sql'):
+            kind = 'sql'
+        else:
+            kind = 'binary'
+        return self.restore_commands[kind].format(self.db_dump_path)
+
+
+class ImportRemoteDatabase(DatabaseImportBase):
+    def __init__(self, *args, **kwargs):
+        self.stage = kwargs.pop('stage', None)
+        super(ImportRemoteDatabase, self).__init__(*args, **kwargs)
+        click.secho(
+            ' ===> Pulling database from {} {} server'
+            .format(self.website_slug, self.stage)
+        )
+
+    def setup(self):
+        click.secho(' ---> Preparing download', nl=False)
+        start_preparation = time()
+        response = self.client.download_db_request(
+            self.website_id, self.stage) or {}
+        progress_url = response.get('progress_url')
+        if not progress_url:
+            click.secho(' error!', fg='red')
+            sys.exit(1)
+        progress = {'success': None}
+        while progress.get('success') is None:
+            sleep(2)
+            progress = self.client.download_db_progress(url=progress_url)
+        if not progress.get('success'):
+            click.secho(' error!', fg='red')
+            click.secho(progress.get('result') or '')
+            sys.exit(1)
+        download_url = progress.get('result') or None
+        click.echo(' [{}s]'.format(int(time() - start_preparation)))
+
+        click.secho(' ---> Downloading database', nl=False)
+        start_download = time()
+        db_dump_path = download_file(download_url, directory=self.path)
+        click.echo(' [{}s]'.format(int(time() - start_download)))
+        # strip path from dump_path for use in the docker container
+        self.db_dump_path = '/app/{}'.format(db_dump_path.replace(self.path, ''))
+
+    def get_db_restore_command(self):
+        cmd = self.restore_commands['archived-binary']
+        return cmd.format(self.db_dump_path)
 
 
 def pull_media(client, stage, path=None):
@@ -309,7 +371,7 @@ def pull_media(client, stage, path=None):
         ),
     )
     start_time = time()
-    click.secho(' ---> Preparing download...', nl=False)
+    click.secho(' ---> Preparing download', nl=False)
     start_preparation = time()
     response = client.download_media_request(website_id, stage) or {}
     progress_url = response.get('progress_url')
@@ -326,24 +388,21 @@ def pull_media(client, stage, path=None):
         click.secho(progress.get('result') or '')
         sys.exit(1)
     download_url = progress.get('result') or None
-    preparation_time = int(time() - start_preparation)
-    click.echo(' [{}s]'.format(preparation_time))
+    click.echo(' [{}s]'.format(int(time() - start_preparation)))
 
-    click.secho(' ---> Downloading...', nl=False)
+    click.secho(' ---> Downloading', nl=False)
     start_download = time()
     backup_path = download_file(download_url)
     if not backup_path:
         # no backup yet, skipping
         return
-    download_time = int(time() - start_download)
-    click.echo(' [{}s]'.format(download_time))
+    click.echo(' [{}s]'.format(int(time() - start_download)))
 
     if os.path.isdir(path):
         start_remove = time()
-        click.secho(' ---> Removing local files...', nl=False)
+        click.secho(' ---> Removing local files', nl=False)
         shutil.rmtree(path)
-        remove_time = int(time() - start_remove)
-        click.echo(' [{}s]'.format(remove_time))
+        click.echo(' [{}s]'.format(int(time() - start_remove)))
 
     if 'linux' in sys.platform:
         # On Linux, Docker typically runs as root, so files and folders
@@ -358,26 +417,79 @@ def pull_media(client, stage, path=None):
             )
         )
 
-    click.secho(' ---> Extracting files to {}...'.format(path), nl=False)
+    click.secho(' ---> Extracting files to {}'.format(path), nl=False)
     start_extract = time()
     with open(backup_path, 'rb') as fobj:
         with tarfile.open(fileobj=fobj, mode='r:*') as media_archive:
             media_archive.extractall(path=path)
     os.remove(backup_path)
-    extract_time = int(time() - start_extract)
-    click.echo(' [{}s]'.format(extract_time))
+    click.echo(' [{}s]'.format(int(time() - start_extract)))
     click.secho('Done', fg='green', nl=False)
-    total_time = int(time() - start_time)
-    click.echo(' [{}s]'.format(total_time))
+    click.echo(' [{}s]'.format(int(time() - start_time)))
+
+
+def dump_database(dump_filename, archive_filename=None):
+    project_home = utils.get_project_home()
+    docker_compose = utils.get_docker_compose_cmd(project_home)
+    utils.start_database_server(docker_compose)
+
+    click.secho(' ---> Dumping local database', nl=False)
+    start_dump = time()
+    db_container_id = utils.get_db_container_id(project_home)
+    subprocess.call((
+        'docker', 'exec', db_container_id,
+        'pg_dump', '-U', 'postgres', '-d', 'db',
+        '--no-owner', '--no-privileges',
+        '-f', os.path.join('/app/', dump_filename)
+    ))
+    click.echo(' [{}s]'.format(int(time() - start_dump)))
+
+    if not archive_filename:
+        # archive filename not specified
+        # return path to uncompressed dump
+        return os.path.join(project_home, dump_filename)
+
+    archive_path = os.path.join(project_home, archive_filename)
+    sql_dump_size = os.path.getsize(dump_filename)
+    click.secho(
+        ' ---> Compressing SQL dump ({})'.format(pretty_size(sql_dump_size)),
+        nl=False,
+    )
+    start_compress = time()
+    with tarfile.open(archive_path, mode='w:gz') as tar:
+        tar.add(
+            os.path.join(project_home, dump_filename),
+            arcname=dump_filename
+        )
+    compressed_size = os.path.getsize(archive_filename)
+    click.echo(
+        ' {} [{}s]'.format(
+            pretty_size(compressed_size),
+            int(time() - start_compress),
+        )
+    )
+
+
+DEFAULT_DUMP_FILENAME = 'local_db.sql'
+
+
+def export_db():
+    dump_filename = DEFAULT_DUMP_FILENAME
+
+    click.secho(' ===> Exporting local database to {}'.format(dump_filename))
+    start_time = time()
+
+    dump_database(dump_filename=dump_filename)
+
+    click.secho('Done', fg='green', nl=False)
+    click.echo(' [{}s]'.format(int(time() - start_time)))
 
 
 def push_db(client, stage):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)['id']
-    dump_filename = 'local_db.sql'
-    archive_filename = 'local_db.tar.gz'
-    archive_path = os.path.join(project_home, archive_filename)
-    docker_compose = utils.get_docker_compose_cmd(project_home)
+    dump_filename = DEFAULT_DUMP_FILENAME
+    archive_filename = dump_filename.replace('.sql', '.tar.gz')
     website_slug = utils.get_aldryn_project_settings(project_home)['slug']
 
     click.secho(
@@ -388,62 +500,22 @@ def push_db(client, stage):
     )
     start_time = time()
 
-    # start db
-    start_db = time()
-    click.secho(' ---> Starting local database server...')
-    click.secho('      ', nl=False)
-    check_call(docker_compose('up', '-d', 'db'))
-    db_time = int(time() - start_db)
-    click.secho('      [{}s]'.format(db_time))
-
-    # take dump of database
-    click.secho(' ---> Dumping local database...', nl=False)
-    start_dump = time()
-    # TODO: show total table and row count
-    db_container_id = utils.get_db_container_id(project_home)
-    subprocess.call((
-        'docker', 'exec', db_container_id,
-        'pg_dump', '-U', 'postgres', '-d', 'db',
-        '--no-owner', '--no-privileges',
-        '-f', os.path.join('/app/', dump_filename)
-    ))
-    dump_time = int(time() - start_dump)
-    click.echo(' [{}s]'.format(dump_time))
-
-    sql_dump_size = os.path.getsize(dump_filename)
-    click.secho(
-        ' ---> Compressing SQL dump ({})...'.format(
-            pretty_size(sql_dump_size)
-        ),
-        nl=False,
-    )
-    start_compress = time()
-    with tarfile.open(archive_path, mode='w:gz') as tar:
-        tar.add(
-            os.path.join(project_home, dump_filename),
-            arcname=dump_filename
-        )
-    compressed_size = os.path.getsize(archive_filename)
-    compress_time = int(time() - start_compress)
-    click.echo(
-        ' {} [{}s]'.format(
-            pretty_size(compressed_size),
-            compress_time,
-        )
+    dump_database(
+        dump_filename=dump_filename,
+        archive_filename=archive_filename,
     )
 
-    click.secho(' ---> Uploading...', nl=False)
+    click.secho(' ---> Uploading', nl=False)
     start_upload = time()
     response = client.upload_db(website_id, stage, archive_path) or {}
-    upload_time = int(time() - start_upload)
-    click.echo(' [{}s]'.format(upload_time))
+    click.echo(' [{}s]'.format(int(time() - start_upload)))
 
     progress_url = response.get('progress_url')
     if not progress_url:
         click.secho(' error!', fg='red')
         sys.exit(1)
 
-    click.secho(' ---> Processing...', nl=False)
+    click.secho(' ---> Processing', nl=False)
     start_processing = time()
     progress = {'success': None}
     while progress.get('success') is None:
@@ -453,15 +525,13 @@ def push_db(client, stage):
         click.secho(' error!', fg='red')
         click.secho(progress.get('result') or '')
         sys.exit(1)
-    processing_time = int(time() - start_processing)
-    click.echo(' [{}s]'.format(processing_time))
+    click.echo(' [{}s]'.format(int(time() - start_processing)))
 
     # clean up
     for temp_file in (dump_filename, archive_filename):
         os.remove(os.path.join(project_home, temp_file))
     click.secho('Done', fg='green', nl=False)
-    total_time = int(time() - start_time)
-    click.echo(' [{}s]'.format(total_time))
+    click.echo(' [{}s]'.format(int(time() - start_time)))
 
 
 def push_media(client, stage):
@@ -476,7 +546,7 @@ def push_media(client, stage):
         ),
     )
     start_time = time()
-    click.secho('Compressing local media folder...',  nl=False)
+    click.secho('Compressing local media folder',  nl=False)
     uncompressed_size = 0
     start_compression = time()
     with tarfile.open(archive_path, mode='w:gz') as tar:
@@ -490,27 +560,25 @@ def push_media(client, stage):
             tar.add(file_path, arcname=item)
             uncompressed_size += get_size(file_path)
         file_count = len(tar.getmembers())
-    compress_time = int(time() - start_compression)
     click.echo(
         ' {} {} ({}) compressed to {} [{}s]'.format(
             file_count,
             'files' if file_count > 1 else 'file',
             pretty_size(uncompressed_size),
             pretty_size(os.path.getsize(archive_path)),
-            compress_time,
+            int(time() - start_compression),
         )
     )
-    click.secho('Uploading...', nl=False)
+    click.secho('Uploading', nl=False)
     start_upload = time()
     response = client.upload_media(website_id, stage, archive_path) or {}
-    upload_time = int(time() - start_upload)
-    click.echo(' [{}s]'.format(upload_time))
+    click.echo(' [{}s]'.format(int(time() - start_upload)))
     progress_url = response.get('progress_url')
     if not progress_url:
         click.secho(' error!', fg='red')
         sys.exit(1)
 
-    click.secho('Processing...', nl=False)
+    click.secho('Processing', nl=False)
     start_processing = time()
     progress = {'success': None}
     while progress.get('success') is None:
@@ -520,14 +588,12 @@ def push_media(client, stage):
         click.secho(' error!', fg='red')
         click.secho(progress.get('result') or '')
         sys.exit(1)
-    processing_time = int(time() - start_processing)
-    click.echo(' [{}s]'.format(processing_time))
+    click.echo(' [{}s]'.format(int(time() - start_processing)))
 
     # clean up
     os.remove(archive_path)
     click.secho('Done', fg='green', nl=False)
-    total_time = int(time() - start_time)
-    click.echo(' [{}s]'.format(total_time))
+    click.echo(' [{}s]'.format(int(time() - start_time)))
 
 
 def update_local_project():
