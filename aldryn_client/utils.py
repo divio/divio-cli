@@ -18,7 +18,7 @@ from six.moves.urllib_parse import urljoin
 from . import __version__
 
 
-ALDRYN_DEFUALT_BRANCH_NAME = "develop"
+ALDRYN_DEFAULT_BRANCH_NAME = "develop"
 
 
 def hr(char='-', width=None, **kwargs):
@@ -238,16 +238,9 @@ def get_git_commit():
 
 def get_git_checked_branch():
     try:
-        git_branch_output = subprocess.check_output(['git', 'branch'])
+        return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
     except CalledProcessError:
-        git_branch_output = None
-
-    aldryn_branch = [branch for branch in git_branch_output.split('\n') if branch.startswith('* ')]
-
-    if aldryn_branch:
-        return aldryn_branch[0][2:]
-    else:
-        return ALDRYN_DEFUALT_BRANCH_NAME
+        return ALDRYN_DEFAULT_BRANCH_NAME
 
 
 def get_user_agent():
