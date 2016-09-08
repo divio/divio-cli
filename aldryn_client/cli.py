@@ -19,7 +19,7 @@ from .check_system import check_requirements, check_requirements_human
 from .utils import (
     hr, table, open_project_cloud_site, get_dashboard_url,
     get_project_cheatsheet_url, get_latest_version_from_pypi,
-    get_git_commit,
+    get_git_commit, get_git_checked_branch
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -200,7 +200,7 @@ def project_open(obj):
 @click.pass_obj
 def project_update(obj):
     """Update project with latest changes from the Cloud"""
-    localdev.update_local_project()
+    localdev.update_local_project(get_git_checked_branch())
 
 
 @project.command(name='test')

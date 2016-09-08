@@ -596,12 +596,12 @@ def push_media(client, stage):
     click.echo(' [{}s]'.format(int(time() - start_time)))
 
 
-def update_local_project():
+def update_local_project(git_branch):
     project_home = utils.get_project_home()
     docker_compose = utils.get_docker_compose_cmd(project_home)
 
     click.secho('Pulling changes from git remote', fg='green')
-    check_call(('git', 'pull'))
+    check_call(('git', 'pull', 'origin', git_branch))
     click.secho('Pulling docker images', fg='green')
     check_call(docker_compose('pull'))
     click.secho('Building local docker images', fg='green')
