@@ -2,6 +2,7 @@ import json
 import tarfile
 import re
 import os
+import stat
 import subprocess
 import sys
 from time import sleep, time
@@ -114,7 +115,10 @@ def create_workspace(client, website_slug, stage, path=None):
                 'Do you want to remove it and continue?'.format(path)
         ):
             if os.path.isdir(path):
-                shutil.rmtree(path)
+                def del_rw(action, name, exc):
+                    os.chmod(name, stat.S_IWRITE)
+                    os.remove(name)
+                shutil.rmtree(path, onerror=del_rw)
             else:
                 os.remove(path)
         else:
