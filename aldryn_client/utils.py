@@ -2,8 +2,10 @@ import subprocess
 import platform
 import tarfile
 import tempfile
+
 import os
 import sys
+from subprocess import CalledProcessError
 from contextlib import contextmanager
 from distutils.version import StrictVersion
 from math import log
@@ -14,6 +16,9 @@ from tabulate import tabulate
 from six.moves.urllib_parse import urljoin
 
 from . import __version__
+
+
+ALDRYN_DEFAULT_BRANCH_NAME = "develop"
 
 
 def hr(char='-', width=None, **kwargs):
@@ -229,6 +234,13 @@ def get_git_commit():
             ]).strip()
         except:
             pass
+
+
+def get_git_checked_branch():
+    try:
+        return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+    except CalledProcessError:
+        return ALDRYN_DEFAULT_BRANCH_NAME
 
 
 def get_user_agent():
