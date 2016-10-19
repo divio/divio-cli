@@ -2,6 +2,12 @@ Changelog
 =========
 
 
+2.3.4 (2016-10-19)
+------------------
+
+* Add ``--noinput`` flags to push media and database commands
+
+
 2.3.3 (2016-10-19)
 ------------------
 
