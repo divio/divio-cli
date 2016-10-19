@@ -68,7 +68,7 @@ def configure_project(website_slug, path, client):
 def setup_website_containers(client, stage, path):
     docker_compose = utils.get_docker_compose_cmd(path)
 
-    existing_db_container_id = utils.get_db_container_id(path)
+    existing_db_container_id = utils.get_db_container_id(path, False)
 
     # stop all running for project
     check_call(docker_compose('stop'))

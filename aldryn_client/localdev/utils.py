@@ -134,10 +134,10 @@ def ensure_windows_docker_compose_file_exists(path):
         yaml.safe_dump(config, fh)
 
 
-def get_db_container_id(path):
+def get_db_container_id(path, raise_on_missing=True):
     docker_compose = get_docker_compose_cmd(path)
     output = check_output(docker_compose('ps', '-q', 'db')).rstrip(os.linesep)
-    if not output:
+    if not output and raise_on_missing:
         raise exceptions.AldrynException('Unable to find database container')
     return output
 
