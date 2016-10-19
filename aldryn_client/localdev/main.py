@@ -54,9 +54,9 @@ def configure_project(website_slug, path, client):
     compose_config = os.path.join(path, 'docker-compose.yml')
     if not os.path.isfile(compose_config):
         raise click.ClickException(
-            "Valid 'docker-compose.yml' file not found. Please make sure that "
-            "this project has been updated on Aldryn to use Base Project "
-            "version 3."
+            "Could not find a valid 'docker-compose.yml' file. Please make "
+            "sure that this project has been updated on Aldryn to use "
+            "Base Project version 3 or higher."
         )
 
     # create .aldryn file
