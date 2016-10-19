@@ -246,19 +246,29 @@ def project_cheatsheet(obj):
 )
 @click.option(
     '-p', '--path', default='.', help='install project to path',
-    type=click.Path(writable=True, readable=True)
+    type=click.Path(writable=True, readable=True),
+)
+@click.option(
+    '--overwrite', is_flag=True, default=False,
+    help="Overwrite the project directory if it already exists",
+)
+@click.option(
+    '--skip-doctor', is_flag=True, default=False,
+    help='Skip system test before setting up the project',
 )
 @click.pass_obj
-def project_setup(obj, slug, stage, path):
+def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
     """Set up a development environment for an Aldryn project"""
-    if not check_requirements_human(silent=True):
+    if not skip_doctor and not check_requirements_human(
+            config=obj.config, silent=True
+    ):
         click.secho(
             "There was a problem while checking your system. Please run "
             "'aldryn doctor'.", fg='red'
         )
         sys.exit(1)
 
-    localdev.create_workspace(obj, slug, stage, path)
+    localdev.create_workspace(obj, slug, stage, path, overwrite)
 
 
 @project.group(name='pull')
@@ -531,7 +541,8 @@ def version(skip_check, show_error):
     '-m', '--machine-readable', is_flag=True, default=False,
 )
 @click.option('-c', '--checks', default=None)
-def doctor(machine_readable, checks):
+@click.pass_obj
+def doctor(obj, machine_readable, checks):
     """Check if your system meets the requirements
     for Aldryn local development"""
 
@@ -542,12 +553,12 @@ def doctor(machine_readable, checks):
         errors = {
             check: error
             for check, check_name, error
-            in check_requirements(checks)
+            in check_requirements(obj.config, checks)
         }
         exitcode = 1 if any(errors.values()) else 0
         click.echo(json.dumps(errors), nl=False)
     else:
         click.echo('Verifying your system setup')
-        exitcode = 0 if check_requirements_human(checks) else 1
+        exitcode = 0 if check_requirements_human(obj.config, checks) else 1
 
     sys.exit(exitcode)

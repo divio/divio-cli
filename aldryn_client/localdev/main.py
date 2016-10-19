@@ -54,9 +54,9 @@ def configure_project(website_slug, path, client):
     compose_config = os.path.join(path, 'docker-compose.yml')
     if not os.path.isfile(compose_config):
         raise click.ClickException(
-            "Valid 'docker-compose.yml' file not found. Please make sure that "
-            "this project has been updated on Aldryn to use Base Project "
-            "version 3."
+            "Could not find a valid 'docker-compose.yml' file. Please make "
+            "sure that this project has been updated on Aldryn to use "
+            "Base Project version 3 or higher."
         )
 
     # create .aldryn file
@@ -101,7 +101,7 @@ def setup_website_containers(client, stage, path):
         check_call(docker_compose('run', 'web', 'start', 'migrate'))
 
 
-def create_workspace(client, website_slug, stage, path=None):
+def create_workspace(client, website_slug, stage, path=None, force_overwrite=False):
     click.secho('Creating workspace', fg='green')
 
     path = os.path.abspath(
@@ -110,9 +110,9 @@ def create_workspace(client, website_slug, stage, path=None):
     )
 
     if os.path.exists(path) and (not os.path.isdir(path) or os.listdir(path)):
-        if click.confirm(
-                'The path {} already exists and is not an empty directory. '
-                'Do you want to remove it and continue?'.format(path)
+        if force_overwrite or click.confirm(
+            'The path {} already exists and is not an empty directory. '
+            'Do you want to remove it and continue?'.format(path)
         ):
             if os.path.isdir(path):
                 def del_rw(action, name, exc):

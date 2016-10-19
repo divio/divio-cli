@@ -71,3 +71,12 @@ class Config(object):
                     .format(version=newer_version),
                     fg='yellow'
                 )
+
+    def skip_doctor(self):
+        return self.config.get('skip_doctor')
+
+    def get_skip_doctor_checks(self):
+        checks = self.config.get('skip_doctor_checks')
+        if not checks or not isinstance(checks, list):
+            return []
+        return checks

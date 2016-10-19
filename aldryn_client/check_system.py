@@ -191,11 +191,15 @@ ALL_CHECKS = OrderedDict([
 ])
 
 
-def check_requirements(checks=None):
+def check_requirements(config=None, checks=None):
     if checks is None:
         checks = ALL_CHECKS.keys()
 
+    skip_doctor_checks = config.get_skip_doctor_checks() if config else []
+
     for check_key in checks:
+        if check_key in skip_doctor_checks:
+            continue
         check = ALL_CHECKS.get(check_key)
         if not check:
             click.secho(
@@ -218,10 +222,13 @@ def get_prefix(success):
     return symbol, color
 
 
-def check_requirements_human(checks=None, silent=False):
+def check_requirements_human(config, checks=None, silent=False):
     errors = []
 
-    for check, check_name, error in check_requirements(checks):
+    if config and config.skip_doctor():
+        return True
+
+    for check, check_name, error in check_requirements(config, checks):
         if error:
             errors.append((check, check_name, error))
         if not silent:
