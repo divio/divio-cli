@@ -3,13 +3,15 @@ import subprocess
 import tarfile
 
 import click
-from six import StringIO
+from io import BytesIO
 
 from .. import settings
 from ..utils import (
-    dev_null, tar_add_stringio, get_package_version, create_temp_dir,
+    dev_null, tar_add_bytesio, get_package_version, create_temp_dir,
+    tar_add_stringio, get_bytes_io, get_string_io,
 )
 from ..validators.addon import validate_addon
+
 from .common import add_meta_files
 
 
@@ -31,7 +33,7 @@ def add_addon_meta_files(tar, path):
     # aldryn_config.py
     try:
         with open(os.path.join(path, 'aldryn_config.py')) as fobj:
-            tar_add_stringio(tar, StringIO(fobj.read()), 'aldryn_config.py')
+            tar_add_bytesio(tar, BytesIO(fobj.read()), 'aldryn_config.py')
     except (OSError, IOError):
         click.secho(
             'Warning: Aldryn config file \'aldryn_config.py\' not found. '
@@ -40,14 +42,11 @@ def add_addon_meta_files(tar, path):
         )
 
     # version
-    version_fobj = StringIO(get_package_version(path))
-    info = tarfile.TarInfo(name='VERSION')
-    info.size = len(version_fobj.getvalue())
-    tar.addfile(info, fileobj=version_fobj)
+    tar_add_stringio(tar, get_string_io(get_package_version(path)), 'VERSION')
 
 
 def create_addon_archive(path):
-    data = StringIO()
+    data = get_bytes_io()
 
     with tarfile.open(mode='w:gz', fileobj=data) as tar:
         add_meta_files(tar, path, settings.ADDON_CONFIG_FILENAME)
