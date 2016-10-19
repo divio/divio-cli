@@ -252,11 +252,14 @@ def project_cheatsheet(obj):
     '--overwrite', is_flag=True, default=False,
     help="Overwrite the project directory if it already exists",
 )
+@click.option(
+    '--skip-doctor', is_flag=True, default=False,
+    help='Skip system test before setting up the project',
 )
 @click.pass_obj
-def project_setup(obj, slug, stage, path, overwrite):
+def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
     """Set up a development environment for an Aldryn project"""
-    if not check_requirements_human(silent=True):
+    if not skip_doctor and not check_requirements_human(silent=True):
         click.secho(
             "There was a problem while checking your system. Please run "
             "'aldryn doctor'.", fg='red'
