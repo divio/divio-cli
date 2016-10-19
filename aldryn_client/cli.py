@@ -13,6 +13,7 @@ import click
 
 from . import exceptions
 from . import localdev
+from . import messages
 from .localdev.utils import get_aldryn_project_settings
 from .cloud import CloudClient, get_endpoint
 from .check_system import check_requirements, check_requirements_human
@@ -307,67 +308,35 @@ def project_push():
 
 @project_push.command(name='db')
 @click.argument('stage', default='test')
+@click.option('--noinput', is_flag=True, default=False, help="Don't ask for confirmation")
 @click.pass_obj
-def push_db(obj, stage):
+def push_db(obj, stage, noinput):
     """
     Push database to your deployed website. Stage is either
     test (default) or live
     """
-    warning = (
-        'WARNING',
-        '=======',
 
-        '\nYou are about to push your local database to the {} server on '.format(stage),
-        'Aldryn. This will replace ALL data on the Aldryn {} server with '.format(stage),
-        'the data you are about to push, including (but not limited to):',
-        '  - User accounts',
-        '  - CMS Pages & Plugins',
-
-        '\nYou will also lose any changes that have been made on the {} '.format(stage),
-        'server since you pulled its database to your local environment. ',
-
-        '\nIt is recommended to go the project settings on control.aldryn.com',
-        'and take a backup before restoring the database. You can find this ',
-        'action in the "Manage Project" section.',
-
-        '\nPlease proceed with caution!'
-    )
-
-    click.secho(os.linesep.join(warning), fg='red')
-    if not click.confirm('\nAre you sure you want to continue?'):
-        return
+    if not noinput:
+        click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
+        if not click.confirm('\nAre you sure you want to continue?'):
+            return
     localdev.push_db(obj, stage)
 
 
 @project_push.command(name='media')
 @click.argument('stage', default='test')
+@click.option('--noinput', is_flag=True, default=False, help="Don't ask for confirmation")
 @click.pass_obj
-def push_media(obj, stage):
+def push_media(obj, stage, noinput):
     """
     Push database to your deployed website. Stage is either
     test (default) or live
     """
-    warning = (
-        'WARNING',
-        '=======',
 
-        '\nYou are about to push your local media files to the {} server on '.format(stage),
-        'Aldryn. This will replace ALL existing media files with the ones you ',
-        'are about to push.',
-
-        '\nYou will also lose any changes that have been made on the {} '.format(stage),
-        'server since you pulled its files to your local environment. ',
-
-        '\nIt is recommended to go the project settings on control.aldryn.com',
-        'and take a backup before restoring media files. You can find this ',
-        'action in the "Manage Project" section.',
-
-        '\nPlease proceed with caution!'
-    )
-
-    click.secho(os.linesep.join(warning), fg='red')
-    if not click.confirm('\nAre you sure you want to continue?'):
-        return
+    if not noinput:
+        click.secho(messages.PUSH_MEDIA_WARNING.format(stage=stage), fg='red')
+        if not click.confirm('\nAre you sure you want to continue?'):
+            return
     localdev.push_media(obj, stage)
 
 
