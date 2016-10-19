@@ -2,11 +2,15 @@ Changelog
 =========
 
 
-2.3.3 (unreleased)
+2.3.3 (2016-10-19)
 ------------------
 
-* Make login status check more resilient by not relying on its own executable to be findable in `PATH`
 * Add ``aldryn project import/export db`` commands
+* Doctor checks can now be disabled through the global ``.aldryn`` file
+* ``aldryn project update`` now detects the current git branch
+* Make login status check more resilient by not relying on its own executable to be findable in `PATH`
+* Fix issues with ``aldryn addon/boilerplate upload`` in Python 3
+* Fix error with recursive delete on windows during project setup
 
 
 2.3.2 (2016-07-05)
