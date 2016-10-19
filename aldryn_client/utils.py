@@ -2,7 +2,7 @@ import subprocess
 import platform
 import tarfile
 import tempfile
-
+import io
 import os
 import sys
 from subprocess import CalledProcessError
@@ -12,6 +12,7 @@ from math import log
 
 import click
 import requests
+from six import PY2
 from tabulate import tabulate
 from six.moves.urllib_parse import urljoin
 
@@ -86,12 +87,35 @@ def create_temp_dir():
     return tempfile.mkdtemp(prefix='tmp_aldryn_client_')
 
 
+def get_bytes_io(*args, **kwargs):
+    if PY2:
+        from StringIO import StringIO
+        cls = StringIO
+    else:
+        from io import BytesIO
+        cls = BytesIO
+    return cls(*args, **kwargs)
+
+
+def get_string_io(*args, **kwargs):
+    if PY2:
+        from StringIO import StringIO
+    else:
+        from io import StringIO
+    return StringIO(*args, **kwargs)
+
+
 def tar_add_stringio(tar, string_io, name):
+    bytes_io = io.BytesIO(string_io.getvalue().encode())
+    return tar_add_bytesio(tar, bytes_io, name)
+
+
+def tar_add_bytesio(tar, bytes_io, name):
     info = tarfile.TarInfo(name=name)
-    string_io.seek(0, os.SEEK_END)
-    info.size = string_io.tell()
-    string_io.seek(0)
-    tar.addfile(tarinfo=info, fileobj=string_io)
+    bytes_io.seek(0, os.SEEK_END)
+    info.size = bytes_io.tell()
+    bytes_io.seek(0)
+    tar.addfile(tarinfo=info, fileobj=bytes_io)
 
 
 def execute(func, *popenargs, **kwargs):

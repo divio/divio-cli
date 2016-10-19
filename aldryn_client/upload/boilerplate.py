@@ -3,11 +3,12 @@ import os
 import tarfile
 
 import click
-from six import StringIO
 
 from .. import settings
+from ..utils import get_bytes_io
 from ..validators.common import load_config
 from ..validators.boilerplate import validate_boilerplate
+
 from .common import add_meta_files
 
 
@@ -76,12 +77,12 @@ def upload_boilerplate(client, path=None, noinput=False):
 
 
 def create_boilerplate_archive(path, files):
-    data = StringIO()
+    fobj = get_bytes_io()
 
-    with tarfile.open(mode='w:gz', fileobj=data) as tar:
+    with tarfile.open(mode='w:gz', fileobj=fobj) as tar:
         add_meta_files(tar, path, settings.BOILERPLATE_CONFIG_FILENAME)
         for f in files:
             tar.add(f)
 
-    data.seek(0)
-    return data
+    fobj.seek(0)
+    return fobj
