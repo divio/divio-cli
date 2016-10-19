@@ -246,10 +246,15 @@ def project_cheatsheet(obj):
 )
 @click.option(
     '-p', '--path', default='.', help='install project to path',
-    type=click.Path(writable=True, readable=True)
+    type=click.Path(writable=True, readable=True),
+)
+@click.option(
+    '--overwrite', is_flag=True, default=False,
+    help="Overwrite the project directory if it already exists",
+)
 )
 @click.pass_obj
-def project_setup(obj, slug, stage, path):
+def project_setup(obj, slug, stage, path, overwrite):
     """Set up a development environment for an Aldryn project"""
     if not check_requirements_human(silent=True):
         click.secho(
@@ -258,7 +263,7 @@ def project_setup(obj, slug, stage, path):
         )
         sys.exit(1)
 
-    localdev.create_workspace(obj, slug, stage, path)
+    localdev.create_workspace(obj, slug, stage, path, overwrite)
 
 
 @project.group(name='pull')

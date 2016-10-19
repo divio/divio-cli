@@ -101,7 +101,7 @@ def setup_website_containers(client, stage, path):
         check_call(docker_compose('run', 'web', 'start', 'migrate'))
 
 
-def create_workspace(client, website_slug, stage, path=None):
+def create_workspace(client, website_slug, stage, path=None, force_overwrite=False):
     click.secho('Creating workspace', fg='green')
 
     path = os.path.abspath(
@@ -110,9 +110,9 @@ def create_workspace(client, website_slug, stage, path=None):
     )
 
     if os.path.exists(path) and (not os.path.isdir(path) or os.listdir(path)):
-        if click.confirm(
-                'The path {} already exists and is not an empty directory. '
-                'Do you want to remove it and continue?'.format(path)
+        if force_overwrite or click.confirm(
+            'The path {} already exists and is not an empty directory. '
+            'Do you want to remove it and continue?'.format(path)
         ):
             if os.path.isdir(path):
                 def del_rw(action, name, exc):
