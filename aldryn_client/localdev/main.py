@@ -494,6 +494,7 @@ def push_db(client, stage):
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     dump_filename = DEFAULT_DUMP_FILENAME
     archive_filename = dump_filename.replace('.sql', '.tar.gz')
+    archive_path = os.path.join(project_home, archive_filename)
     website_slug = utils.get_aldryn_project_settings(project_home)['slug']
 
     click.secho(
@@ -555,7 +556,16 @@ def push_media(client, stage):
     start_compression = time()
     with tarfile.open(archive_path, mode='w:gz') as tar:
         media_dir = os.path.join(project_home, 'data', 'media')
-        for item in os.listdir(media_dir):
+        if os.path.isdir(media_dir):
+            items = os.listdir(media_dir)
+        else:
+            items = []
+
+        if not items:
+            click.secho('\nError: Local media directory is empty', fg='red')
+            sys.exit(1)
+
+        for item in items:
             if item == 'MANIFEST':
                 # partial uploads are currently not supported
                 # not including MANIFEST to do a full restore
