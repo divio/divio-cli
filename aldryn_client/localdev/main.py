@@ -494,6 +494,7 @@ def push_db(client, stage):
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     dump_filename = DEFAULT_DUMP_FILENAME
     archive_filename = dump_filename.replace('.sql', '.tar.gz')
+    archive_path = os.path.join(project_home, archive_filename)
     website_slug = utils.get_aldryn_project_settings(project_home)['slug']
 
     click.secho(
