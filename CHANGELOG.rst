@@ -2,6 +2,13 @@ Changelog
 =========
 
 
+2.3.5 (2016-10-21)
+------------------
+
+* Fix bug in ``aldryn project push db``
+* Harden ``aldryn project push media`` command
+
+
 2.3.4 (2016-10-19)
 ------------------
 
