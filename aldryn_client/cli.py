@@ -49,10 +49,22 @@ def cli(ctx, debug):
 
     ctx.obj = CloudClient(get_endpoint(), debug)
 
+    try:
+        is_version_command = sys.argv[1] == 'version'
+    except IndexError:
+        is_version_command = False
+
     # skip if 'aldryn version' is run
-    if not ctx.args == ['version']:
+    if not is_version_command:
         # check for newer versions
-        ctx.obj.config.check_for_updates()
+        update_info = ctx.obj.config.check_for_updates()
+        if update_info['update_available']:
+            click.secho(
+                'New version {} is available. Type `aldryn version` to '
+                'show information about upgrading.'
+                .format(update_info['remote']),
+                fg='yellow'
+            )
 
 
 def login_token_helper(ctx, value):
@@ -463,46 +475,52 @@ def boilerplate_upload(ctx, noinput):
     help="don't check PyPI for newer version",
 )
 @click.option(
-    '-e', '--show-error', is_flag=True, default=False,
-    help="show error if PyPI check fails",
+    '-m', '--machine-readable', is_flag=True, default=False,
 )
-def version(skip_check, show_error):
+@click.pass_obj
+def version(obj, skip_check, machine_readable):
     """Show version info"""
-    from . import __version__
-    click.echo('package version: {}'.format(__version__))
+    if skip_check:
+        from . import __version__
+        update_info = {'current': __version__}
+    else:
+        update_info = obj.config.check_for_updates(force=True)
 
-    # try to get git revision
-    git_commit = get_git_commit()
-    if git_commit:
-        click.echo('git revision:    {}'.format(git_commit))
+    update_info['location'] = os.path.dirname(os.path.realpath(__file__))
 
-    if not skip_check:
-        # check pypi for a newer version
-        current_version = StrictVersion(__version__)
-        newest_version, exc = get_latest_version_from_pypi()
-
-        # WARNING: The output is parsed by the Aldryn Desktop application
-        #          to determine if a update needs to be installed.
-        #          Be aware to update the regex in there as well.
-        # TODO: provide a machine readable version
-        if newest_version and newest_version == current_version:
-            click.echo('\nYou have the latest version of aldryn-client!')
-
-        elif newest_version and newest_version > current_version:
-            click.echo(
-                "\nNew version ({newest_version}) available on PyPI. Update "
-                "now using 'pip install aldryn-client=={newest_version}'"
-                .format(newest_version=newest_version)
+    if machine_readable:
+        click.echo(json.dumps(update_info))
+    else:
+        click.echo(
+            'aldryn-client {} from {}\n'.format(
+                update_info['current'],
+                update_info['location'],
             )
-        elif newest_version is False:
-            if show_error:
+        )
+
+        if not skip_check:
+            if update_info['update_available']:
+                click.secho(
+                    "New version {version} is available! You can upgrade "
+                    "using one of the following:\n\n"
+                    " - Use the Aldryn App to automatically update to the newest version\n"
+                    "   https://www.divio.com/en/products/aldryn-desktop-app/\n\n"
+                    " - Upgrade from PyPI\n"
+                    "   pip install --upgrade aldryn-client\n\n"
+                    " - Download the latest release from GitHub\n"
+                    "   https://github.com/aldryn/aldryn-client/releases"
+                    .format(version=update_info['remote']),
+                    fg='yellow'
+                )
+            elif update_info['pypi_error']:
                 click.secho(
                     'There was an error while trying to check for the latest '
-                    'version on pypi.python.org',
-                    fg='red'
+                    'version on pypi.python.org:\n'
+                    '{}'.format(update_info['pypi_error']),
+                    fg='red',
                 )
-                if exc:
-                    click.echo(exc)
+            else:
+                click.echo('\nYou have the latest version of aldryn-client!')
 
 
 @cli.command()

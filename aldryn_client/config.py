@@ -33,9 +33,9 @@ class Config(object):
         with open(self.config_path, 'w+') as fh:
             json.dump(self.config, fh)
 
-    def check_for_updates(self):
-        """check daily for updates"""
-        if self.config.get('disable_update_check', False):
+    def check_for_updates(self, force=False):
+        """check for updates daily"""
+        if self.config.get('disable_update_check', False) and not force:
             return
 
         timestamp_key = 'update_check_timestamp'
@@ -43,34 +43,35 @@ class Config(object):
 
         last_checked = self.config.get(timestamp_key, None)
         now = int(time.time())
-        current_version = StrictVersion(__version__)
+        installed_version = StrictVersion(__version__)
+        pypi_error = None
 
-        if not last_checked or last_checked < now - (60 * 60 * 24):
+        if force or not last_checked or last_checked < now - (60 * 60 * 24):
             # try to access PyPI to get the latest available version
-            newest_version, _ = utils.get_latest_version_from_pypi()
+            remote_version, pypi_error = utils.get_latest_version_from_pypi()
 
-            if newest_version:
-                if newest_version > current_version:
-                    self.config[version_key] = str(newest_version)
+            if remote_version:
+                if remote_version > installed_version:
+                    self.config[version_key] = str(remote_version)
                 self.config[timestamp_key] = now
                 self.save()
-            elif newest_version is False:
+            elif remote_version is False:
                 # fail silently, nothing the user can do about this
                 self.config.pop(version_key, None)
 
-        newer_version_string = self.config.get(version_key, None)
-        if newer_version_string:
-            newer_version = StrictVersion(newer_version_string)
-            if newer_version <= current_version:
+        newest_version_s = self.config.get(version_key, None)
+        newest_version = None
+        if newest_version_s:
+            newest_version = StrictVersion(newest_version_s)
+            if newest_version <= installed_version:
                 self.config.pop(version_key)
                 self.save()
-            else:
-                click.secho(
-                    "New version ({version}) available on PyPI. Update "
-                    "now using 'pip install aldryn-client=={version}'"
-                    .format(version=newer_version),
-                    fg='yellow'
-                )
+        return dict(
+            current=str(installed_version),
+            remote=str(newest_version),
+            update_available=newest_version > installed_version,
+            pypi_error=pypi_error,
+        )
 
     def skip_doctor(self):
         return self.config.get('skip_doctor')
