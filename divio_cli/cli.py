@@ -2,7 +2,6 @@ import json
 import itertools
 import os
 import sys
-from distutils.version import StrictVersion
 
 try:
     import ipdb as pdb
@@ -19,8 +18,8 @@ from .cloud import CloudClient, get_endpoint
 from .check_system import check_requirements, check_requirements_human
 from .utils import (
     hr, table, open_project_cloud_site, get_dashboard_url,
-    get_project_cheatsheet_url, get_latest_version_from_pypi,
-    get_git_commit, get_git_checked_branch
+    get_project_cheatsheet_url, get_git_checked_branch,
+    print_package_renamed_warning,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -34,6 +33,9 @@ from .upload.boilerplate import upload_boilerplate
                     'an exception.'))
 @click.pass_context
 def cli(ctx, debug):
+    if sys.argv[0].endswith('aldryn'):
+        print_package_renamed_warning()
+
     if debug:
         def exception_handler(type, value, traceback):
             click.secho(
@@ -486,13 +488,13 @@ def version(obj, skip_check, machine_readable):
     else:
         update_info = obj.config.check_for_updates(force=True)
 
-    update_info['location'] = os.path.dirname(os.path.realpath(__file__))
+    update_info['location'] = os.path.dirname(os.path.realpath(sys.executable))
 
     if machine_readable:
         click.echo(json.dumps(update_info))
     else:
         click.echo(
-            'aldryn-client {} from {}\n'.format(
+            'divio-cli {} from {}\n'.format(
                 update_info['current'],
                 update_info['location'],
             )
@@ -503,12 +505,12 @@ def version(obj, skip_check, machine_readable):
                 click.secho(
                     "New version {version} is available! You can upgrade "
                     "using one of the following:\n\n"
-                    " - Use the Aldryn App to automatically update to the newest version\n"
-                    "   https://www.divio.com/en/products/aldryn-desktop-app/\n\n"
+                    " - Use the Divio App to automatically update to the newest version\n"
+                    "   https://www.divio.com/app/\n\n"
                     " - Upgrade from PyPI\n"
-                    "   pip install --upgrade aldryn-client\n\n"
+                    "   pip install --upgrade divio-cli\n\n"
                     " - Download the latest release from GitHub\n"
-                    "   https://github.com/aldryn/aldryn-client/releases"
+                    "   https://github.com/divio/divio-cli/releases"
                     .format(version=update_info['remote']),
                     fg='yellow'
                 )
@@ -520,7 +522,7 @@ def version(obj, skip_check, machine_readable):
                     fg='red',
                 )
             else:
-                click.echo('\nYou have the latest version of aldryn-client!')
+                click.echo('You have the latest version of divio-cli!')
 
 
 @cli.command()

@@ -9,7 +9,7 @@ a binary exe instead which can't be read by PyInstaller.
 import re
 import sys
 
-from aldryn_client.cli import cli
+from divio_cli.cli import cli
 
 if __name__ == '__main__':
     sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])

@@ -1,6 +1,6 @@
-#########################
-Aldryn Commandline Client
-#########################
+########################
+Divio Commandline Client
+########################
 
 |PyPI Version| |PyPI Downloads| |Wheel Support| |License|
 
@@ -8,7 +8,7 @@ Aldryn Commandline Client
 Installing
 **********
 
-``pip install aldryn-client``
+``pip install divio-cli``
 
 
 ****************
@@ -66,12 +66,12 @@ Connect to a Windows VM (the only requirement is Python 2.7) and open a PowerShe
 
 
 
-.. |PyPI Version| image:: https://img.shields.io/pypi/v/aldryn-client.svg
-   :target: https://pypi.python.org/pypi/aldryn-client
-.. |PyPI Downloads| image:: https://img.shields.io/pypi/dm/aldryn-client.svg
-   :target: https://pypi.python.org/pypi/aldryn-client
-.. |Wheel Support| image:: https://img.shields.io/pypi/wheel/aldryn-client.svg
-   :target: https://pypi.python.org/pypi/aldryn-client
-.. |License| image:: https://img.shields.io/pypi/l/aldryn-client.svg
-   :target: https://pypi.python.org/pypi/aldryn-client
+.. |PyPI Version| image:: https://img.shields.io/pypi/v/divio-cli.svg
+   :target: https://pypi.python.org/pypi/divio-cli
+.. |PyPI Downloads| image:: https://img.shields.io/pypi/dm/divio-cli.svg
+   :target: https://pypi.python.org/pypi/divio-cli
+.. |Wheel Support| image:: https://img.shields.io/pypi/wheel/divio-cli.svg
+   :target: https://pypi.python.org/pypi/divio-cli
+.. |License| image:: https://img.shields.io/pypi/l/divio-cli.svg
+   :target: https://pypi.python.org/pypi/divio-cli
 

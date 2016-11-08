@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-import os
 import sys
 
 from setuptools import setup, find_packages
 
-from aldryn_client import __version__
+from divio_cli import __version__
 
 
 with open('requirements.txt') as f:
@@ -31,12 +30,12 @@ CLASSIFIERS = [
 ]
 
 setup(
-    name='aldryn-client',
+    name='divio-cli',
     version=__version__,
-    description='The command-line client for the Aldryn Cloud',
+    description='The command-line client for the Divio Cloud',
     author='Divio AG',
-    author_email='aldryn@divio.ch',
-    url='http://www.aldryn.com/',
+    author_email='info@divio.com',
+    url='https://divio.com/cloud',
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
@@ -45,6 +44,7 @@ setup(
     install_requires=requirements,
     entry_points="""
     [console_scripts]
-    aldryn = aldryn_client.cli:cli
+    divio = divio_cli.cli:cli
+    aldryn = divio_cli.cli:cli
     """,
 )
