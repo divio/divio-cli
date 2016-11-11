@@ -1,6 +1,11 @@
 Changelog
 =========
 
+unreleased
+----------
+
+* improve ``aldryn version``: now shows more upgrade paths and more detailed information
+
 
 2.3.5 (2016-10-21)
 ------------------
