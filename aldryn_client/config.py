@@ -3,8 +3,6 @@ import time
 import os
 from distutils.version import StrictVersion
 
-import click
-
 from . import utils, __version__
 
 
@@ -69,7 +67,10 @@ class Config(object):
         return dict(
             current=str(installed_version),
             remote=str(newest_version),
-            update_available=newest_version > installed_version,
+            update_available=(
+                newest_version > installed_version
+                if newest_version else False
+            ),
             pypi_error=pypi_error,
         )
 
