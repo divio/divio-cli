@@ -47,4 +47,4 @@ RUN pip install virtualenv
 
 WORKDIR /code/
 
-ENTRYPOINT  ["bash", "./scripts/build-unix"]
+ENTRYPOINT  ["bash", "./scripts/build-unix.sh"]
