@@ -1,10 +1,12 @@
 Changelog
 =========
 
-unreleased
-----------
+3.0.0 (unreleased)
+------------------
 
+* rename from aldryn-client to divio-cli
 * improve ``aldryn version``: now shows more upgrade paths and more detailed information
+* add script for testing unix builds on multiple linux distros
 
 
 2.3.5 (2016-10-21)
