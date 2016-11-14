@@ -84,7 +84,7 @@ def redirect_stderr(new_stream):
 
 
 def create_temp_dir():
-    return tempfile.mkdtemp(prefix='tmp_aldryn_client_')
+    return tempfile.mkdtemp(prefix='tmp_divio_cli_')
 
 
 def get_bytes_io(*args, **kwargs):
@@ -139,7 +139,7 @@ def execute(func, *popenargs, **kwargs):
             raise
         output = (
             'There was an error trying to run a command. This is most likely',
-            'not an issue with aldryn-client, but the called program itself.',
+            'not an issue with divio-cli, but the called program itself.',
             'Try checking the output of the command above.',
             'The command was:',
             '  {command}'.format(command=' '.join(exc.cmd))
@@ -236,7 +236,7 @@ def get_size(start_path):
 def get_latest_version_from_pypi():
     try:
         response = requests.get(
-            'https://pypi.python.org/pypi/aldryn-client/json'
+            'https://pypi.python.org/pypi/divio-cli/json'
         )
         response.raise_for_status()
         newest_version = StrictVersion(response.json()['info']['version'])
@@ -270,9 +270,9 @@ def get_git_checked_branch():
 def get_user_agent():
     revision = get_git_commit()
     if revision:
-        client = 'aldryn-client/{}-{}'.format(__version__, revision)
+        client = 'divio-cli/{}-{}'.format(__version__, revision)
     else:
-        client = 'aldryn-client/{}'.format(__version__)
+        client = 'divio-cli/{}'.format(__version__)
 
     os = '{}/{}'.format(platform.system(), platform.release())
     python = '{}/{}'.format(
@@ -296,3 +296,16 @@ def download_file(url, directory=None, filename=None):
                 f.write(chunk)
                 f.flush()
     return dump_path
+
+
+def print_package_renamed_warning():
+    message = (
+        'aldryn-client has been renamed to divio-cli. Please call it using '
+        '`divio` from now on, the shortcut `aldryn` is deprecated and will be '
+        'removed in a later version.'
+    )
+
+    hr(char='=', fg='red')
+    click.secho(message, fg='red')
+    hr(char='=', fg='red')
+    click.echo('')

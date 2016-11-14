@@ -5,7 +5,7 @@ ARCH="`uname -s`"
 VENV=venv-$ARCH
 
 # cleanup
-rm -rf build dist aldryn_client.egg-info $VENV
+rm -rf build dist divio_cli.egg-info $VENV
 
 # create new venv
 virtualenv $VENV
@@ -20,7 +20,7 @@ virtualenv $VENV
 mkdir -p binary
 
 # create binary
-./$VENV/bin/pyinstaller -F -y scripts/entrypoint.py --distpath=binary -n aldryn-$ARCH
+./$VENV/bin/pyinstaller -F -y scripts/entrypoint.py --distpath=binary -n divio-$ARCH
 
 # run check
-./binary/aldryn-$ARCH version
+./binary/divio-$ARCH version
