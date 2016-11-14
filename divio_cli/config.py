@@ -65,7 +65,7 @@ class Config(object):
                 self.config.pop(version_key)
                 self.save()
         return dict(
-            current=str(installed_version),
+            current=str(__version__),
             remote=str(newest_version),
             update_available=(
                 newest_version > installed_version
