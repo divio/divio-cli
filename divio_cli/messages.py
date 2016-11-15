@@ -3,11 +3,11 @@ NETWORK_ERROR_MESSAGE = (
     'Network error. Please check your connection and try again.'
 )
 AUTH_SERVER_ERROR = (
-    'A problem occured while trying to authenticate with aldryn.com. '
+    'A problem occured while trying to authenticate with divio.com. '
     'Please try again later'
 )
 SERVER_ERROR = (
-    'A problem occured while trying to communicate with aldryn.com. '
+    'A problem occured while trying to communicate with divio.com. '
     'Please try again later'
 )
 AUTH_INVALID_TOKEN = 'Login failed. Invalid token specified'
@@ -24,7 +24,7 @@ LOGIN_CHECK_SUCCESSFUL = (
 )
 LOGIN_CHECK_ERROR = (
     'You are currently not logged in, '
-    'please log in using `aldryn login`.'
+    'please log in using `divio login`.'
 )
 
 PUSH_DB_WARNING = '\n'.join((
@@ -32,15 +32,15 @@ PUSH_DB_WARNING = '\n'.join((
     '=======',
 
     '\nYou are about to push your local database to the {stage} server on ',
-    'Aldryn. This will replace ALL data on the Aldryn {stage} server with ',
-    'the data you are about to push, including (but not limited to):',
+    'the Divio Cloud. This will replace ALL data on the Divio Cloud {stage} ',
+    'server with the data you are about to push, including (but not limited to):',
     '  - User accounts',
     '  - CMS Pages & Plugins',
 
     '\nYou will also lose any changes that have been made on the {stage} ',
     'server since you pulled its database to your local environment. ',
 
-    '\nIt is recommended to go the project settings on control.aldryn.com',
+    '\nIt is recommended to go the project settings on control.divio.com',
     'and take a backup before restoring the database. You can find this ',
     'action in the "Manage Project" section.',
 
@@ -52,13 +52,13 @@ PUSH_MEDIA_WARNING = '\n'.join((
     '=======',
 
     '\nYou are about to push your local media files to the {stage} server on ',
-    'Aldryn. This will replace ALL existing media files with the ones you ',
-    'are about to push.',
+    'the Divio Cloud. This will replace ALL existing media files with the ',
+    'ones you are about to push.',
 
     '\nYou will also lose any changes that have been made on the {stage} ',
     'server since you pulled its files to your local environment. ',
 
-    '\nIt is recommended to go the project settings on control.aldryn.com',
+    '\nIt is recommended to go the project settings on control.divio.com',
     'and take a backup before restoring media files. You can find this ',
     'action in the "Manage Project" section.',
 

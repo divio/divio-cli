@@ -62,13 +62,13 @@ def upload_boilerplate(client, path=None, noinput=False):
     if not noinput:
         click.secho(
             'The following files will be included in your '
-            'boilerplate and uploaded to Aldryn:'.format(len(files)),
+            'boilerplate and uploaded to the Divio Cloud:'.format(len(files)),
             fg='yellow'
         )
         click.echo(os.linesep.join(files))
         click.confirm(
             'Are you sure you want to continue and upload '
-            'the preceding (#{}) files to Aldryn?'.format(len(files)),
+            'the preceding (#{}) files to the Divio Cloud?'.format(len(files)),
             default=True, show_default=True, abort=True
         )
 

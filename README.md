@@ -1,5 +1,5 @@
-Divio CLI - Commandline interface to the Divio Cloud
-====================================================
+Divio CLI - Command-line interface to the Divio Cloud
+=====================================================
 
 [![PyPI Version](https://img.shields.io/pypi/v/divio-cli.svg)](https://pypi.python.org/pypi/divio-cli)
 ![PyPI Downloads](https://img.shields.io/pypi/dm/divio-cli.svg)
@@ -14,7 +14,7 @@ pip install divio-cli
 
 # Using the CLI
 
-See [Divio Support: How to use the Divio command line interface](http://support.divio.com/local-development/aldryn-local/how-to-use-the-divio-command-line-interface)
+See [Divio Support: How to use the Divio command-line interface](http://support.divio.com/local-development/divio-local/how-to-use-the-divio-command-line-interface)
 
 # Releasing the binary
 
@@ -33,7 +33,7 @@ Currently only support for native builds
 ### Test
     
 ```bash
-./binary/aldryn-Darwin version
+./binary/divio-Darwin version
 ```
 
 ## Linux
@@ -60,7 +60,7 @@ docker-compose run --rm builder
 #### Native
 
 ```bash
-./binary/aldryn-Linux version
+./binary/divio-Linux version
 ```
 
 #### With Docker
@@ -82,5 +82,5 @@ Use / connect to a Windows (virtual) machine (the only requirement is Python 2.7
 ### Test
 
 ```powershell
-.\binary\aldryn-Windows version
+.\binary\divio-Windows version
 ```

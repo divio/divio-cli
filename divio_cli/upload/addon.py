@@ -36,7 +36,7 @@ def add_addon_meta_files(tar, path):
             tar_add_bytesio(tar, BytesIO(fobj.read()), 'aldryn_config.py')
     except (OSError, IOError):
         click.secho(
-            'Warning: Aldryn config file \'aldryn_config.py\' not found. '
+            'Warning: Divio Cloud config file \'aldryn_config.py\' not found. '
             'Your app will not have any configurable settings.',
             fg='yellow'
         )

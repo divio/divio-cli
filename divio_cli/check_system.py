@@ -166,15 +166,15 @@ class DockerEngineDNSCheck(DockerEngineBaseCheck):
     command = (
         'docker', 'run', '--rm', 'busybox',
         'sh', '-c',  # run in new a shell to avoid problems with timeout
-        'timeout -t 5 nslookup aldryn.com',
+        'timeout -t 5 nslookup control.divio.com',
     )
 
     def fmt_exception(self, exc):
         errors = super(DockerEngineDNSCheck, self).fmt_exception(exc)
         errors.append(
             'The DNS resolution inside docker is not able to resolve '
-            'aldryn.com. This might be due to missing internet connectivity, '
-            'a firewall or a network configuration problem.'
+            'control.divio.com. This might be due to missing internet '
+            'connectivity, a firewall or a network configuration problem.'
         )
         return errors
 

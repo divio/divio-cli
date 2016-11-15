@@ -55,8 +55,8 @@ def configure_project(website_slug, path, client):
     if not os.path.isfile(compose_config):
         raise click.ClickException(
             "Could not find a valid 'docker-compose.yml' file. Please make "
-            "sure that this project has been updated on Aldryn to use "
-            "Base Project version 3 or higher."
+            "sure that this project has been updated on the Divio Cloud to "
+            "use Base Project version 3 or higher."
         )
 
     # create .aldryn file
@@ -141,7 +141,7 @@ def create_workspace(client, website_slug, stage, path=None, force_overwrite=Fal
         "Finished setting up your project's workspace!",
         "To start the project, please:",
         " - change directory into '{}'".format(path),
-        " - run 'aldryn project up'",
+        " - run 'divio project up'",
     )
 
     click.secho('\n\n{}'.format(os.linesep.join(instructions)), fg='green')

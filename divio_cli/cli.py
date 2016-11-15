@@ -62,7 +62,7 @@ def cli(ctx, debug):
         update_info = ctx.obj.config.check_for_updates()
         if update_info['update_available']:
             click.secho(
-                'New version {} is available. Type `aldryn version` to '
+                'New version {} is available. Type `divio version` to '
                 'show information about upgrading.'
                 .format(update_info['remote']),
                 fg='yellow'
@@ -86,7 +86,7 @@ def login_token_helper(ctx, value):
 )
 @click.pass_context
 def login(ctx, token, check):
-    """Authorize your machine with Aldryn"""
+    """Authorize your machine with the Divio Cloud"""
     success = True
     if check:
         success, msg = ctx.obj.check_login_status()
@@ -273,13 +273,13 @@ def project_cheatsheet(obj):
 )
 @click.pass_obj
 def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
-    """Set up a development environment for an Aldryn project"""
+    """Set up a development environment for a Divio Cloud project"""
     if not skip_doctor and not check_requirements_human(
             config=obj.config, silent=True
     ):
         click.secho(
             "There was a problem while checking your system. Please run "
-            "'aldryn doctor'.", fg='red'
+            "'divio doctor'.", fg='red'
         )
         sys.exit(1)
 
@@ -288,7 +288,7 @@ def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
 
 @project.group(name='pull')
 def project_pull():
-    """Pull db or files from Aldryn"""
+    """Pull db or files from the Divio Cloud"""
     pass
 
 
@@ -316,7 +316,7 @@ def pull_media(obj, stage):
 
 @project.group(name='push')
 def project_push():
-    """Push db or media files to Aldryn"""
+    """Push db or media files to the Divio Cloud"""
     pass
 
 
@@ -400,7 +400,7 @@ def project_develop(obj, package, no_rebuild):
 @click.option('-p', '--path', default='.', help='Addon directory')
 @click.pass_obj
 def addon(obj, path):
-    """Validate and upload addon packages to Aldryn"""
+    """Validate and upload addon packages to the Divio Cloud"""
     pass
 
 
@@ -418,7 +418,7 @@ def addon_validate(ctx):
 @addon.command(name='upload')
 @click.pass_context
 def addon_upload(ctx):
-    """Upload addon to Aldryn"""
+    """Upload addon to the Divio Cloud"""
     try:
         ret = upload_addon(ctx.obj, ctx.parent.params['path'])
     except exceptions.AldrynException as exc:
@@ -432,7 +432,7 @@ def addon_upload(ctx):
 @click.option('-o', '--organisation', help='Register for an organisation', type=int)
 @click.pass_context
 def addon_register(ctx, package_name, verbose_name, organisation):
-    """Register your addon on Aldryn\n
+    """Register your addon on the Divio Cloud\n
     - Verbose Name:        Name of the Addon as it appears in the Marketplace.
     - Package Name:        System wide unique Python package name
     """
@@ -444,7 +444,7 @@ def addon_register(ctx, package_name, verbose_name, organisation):
 @click.option('-p', '--path', default='.', help='Boilerplate directory')
 @click.pass_obj
 def boilerplate(obj, path):
-    """Validate and upload boilerplate packages to Aldryn"""
+    """Validate and upload boilerplate packages to the Divio Cloud"""
     pass
 
 
@@ -463,7 +463,7 @@ def boilerplate_validate(ctx):
 @click.option('--noinput', is_flag=True, default=False, help="Don't ask for confirmation")
 @click.pass_context
 def boilerplate_upload(ctx, noinput):
-    """Upload boilerplate to Aldryn"""
+    """Upload boilerplate to the Divio Cloud"""
     try:
         ret = upload_boilerplate(ctx.obj, ctx.parent.params['path'], noinput)
     except exceptions.AldrynException as exc:
@@ -533,7 +533,7 @@ def version(obj, skip_check, machine_readable):
 @click.pass_obj
 def doctor(obj, machine_readable, checks):
     """Check if your system meets the requirements
-    for Aldryn local development"""
+    for local development of Divio Cloud projects"""
 
     if checks:
         checks = checks.split(',')
