@@ -13,11 +13,11 @@ from .config import Config
 
 
 ENDPOINT = 'https://control.{host}'
-DEFAULT_HOST = 'aldryn.com'
+DEFAULT_HOST = 'divio.com'
 
 
 def get_aldryn_host():
-    return os.environ.get('ALDRYN_HOST', DEFAULT_HOST)
+    return os.environ.get('ALDRYN_HOST', DEFAULT_HOST)   # FIXME: Rename
 
 
 def get_endpoint(host=None):

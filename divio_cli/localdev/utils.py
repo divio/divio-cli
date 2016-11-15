@@ -37,8 +37,8 @@ def get_project_home(path=None):
         current_path = os.path.abspath(os.path.join(current_path, os.pardir))
 
     raise click.ClickException(
-        "Aldryn project file '.aldryn' could not be found! Please make sure "
-        "you're in an Aldryn project folder and the file exists."
+        "Divio Cloud project file '.aldryn' could not be found! Please make "   # FIXME: Rename
+        "sure you're in a Divio Cloud project folder and the file exists."
     )
 
 
