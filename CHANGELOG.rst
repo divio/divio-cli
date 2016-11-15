@@ -1,6 +1,12 @@
 Changelog
 =========
 
+3.0.1 (2016-11-15)
+------------------
+
+* rename remanding 'aldryn' strings with their new 'divio' counterparts
+
+
 3.0.0 (2016-11-15)
 ------------------
 
