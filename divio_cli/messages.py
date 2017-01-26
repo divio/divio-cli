@@ -12,7 +12,7 @@ SERVER_ERROR = (
 )
 AUTH_INVALID_TOKEN = 'Login failed. Invalid token specified'
 RESOURCE_NOT_FOUND = 'Requested resource could not be found'
-LOGIN_SUCCESSFUL = u'Welcome to Aldryn. You are now logged in as {greeting}'
+LOGIN_SUCCESSFUL = u'Welcome to Divio Cloud. You are now logged in as {greeting}'
 CONFIG_FILE_NOT_FOUND = u'Config file could not be not found at location: {}'
 FILE_NOT_FOUND = u'File could not be found: {}'
 INVALID_DB_SUBMITTED = (
