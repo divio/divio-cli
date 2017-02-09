@@ -2,6 +2,7 @@ import json
 import itertools
 import os
 import sys
+import base64
 
 try:
     import ipdb as pdb
@@ -13,6 +14,7 @@ import click
 from . import exceptions
 from . import localdev
 from . import messages
+from . import crypto
 from .localdev.utils import get_aldryn_project_settings
 from .cloud import CloudClient, get_endpoint
 from .check_system import check_requirements, check_requirements_human
@@ -469,6 +471,24 @@ def boilerplate_upload(ctx, noinput):
     except exceptions.AldrynException as exc:
         raise click.ClickException(*exc.args)
     click.echo(ret)
+
+
+@cli.group()
+def backup():
+    """Manage backups for projects hosted on Divio Cloud"""
+
+
+@backup.command(name='decrypt')
+@click.argument('key', type=click.File('rb'))
+@click.argument('backup', type=click.File('rb'))
+@click.argument('destination', type=click.File('wb'))
+def backup_decrypt(key, backup, destination):
+    """Decrypt a backup downloaded from Divio Cloud"""
+    key = base64.b64decode(key.read(1024).strip())
+    decryptor = crypto.StreamDecryptor(key=key)
+
+    for chunk in decryptor(backup):
+        destination.write(chunk)
 
 
 @cli.command()
