@@ -118,7 +118,20 @@ def tar_add_bytesio(tar, bytes_io, name):
     tar.addfile(tarinfo=info, fileobj=bytes_io)
 
 
+def get_subprocess_env():
+    env = dict(os.environ)
+    try:
+        # See the following link for details
+        # https://github.com/pyinstaller/pyinstaller/blob/master/doc/runtime-information.rst#ld_library_path--libpath-considerations
+        env['LD_LIBRARY_PATH'] = env.pop('LD_LIBRARY_PATH_ORIG')
+    except KeyError:
+        pass
+    return env
+
+
 def execute(func, *popenargs, **kwargs):
+    if 'env' not in kwargs:
+        kwargs['env'] = get_subprocess_env()
     catch = kwargs.pop('catch', True)
     if kwargs.pop('silent', False):
         if 'stdout' not in kwargs:
@@ -255,14 +268,17 @@ def get_git_commit():
             return subprocess.check_output([
                 'git', '--git-dir', git_dir,
                 'rev-parse', '--short', 'HEAD'
-            ]).strip()
+            ], env=get_subprocess_env()).strip()
         except:
             pass
 
 
 def get_git_checked_branch():
     try:
-        return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+        return subprocess.check_output([
+            'git',
+            'rev-parse', '--abbrev-ref', 'HEAD'
+        ], env=get_subprocess_env()).strip()
     except CalledProcessError:
         return ALDRYN_DEFAULT_BRANCH_NAME
 
