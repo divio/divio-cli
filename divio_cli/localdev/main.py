@@ -620,6 +620,15 @@ def update_local_project(git_branch):
     check_call(docker_compose('pull'))
     click.secho('Building local docker images', fg='green')
     check_call(docker_compose('build'))
+    click.secho('sync and migrate database', fg='green')
+    if is_windows():
+        # interactive mode is not yet supported with docker-compose
+        # on windows. that's why we have to call it as daemon
+        # and just wait a sane time
+        check_call(docker_compose('run', '-d', 'web', 'start', 'migrate'))
+        sleep(30)
+    else:
+        check_call(docker_compose('run', 'web', 'start', 'migrate'))
 
 
 def develop_package(package, no_rebuild=False):
