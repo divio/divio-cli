@@ -19,7 +19,7 @@ def package_addon(path):
     temp_dir = create_temp_dir()
     with dev_null() as devnull:
         subprocess.check_call(
-            ['python', 'setup.py', 'sdist', '-d', temp_dir],
+            ['python', 'setup.py', 'sdist', '-d', temp_dir, '--format=gztar'],
             cwd=path, stdout=devnull, env=get_subprocess_env(),
         )
     for filename in os.listdir(temp_dir):
