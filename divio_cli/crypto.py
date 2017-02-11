@@ -13,14 +13,14 @@ def iterchunks(data, chunksize):
     current = ''
 
     while True:
-        next = data.read(chunksize)
-        if len(next) < chunksize:
-            yield current + next, True
+        nextchunk = data.read(chunksize)
+        if len(nextchunk) < chunksize:
+            yield current + nextchunk, True
             return
         elif current:
             yield current, False
 
-        current = next
+        current = nextchunk
 
 
 def minval(length):
