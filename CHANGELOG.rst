@@ -1,6 +1,15 @@
 Changelog
 =========
 
+3.1.0 (2017-02-11)
+------------------
+
+* Execute migration commands when running ``divio project update``
+* Add support to decrypt encrypted backups with ``divio backup decrypt``
+* Fix an issue on windows by specifying ``--format=gztar`` when building addons, thanks to @bertah
+* More leftover renamings from ``aldryn`` to ``divio``
+
+
 3.0.1 (2016-11-15)
 ------------------
 
