@@ -13,6 +13,8 @@ RUN set -ex; \
         ca-certificates \
         curl \
         libsqlite3-dev \
+        libssl-dev \
+        libffi-dev \
     ; \
     rm -rf /var/lib/apt/lists/*
 

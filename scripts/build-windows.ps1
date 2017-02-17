@@ -25,7 +25,7 @@ Invoke-Expression ".\$VENV\Scripts\pip.exe install -e ."
 md -Force binary
 
 # package app
-Invoke-Expression ".\$VENV\Scripts\pyinstaller.exe -F -y scripts\entrypoint.py -n divio-$ARCH.exe --distpath=binary"
+Invoke-Expression ".\$VENV\Scripts\pyinstaller.exe -F -y scripts\entrypoint.py -n divio-$ARCH.exe --hidden-import=_cffi_backend --distpath=binary"
 
 # run check
 Invoke-Expression ".\binary\divio-$ARCH version"

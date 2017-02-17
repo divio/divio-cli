@@ -20,7 +20,7 @@ virtualenv $VENV
 mkdir -p binary
 
 # create binary
-./$VENV/bin/pyinstaller -F -y scripts/entrypoint.py --distpath=binary -n divio-$ARCH
+./$VENV/bin/pyinstaller -F -y scripts/entrypoint.py --distpath=binary --hidden-import=_cffi_backend -n divio-$ARCH
 
 # run check
 ./binary/divio-$ARCH version
