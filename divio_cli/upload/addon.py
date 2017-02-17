@@ -8,7 +8,7 @@ from io import BytesIO
 from .. import settings
 from ..utils import (
     dev_null, tar_add_bytesio, get_package_version, create_temp_dir,
-    tar_add_stringio, get_bytes_io, get_string_io,
+    tar_add_stringio, get_bytes_io, get_string_io, get_subprocess_env,
 )
 from ..validators.addon import validate_addon
 
@@ -20,7 +20,7 @@ def package_addon(path):
     with dev_null() as devnull:
         subprocess.check_call(
             ['python', 'setup.py', 'sdist', '-d', temp_dir, '--format=gztar'],
-            cwd=path, stdout=devnull,
+            cwd=path, stdout=devnull, env=get_subprocess_env(),
         )
     for filename in os.listdir(temp_dir):
         if filename.endswith('.tar.gz'):

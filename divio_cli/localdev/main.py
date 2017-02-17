@@ -13,7 +13,7 @@ import shutil
 
 from ..utils import (
     check_call, check_output, is_windows, pretty_size, get_size,
-    download_file,
+    download_file, get_subprocess_env,
 )
 from ..cloud import get_aldryn_host
 from .. import settings
@@ -234,7 +234,7 @@ class DatabaseImportBase(object):
         subprocess.call([
             'docker', 'exec', db_container_id,
             'dropdb', '-U', 'postgres', 'db', '--if-exists',
-        ])  # TODO: silence me
+        ], env=get_subprocess_env())  # TODO: silence me
 
         click.echo(' [{}s]'.format(int(time() - start_remove)))
 
@@ -280,7 +280,7 @@ class DatabaseImportBase(object):
             subprocess.call((
                 'docker', 'exec', db_container_id,
                 '/bin/bash', '-c', restore_command
-            ))
+            ), env=get_subprocess_env())
         except subprocess.CalledProcessError:
             pass
 
@@ -445,7 +445,7 @@ def dump_database(dump_filename, archive_filename=None):
         'pg_dump', '-U', 'postgres', '-d', 'db',
         '--no-owner', '--no-privileges',
         '-f', os.path.join('/app/', dump_filename)
-    ))
+    ), env=get_subprocess_env())
     click.echo(' [{}s]'.format(int(time() - start_dump)))
 
     if not archive_filename:
