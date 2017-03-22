@@ -183,17 +183,17 @@ def open_project_cloud_site(client, stage):
         click.secho('No {} server deployed yet.'.format(stage), fg='yellow')
 
 
-def get_dashboard_url(client):
+def get_cp_url(client, section='dashboard'):
     from .localdev.utils import get_aldryn_project_settings
 
     project_settings = get_aldryn_project_settings()
     project_data = client.get_project(project_settings['id'])
-    return project_data['dashboard_url']
+    url = project_data['dashboard_url']
 
+    if section != 'dashboard':
+        url = urljoin(url, section)
 
-def get_project_cheatsheet_url(client):
-    dashboard = get_dashboard_url(client)
-    return urljoin(dashboard, 'local-development/')
+    return url
 
 
 def is_windows():

@@ -19,8 +19,8 @@ from .localdev.utils import get_aldryn_project_settings
 from .cloud import CloudClient, get_endpoint
 from .check_system import check_requirements, check_requirements_human
 from .utils import (
-    hr, table, open_project_cloud_site, get_dashboard_url,
-    get_project_cheatsheet_url, get_git_checked_branch,
+    hr, table, open_project_cloud_site,
+    get_cp_url, get_git_checked_branch,
     print_package_renamed_warning,
 )
 from .validators.addon import validate_addon
@@ -196,7 +196,7 @@ def project_deploy(obj, stage):
 @click.pass_obj
 def project_dashboard(obj):
     """Open project dashboard"""
-    click.launch(get_dashboard_url(obj))
+    click.launch(get_cp_url(obj))
 
 
 @project.command(name='up')
@@ -252,7 +252,7 @@ def project_stop(obj):
 @click.pass_obj
 def project_cheatsheet(obj):
     """Show useful commands for your project"""
-    click.launch(get_project_cheatsheet_url(obj))
+    click.launch(get_cp_url(obj, 'local-development/'))
 
 
 @project.command(name='setup')
