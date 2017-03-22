@@ -67,10 +67,16 @@ def configure_project(website_slug, path, client):
 
 def setup_website_containers(client, stage, path):
     docker_compose = utils.get_docker_compose_cmd(path)
+    docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
-    existing_db_container_id = utils.get_db_container_id(path, False)
+    if docker_compose_config.has_service('db'):
+        has_db_service = True
+        existing_db_container_id = utils.get_db_container_id(path, False)
+    else:
+        has_db_service = False
+        existing_db_container_id = None
 
-    # stop all running for project
+    # stop all running containers for project
     check_call(docker_compose('stop'))
 
     # pull docker images
@@ -86,19 +92,20 @@ def setup_website_containers(client, stage, path):
         check_call(docker_compose('stop', 'db'))
         check_call(docker_compose('rm', '-f', 'db'))
 
-    click.secho('creating new database container', fg='green')
-    ImportRemoteDatabase(client=client, stage=stage, path=path)()
+    if has_db_service:
+        click.secho('creating new database container', fg='green')
+        ImportRemoteDatabase(client=client, stage=stage, path=path)()
 
-    click.secho('sync and migrate database', fg='green')
+        click.secho('sync and migrate database', fg='green')
 
-    if is_windows():
-        # interactive mode is not yet supported with docker-compose
-        # on windows. that's why we have to call it as daemon
-        # and just wait a sane time
-        check_call(docker_compose('run', '-d', 'web', 'start', 'migrate'))
-        sleep(30)
-    else:
-        check_call(docker_compose('run', 'web', 'start', 'migrate'))
+        if is_windows():
+            # interactive mode is not yet supported with docker-compose
+            # on windows. that's why we have to call it as daemon
+            # and just wait a sane time
+            check_call(docker_compose('run', '-d', 'web', 'start', 'migrate'))
+            sleep(30)
+        else:
+            check_call(docker_compose('run', 'web', 'start', 'migrate'))
 
 
 def create_workspace(client, website_slug, stage, path=None, force_overwrite=False):
@@ -169,6 +176,10 @@ class DatabaseImportBase(object):
         self.website_id = utils.get_aldryn_project_settings(self.path)['id']
         self.website_slug = utils.get_aldryn_project_settings(self.path)['slug']
         self.docker_compose = utils.get_docker_compose_cmd(self.path)
+        docker_compose_config = utils.DockerComposeConfig(self.docker_compose)
+        if not docker_compose_config.has_service('db'):
+            click.secho('No service "db" found in local project', fg='red')
+            sys.exit(1)
 
         self.start_time = time()
 
@@ -364,9 +375,18 @@ class ImportRemoteDatabase(DatabaseImportBase):
 
 def pull_media(client, stage, path=None):
     project_home = utils.get_project_home(path)
-    path = os.path.join(project_home, 'data', 'media')
-    website_id = utils.get_aldryn_project_settings(path)['id']
-    website_slug = utils.get_aldryn_project_settings(path)['slug']
+    website_id = utils.get_aldryn_project_settings(project_home)['id']
+    website_slug = utils.get_aldryn_project_settings(project_home)['slug']
+
+    docker_compose = utils.get_docker_compose_cmd(project_home)
+    docker_compose_config = utils.DockerComposeConfig(docker_compose)
+
+    local_data_folder = os.path.join(project_home, 'data')
+    remote_data_folder = '/data'
+
+    if not docker_compose_config.has_volume_mount('web', remote_data_folder):
+        click.secho('No mount for /data folder found')
+        return
 
     click.secho(
         ' ===> Pulling media files from {} {} server'.format(
@@ -402,10 +422,12 @@ def pull_media(client, stage, path=None):
         return
     click.echo(' [{}s]'.format(int(time() - start_download)))
 
-    if os.path.isdir(path):
+    media_path = os.path.join(local_data_folder, 'media')
+
+    if os.path.isdir(media_path):
         start_remove = time()
         click.secho(' ---> Removing local files', nl=False)
-        shutil.rmtree(path)
+        shutil.rmtree(media_path)
         click.echo(' [{}s]'.format(int(time() - start_remove)))
 
     if 'linux' in sys.platform:
@@ -413,19 +435,18 @@ def pull_media(client, stage, path=None):
         # created from within the container will be owned by root. As a
         # workaround, make the folder permissions more permissive, to
         # allow the invoking user to create files inside it.
-        docker_compose = utils.get_docker_compose_cmd(project_home)
         check_call(
             docker_compose(
                 'run', '--rm', 'web',
-                'chown', '-R', str(os.getuid()), 'data'
+                'chown', '-R', str(os.getuid()), remote_data_folder
             )
         )
 
-    click.secho(' ---> Extracting files to {}'.format(path), nl=False)
+    click.secho(' ---> Extracting files to {}'.format(media_path), nl=False)
     start_extract = time()
     with open(backup_path, 'rb') as fobj:
         with tarfile.open(fileobj=fobj, mode='r:*') as media_archive:
-            media_archive.extractall(path=path)
+            media_archive.extractall(path=media_path)
     os.remove(backup_path)
     click.echo(' [{}s]'.format(int(time() - start_extract)))
     click.secho('Done', fg='green', nl=False)
@@ -435,6 +456,11 @@ def pull_media(client, stage, path=None):
 def dump_database(dump_filename, archive_filename=None):
     project_home = utils.get_project_home()
     docker_compose = utils.get_docker_compose_cmd(project_home)
+    docker_compose_config = utils.DockerComposeConfig(docker_compose)
+    if not docker_compose_config.has_service('db'):
+        click.secho('No service "db" found in local project', fg='red')
+        sys.exit(1)
+
     utils.start_database_server(docker_compose)
 
     click.secho(' ---> Dumping local database', nl=False)
@@ -634,6 +660,7 @@ def update_local_project(git_branch):
 def develop_package(package, no_rebuild=False):
     """
     :param package: package name in addons-dev folder
+    :param no_rebuild: skip the rebuild of the container
     """
 
     project_home = utils.get_project_home()
