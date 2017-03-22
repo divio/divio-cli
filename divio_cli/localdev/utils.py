@@ -104,9 +104,9 @@ def ensure_windows_docker_compose_file_exists(path):
         sys.exit(1)
 
     with open(unix_path, 'r') as fh:
-        config = yaml.load(fh)
+        conf = yaml.load(fh)
 
-    for component, sections in config.items():
+    for component, sections in conf.items():
         if 'volumes' not in sections:
             continue
         volumes = []
@@ -129,10 +129,10 @@ def ensure_windows_docker_compose_file_exists(path):
                 new_volume.append(mode)
             volumes.append(':'.join(new_volume))
 
-        config[component]['volumes'] = volumes
+        conf[component]['volumes'] = volumes
 
     with open(windows_path, 'w+') as fh:
-        yaml.safe_dump(config, fh)
+        yaml.safe_dump(conf, fh)
 
 
 def get_db_container_id(path, raise_on_missing=True):

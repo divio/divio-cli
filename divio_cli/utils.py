@@ -5,7 +5,6 @@ import tempfile
 import io
 import os
 import sys
-from subprocess import CalledProcessError
 from contextlib import contextmanager
 from distutils.version import StrictVersion
 from math import log
@@ -19,7 +18,7 @@ from six.moves.urllib_parse import urljoin
 from . import __version__
 
 
-ALDRYN_DEFAULT_BRANCH_NAME = "develop"
+ALDRYN_DEFAULT_BRANCH_NAME = 'develop'
 
 
 def hr(char='-', width=None, **kwargs):
@@ -279,7 +278,7 @@ def get_git_checked_branch():
             'git',
             'rev-parse', '--abbrev-ref', 'HEAD'
         ], env=get_subprocess_env()).strip()
-    except CalledProcessError:
+    except subprocess.CalledProcessError:
         return ALDRYN_DEFAULT_BRANCH_NAME
 
 
@@ -290,12 +289,12 @@ def get_user_agent():
     else:
         client = 'divio-cli/{}'.format(__version__)
 
-    os = '{}/{}'.format(platform.system(), platform.release())
+    os_identifier = '{}/{}'.format(platform.system(), platform.release())
     python = '{}/{}'.format(
         platform.python_implementation(),
         platform.python_version(),
     )
-    return '{} ({}; {})'.format(client, os, python)
+    return '{} ({}; {})'.format(client, os_identifier, python)
 
 
 def download_file(url, directory=None, filename=None):
