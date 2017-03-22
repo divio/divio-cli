@@ -8,6 +8,7 @@ import click
 from ..utils import check_output, is_windows, check_call
 from .. import exceptions
 from .. import settings
+from .. import config
 
 
 def get_aldryn_project_settings(path=None):
@@ -29,7 +30,7 @@ def get_project_home(path=None):
 
         # check if '.aldryn' file exists in current directory
         dotfile = os.path.join(current_path, settings.ALDRYN_DOT_FILE)
-        if os.path.exists(dotfile):
+        if os.path.exists(dotfile) and dotfile != config.CONFIG_FILE_PATH:
             return current_path
 
         # traversing up the tree

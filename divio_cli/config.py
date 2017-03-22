@@ -3,16 +3,19 @@ import time
 import os
 from distutils.version import StrictVersion
 
-from . import utils, __version__
+from . import utils, __version__, settings
+
+
+CONFIG_FILE_NAME = settings.ALDRYN_DOT_FILE
+CONFIG_FILE_PATH = os.path.join(os.path.expanduser('~'), CONFIG_FILE_NAME)
 
 
 class Config(object):
-    config_name = '.aldryn'
+    config_path = CONFIG_FILE_PATH
+    config = {}
 
     def __init__(self):
         super(Config, self).__init__()
-        home = os.path.expanduser('~')
-        self.config_path = os.path.join(home, self.config_name)
         self.read()
 
     def read(self):
