@@ -138,9 +138,13 @@ def create_workspace(client, website_slug, stage, path=None, force_overwrite=Fal
     pull_media(client, stage, path)
 
     instructions = (
-        "Finished setting up your project's workspace!",
-        "To start the project, please:",
-        " - change directory into '{}'".format(path),
+        "Your workspace is setup and ready to start.",
+        "",
+        "For Desktop Application:",
+        " - click on the 'Start' button",
+        "",
+        "For Terminal:",
+        " - change directory to '{}'".format(path),
         " - run 'divio project up'",
     )
 
