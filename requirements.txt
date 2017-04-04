@@ -4,3 +4,4 @@ tabulate
 six
 cryptography
 attrs
+yaml

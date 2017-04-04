@@ -4,10 +4,12 @@ import os
 from time import time
 
 import click
+import yaml
 
 from ..utils import check_output, is_windows, check_call
 from .. import exceptions
 from .. import settings
+from .. import config
 
 
 def get_aldryn_project_settings(path=None):
@@ -29,7 +31,7 @@ def get_project_home(path=None):
 
         # check if '.aldryn' file exists in current directory
         dotfile = os.path.join(current_path, settings.ALDRYN_DOT_FILE)
-        if os.path.exists(dotfile):
+        if os.path.exists(dotfile) and dotfile != config.CONFIG_FILE_PATH:
             return current_path
 
         # traversing up the tree
@@ -87,8 +89,6 @@ def ensure_windows_docker_compose_file_exists(path):
     Hope that's all. And of course, I'm sorry.
     """
 
-    import yaml
-
     windows_path = os.path.join(path, WINDOWS_DOCKER_COMPOSE_FILENAME)
     if os.path.isfile(windows_path):
         return
@@ -103,9 +103,9 @@ def ensure_windows_docker_compose_file_exists(path):
         sys.exit(1)
 
     with open(unix_path, 'r') as fh:
-        config = yaml.load(fh)
+        conf = yaml.load(fh)
 
-    for component, sections in config.items():
+    for component, sections in conf.items():
         if 'volumes' not in sections:
             continue
         volumes = []
@@ -128,10 +128,10 @@ def ensure_windows_docker_compose_file_exists(path):
                 new_volume.append(mode)
             volumes.append(':'.join(new_volume))
 
-        config[component]['volumes'] = volumes
+        conf[component]['volumes'] = volumes
 
     with open(windows_path, 'w+') as fh:
-        yaml.safe_dump(config, fh)
+        yaml.safe_dump(conf, fh)
 
 
 def get_db_container_id(path, raise_on_missing=True):
@@ -148,3 +148,26 @@ def start_database_server(docker_compose):
     click.secho('      ', nl=False)
     check_call(docker_compose('up', '-d', 'db'))
     click.secho('      [{}s]'.format(int(time() - start_db)))
+
+
+class DockerComposeConfig(object):
+    def __init__(self, docker_compose):
+        super(DockerComposeConfig, self).__init__()
+        self.config = yaml.load(check_output(docker_compose('config')))
+
+    def get_services(self):
+        return self.config.get('services', {})
+
+    def has_service(self, service):
+        return service in self.get_services().keys()
+
+    def has_volume_mount(self, service, remote_path):
+        try:
+            service_config = self.get_services()[service]
+        except KeyError:
+            return False
+
+        for mount in service_config.get('volumes', []):
+            data = mount.split(':')
+            if data[1] == remote_path:
+                return True
