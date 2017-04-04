@@ -96,7 +96,7 @@ def setup_website_containers(client, stage, path):
         click.secho('creating new database container', fg='green')
         ImportRemoteDatabase(client=client, stage=stage, path=path)()
 
-        click.secho('sync and migrate database', fg='green')
+        click.secho('syncing and migrating database', fg='green')
 
         if is_windows():
             # interactive mode is not yet supported with docker-compose
@@ -646,7 +646,7 @@ def update_local_project(git_branch):
     check_call(docker_compose('pull'))
     click.secho('Building local docker images', fg='green')
     check_call(docker_compose('build'))
-    click.secho('sync and migrate database', fg='green')
+    click.secho('syncing and migrating database', fg='green')
     if is_windows():
         # interactive mode is not yet supported with docker-compose
         # on windows. that's why we have to call it as daemon
