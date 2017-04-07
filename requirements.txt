@@ -4,4 +4,4 @@ tabulate
 six
 cryptography
 attrs
-yaml
+pyaml
