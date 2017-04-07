@@ -14,7 +14,10 @@ import click
 from . import exceptions
 from . import localdev
 from . import messages
-from . import crypto
+try:
+    from . import crypto
+except ImportError:
+    crypto = None
 from .localdev.utils import get_aldryn_project_settings
 from .cloud import CloudClient, get_endpoint
 from .check_system import check_requirements, check_requirements_human
@@ -484,6 +487,13 @@ def backup():
 @click.argument('destination', type=click.File('wb'))
 def backup_decrypt(key, backup, destination):
     """Decrypt a backup downloaded from Divio Cloud"""
+    if not crypto:
+        click.secho(
+            '\nPlease install the crypo extensions to use the crypto commands: '
+            'pip install divio-cli[crypto]',
+            fg='red'
+        )
+        return
     key = base64.b64decode(key.read(1024).strip())
     decryptor = crypto.StreamDecryptor(key=key)
 

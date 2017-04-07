@@ -42,6 +42,11 @@ setup(
     license='BSD',
     platforms=['OS Independent'],
     install_requires=requirements,
+    extras_require={
+        'crypto': [
+            'cryptography',
+        ],
+    },
     entry_points="""
     [console_scripts]
     divio = divio_cli.cli:cli
