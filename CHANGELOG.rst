@@ -1,14 +1,16 @@
 Changelog
 =========
 
-3.1.0 (2017-02-11)
+3.2.0 (2017-04-07)
 ------------------
 
+* Make cryptography an optional dependency
+* Adopt some of the outputs to the Desktop App
 * Execute migration commands when running ``divio project update``
 * Add support to decrypt encrypted backups with ``divio backup decrypt``
 * Fix an issue on windows by specifying ``--format=gztar`` when building addons, thanks to @bertah
 * More leftover renamings from ``aldryn`` to ``divio``
-
+* Note: 3.1.0 was never released to pypi
 
 3.0.1 (2016-11-15)
 ------------------
