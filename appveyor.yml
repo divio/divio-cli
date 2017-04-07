@@ -1,0 +1,18 @@
+version: 3.1.0-{build}
+
+pull_requests:
+  do_not_increment_build_number: true
+
+install:
+  - "SET PATH=C:\\Python27-x64;C:\\Python27-x64\\Scripts;%PATH%"
+  - "python --version"
+
+build: false
+
+test_script:
+  - ps: ".\\scripts\\build-windows.ps1"
+  - ps: ".\\binary\\divio-Windows version"
+
+artifacts:
+  - path: .\binary\divio-Windows.exe
+    name: "divio-cli Windows binary"
