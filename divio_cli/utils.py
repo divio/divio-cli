@@ -182,11 +182,8 @@ def open_project_cloud_site(client, stage):
         click.secho('No {} server deployed yet.'.format(stage), fg='yellow')
 
 
-def get_cp_url(client, section='dashboard'):
-    from .localdev.utils import get_aldryn_project_settings
-
-    project_settings = get_aldryn_project_settings()
-    project_data = client.get_project(project_settings['id'])
+def get_cp_url(client, project, section='dashboard'):
+    project_data = client.get_project(project['id'])
     url = project_data['dashboard_url']
 
     if section != 'dashboard':
@@ -324,3 +321,38 @@ def print_package_renamed_warning():
     click.secho(message, fg='red')
     hr(char='=', fg='red')
     click.echo('')
+
+
+class Map(dict):
+    """
+    A dictionary which also allows accessing values by dot notation.
+    Example:
+    m = Map({'first_name': 'Eduardo'}, last_name='Pool', age=24, sports=['Soccer'])
+    """
+    def __init__(self, *args, **kwargs):
+        super(Map, self).__init__(*args, **kwargs)
+        for arg in args:
+            if isinstance(arg, dict):
+                for k, v in arg.iteritems():
+                    self[k] = v
+
+        if kwargs:
+            for k, v in kwargs.iteritems():
+                self[k] = v
+
+    def __getattr__(self, attr):
+        return self.get(attr)
+
+    def __setattr__(self, key, value):
+        self.__setitem__(key, value)
+
+    def __setitem__(self, key, value):
+        super(Map, self).__setitem__(key, value)
+        self.__dict__.update({key: value})
+
+    def __delattr__(self, item):
+        self.__delitem__(item)
+
+    def __delitem__(self, key):
+        super(Map, self).__delitem__(key)
+        del self.__dict__[key]

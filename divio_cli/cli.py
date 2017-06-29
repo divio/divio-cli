@@ -25,6 +25,7 @@ from .utils import (
     hr, table, open_project_cloud_site,
     get_cp_url, get_git_checked_branch,
     print_package_renamed_warning,
+    Map,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -54,7 +55,8 @@ def cli(ctx, debug):
             pdb.post_mortem(traceback)
         sys.excepthook = exception_handler
 
-    ctx.obj = CloudClient(get_endpoint(), debug)
+    ctx.obj = Map()
+    ctx.obj.client = CloudClient(get_endpoint(), debug)
 
     try:
         is_version_command = sys.argv[1] == 'version'
@@ -64,7 +66,7 @@ def cli(ctx, debug):
     # skip if 'aldryn version' is run
     if not is_version_command:
         # check for newer versions
-        update_info = ctx.obj.config.check_for_updates()
+        update_info = ctx.obj.client.config.check_for_updates()
         if update_info['update_available']:
             click.secho(
                 'New version {} is available. Type `divio version` to '
@@ -76,7 +78,7 @@ def cli(ctx, debug):
 
 def login_token_helper(ctx, value):
     if not value:
-        url = ctx.obj.get_access_token_url()
+        url = ctx.obj.client.get_access_token_url()
         click.secho('Your browser has been opened to visit: {}'.format(url))
         click.launch(url)
         value = click.prompt('Please copy the access token and paste it here')
@@ -94,10 +96,10 @@ def login(ctx, token, check):
     """Authorize your machine with the Divio Cloud"""
     success = True
     if check:
-        success, msg = ctx.obj.check_login_status()
+        success, msg = ctx.obj.client.check_login_status()
     else:
         token = login_token_helper(ctx, token)
-        msg = ctx.obj.login(token)
+        msg = ctx.obj.client.login(token)
 
     click.echo(msg)
     sys.exit(0 if success else 1)
@@ -117,7 +119,7 @@ def project():
 @click.pass_obj
 def project_list(obj, grouped):
     """List all your projects"""
-    api_response = obj.get_projects()
+    api_response = obj.client.get_projects()
     header = ('Slug', 'Name', 'Organisation')
 
     # get all users + organisations
@@ -192,14 +194,14 @@ def project_list(obj, grouped):
 def project_deploy(obj, stage):
     """Deploy project"""
     website_id = get_aldryn_project_settings()['id']
-    obj.deploy_project_or_get_progress(website_id, stage)
+    obj.client.deploy_project_or_get_progress(website_id, stage)
 
 
 @project.command(name='dashboard')
 @click.pass_obj
 def project_dashboard(obj):
     """Open project dashboard"""
-    click.launch(get_cp_url(obj))
+    click.launch(get_cp_url(client=obj.client, project=obj.project))
 
 
 @project.command(name='up')
@@ -227,14 +229,14 @@ def project_update(obj):
 @click.pass_obj
 def project_open_test(obj):
     """Open project test site"""
-    open_project_cloud_site(obj, 'test')
+    open_project_cloud_site(obj.client, 'test')
 
 
 @project.command(name='live')
 @click.pass_obj
 def project_open_live(obj):
     """Open project live site"""
-    open_project_cloud_site(obj, 'live')
+    open_project_cloud_site(obj.client, 'live')
 
 
 @project.command(name='status')
@@ -255,7 +257,7 @@ def project_stop(obj):
 @click.pass_obj
 def project_cheatsheet(obj):
     """Show useful commands for your project"""
-    click.launch(get_cp_url(obj, 'local-development/'))
+    click.launch(get_cp_url(obj.client, 'local-development/'))
 
 
 @project.command(name='setup')
@@ -280,7 +282,7 @@ def project_cheatsheet(obj):
 def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
     """Set up a development environment for a Divio Cloud project"""
     if not skip_doctor and not check_requirements_human(
-            config=obj.config, silent=True
+            config=obj.client.config, silent=True
     ):
         click.secho(
             "There was a problem while checking your system. Please run "
@@ -288,7 +290,7 @@ def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
         )
         sys.exit(1)
 
-    localdev.create_workspace(obj, slug, stage, path, overwrite)
+    localdev.create_workspace(obj.client, slug, stage, path, overwrite)
 
 
 @project.group(name='pull')
@@ -305,7 +307,7 @@ def pull_db(obj, stage):
     Pull database from your deployed website. Stage is either
     test (default) or live
     """
-    localdev.ImportRemoteDatabase(client=obj, stage=stage)()
+    localdev.ImportRemoteDatabase(client=obj.client, stage=stage)()
 
 
 @project_pull.command(name='media')
@@ -316,7 +318,7 @@ def pull_media(obj, stage):
     Pull media files from your deployed website. Stage is either
     test (default) or live
     """
-    localdev.pull_media(obj, stage)
+    localdev.pull_media(obj.client, stage)
 
 
 @project.group(name='push')
@@ -339,7 +341,7 @@ def push_db(obj, stage, noinput):
         click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
         if not click.confirm('\nAre you sure you want to continue?'):
             return
-    localdev.push_db(obj, stage)
+    localdev.push_db(obj.client, stage)
 
 
 @project_push.command(name='media')
@@ -356,7 +358,7 @@ def push_media(obj, stage, noinput):
         click.secho(messages.PUSH_MEDIA_WARNING.format(stage=stage), fg='red')
         if not click.confirm('\nAre you sure you want to continue?'):
             return
-    localdev.push_media(obj, stage)
+    localdev.push_media(obj.client, stage)
 
 
 @project.group(name='import')
@@ -372,7 +374,7 @@ def import_db(obj, dump_path):
     """
     Load a database dump into your local database
     """
-    localdev.ImportLocalDatabase(client=obj, custom_dump_path=dump_path)()
+    localdev.ImportLocalDatabase(client=obj.client, custom_dump_path=dump_path)()
 
 
 @project.group(name='export')
@@ -425,7 +427,7 @@ def addon_validate(ctx):
 def addon_upload(ctx):
     """Upload addon to the Divio Cloud"""
     try:
-        ret = upload_addon(ctx.obj, ctx.parent.params['path'])
+        ret = upload_addon(ctx.obj.client, ctx.parent.params['path'])
     except exceptions.AldrynException as exc:
         raise click.ClickException(*exc.args)
     click.echo(ret)
@@ -441,7 +443,7 @@ def addon_register(ctx, package_name, verbose_name, organisation):
     - Verbose Name:        Name of the Addon as it appears in the Marketplace.
     - Package Name:        System wide unique Python package name
     """
-    ret = ctx.obj.register_addon(package_name, verbose_name, organisation)
+    ret = ctx.obj.client.register_addon(package_name, verbose_name, organisation)
     click.echo(ret)
 
 
@@ -470,7 +472,8 @@ def boilerplate_validate(ctx):
 def boilerplate_upload(ctx, noinput):
     """Upload boilerplate to the Divio Cloud"""
     try:
-        ret = upload_boilerplate(ctx.obj, ctx.parent.params['path'], noinput)
+        ret = upload_boilerplate(
+            ctx.obj.client, ctx.parent.params['path'], noinput)
     except exceptions.AldrynException as exc:
         raise click.ClickException(*exc.args)
     click.echo(ret)
@@ -516,7 +519,7 @@ def version(obj, skip_check, machine_readable):
         from . import __version__
         update_info = {'current': __version__}
     else:
-        update_info = obj.config.check_for_updates(force=True)
+        update_info = obj.client.config.check_for_updates(force=True)
 
     update_info['location'] = os.path.dirname(os.path.realpath(sys.executable))
 
@@ -572,12 +575,12 @@ def doctor(obj, machine_readable, checks):
         errors = {
             check: error
             for check, check_name, error
-            in check_requirements(obj.config, checks)
+            in check_requirements(obj.client.config, checks)
         }
         exitcode = 1 if any(errors.values()) else 0
         click.echo(json.dumps(errors), nl=False)
     else:
         click.echo('Verifying your system setup')
-        exitcode = 0 if check_requirements_human(obj.config, checks) else 1
+        exitcode = 0 if check_requirements_human(obj.client.config, checks) else 1
 
     sys.exit(exitcode)
