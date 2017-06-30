@@ -242,6 +242,8 @@ class DatabaseImportBase(object):
             "WHERE  pg_stat_activity.datname = 'db' "
             "  AND  pid <> pg_backend_pid();",
         ], silent=True)
+        # sometimes postgres takes a while to drop the connections
+        sleep(5)
 
         click.secho(' ---> Removing local database', nl=False)
         start_remove = time()

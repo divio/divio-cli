@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Next release
+------------
+
+* Support for HTTP_PROXY and HTTPS_PROXY environment variables
+
+
 3.2.0 (2017-04-07)
 ------------------
 
@@ -11,6 +17,7 @@ Changelog
 * Fix an issue on windows by specifying ``--format=gztar`` when building addons, thanks to @bertah
 * More leftover renamings from ``aldryn`` to ``divio``
 * Note: 3.1.0 was never released to pypi
+
 
 3.0.1 (2016-11-15)
 ------------------

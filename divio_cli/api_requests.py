@@ -13,6 +13,23 @@ class SingleHostSession(requests.Session):
         super(SingleHostSession, self).__init__()
         self.debug = kwargs.pop('debug', False)
         self.host = host.rstrip('/')
+
+        default_proxies = {}
+
+        try:
+            default_proxies['http'] = os.environ['HTTP_PROXY']
+        except KeyError:
+            pass
+
+        try:
+            default_proxies['https'] = os.environ['HTTPS_PROXY']
+        except KeyError:
+            pass
+
+        if default_proxies:
+            default_proxies.update(kwargs.get('proxies', {}))
+            kwargs['proxies'] = default_proxies
+
         for key, value in kwargs.items():
             setattr(self, key, value)
 
