@@ -196,16 +196,6 @@ def project_list(obj, grouped):
     click.echo_via_pager(output)
 
 
-# @project.command(name='info')
-# @click.argument('slug')
-# @click.pass_obj
-# def project_info(obj, slug):
-#     """Show info about a project"""
-#     # TODO: proper formatting
-#     website_id = obj.get_website_id_for_slug(slug)
-#     click.echo(obj.get_project(website_id))
-
-
 @project.command(name='deploy')
 @click.argument('stage', default='test')
 @click.pass_obj
