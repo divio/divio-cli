@@ -120,11 +120,9 @@ def project(obj, identifier):
         obj.project = {
             'id': identifier,
         }
-        click.echo('cmdline project.id:{}'.format(identifier))
     else:
         try:
             obj.project = get_aldryn_project_settings(silent=True)
-            click.echo('.aldryn project.id:{}'.format(obj.project['id']))
         except Exception as exc:
             obj.project = {}
 
@@ -134,11 +132,19 @@ def project(obj, identifier):
     '-g', '--grouped', is_flag=True, default=False,
     help='Group by organisation'
 )
+@click.option(
+    '--json', 'as_json', is_flag=True, default=False,
+)
 @click.pass_obj
-def project_list(obj, grouped):
+def project_list(obj, grouped, as_json):
     """List all your projects"""
     api_response = obj.client.get_projects()
-    header = ('Slug', 'Name', 'Organisation')
+
+    if as_json:
+        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+
+    header = ('ID', 'Slug', 'Name', 'Organisation')
 
     # get all users + organisations
     groups = {
@@ -161,7 +167,9 @@ def project_list(obj, grouped):
             owner = groups['organisations'][website['organisation_id']]
         else:
             owner = groups['users'][website['owner_id']]
-        owner['projects'].append((website['domain'], website['name']))
+        owner['projects'].append(
+            (unicode(website['id']), website['domain'], website['name'])
+        )
 
     accounts = itertools.chain(
         groups['users'].items(),
@@ -181,7 +189,7 @@ def project_list(obj, grouped):
                     u'{title}\n{line}\n\n{table}\n\n'.format(
                         title=data['name'],
                         line='=' * len(data['name']),
-                        table=table(sort_projects(projects), header[:2])
+                        table=table(sort_projects(projects), header[:3])
                     )
                 )
         output = os.linesep.join(output_items).rstrip(os.linesep)
@@ -233,6 +241,71 @@ def project_open(obj):
 def project_update(obj):
     """Update project with latest changes from the Cloud"""
     localdev.update_local_project(get_git_checked_branch())
+
+
+@project.command(name='env-vars')
+@click.option(
+    '-s', '--stage', default='test', type=unicode,
+    help='get data from stage (test or live)',
+)
+@click.option(
+    '--all/--custom', 'show_all_vars', default=False,
+    help='use --all to show all env vars, not just the custom ones',
+)
+@click.option(
+    '--json', 'as_json', is_flag=True, default=False,
+)
+@click.option(
+    '--get', 'get_vars',
+    default=None, type=unicode,
+    multiple=True,
+    help='get a specific environment variable',
+)
+@click.option(
+    '--set', 'set_vars',
+    default=None, type=click.Tuple([unicode, unicode]),
+    multiple=True,
+    help='set a specific custom environment variable',
+)
+@click.option(
+    '--unset', 'unset_vars',
+    default=None, type=unicode,
+    multiple=True,
+    help='unset an environment variable',
+)
+@click.pass_obj
+def environment_variables(
+        obj, stage, show_all_vars, as_json, get_vars, set_vars, unset_vars
+):
+    """
+    Get and set environment vars.
+
+    WARNING: This command is experimental and may change in a future release.
+    """
+    check_project_context(obj.project)
+    if set_vars or unset_vars:
+        set_vars = dict(set_vars)
+        data = obj.client.set_custom_environment_variables(
+            website_id=obj.project['id'],
+            stage=stage,
+            set_vars=set_vars,
+            unset_vars=unset_vars,
+        )
+    else:
+        data = obj.client.get_environment_variables(
+            website_id=obj.project['id'],
+            stage=stage,
+            custom_only=not show_all_vars,
+        )
+        if get_vars:
+            data = {key: value for key, value in data.items() if key in get_vars}
+    if as_json:
+        click.echo(json.dumps(data, indent=2, sort_keys=True))
+    else:
+        header = ('Key', 'Value')
+        data = sorted([(key, value) for key, value in data.items()])
+        output = table(data, header)
+        click.echo_via_pager(output)
 
 
 @project.command(name='test')

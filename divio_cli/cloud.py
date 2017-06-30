@@ -6,6 +6,7 @@ from time import sleep
 import click
 from six.moves.urllib_parse import urlparse
 
+from .utils import json_dumps_unicode
 from . import settings
 from . import messages
 from . import api_requests
@@ -304,6 +305,37 @@ class CloudClient(object):
         request = api_requests.UploadMediaFilesProgressRequest(
             self.session,
             url=url,
+        )
+        return request()
+
+    def get_environment_variables(self, website_id, stage, custom_only=True):
+        if custom_only:
+            Request = api_requests.GetCustomEnvironmentVariablesRequest
+        else:
+            Request = api_requests.GetEnvironmentVariablesRequest
+
+        request = Request(
+            self.session,
+            url_kwargs={
+                'website_id': website_id,
+                'stage': stage,
+            }
+        )
+        return request()
+
+    def set_custom_environment_variables(self, website_id, stage, set_vars, unset_vars):
+        current_vars = self.get_environment_variables(
+            website_id, stage, custom_only=True)
+        current_vars.update(set_vars)
+        for var in unset_vars:
+            current_vars.pop(var, None)
+        request = api_requests.SetCustomEnvironmentVariablesRequest(
+            self.session,
+            url_kwargs={
+                'website_id': website_id,
+                'stage': stage,
+            },
+            data={'vars': json_dumps_unicode(current_vars)}
         )
         return request()
 

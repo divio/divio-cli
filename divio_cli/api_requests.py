@@ -319,3 +319,16 @@ class UploadMediaFilesRequest(JsonResponse, APIRequest):
 
 class UploadMediaFilesProgressRequest(JsonResponse, APIRequest):
     method = 'GET'
+
+
+class GetEnvironmentVariablesRequest(JsonResponse, APIRequest):
+    url = '/api/v1/website/{website_id}/env/{stage}/environment-variables/'
+
+
+class GetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
+    url = '/api/v1/website/{website_id}/env/{stage}/environment-variables/custom/'
+
+
+class SetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
+    method = 'POST'
+    url = '/api/v1/website/{website_id}/env/{stage}/environment-variables/custom/'
