@@ -25,7 +25,7 @@ from .utils import (
     hr, table, open_project_cloud_site,
     get_cp_url, get_git_checked_branch,
     print_package_renamed_warning,
-    Map,
+    Map, check_project_context,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -106,9 +106,27 @@ def login(ctx, token, check):
 
 
 @cli.group()
-def project():
+@click.option(
+    '--id', 'identifier',
+    default=None, type=int,
+    help='Project.id to use for project commands. '
+         'Defaults to the project in the current directory using the .aldryn '
+         'file.'
+)
+@click.pass_obj
+def project(obj, identifier):
     """Manage your projects"""
-    pass
+    if identifier:
+        obj.project = {
+            'id': identifier,
+        }
+        click.echo('cmdline project.id:{}'.format(identifier))
+    else:
+        try:
+            obj.project = get_aldryn_project_settings(silent=True)
+            click.echo('.aldryn project.id:{}'.format(obj.project['id']))
+        except Exception as exc:
+            obj.project = {}
 
 
 @project.command(name='list')
@@ -193,7 +211,8 @@ def project_list(obj, grouped):
 @click.pass_obj
 def project_deploy(obj, stage):
     """Deploy project"""
-    website_id = get_aldryn_project_settings()['id']
+    check_project_context(obj.project)
+    website_id = obj.project['id']
     obj.client.deploy_project_or_get_progress(website_id, stage)
 
 
@@ -201,7 +220,8 @@ def project_deploy(obj, stage):
 @click.pass_obj
 def project_dashboard(obj):
     """Open project dashboard"""
-    click.launch(get_cp_url(client=obj.client, project=obj.project))
+    check_project_context(obj.project)
+    click.launch(get_cp_url(obj.client, obj.project))
 
 
 @project.command(name='up')
@@ -229,14 +249,16 @@ def project_update(obj):
 @click.pass_obj
 def project_open_test(obj):
     """Open project test site"""
-    open_project_cloud_site(obj.client, 'test')
+    check_project_context(obj.project)
+    open_project_cloud_site(obj.client, obj.project, 'test')
 
 
 @project.command(name='live')
 @click.pass_obj
 def project_open_live(obj):
     """Open project live site"""
-    open_project_cloud_site(obj.client, 'live')
+    check_project_context(obj.project)
+    open_project_cloud_site(obj.client, obj.project, 'live')
 
 
 @project.command(name='status')
@@ -257,7 +279,8 @@ def project_stop(obj):
 @click.pass_obj
 def project_cheatsheet(obj):
     """Show useful commands for your project"""
-    click.launch(get_cp_url(obj.client, 'local-development/'))
+    check_project_context(obj.project)
+    click.launch(get_cp_url(obj.client, obj.project, 'local-development/'))
 
 
 @project.command(name='setup')

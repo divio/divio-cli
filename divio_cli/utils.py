@@ -169,12 +169,9 @@ def check_output(*popenargs, **kwargs):
     return execute(subprocess.check_output, *popenargs, **kwargs).decode()
 
 
-def open_project_cloud_site(client, stage):
-    from .localdev.utils import get_aldryn_project_settings
-
+def open_project_cloud_site(client, project, stage):
     assert stage in ('test', 'live')
-    project_settings = get_aldryn_project_settings()
-    project_data = client.get_project(project_settings['id'])
+    project_data = client.get_project(project['id'])
     url = project_data['{}_status'.format(stage)]['site_url']
     if url:
         click.launch(url)
@@ -321,6 +318,15 @@ def print_package_renamed_warning():
     click.secho(message, fg='red')
     hr(char='=', fg='red')
     click.echo('')
+
+
+def check_project_context(project):
+    if 'id' not in project:
+        raise click.ClickException(
+            'This command requires a Divio Cloud Project id. Please provide '
+            'one with the --id option or call the command from a project '
+            'directory (with a .aldryn file).'
+        )
 
 
 class Map(dict):
