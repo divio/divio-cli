@@ -110,10 +110,12 @@ class CloudClient(object):
         def fmt_progress(data):
             if not data:
                 return 'Connecting to remote'
-            return '{} ({})'.format(
-                data['verbose_state'],
-                data['heartbeat_ago_formatted']
-            )
+            if isinstance(data, dict):
+                return '{} ({})'.format(
+                    data.get('verbose_state', '...'),
+                    data.get('heartbeat_ago_formatted', '?')
+                )
+            return data
 
         response = self.deploy_project_progress(website_id, stage)
         if response['is_deploying']:
@@ -134,14 +136,20 @@ class CloudClient(object):
                 while response['is_deploying']:
                     response = self.deploy_project_progress(website_id, stage)
                     bar.current_item = progress = response['deploy_progress']
-                    bar.update(
-                        # update the difference of the current percentage
-                        # to the new percentage
-                        progress['main_percent'] +
-                        progress['extra_percent'] -
-                        bar.pos
-                    )
+                    if (
+                        'main_percent' in progress and
+                        'extra_percent' in progress
+                    ):
+                        bar.update(
+                            # update the difference of the current percentage
+                            # to the new percentage
+                            progress['main_percent'] +
+                            progress['extra_percent'] -
+                            bar.pos
+                        )
                     sleep(3)
+                bar.current_item = 'Done'
+                bar.update(100)
         except KeyboardInterrupt:
             click.secho('Disconnected')
 
