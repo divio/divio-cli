@@ -1,10 +1,12 @@
 Changelog
 =========
 
-Next release
-------------
+3.3.0 (2017-07-04)
+------------------
 
 * Support for HTTP_PROXY and HTTPS_PROXY environment variables
+* Support for some project commands without a local source checkout
+* Experimental support for listing and setting environment variables
 
 
 3.2.0 (2017-04-07)
