@@ -1,3 +1,4 @@
+import json
 import subprocess
 import platform
 import tarfile
@@ -318,6 +319,10 @@ def print_package_renamed_warning():
     click.secho(message, fg='red')
     hr(char='=', fg='red')
     click.echo('')
+
+
+def json_dumps_unicode(d, **kwargs):
+    return json.dumps(d, ensure_ascii=False, **kwargs).encode('utf-8')
 
 
 def check_project_context(project):
