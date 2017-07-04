@@ -9,6 +9,8 @@ RUN set -ex; \
         zlib1g \
         zlib1g-dev \
         libssl-dev \
+        bzip2 \
+        libbz2-dev \
         git \
         ca-certificates \
         curl \
@@ -48,5 +50,4 @@ RUN set -ex; \
 RUN pip install virtualenv
 
 WORKDIR /code/
-
-ENTRYPOINT  ["bash", "./scripts/build-unix.sh"]
+CMD /code/scripts/build-unix.sh
