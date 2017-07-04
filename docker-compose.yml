@@ -2,4 +2,3 @@ builder:
   build: .
   volumes:
     - .:/code/
-  command: /code/scripts/build-linux-osx
