@@ -506,6 +506,34 @@ def dump_database(dump_filename, archive_filename=None):
     )
 
 
+def compress_db(dump_filename, archive_filename=None, archive_wd=None):
+
+    if not archive_filename:
+        # archive filename not specified
+        # return path to uncompressed dump
+        return os.path.join(archive_wd, dump_filename)
+
+    archive_path = os.path.join(archive_wd, archive_filename)
+    sql_dump_size = os.path.getsize(dump_filename)
+    click.secho(
+        ' ---> Compressing SQL dump ({})'.format(pretty_size(sql_dump_size)),
+        nl=False,
+    )
+    start_compress = time()
+    with tarfile.open(archive_path, mode='w:gz') as tar:
+        tar.add(
+            os.path.join(archive_wd, dump_filename),
+            arcname=dump_filename
+        )
+    compressed_size = os.path.getsize(archive_filename)
+    click.echo(
+        ' {} [{}s]'.format(
+            pretty_size(compressed_size),
+            int(time() - start_compress),
+        )
+    )
+
+
 DEFAULT_DUMP_FILENAME = 'local_db.sql'
 
 
@@ -567,6 +595,57 @@ def push_db(client, stage):
     # clean up
     for temp_file in (dump_filename, archive_filename):
         os.remove(os.path.join(project_home, temp_file))
+    click.secho('Done', fg='green', nl=False)
+    click.echo(' [{}s]'.format(int(time() - start_time)))
+
+
+def push_local_db(client, stage, dump_filename, website_id):
+    if not os.path.exists(dump_filename):
+        click.secho("The dumpfile {} doesn't seem to exists in the current directory".format(dump_filename))
+        sys.exit(1)
+    archive_wd = os.path.dirname(os.path.realpath(dump_filename))
+    archive_filename = dump_filename.replace('.sql', '.tar.gz')
+    archive_path = os.path.join(archive_wd, archive_filename)
+
+    click.secho(
+        ' ===> Pushing local database to {} {} server'.format(
+            website_id,
+            stage,
+        ),
+    )
+    start_time = time()
+
+    compress_db(
+        dump_filename=dump_filename,
+        archive_filename=archive_filename,
+        archive_wd=archive_wd
+    )
+
+    click.secho(' ---> Uploading', nl=False)
+    start_upload = time()
+    response = client.upload_db(website_id, stage, archive_path) or {}
+    click.echo(' [{}s]'.format(int(time() - start_upload)))
+
+    progress_url = response.get('progress_url')
+    if not progress_url:
+        click.secho(' error!', fg='red')
+        sys.exit(1)
+
+    click.secho(' ---> Processing', nl=False)
+    start_processing = time()
+    progress = {'success': None}
+    while progress.get('success') is None:
+        sleep(2)
+        progress = client.upload_db_progress(url=progress_url)
+    if not progress.get('success'):
+        click.secho(' error!', fg='red')
+        click.secho(progress.get('result') or '')
+        sys.exit(1)
+    click.echo(' [{}s]'.format(int(time() - start_processing)))
+
+    # clean up
+    for temp_file in (dump_filename, archive_filename):
+        os.remove(os.path.join(archive_wd, temp_file))
     click.secho('Done', fg='green', nl=False)
     click.echo(' [{}s]'.format(int(time() - start_time)))
 

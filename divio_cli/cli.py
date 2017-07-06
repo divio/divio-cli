@@ -429,6 +429,24 @@ def push_db(obj, stage, noinput):
             return
     localdev.push_db(obj.client, stage)
 
+@project_push.command(name='local_db')
+@click.argument('stage', default='test')
+@click.argument('dump_filename')
+@click.option('--noinput', is_flag=True, default=False, help="Don't ask for confirmation")
+@click.pass_obj
+def push_local_db(obj, stage, dump_filename, noinput):
+    """
+    Push database to your deployed website. Stage is either
+    test (default) or live
+    """
+    website_id = obj.project["id"]
+    if not noinput:
+        click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
+        if not click.confirm('\nAre you sure you want to continue?'):
+            return
+    localdev.push_local_db(obj.client, stage, dump_filename, website_id)
+
+
 
 @project_push.command(name='media')
 @click.argument('stage', default='test')
