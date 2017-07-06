@@ -3,6 +3,9 @@ version: 3.1.0-{build}
 pull_requests:
   do_not_increment_build_number: true
 
+skip_non_tags: true
+skip_branch_with_pr: true
+
 install:
   - "SET PATH=C:\\Python27-x64;C:\\Python27-x64\\Scripts;%PATH%"
   - "python --version"
@@ -14,5 +17,15 @@ test_script:
   - ps: ".\\binary\\divio-Windows version"
 
 artifacts:
-  - path: .\binary\divio-Windows.exe
+  - path: binary\divio-Windows.exe
     name: "divio-cli Windows binary"
+
+deploy:
+  release: $(APPVEYOR_REPO_TAG_NAME)
+  provider: GitHub
+  auth_token:
+    secure: VxpJaAiXiayxRt45aoDKuPokJVJ9YkQubcTPQY898b/AITBoCnDoBYwCEGyQBNj3
+  artifact: binary\divio-Windows.exe
+  draft: true
+  on:
+    appveyor_repo_tag: true
