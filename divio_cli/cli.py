@@ -10,6 +10,7 @@ except ImportError:
     import pdb
 
 import click
+import six
 
 from . import exceptions
 from . import localdev
@@ -168,7 +169,7 @@ def project_list(obj, grouped, as_json):
         else:
             owner = groups['users'][website['owner_id']]
         owner['projects'].append(
-            (unicode(website['id']), website['domain'], website['name'])
+            (six.text_type(website['id']), website['domain'], website['name'])
         )
 
     accounts = itertools.chain(
@@ -245,7 +246,7 @@ def project_update(obj):
 
 @project.command(name='env-vars')
 @click.option(
-    '-s', '--stage', default='test', type=unicode,
+    '-s', '--stage', default='test', type=six.text_type,
     help='get data from stage (test or live)',
 )
 @click.option(
@@ -257,19 +258,19 @@ def project_update(obj):
 )
 @click.option(
     '--get', 'get_vars',
-    default=None, type=unicode,
+    default=None, type=six.text_type,
     multiple=True,
     help='get a specific environment variable',
 )
 @click.option(
     '--set', 'set_vars',
-    default=None, type=click.Tuple([unicode, unicode]),
+    default=None, type=click.Tuple([six.text_type, six.text_type]),
     multiple=True,
     help='set a specific custom environment variable',
 )
 @click.option(
     '--unset', 'unset_vars',
-    default=None, type=unicode,
+    default=None, type=six.text_type,
     multiple=True,
     help='unset an environment variable',
 )
