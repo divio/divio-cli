@@ -415,37 +415,34 @@ def project_push():
 
 @project_push.command(name='db')
 @click.argument('stage', default='test')
-@click.option('--noinput', is_flag=True, default=False, help="Don't ask for confirmation")
+@click.option(
+    '-d', '--dumpfile', default=None, 
+    type=str, help="database dump file to upload directly")
+@click.option(
+    '--noinput', is_flag=True, default=False, 
+    help="Don't ask for confirmation")
 @click.pass_obj
-def push_db(obj, stage, noinput):
-    """
-    Push database to your deployed website. Stage is either
-    test (default) or live
-    """
-
-    if not noinput:
-        click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
-        if not click.confirm('\nAre you sure you want to continue?'):
-            return
-    localdev.push_db(obj.client, stage)
-
-@project_push.command(name='local_db')
-@click.argument('stage', default='test')
-@click.argument('dump_filename')
-@click.option('--noinput', is_flag=True, default=False, help="Don't ask for confirmation")
-@click.pass_obj
-def push_local_db(obj, stage, dump_filename, noinput):
+def push_db(obj, stage, dumpfile, noinput):
     """
     Push database to your deployed website. Stage is either
     test (default) or live
     """
     website_id = obj.project["id"]
-    if not noinput:
-        click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
-        if not click.confirm('\nAre you sure you want to continue?'):
-            return
-    localdev.push_local_db(obj.client, stage, dump_filename, website_id)
-
+    if not dumpfile:
+        if not noinput:
+            click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
+            if not click.confirm('\nAre you sure you want to continue?'):
+                return
+        localdev.push_db(obj.client, stage)
+    else:
+        if not website_id:
+            click.secho("This only works with project_id, please enter project_id using --id", fg=red)
+        else:
+            if not noinput:
+                click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
+                if not click.confirm('\nAre you sure you want to continue?'):
+                    return
+            localdev.push_local_db(obj.client, stage, dumpfile, website_id)
 
 
 @project_push.command(name='media')
