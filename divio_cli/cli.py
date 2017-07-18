@@ -427,7 +427,6 @@ def push_db(obj, stage, dumpfile, noinput):
     Push database to your deployed website. Stage is either
     test (default) or live
     """
-    website_id = obj.project["id"]
     if not dumpfile:
         if not noinput:
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
@@ -435,9 +434,10 @@ def push_db(obj, stage, dumpfile, noinput):
                 return
         localdev.push_db(obj.client, stage)
     else:
-        if not website_id:
-            click.secho("This only works with project_id, please enter project_id using --id", fg=red)
+        if not obj.project.has_key('id'):
+            click.secho('\nThis only works with project_id, please enter project_id using --id', fg='red')
         else:
+            website_id = obj.project['id']
             if not noinput:
                 click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
                 if not click.confirm('\nAre you sure you want to continue?'):
