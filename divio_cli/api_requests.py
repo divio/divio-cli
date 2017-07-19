@@ -195,6 +195,11 @@ class DeployProjectProgressRequest(JsonResponse, APIRequest):
     method = 'GET'
 
 
+class DeployLogRequest(JsonResponse, APIRequest):
+    url = 'api/v1/website/{website_id}/deploy-log/{stage}/'
+    method = 'GET'
+
+
 class DeployProjectRequest(JsonResponse, APIRequest):
     url = '/api/v1/website/{website_id}/deploy/'
     method = 'POST'

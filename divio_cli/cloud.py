@@ -107,6 +107,17 @@ class CloudClient(object):
         request = api_requests.ProjectListRequest(self.session)
         return request()
 
+    def show_deploy_log(self, website_id, stage):
+        project_data = self.get_project(website_id)
+        # If we have tried to deploy before, there will be a log
+        if project_data["{}_status".format(stage)]["last_deployment"]["status"]:
+            deploy_log = self.get_deploy_log(website_id, stage)
+            task_id = "Deploy Log {}".format(deploy_log["task_id"])
+            output = task_id + "\n" + deploy_log["output"]
+            click.echo_via_pager(output)
+        else:
+            click.secho('No {} server deployed yet, no log available.'.format(stage), fg='yellow')
+
     def deploy_project_or_get_progress(self, website_id, stage):
         def fmt_progress(data):
             if not data:
@@ -149,7 +160,7 @@ class CloudClient(object):
                                             bar.pos)
                         bar.update(progress_percent)
                     sleep(3)
-                if response['last_deployment']['status'] == "failure":
+                if response['last_deployment']['status'] == 'failure':
                     bar.current_item = 'error'
                     bar.update(progress_percent)
 
@@ -177,6 +188,13 @@ class CloudClient(object):
             self.session,
             url_kwargs={'website_id': website_id},
             data={'stage': stage}
+        )
+        return request()
+
+    def get_deploy_log(self, website_id, stage):
+        request = api_requests.DeployLogRequest(
+            self.session,
+            url_kwargs={'website_id': website_id, 'stage': stage},
         )
         return request()
 
