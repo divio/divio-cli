@@ -416,8 +416,8 @@ def project_push():
 @project_push.command(name='db')
 @click.argument('stage', default='test')
 @click.option(
-    '-d', '--dumpfile', default=None, 
-    type=str, help="database dump file to upload directly")
+    '-d', '--dumpfile', default=None,
+    type=click.Path(exists=True), help="database dump file to upload directly")
 @click.option(
     '--noinput', is_flag=True, default=False, 
     help="Don't ask for confirmation")

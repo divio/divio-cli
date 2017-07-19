@@ -600,9 +600,6 @@ def push_db(client, stage):
 
 
 def push_local_db(client, stage, dump_filename, website_id):
-    if not os.path.exists(dump_filename):
-        click.secho("The dumpfile {} doesn't seem to exist in the current directory".format(dump_filename))
-        sys.exit(1)
     archive_wd = os.path.dirname(os.path.realpath(dump_filename))
     archive_filename = dump_filename.replace('.sql', '.tar.gz')
     archive_path = os.path.join(archive_wd, archive_filename)
