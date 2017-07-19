@@ -134,6 +134,7 @@ class CloudClient(object):
             with click.progressbar(
                     length=100, show_percent=True,
                     show_eta=False, item_show_func=fmt_progress) as bar:
+                progress_percent = 0
                 while response['is_deploying']:
                     response = self.deploy_project_progress(website_id, stage)
                     bar.current_item = progress = response['deploy_progress']
@@ -141,16 +142,25 @@ class CloudClient(object):
                         'main_percent' in progress and
                         'extra_percent' in progress
                     ):
-                        bar.update(
-                            # update the difference of the current percentage
-                            # to the new percentage
-                            progress['main_percent'] +
-                            progress['extra_percent'] -
-                            bar.pos
-                        )
+                        # update the difference of the current percentage
+                        # to the new percentage
+                        progress_percent = (progress['main_percent'] +  
+                                            progress['extra_percent'] -
+                                            bar.pos)
+                        bar.update(progress_percent)
                     sleep(3)
-                bar.current_item = 'Done'
-                bar.update(100)
+                if response['last_deployment']['status'] == "failure":
+                    bar.current_item = 'error'
+                    bar.update(progress_percent)
+
+                    raise click.ClickException(
+                        "\nDeployment failed. Please run 'divio project deploy-log {}' " \
+                        "to get more informaton".format(stage)
+                    )
+                else:
+                    bar.current_item = 'Done'
+                    bar.update(100)
+
         except KeyboardInterrupt:
             click.secho('Disconnected')
 
