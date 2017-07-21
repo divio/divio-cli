@@ -215,6 +215,16 @@ def project_deploy(obj, stage):
     obj.client.deploy_project_or_get_progress(website_id, stage)
 
 
+@project.command(name='deploy-log')
+@click.argument('stage', default='test')
+@click.pass_obj
+def project_deploy_log(obj, stage):
+    """View last deployment log"""
+    check_project_context(obj.project)
+    website_id = obj.project['id']
+    obj.client.show_deploy_log(website_id, stage)
+
+
 @project.command(name='dashboard')
 @click.pass_obj
 def project_dashboard(obj):

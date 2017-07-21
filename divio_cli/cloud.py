@@ -107,6 +107,17 @@ class CloudClient(object):
         request = api_requests.ProjectListRequest(self.session)
         return request()
 
+    def show_deploy_log(self, website_id, stage):
+        project_data = self.get_project(website_id)
+        # If we have tried to deploy before, there will be a log
+        if project_data["{}_status".format(stage)]["last_deployment"]["status"]:
+            deploy_log = self.get_deploy_log(website_id, stage)
+            task_id = "Deploy Log {}".format(deploy_log["task_id"])
+            output = task_id + "\n" + deploy_log["output"]
+            click.echo_via_pager(output)
+        else:
+            click.secho('No {} server deployed yet, no log available.'.format(stage), fg='yellow')
+
     def deploy_project_or_get_progress(self, website_id, stage):
         def fmt_progress(data):
             if not data:
@@ -134,6 +145,7 @@ class CloudClient(object):
             with click.progressbar(
                     length=100, show_percent=True,
                     show_eta=False, item_show_func=fmt_progress) as bar:
+                progress_percent = 0
                 while response['is_deploying']:
                     response = self.deploy_project_progress(website_id, stage)
                     bar.current_item = progress = response['deploy_progress']
@@ -141,16 +153,25 @@ class CloudClient(object):
                         'main_percent' in progress and
                         'extra_percent' in progress
                     ):
-                        bar.update(
-                            # update the difference of the current percentage
-                            # to the new percentage
-                            progress['main_percent'] +
-                            progress['extra_percent'] -
-                            bar.pos
-                        )
+                        # update the difference of the current percentage
+                        # to the new percentage
+                        progress_percent = (progress['main_percent'] +  
+                                            progress['extra_percent'] -
+                                            bar.pos)
+                        bar.update(progress_percent)
                     sleep(3)
-                bar.current_item = 'Done'
-                bar.update(100)
+                if response['last_deployment']['status'] == 'failure':
+                    bar.current_item = 'error'
+                    bar.update(progress_percent)
+
+                    raise click.ClickException(
+                        "\nDeployment failed. Please run 'divio project deploy-log {}' " \
+                        "to get more informaton".format(stage)
+                    )
+                else:
+                    bar.current_item = 'Done'
+                    bar.update(100)
+
         except KeyboardInterrupt:
             click.secho('Disconnected')
 
@@ -167,6 +188,13 @@ class CloudClient(object):
             self.session,
             url_kwargs={'website_id': website_id},
             data={'stage': stage}
+        )
+        return request()
+
+    def get_deploy_log(self, website_id, stage):
+        request = api_requests.DeployLogRequest(
+            self.session,
+            url_kwargs={'website_id': website_id, 'stage': stage},
         )
         return request()
 
