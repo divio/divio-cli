@@ -206,13 +206,17 @@ def project_list(obj, grouped, as_json):
 
 
 @project.command(name='deploy')
+@click.option(
+    '--backup/--no-backup', default=None,
+    help='Take a backup on deployment.', 
+)
 @click.argument('stage', default='test')
 @click.pass_obj
-def project_deploy(obj, stage):
+def project_deploy(obj, stage, backup):
     """Deploy project"""
     check_project_context(obj.project)
     website_id = obj.project['id']
-    obj.client.deploy_project_or_get_progress(website_id, stage)
+    obj.client.deploy_project_or_get_progress(website_id, stage, backup)
 
 
 @project.command(name='deploy-log')
