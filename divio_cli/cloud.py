@@ -184,13 +184,13 @@ class CloudClient(object):
         return data[stage]
 
     def deploy_project(self, website_id, stage, backup):
+        data = {'stage': stage}
+        if backup is not None:
+            data['backup'] = backup
         request = api_requests.DeployProjectRequest(
             self.session,
             url_kwargs={'website_id': website_id},
-            data={
-                'stage': stage, 
-                'backup': backup,
-            }
+            data=data
         )
         return request()
 
