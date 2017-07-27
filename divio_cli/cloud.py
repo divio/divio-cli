@@ -118,7 +118,7 @@ class CloudClient(object):
         else:
             click.secho('No {} server deployed yet, no log available.'.format(stage), fg='yellow')
 
-    def deploy_project_or_get_progress(self, website_id, stage):
+    def deploy_project_or_get_progress(self, website_id, stage, backup):
         def fmt_progress(data):
             if not data:
                 return 'Connecting to remote'
@@ -138,7 +138,7 @@ class CloudClient(object):
             )
         else:
             click.secho('Deploying {} server'.format(stage), fg='green')
-            self.deploy_project(website_id, stage)
+            self.deploy_project(website_id, stage, backup)
             sleep(1)
             response = self.deploy_project_progress(website_id, stage)
         try:
@@ -183,11 +183,14 @@ class CloudClient(object):
         data = request()
         return data[stage]
 
-    def deploy_project(self, website_id, stage):
+    def deploy_project(self, website_id, stage, backup):
         request = api_requests.DeployProjectRequest(
             self.session,
             url_kwargs={'website_id': website_id},
-            data={'stage': stage}
+            data={
+                'stage': stage, 
+                'backup': backup,
+            }
         )
         return request()
 
