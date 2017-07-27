@@ -208,7 +208,7 @@ def project_list(obj, grouped, as_json):
 @project.command(name='deploy')
 @click.option(
     '--backup/--no-backup', default=None,
-    help="Take a backup on deployment." 
+    help='Take a backup on deployment.' 
 )
 @click.argument('stage', default='test')
 @click.pass_obj

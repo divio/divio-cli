@@ -190,7 +190,7 @@ class CloudClient(object):
         request = api_requests.DeployProjectRequest(
             self.session,
             url_kwargs={'website_id': website_id},
-            data=data
+            data=data,
         )
         return request()
 
