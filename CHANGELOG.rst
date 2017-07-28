@@ -1,6 +1,21 @@
 Changelog
 =========
 
+
+3.3.2 (2017-07-28)
+------------------
+
+* Add support for database upload from the working directory (``divio project push .. --dump-file ..``)
+* Add support for taking backups with deployments with ``divio project deploy --backup``
+* Add support for returning last deployment log with ``divio project deploy-log``
+
+
+3.3.1 (2017-07-06)
+-----------------
+
+* Minor bug fixes and automation improvements
+
+
 3.3.0 (2017-07-04)
 ------------------
 
