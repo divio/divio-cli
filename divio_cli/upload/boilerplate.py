@@ -68,7 +68,7 @@ def upload_boilerplate(client, path=None, noinput=False):
         click.echo(os.linesep.join(files))
         click.confirm(
             'Are you sure you want to continue and upload '
-            'the preceding (#{}) files to the Divio Cloud?'.format(len(files)),
+            'these {} files to the Divio Cloud?'.format(len(files)),
             default=True, show_default=True, abort=True
         )
 
