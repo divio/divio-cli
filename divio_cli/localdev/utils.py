@@ -1,6 +1,7 @@
 import json
 import sys
 import os
+from six.moves.urllib.parse import unquote
 from time import time
 
 import click
@@ -141,6 +142,40 @@ def get_db_container_id(path, raise_on_missing=True):
     if not output and raise_on_missing:
         raise exceptions.AldrynException('Unable to find database container')
     return output
+
+
+def get_aws_s3_config(client, stage, website_id):
+
+    # Get AWS credentials
+    env_vars = client.get_environment_variables(
+        website_id=website_id,
+        stage=stage,
+        custom_only=False,
+    )
+    aws_url = env_vars.get('DEFAULT_STORAGE_DSN')
+    if not aws_url:
+        click.echo(
+            "Couldn't get S3 keys. "
+            "Make sure you have deployed {} at least once.".format(stage)
+        )
+        sys.exit(1)
+
+    if not aws_url.startswith('s3://'):
+        click.echo(
+            "Your {} server is not using S3, "
+            "can't obtain the proper AWS keys.".format(stage)
+        )
+        sys.exit(1)
+
+    keys, remaining_url = aws_url.strip('s3://').split('@')
+    aws_key, aws_secret = unquote(keys).split(':')
+
+    bucket_name = remaining_url.split('.s3.amazonaws.com')[0]
+    return {
+        'key': aws_key,
+        'secret': aws_secret,
+        'bucket': bucket_name,
+    }
 
 
 def start_database_server(docker_compose):

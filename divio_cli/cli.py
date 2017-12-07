@@ -413,13 +413,19 @@ def pull_db(obj, stage):
 
 @project_pull.command(name='media')
 @click.argument('stage', default='test')
+@click.option(
+    '--s3', is_flag=True, default=False,
+    help="Pull directly from S3")
 @click.pass_obj
-def pull_media(obj, stage):
+def pull_media(obj, stage, s3):
     """
     Pull media files from your deployed website. Stage is either
     test (default) or live
     """
-    localdev.pull_media(obj.client, stage)
+    if s3:
+        localdev.pull_s3_media(obj.client, stage)
+    else:
+        localdev.pull_media(obj.client, stage)
 
 
 @project.group(name='push')
