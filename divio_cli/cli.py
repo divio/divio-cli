@@ -423,7 +423,7 @@ def pull_media(obj, stage, s3):
     test (default) or live
     """
     if s3:
-        localdev.pull_s3_media(obj.client, stage)
+        localdev.PullS3MediaCommand(obj.client, stage).run()
     else:
         localdev.pull_media(obj.client, stage)
 

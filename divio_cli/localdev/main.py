@@ -1,4 +1,3 @@
-import hashlib
 import json
 import tarfile
 import re
@@ -11,9 +10,6 @@ from time import sleep, time
 import click
 import requests
 import shutil
-import boto3
-from boto3.s3.transfer import create_transfer_manager, TransferConfig
-from botocore.client import Config
 
 from ..utils import (
     check_call, check_output, is_windows, pretty_size, get_size,
@@ -459,142 +455,6 @@ def pull_media(client, stage, path=None):
             media_archive.extractall(path=media_path)
     os.remove(backup_path)
     click.echo(' [{}s]'.format(int(time() - start_extract)))
-    click.secho('Done', fg='green', nl=False)
-    click.echo(' [{}s]'.format(int(time() - start_time)))
-
-
-def pull_s3_media(client, stage, path=None):
-    PREFIX = 'media'
-
-    project_home = utils.get_project_home(path)
-    website_id = utils.get_aldryn_project_settings(project_home)['id']
-    website_slug = utils.get_aldryn_project_settings(project_home)['slug']
-
-    docker_compose = utils.get_docker_compose_cmd(project_home)
-    docker_compose_config = utils.DockerComposeConfig(docker_compose)
-
-    aws_config = utils.get_aws_s3_config(client, stage, website_id)
-
-    local_data_folder = os.path.join(project_home, 'data')
-    media_path = os.path.join(local_data_folder, PREFIX)
-    remote_data_folder = '/data'
-
-    if not docker_compose_config.has_volume_mount('web', remote_data_folder):
-        click.secho('No mount for /data folder found')
-        return
-
-    click.secho(
-        ' ===> Pulling media files from {} {} server'.format(
-            website_slug,
-            stage,
-        ),
-    )
-    start_time = time()
-    click.secho(' ---> Preparing download', nl=False)
-    start_preparation = time()
-    s3 = boto3.resource('s3', aws_access_key_id=aws_config['key'],
-                        aws_secret_access_key=aws_config['secret'],
-                        config=Config(signature_version='s3v4'))
-    bucket = s3.Bucket(aws_config['bucket'])
-    to_download = set()
-    already_in_sync = set()
-    for key in bucket.objects.all():
-        key_string = str(key.key)
-        key_path = os.path.join(media_path, key_string)
-        if not os.path.exists(key_path):
-            to_download.add(key_string)
-        else:
-            # e_tag holds the md5 for the key, wrapped in quotes
-            s3_md5 = key.e_tag.strip('"')
-            local_md5 = hashlib.md5(open(key_path, "rb").read()).hexdigest()
-            if s3_md5 != local_md5:
-                to_download.add(key_string)
-            else:
-                already_in_sync.add(key_string)
-    click.echo(' [{}s]'.format(int(time() - start_preparation)))
-
-    if to_download:
-        click.secho(' ---> Downloading {} files'.format(len(to_download)), nl=False)
-        start_download = time()
-        downloads = []
-        downloaded_count = 0
-        config = TransferConfig(**{
-            'multipart_threshold': 1024 * 1024 * 64,
-            'multipart_chunksize': 1024 * 1024 * 64,
-            'max_concurrency': 40,
-            'max_io_queue': 1000,
-        })
-        manager = create_transfer_manager(s3.meta.client, config)
-        for key in to_download:
-            key_dir = os.path.join(media_path, *key.split("/")[:-1])
-            if not os.path.exists(key_dir):
-                os.makedirs(key_dir)
-            key_path = os.path.join(key_dir, key.split("/")[-1])
-            downloads.append(
-                manager.download(
-                    aws_config['bucket'],
-                    key,
-                    str(key_path),
-                )
-            )
-            for download in downloads:
-                # Wait for the task to finish
-                download.result()
-                downloaded_count += 1
-        click.echo(' [{}s]'.format(int(time() - start_download)))
-
-        if 'linux' in sys.platform:
-            # On Linux, Docker typically runs as root, so files and folders
-            # created from within the container will be owned by root. As a
-            # workaround, make the folder permissions more permissive, to
-            # allow the invoking user to create files inside it.
-            check_call(
-                docker_compose(
-                    'run', '--rm', 'web',
-                    'chown', '-R', str(os.getuid()), remote_data_folder
-                )
-            )
-    else:
-        click.secho(' ---- No new files to download')
-
-    to_remove = []
-    if os.path.isdir(media_path):
-        start_local_check = time()
-        media_path_len = len(media_path) + 1
-        click.secho(' ---> Checking local files', nl=False)
-        for (dirpath, dirnames, filenames) in os.walk(media_path):
-            for filename in filenames:
-                local_file_path = os.path.join(dirpath, filename)
-                expected_key = local_file_path[media_path_len:]
-                if (expected_key not in to_download and
-                        expected_key not in already_in_sync):
-                    to_remove.append(local_file_path)
-
-        click.echo(' [{}s]'.format(int(time() - start_local_check)))
-
-    if to_remove:
-        click.secho(
-            ' ---> Do you want to clean up {} unused local files?'.format(len(to_remove)),
-            fg='yellow',
-            nl=False,
-        )
-        if click.confirm(''):
-            start_delete = time()
-            click.secho(' ---> Deleting local files', nl=False)
-            for local_file_path in to_remove:
-                # Remove file
-                os.remove(local_file_path)
-                dir_path = os.path.split(local_file_path)[0]
-                try:
-                    # Remove as many empty dirs as possible
-                    os.removedirs(dir_path)
-                except OSError:
-                    # Not empty
-                    pass
-            click.echo(' [{}s]'.format(int(time() - start_delete)))
-    else:
-        click.secho(' ---- No local files to remove')
-
     click.secho('Done', fg='green', nl=False)
     click.echo(' [{}s]'.format(int(time() - start_time)))
 
