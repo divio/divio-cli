@@ -469,18 +469,24 @@ def push_db(obj, stage, dumpfile, noinput):
 @project_push.command(name='media')
 @click.argument('stage', default='test')
 @click.option('--noinput', is_flag=True, default=False, help="Don't ask for confirmation")
+@click.option(
+    '--s3', is_flag=True, default=False,
+    help="Pull directly from S3")
 @click.pass_obj
-def push_media(obj, stage, noinput):
+def push_media(obj, stage, noinput, s3):
     """
     Push database to your deployed website. Stage is either
     test (default) or live
     """
-
-    if not noinput:
-        click.secho(messages.PUSH_MEDIA_WARNING.format(stage=stage), fg='red')
-        if not click.confirm('\nAre you sure you want to continue?'):
-            return
-    localdev.push_media(obj.client, stage)
+    if s3:
+        localdev.PushS3MediaCommand(obj.client, stage).run()
+    else:
+        if not noinput:
+            click.secho(messages.PUSH_MEDIA_WARNING.format(stage=stage),
+                        fg='red')
+            if not click.confirm('\nAre you sure you want to continue?'):
+                return
+        localdev.push_media(obj.client, stage)
 
 
 @project.group(name='import')

@@ -1,4 +1,6 @@
 import hashlib
+import mimetypes
+
 import os
 import sys
 from time import time
@@ -56,6 +58,7 @@ class BaseS3SyncCommand(object):
         # Folder config
         local_data_path = os.path.join(project_home, self.DATA_FOLDER)
         self.media_path = os.path.join(local_data_path, self.PREFIX)
+        self.media_path_len = len(self.media_path) + 1  # Add trailing slash
         self.remote_data_path = '/{}'.format(self.DATA_FOLDER)
 
         # Docker machine
@@ -84,9 +87,18 @@ class BaseS3SyncCommand(object):
         with open(file_path, "rb") as local_file:
             return hashlib.md5(local_file.read()).hexdigest()
 
-    def file_matches_e_tag(self, file_path, e_tag):
+    def clean_e_tag(self, e_tag):
         # e_tag holds the md5 for the file contents, wrapped in quotes
-        return e_tag.strip('"') == self.make_e_tag(file_path)
+        return e_tag.strip('"')
+
+    def file_matches_e_tag(self, file_path, e_tag):
+        return self.clean_e_tag(e_tag) == self.make_e_tag(file_path)
+
+    def path_to_key(self, local_path):
+        return local_path[self.media_path_len:]
+
+    def key_to_path(self, remote_s3_key):
+        return os.path.join(self.media_path, remote_s3_key)
 
 
 class PullS3MediaCommand(BaseS3SyncCommand):
@@ -98,12 +110,12 @@ class PullS3MediaCommand(BaseS3SyncCommand):
         self.to_remove = []
         self.already_in_sync = set()
 
-    def prepare_download(self):
-        click.secho(' ---> Preparing download', nl=False)
+    def scan_remote_files(self):
+        click.secho(' ---> Scanning remote files', nl=False)
         start_preparation = time()
         for key in self.bucket.objects.all():
             key_string = str(key.key)
-            key_path = os.path.join(self.media_path, key_string)
+            key_path = self.key_to_path(key_string)
             if not os.path.exists(key_path):
                 self.to_download.add(key_string)
             else:
@@ -120,7 +132,6 @@ class PullS3MediaCommand(BaseS3SyncCommand):
         )
         start_download = time()
         downloads = []
-        downloaded_count = 0
         for key in self.to_download:
             key_dir = os.path.join(self.media_path, *key.split("/")[:-1])
             if not os.path.exists(key_dir):
@@ -133,16 +144,17 @@ class PullS3MediaCommand(BaseS3SyncCommand):
                     str(key_path),
                 )
             )
-            for download in downloads:
-                # Wait for the task to finish
-                download.result()
-                downloaded_count += 1
+
+        # Wait for the task to finish
+        for download in downloads:
+            download.result()
+
         click.echo(' [{}s]'.format(int(time() - start_download)))
 
-        # Fix permissions whenever needed
-        self.fix_permissions()
+        # Fix file permissions whenever needed
+        self.fix_file_permissions()
 
-    def fix_permissions(self):
+    def fix_file_permissions(self):
         if 'linux' in sys.platform:
             # On Linux, Docker typically runs as root, so files and folders
             # created from within the container will be owned by root. As a
@@ -157,13 +169,12 @@ class PullS3MediaCommand(BaseS3SyncCommand):
 
     def prepare_cleanup(self):
         start_local_check = time()
-        media_path_len = len(self.media_path) + 1
         click.secho(' ---> Checking local files', nl=False)
 
         for (dirpath, dirnames, filenames) in os.walk(self.media_path):
             for filename in filenames:
                 local_file_path = os.path.join(dirpath, filename)
-                expected_key = local_file_path[media_path_len:]
+                expected_key = self.path_to_key(local_file_path)
                 if (expected_key not in self.to_download and
                         expected_key not in self.already_in_sync):
                     self.to_remove.append(local_file_path)
@@ -171,26 +182,19 @@ class PullS3MediaCommand(BaseS3SyncCommand):
         click.echo(' [{}s]'.format(int(time() - start_local_check)))
 
     def cleanup_local_files(self):
-        click.secho(
-            ' ---> Do you want to clean up {} unused local files?'.format(
-                len(self.to_remove)),
-            fg='yellow',
-            nl=False,
-        )
-        if click.confirm(''):
-            start_delete = time()
-            click.secho(' ---> Deleting local files', nl=False)
-            for local_file_path in self.to_remove:
-                # Remove file
-                os.remove(local_file_path)
-                dir_path = os.path.split(local_file_path)[0]
-                try:
-                    # Remove as many empty dirs as possible
-                    os.removedirs(dir_path)
-                except OSError:
-                    # Not empty
-                    pass
-            click.echo(' [{}s]'.format(int(time() - start_delete)))
+        start_delete = time()
+        click.secho(' ---> Deleting local files', nl=False)
+        for local_file_path in self.to_remove:
+            # Remove file
+            os.remove(local_file_path)
+            dir_path = os.path.split(local_file_path)[0]
+            try:
+                # Remove as many empty dirs as possible
+                os.removedirs(dir_path)
+            except OSError:
+                # Not empty
+                pass
+        click.echo(' [{}s]'.format(int(time() - start_delete)))
 
     def run(self):
         click.secho(
@@ -202,8 +206,9 @@ class PullS3MediaCommand(BaseS3SyncCommand):
 
         start_time = time()
 
+        self.scan_remote_files()
+
         # Download from remote bucket
-        self.prepare_download()
         if self.to_download:
             self.download_from_s3()
         else:
@@ -212,9 +217,145 @@ class PullS3MediaCommand(BaseS3SyncCommand):
         # Cleanup local unused files
         self.prepare_cleanup()
         if self.to_remove:
-            self.cleanup_local_files()
+            click.secho(
+                ' ---> Do you want to clean up {} unused local files?'.format(
+                    len(self.to_remove)),
+                fg='yellow',
+                nl=False,
+            )
+            if click.confirm(''):
+                self.cleanup_local_files()
         else:
             click.secho(' ---- No local files to remove')
+
+        click.secho('Done', fg='green', nl=False)
+        click.echo(' [{}s]'.format(int(time() - start_time)))
+
+
+class PushS3MediaCommand(BaseS3SyncCommand):
+
+    def __init__(self, client, stage):
+        super(PushS3MediaCommand, self).__init__(client, stage)
+
+        self.local_files_e_tag = {}
+        self.to_upload = set()
+        self.to_remove = []
+        self.already_in_sync = set()
+
+    def scan_local_files(self):
+        start_local_check = time()
+        click.secho(' ---> Scanning local files', nl=False)
+
+        for (dirpath, dirnames, filenames) in os.walk(self.media_path):
+            for filename in filenames:
+                local_file_path = os.path.join(dirpath, filename)
+                expected_e_tag = self.make_e_tag(local_file_path)
+                expected_key = self.path_to_key(local_file_path)
+                self.local_files_e_tag[expected_key] = expected_e_tag
+
+        click.echo(' [{}s]'.format(int(time() - start_local_check)))
+
+    def compare_remote_files(self):
+        start_remote_check = time()
+        click.secho(' ---> Comparing remote files', nl=False)
+
+        for key in self.bucket.objects.all():
+            key_string = str(key.key)
+            e_tag = self.clean_e_tag(key.e_tag)
+            if key_string not in self.local_files_e_tag:
+                self.to_remove.append(key_string)
+            elif self.local_files_e_tag[key_string] != e_tag:
+                self.to_upload.add(key_string)
+            else:
+                self.already_in_sync.add(key_string)
+
+        # Upload any missing remote files
+        if (len(self.to_upload) + len(self.already_in_sync) !=
+                len(self.local_files_e_tag.keys())):
+
+            for key in self.local_files_e_tag.keys():
+                if (key not in self.to_upload or
+                        key not in self.already_in_sync):
+
+                    self.to_upload.add(key)
+
+        click.echo(' [{}s]'.format(int(time() - start_remote_check)))
+
+    def upload_to_s3(self):
+        click.secho(
+            ' ---> Uploading {} files'.format(len(self.to_upload)),
+            nl=False,
+        )
+        start_upload = time()
+        uploads = []
+        for key in self.to_upload:
+            # with open(self.key_to_path(key), 'rb') as local_file:
+            content_type, _ = mimetypes.guess_type(key)
+            uploads.append(
+                self.s3_manager.upload(
+                    self.key_to_path(key),
+                    self.bucket.name,
+                    key,
+                    extra_args={
+                        'ContentType': content_type or 'binary/octet-stream',
+                        'ACL': 'public-read',
+                    }
+                )
+            )
+
+        # Wait for the task to finish
+        for upload in uploads:
+            upload.result()
+
+        click.echo(' [{}s]'.format(int(time() - start_upload)))
+
+    def cleanup_remote_files(self):
+        start_delete = time()
+        click.secho(' ---> Deleting remote files', nl=False)
+        deletes = []
+        for key in self.to_remove:
+            deletes.append(
+                self.s3_manager.delete(
+                    self.bucket.name,
+                    key,
+                )
+            )
+
+        # Wait for the task to finish
+        for delete in deletes:
+            delete.result()
+
+        click.echo(' [{}s]'.format(int(time() - start_delete)))
+
+    def run(self):
+        click.secho(
+            ' ===> Pushing local media to {} {} server'.format(
+                self.website_slug,
+                self.stage,
+            ),
+        )
+
+        start_time = time()
+
+        # Push to remote bucket
+        self.scan_local_files()
+        self.compare_remote_files()
+        if self.to_upload:
+            self.upload_to_s3()
+        else:
+            click.secho(' ---- No new files to upload')
+
+        if self.to_remove:
+            click.secho(
+                ' ---> Do you want to clean up {} unused remote files?'.format(
+                    len(self.to_remove)),
+                fg='yellow',
+                nl=False,
+            )
+            if click.confirm(''):
+                self.cleanup_remote_files()
+        else:
+            click.secho(' ---- No remote files to remove')
 
         click.secho('Done', fg='green', nl=False)
         click.echo(' [{}s]'.format(int(time() - start_time)))
