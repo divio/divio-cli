@@ -172,3 +172,34 @@ class DockerComposeConfig(object):
             data = mount.split(':')
             if data[1] == remote_path:
                 return True
+
+
+def allow_remote_id_override(func):
+    """Adds an identifier option to the command, and gets the proper id"""
+
+    def read_remote_id(remote_id, *args, **kwargs):
+        ERROR_MSG = (
+            'This command requires a Divio Cloud Project id. Please '
+            'provide one with the --remote-id option or call the '
+            'command from a project directory (with a .aldryn file).'
+        )
+
+        if not remote_id:
+            try:
+                remote_id = get_aldryn_project_settings(silent=True)['id']
+            except KeyError:
+                raise click.ClickException(ERROR_MSG)
+            else:
+                if not remote_id:
+                    raise click.ClickException(ERROR_MSG)
+        return func(remote_id, *args, **kwargs)
+
+    return click.option(
+        '--remote-id',
+        'remote_id',
+        default=None,
+        type=int,
+        help='Remote Project ID to use for project commands. '
+             'Defaults to the project in the current directory using the '
+             '.aldryn file.'
+    )(read_remote_id)

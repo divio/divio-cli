@@ -170,9 +170,9 @@ def check_output(*popenargs, **kwargs):
     return execute(subprocess.check_output, *popenargs, **kwargs).decode()
 
 
-def open_project_cloud_site(client, project, stage):
+def open_project_cloud_site(client, project_id, stage):
     assert stage in ('test', 'live')
-    project_data = client.get_project(project['id'])
+    project_data = client.get_project(project_id)
     url = project_data['{}_status'.format(stage)]['site_url']
     if url:
         click.launch(url)
@@ -180,8 +180,8 @@ def open_project_cloud_site(client, project, stage):
         click.secho('No {} server deployed yet.'.format(stage), fg='yellow')
 
 
-def get_cp_url(client, project, section='dashboard'):
-    project_data = client.get_project(project['id'])
+def get_cp_url(client, project_id, section='dashboard'):
+    project_data = client.get_project(project_id)
     url = project_data['dashboard_url']
 
     if section != 'dashboard':
@@ -323,15 +323,6 @@ def print_package_renamed_warning():
 
 def json_dumps_unicode(d, **kwargs):
     return json.dumps(d, ensure_ascii=False, **kwargs).encode('utf-8')
-
-
-def check_project_context(project):
-    if 'id' not in project:
-        raise click.ClickException(
-            'This command requires a Divio Cloud Project id. Please provide '
-            'one with the --id option or call the command from a project '
-            'directory (with a .aldryn file).'
-        )
 
 
 class Map(dict):
