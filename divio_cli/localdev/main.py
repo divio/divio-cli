@@ -399,7 +399,9 @@ class ImportRemoteDatabase(DatabaseImportBase):
         db_dump_path = download_file(download_url, directory=self.path)
         click.echo(' [{}s]'.format(int(time() - start_download)))
         # strip path from dump_path for use in the docker container
-        self.db_dump_path = '/app/{}'.format(db_dump_path.replace(self.path, ''))
+        if db_dump_path.startswith(self.path):
+            relative_path = db_dump_path.replace(self.path, '', 1)
+            self.db_dump_path = '/app{}'.format(relative_path)
 
     def get_db_restore_command(self):
         cmd = self.restore_commands['archived-binary']
