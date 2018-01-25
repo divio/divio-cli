@@ -19,14 +19,13 @@ try:
     from . import crypto
 except ImportError:
     crypto = None
-from .localdev.utils import get_aldryn_project_settings
+from .localdev.utils import allow_remote_id_override
 from .cloud import CloudClient, get_endpoint
 from .check_system import check_requirements, check_requirements_human
 from .utils import (
     hr, table, open_project_cloud_site,
     get_cp_url, get_git_checked_branch,
-    print_package_renamed_warning,
-    Map, check_project_context,
+    print_package_renamed_warning, Map,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -107,25 +106,9 @@ def login(ctx, token, check):
 
 
 @cli.group()
-@click.option(
-    '--id', 'identifier',
-    default=None, type=int,
-    help='Project.id to use for project commands. '
-         'Defaults to the project in the current directory using the .aldryn '
-         'file.'
-)
-@click.pass_obj
-def project(obj, identifier):
+def project():
     """Manage your projects"""
-    if identifier:
-        obj.project = {
-            'id': identifier,
-        }
-    else:
-        try:
-            obj.project = get_aldryn_project_settings(silent=True)
-        except Exception as exc:
-            obj.project = {}
+    pass
 
 
 @project.command(name='list')
@@ -211,49 +194,44 @@ def project_list(obj, grouped, as_json):
     help='Take a backup on deployment.', 
 )
 @click.argument('stage', default='test')
+@allow_remote_id_override
 @click.pass_obj
-def project_deploy(obj, stage, backup):
+def project_deploy(obj, remote_id, stage, backup):
     """Deploy project"""
-    check_project_context(obj.project)
-    website_id = obj.project['id']
-    obj.client.deploy_project_or_get_progress(website_id, stage, backup)
+    obj.client.deploy_project_or_get_progress(remote_id, stage, backup)
 
 
 @project.command(name='deploy-log')
 @click.argument('stage', default='test')
+@allow_remote_id_override
 @click.pass_obj
-def project_deploy_log(obj, stage):
+def project_deploy_log(obj, remote_id, stage):
     """View last deployment log"""
-    check_project_context(obj.project)
-    website_id = obj.project['id']
-    obj.client.show_deploy_log(website_id, stage)
+    obj.client.show_deploy_log(remote_id, stage)
 
 
 @project.command(name='dashboard')
+@allow_remote_id_override
 @click.pass_obj
-def project_dashboard(obj):
+def project_dashboard(obj, remote_id):
     """Open project dashboard"""
-    check_project_context(obj.project)
-    click.launch(get_cp_url(obj.client, obj.project))
+    click.launch(get_cp_url(obj.client, remote_id))
 
 
 @project.command(name='up')
-@click.pass_obj
-def project_up(obj):
+def project_up():
     """Start local project"""
     localdev.start_project()
 
 
 @project.command(name='open')
-@click.pass_obj
-def project_open(obj):
+def project_open():
     """Open local project in browser"""
     localdev.open_project()
 
 
 @project.command(name='update')
-@click.pass_obj
-def project_update(obj):
+def project_update():
     """Update project with latest changes from the Cloud"""
     localdev.update_local_project(get_git_checked_branch())
 
@@ -288,32 +266,36 @@ def project_update(obj):
     multiple=True,
     help='unset an environment variable',
 )
+@allow_remote_id_override
 @click.pass_obj
-def environment_variables(
-        obj, stage, show_all_vars, as_json, get_vars, set_vars, unset_vars
-):
+def environment_variables(obj, remote_id, stage, show_all_vars,
+                          as_json, get_vars, set_vars, unset_vars):
     """
     Get and set environment vars.
 
     WARNING: This command is experimental and may change in a future release.
     """
-    check_project_context(obj.project)
     if set_vars or unset_vars:
         set_vars = dict(set_vars)
         data = obj.client.set_custom_environment_variables(
-            website_id=obj.project['id'],
+            website_id=remote_id,
             stage=stage,
             set_vars=set_vars,
             unset_vars=unset_vars,
         )
     else:
         data = obj.client.get_environment_variables(
-            website_id=obj.project['id'],
+            website_id=remote_id,
             stage=stage,
             custom_only=not show_all_vars,
         )
         if get_vars:
-            data = {key: value for key, value in data.items() if key in get_vars}
+            data = {
+                key: value
+                for key, value
+                in data.items()
+                if key in get_vars
+            }
     if as_json:
         click.echo(json.dumps(data, indent=2, sort_keys=True))
     else:
@@ -324,41 +306,39 @@ def environment_variables(
 
 
 @project.command(name='test')
+@allow_remote_id_override
 @click.pass_obj
-def project_open_test(obj):
+def project_open_test(obj, remote_id):
     """Open project test site"""
-    check_project_context(obj.project)
-    open_project_cloud_site(obj.client, obj.project, 'test')
+    open_project_cloud_site(obj.client, remote_id, 'test')
 
 
 @project.command(name='live')
+@allow_remote_id_override
 @click.pass_obj
-def project_open_live(obj):
+def project_open_live(obj, remote_id):
     """Open project live site"""
-    check_project_context(obj.project)
-    open_project_cloud_site(obj.client, obj.project, 'live')
+    open_project_cloud_site(obj.client, remote_id, 'live')
 
 
 @project.command(name='status')
-@click.pass_obj
-def project_status(obj):
+def project_status():
     """Show local project status"""
     localdev.show_project_status()
 
 
 @project.command(name='stop')
-@click.pass_obj
-def project_stop(obj):
+def project_stop():
     """Stop local project"""
     localdev.stop_project()
 
 
 @project.command(name='cheatsheet')
+@allow_remote_id_override
 @click.pass_obj
-def project_cheatsheet(obj):
+def project_cheatsheet(obj, remote_id):
     """Show useful commands for your project"""
-    check_project_context(obj.project)
-    click.launch(get_cp_url(obj.client, obj.project, 'local-development/'))
+    click.launch(get_cp_url(obj.client, remote_id, 'local-development/'))
 
 
 @project.command(name='setup')
@@ -402,24 +382,28 @@ def project_pull():
 
 @project_pull.command(name='db')
 @click.argument('stage', default='test')
+@allow_remote_id_override
 @click.pass_obj
-def pull_db(obj, stage):
+def pull_db(obj, remote_id, stage):
     """
     Pull database from your deployed website. Stage is either
     test (default) or live
     """
-    localdev.ImportRemoteDatabase(client=obj.client, stage=stage)()
+    localdev.ImportRemoteDatabase(
+        client=obj.client, stage=stage, remote_id=remote_id,
+    )()
 
 
 @project_pull.command(name='media')
 @click.argument('stage', default='test')
+@allow_remote_id_override
 @click.pass_obj
-def pull_media(obj, stage):
+def pull_media(obj, remote_id, stage):
     """
     Pull media files from your deployed website. Stage is either
     test (default) or live
     """
-    localdev.pull_media(obj.client, stage)
+    localdev.pull_media(obj.client, stage, remote_id)
 
 
 @project.group(name='push')
@@ -436,8 +420,9 @@ def project_push():
 @click.option(
     '--noinput', is_flag=True, default=False, 
     help="Don't ask for confirmation")
+@allow_remote_id_override
 @click.pass_obj
-def push_db(obj, stage, dumpfile, noinput):
+def push_db(obj, remote_id, stage, dumpfile, noinput):
     """
     Push database to your deployed website. Stage is either
     test (default) or live
@@ -447,24 +432,21 @@ def push_db(obj, stage, dumpfile, noinput):
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
             if not click.confirm('\nAre you sure you want to continue?'):
                 return
-        localdev.push_db(obj.client, stage)
+        localdev.push_db(obj.client, stage, remote_id)
     else:
-        if not obj.project.has_key('id'):
-            click.secho('\nThis only works with project_id, please enter project_id using --id', fg='red')
-        else:
-            website_id = obj.project['id']
-            if not noinput:
-                click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
-                if not click.confirm('\nAre you sure you want to continue?'):
-                    return
-            localdev.push_local_db(obj.client, stage, dumpfile, website_id)
+        if not noinput:
+            click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
+            if not click.confirm('\nAre you sure you want to continue?'):
+                return
+        localdev.push_local_db(obj.client, stage, dumpfile, remote_id)
 
 
 @project_push.command(name='media')
 @click.argument('stage', default='test')
 @click.option('--noinput', is_flag=True, default=False, help="Don't ask for confirmation")
+@allow_remote_id_override
 @click.pass_obj
-def push_media(obj, stage, noinput):
+def push_media(obj, remote_id, stage, noinput):
     """
     Push database to your deployed website. Stage is either
     test (default) or live
@@ -474,7 +456,7 @@ def push_media(obj, stage, noinput):
         click.secho(messages.PUSH_MEDIA_WARNING.format(stage=stage), fg='red')
         if not click.confirm('\nAre you sure you want to continue?'):
             return
-    localdev.push_media(obj.client, stage)
+    localdev.push_media(obj.client, stage, remote_id)
 
 
 @project.group(name='import')
@@ -513,8 +495,7 @@ def export_db():
     '--no-rebuild', is_flag=True, default=False,
     help='Do not rebuild docker container automatically'
 )
-@click.pass_obj
-def project_develop(obj, package, no_rebuild):
+def project_develop(package, no_rebuild):
     """Add a package 'package' to your local project environment"""
     localdev.develop_package(package, no_rebuild)
 

@@ -340,18 +340,26 @@ class ImportLocalDatabase(DatabaseImportBase):
 
 class ImportRemoteDatabase(DatabaseImportBase):
     def __init__(self, *args, **kwargs):
-        self.stage = kwargs.pop('stage', None)
         super(ImportRemoteDatabase, self).__init__(*args, **kwargs)
+        self.stage = kwargs.pop('stage', None)
+        self.remote_id = kwargs.pop('remote_id', None) or self.website_id
+        remote_project_name = (
+            self.website_slug if self.remote_id == self.website_id
+            else 'Project {}'.format(self.remote_id)
+        )
         click.secho(
             ' ===> Pulling database from {} {} server'
-            .format(self.website_slug, self.stage)
+            .format(
+                remote_project_name,
+                self.stage
+            )
         )
 
     def setup(self):
         click.secho(' ---> Preparing download', nl=False)
         start_preparation = time()
         response = self.client.download_db_request(
-            self.website_id, self.stage) or {}
+            self.remote_id, self.stage) or {}
         progress_url = response.get('progress_url')
         if not progress_url:
             click.secho(' error!', fg='red')
@@ -379,11 +387,14 @@ class ImportRemoteDatabase(DatabaseImportBase):
         return cmd.format(self.db_dump_path)
 
 
-def pull_media(client, stage, path=None):
+def pull_media(client, stage, remote_id, path=None):
     project_home = utils.get_project_home(path)
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     website_slug = utils.get_aldryn_project_settings(project_home)['slug']
-
+    remote_project_name = (
+        website_slug if remote_id == website_id
+        else 'Project {}'.format(remote_id)
+    )
     docker_compose = utils.get_docker_compose_cmd(project_home)
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
@@ -396,14 +407,14 @@ def pull_media(client, stage, path=None):
 
     click.secho(
         ' ===> Pulling media files from {} {} server'.format(
-            website_slug,
+            remote_project_name,
             stage,
         ),
     )
     start_time = time()
     click.secho(' ---> Preparing download', nl=False)
     start_preparation = time()
-    response = client.download_media_request(website_id, stage) or {}
+    response = client.download_media_request(remote_id, stage) or {}
     progress_url = response.get('progress_url')
     if not progress_url:
         click.secho(' error!', fg='red')
@@ -549,17 +560,21 @@ def export_db():
     click.echo(' [{}s]'.format(int(time() - start_time)))
 
 
-def push_db(client, stage):
+def push_db(client, stage, remote_id):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     dump_filename = DEFAULT_DUMP_FILENAME
     archive_filename = dump_filename.replace('.sql', '.tar.gz')
     archive_path = os.path.join(project_home, archive_filename)
     website_slug = utils.get_aldryn_project_settings(project_home)['slug']
+    remote_project_name = (
+        website_slug if remote_id == website_id
+        else 'Project {}'.format(remote_id)
+    )
 
     click.secho(
         ' ===> Pushing local database to {} {} server'.format(
-            website_slug,
+            remote_project_name,
             stage,
         ),
     )
@@ -572,7 +587,7 @@ def push_db(client, stage):
 
     click.secho(' ---> Uploading', nl=False)
     start_upload = time()
-    response = client.upload_db(website_id, stage, archive_path) or {}
+    response = client.upload_db(remote_id, stage, archive_path) or {}
     click.echo(' [{}s]'.format(int(time() - start_upload)))
 
     progress_url = response.get('progress_url')
@@ -647,14 +662,19 @@ def push_local_db(client, stage, dump_filename, website_id):
     click.echo(' [{}s]'.format(int(time() - start_time)))
 
 
-def push_media(client, stage):
+def push_media(client, stage, remote_id):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     archive_path = os.path.join(project_home, 'local_media.tar.gz')
     website_slug = utils.get_aldryn_project_settings(project_home)['slug']
+    remote_project_name = (
+        website_slug if remote_id == website_id
+        else 'Project {}'.format(remote_id)
+    )
+
     click.secho(
         ' ---> Pushing local media to {} {} server'.format(
-            website_slug,
+            remote_project_name,
             stage,
         ),
     )
@@ -693,7 +713,7 @@ def push_media(client, stage):
     )
     click.secho('Uploading', nl=False)
     start_upload = time()
-    response = client.upload_media(website_id, stage, archive_path) or {}
+    response = client.upload_media(remote_id, stage, archive_path) or {}
     click.echo(' [{}s]'.format(int(time() - start_upload)))
     progress_url = response.get('progress_url')
     if not progress_url:
