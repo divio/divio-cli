@@ -2,6 +2,13 @@ Changelog
 =========
 
 
+3.3.3 (2018-01-25)
+------------------
+
+* Fixed project id override for remote commands with ``--remote-id``
+* Fixed uploading an addon on py3 for addons with the ``aldryn_config.py`` file
+
+
 3.3.2 (2017-07-28)
 ------------------
 
