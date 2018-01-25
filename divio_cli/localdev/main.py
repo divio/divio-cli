@@ -837,6 +837,7 @@ def open_project(open_browser=True):
             proto, host_port = os.environ.get('DOCKER_HOST').split('://')
             host = host_port.split(':')[0]
 
+    host = os.environ.get('DOCKER_BRIDGE_GATEWAY') or host
     addr = 'http://{}:{}/'.format(host, port)
 
     click.secho(
