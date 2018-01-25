@@ -32,7 +32,7 @@ def package_addon(path):
 def add_addon_meta_files(tar, path):
     # aldryn_config.py
     try:
-        with open(os.path.join(path, 'aldryn_config.py')) as fobj:
+        with open(os.path.join(path, 'aldryn_config.py'), 'rb') as fobj:
             tar_add_bytesio(tar, BytesIO(fobj.read()), 'aldryn_config.py')
     except (OSError, IOError):
         click.secho(
