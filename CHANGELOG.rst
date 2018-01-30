@@ -2,6 +2,12 @@ Changelog
 =========
 
 
+3.3.4 (2018-01-30)
+------------------
+
+* Fixed bug when doing ``divio project setup`` and pulling media files.
+
+
 3.3.3 (2018-01-25)
 ------------------
 
