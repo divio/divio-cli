@@ -215,7 +215,7 @@ def project_deploy_log(obj, remote_id, stage):
 @click.pass_obj
 def project_dashboard(obj, remote_id):
     """Open project dashboard"""
-    click.launch(get_cp_url(obj.client, remote_id))
+    click.launch(get_cp_url(client=obj.client, project_id=remote_id))
 
 
 @project.command(name='up')
@@ -310,7 +310,7 @@ def environment_variables(obj, remote_id, stage, show_all_vars,
 @click.pass_obj
 def project_open_test(obj, remote_id):
     """Open project test site"""
-    open_project_cloud_site(obj.client, remote_id, 'test')
+    open_project_cloud_site(obj.client, project_id=remote_id, stage='test')
 
 
 @project.command(name='live')
@@ -318,7 +318,7 @@ def project_open_test(obj, remote_id):
 @click.pass_obj
 def project_open_live(obj, remote_id):
     """Open project live site"""
-    open_project_cloud_site(obj.client, remote_id, 'live')
+    open_project_cloud_site(obj.client, project_id=remote_id, stage='live')
 
 
 @project.command(name='status')
@@ -338,7 +338,11 @@ def project_stop():
 @click.pass_obj
 def project_cheatsheet(obj, remote_id):
     """Show useful commands for your project"""
-    click.launch(get_cp_url(obj.client, remote_id, 'local-development/'))
+    click.launch(get_cp_url(
+        obj.client,
+        project_id=remote_id,
+        section='local-development/'),
+    )
 
 
 @project.command(name='setup')
@@ -403,7 +407,7 @@ def pull_media(obj, remote_id, stage):
     Pull media files from your deployed website. Stage is either
     test (default) or live
     """
-    localdev.pull_media(obj.client, stage, remote_id)
+    localdev.pull_media(obj.client, stage=stage, remote_id=remote_id)
 
 
 @project.group(name='push')
@@ -432,13 +436,18 @@ def push_db(obj, remote_id, stage, dumpfile, noinput):
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
             if not click.confirm('\nAre you sure you want to continue?'):
                 return
-        localdev.push_db(obj.client, stage, remote_id)
+        localdev.push_db(obj.client, stage=stage, remote_id=remote_id)
     else:
         if not noinput:
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg='red')
             if not click.confirm('\nAre you sure you want to continue?'):
                 return
-        localdev.push_local_db(obj.client, stage, dumpfile, remote_id)
+        localdev.push_local_db(
+            obj.client,
+            stage=stage,
+            dump_filename=dumpfile,
+            website_id=remote_id,
+        )
 
 
 @project_push.command(name='media')
@@ -456,7 +465,7 @@ def push_media(obj, remote_id, stage, noinput):
         click.secho(messages.PUSH_MEDIA_WARNING.format(stage=stage), fg='red')
         if not click.confirm('\nAre you sure you want to continue?'):
             return
-    localdev.push_media(obj.client, stage, remote_id)
+    localdev.push_media(obj.client, stage=stage, remote_id=remote_id)
 
 
 @project.group(name='import')

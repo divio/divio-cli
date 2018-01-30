@@ -71,7 +71,10 @@ def setup_website_containers(client, stage, path):
 
     if docker_compose_config.has_service('db'):
         has_db_service = True
-        existing_db_container_id = utils.get_db_container_id(path, False)
+        existing_db_container_id = utils.get_db_container_id(
+            path=path,
+            raise_on_missing=False,
+        )
     else:
         has_db_service = False
         existing_db_container_id = None
@@ -133,16 +136,16 @@ def create_workspace(client, website_slug, stage, path=None, force_overwrite=Fal
             sys.exit(1)
 
     # clone git project
-    clone_project(website_slug, path)
+    clone_project(website_slug=website_slug, path=path)
 
     # check for new baseproject + add .aldryn
-    configure_project(website_slug, path, client)
+    configure_project(website_slug=website_slug, path=path, client=client)
 
     # setup docker website containers
-    setup_website_containers(client, stage, path)
+    setup_website_containers(client=client, stage=stage, path=path)
 
     # download media files
-    pull_media(client, stage, path)
+    pull_media(client=client, stage=stage, path=path)
 
     instructions = (
         "Your workspace is setup and ready to start.",
@@ -359,7 +362,8 @@ class ImportRemoteDatabase(DatabaseImportBase):
         click.secho(' ---> Preparing download', nl=False)
         start_preparation = time()
         response = self.client.download_db_request(
-            self.remote_id, self.stage) or {}
+            self.remote_id, self.stage,
+        ) or {}
         progress_url = response.get('progress_url')
         if not progress_url:
             click.secho(' error!', fg='red')
@@ -387,10 +391,11 @@ class ImportRemoteDatabase(DatabaseImportBase):
         return cmd.format(self.db_dump_path)
 
 
-def pull_media(client, stage, remote_id, path=None):
+def pull_media(client, stage, remote_id=None, path=None):
     project_home = utils.get_project_home(path)
     website_id = utils.get_aldryn_project_settings(project_home)['id']
     website_slug = utils.get_aldryn_project_settings(project_home)['slug']
+    remote_id = remote_id or website_id
     remote_project_name = (
         website_slug if remote_id == website_id
         else 'Project {}'.format(remote_id)
