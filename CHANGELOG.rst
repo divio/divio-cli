@@ -2,6 +2,12 @@ Changelog
 =========
 
 
+3.3.5 (2018-02-21)
+------------------
+
+* Fixed bug in which Windows Docker volumes were not correctly parsed.
+
+
 3.3.4 (2018-01-30)
 ------------------
 
