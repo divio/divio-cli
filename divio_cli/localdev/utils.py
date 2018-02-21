@@ -163,14 +163,20 @@ class DockerComposeConfig(object):
         return service in self.get_services().keys()
 
     def has_volume_mount(self, service, remote_path):
+        """
+        Services may look like the following depending on the OS:
+
+        - /home/user/some/path:/app:rw
+        - C:\whatever\windows\path:/app:rw (windows)
+        """
         try:
             service_config = self.get_services()[service]
         except KeyError:
             return False
 
         for mount in service_config.get('volumes', []):
-            data = mount.split(':')
-            if data[1] == remote_path:
+            bits = mount.strip().split(':')
+            if len(bits) > 2 and bits[-2] == remote_path:
                 return True
 
 
