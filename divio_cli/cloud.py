@@ -166,7 +166,7 @@ class CloudClient(object):
 
                     raise click.ClickException(
                         "\nDeployment failed. Please run 'divio project deploy-log {}' " \
-                        "to get more informaton".format(stage)
+                        "to get more information".format(stage)
                     )
                 else:
                     bar.current_item = 'Done'
