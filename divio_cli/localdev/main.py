@@ -162,7 +162,6 @@ def create_workspace(client, website_slug, stage, path=None, force_overwrite=Fal
 
 
 class DatabaseImportBase(object):
-    database_extensions = ['hstore', 'postgis']
     restore_commands = {
         'sql': 'psql -U postgres db < {}',
         'binary': (
@@ -183,6 +182,7 @@ class DatabaseImportBase(object):
         self.website_id = utils.get_aldryn_project_settings(self.path)['id']
         self.website_slug = utils.get_aldryn_project_settings(self.path)['slug']
         self.docker_compose = utils.get_docker_compose_cmd(self.path)
+        self.database_extensions = self.get_active_db_extensions()
         docker_compose_config = utils.DockerComposeConfig(self.docker_compose)
         if not docker_compose_config.has_service('db'):
             click.secho('No service "db" found in local project', fg='red')
@@ -201,6 +201,21 @@ class DatabaseImportBase(object):
         self.prepare_db_server()
         self.restore_db()
         self.finish()
+
+    def get_active_db_extensions(self):
+        project_settings = utils.get_aldryn_project_settings(self.path)
+        default_db_extensions = ['hstore', 'postgis']
+
+        if 'db_extensions' in project_settings:
+            if not isinstance(project_settings['db_extensions'], list):
+                raise click.ClickException(
+                    '{} file contains invalid "db_extensions" value. '
+                    'It should contain a list of extensions, for instance: {}'
+                    .format(settings.ALDRYN_DOT_FILE, default_db_extensions)
+                )
+            return project_settings['db_extensions']
+        else:
+            return default_db_extensions
 
     def prepare_db_server(self):
         utils.start_database_server(self.docker_compose)
