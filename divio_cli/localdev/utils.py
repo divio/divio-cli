@@ -11,11 +11,20 @@ from .. import exceptions
 from .. import settings
 from .. import config
 
+DOT_ALDRYN_FILE_NOT_FOUND = (
+    "Divio Cloud project file '.aldryn' could not be found!\n"
+    "Please make sure you're in a Divio Cloud project folder and the "
+    "file exists."
+)
+
 
 def get_aldryn_project_settings(path=None, silent=False):
     project_home = get_project_home(path, silent=silent)
-    with open(os.path.join(project_home, settings.ALDRYN_DOT_FILE)) as fh:
-        return json.load(fh)
+    try:
+        with open(os.path.join(project_home, settings.ALDRYN_DOT_FILE)) as fh:
+            return json.load(fh)
+    except (TypeError, OSError):
+        raise click.ClickException(DOT_ALDRYN_FILE_NOT_FOUND)
 
 
 def get_project_home(path=None, silent=False):
@@ -39,10 +48,7 @@ def get_project_home(path=None, silent=False):
         current_path = os.path.abspath(os.path.join(current_path, os.pardir))
     if silent:
         return
-    raise click.ClickException(
-        "Divio Cloud project file '.aldryn' could not be found! Please make "   # FIXME: Rename
-        "sure you're in a Divio Cloud project folder and the file exists."
-    )
+    raise click.ClickException(DOT_ALDRYN_FILE_NOT_FOUND)
 
 
 UNIX_DOCKER_COMPOSE_FILENAME = 'docker-compose.yml'
