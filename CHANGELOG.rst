@@ -2,6 +2,13 @@ Changelog
 =========
 
 
+3.3.7 (2018-02-28)
+------------------
+
+* Show better warning if ``.aldryn`` file is missing
+* DB extensions configurable via ``.aldryn`` file
+
+
 3.3.5 (2018-02-21)
 ------------------
 
