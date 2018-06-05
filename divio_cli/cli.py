@@ -224,6 +224,12 @@ def project_up():
     localdev.start_project()
 
 
+@project.command(name='start')
+def project_start():
+    """Alias for 'up', start local project"""
+    localdev.start_project()
+
+
 @project.command(name='open')
 def project_open():
     """Open local project in browser"""
@@ -330,6 +336,12 @@ def project_status():
 @project.command(name='stop')
 def project_stop():
     """Stop local project"""
+    localdev.stop_project()
+
+
+@project.command(name='down')
+def project_down():
+    """Alias for 'stop', stop local project"""
     localdev.stop_project()
 
 
