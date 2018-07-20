@@ -9,27 +9,27 @@ jobs:
       - run:
           name: Run Tests
           command: ./scripts/build-unix.sh
-  python-osx:
-    macos:
-      xcode: "9.0"
-    steps:
-      - checkout
-      - run:
-          name: Setup brew/virtualenv
-          command: | 
-            brew update
-            brew upgrade python
-            pip3 install virtualenv
-            virtualenv env -p python3
-      - run:
-          name: Run Tests
-          command: |
-            source env/bin/activate
-            ./scripts/build-unix.sh
+#  python-osx:
+#    macos:
+#      xcode: "9.0"
+#    steps:
+#      - checkout
+#      - run:
+#          name: Setup brew/virtualenv
+#          command: | 
+#            brew update
+#            brew upgrade python
+#            pip3 install virtualenv
+#            virtualenv env -p python3
+#      - run:
+#          name: Run Tests
+#          command: |
+#            source env/bin/activate
+#            ./scripts/build-unix.sh
 
 workflows:
   version: 2
   build:
     jobs:
         - python-linux
-        - python-osx
+#        - python-osx
