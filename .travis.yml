@@ -10,6 +10,9 @@ matrix:
         - pyenv install 3.6.3
         - pyenv local 3.6.3
         - python -V
+        - pip install virtualenv
+        - virtualenv env -p python
+        - source env/bin/activate
     - language: python
       os: linux
       python: 3.6
