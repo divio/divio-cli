@@ -1,7 +1,7 @@
 import json
 
-from ..utils import tar_add_stringio, get_string_io
-from ..validators.common import load_config, get_license
+from ..utils import get_string_io, tar_add_stringio
+from ..validators.common import get_license, load_config
 
 
 def add_meta_files(tar, path, config_filename):
@@ -14,4 +14,4 @@ def add_meta_files(tar, path, config_filename):
     # license
     license_filepath = get_license(path)
     if license_filepath:
-        tar.add(license_filepath, 'LICENSE.txt')
+        tar.add(license_filepath, "LICENSE.txt")

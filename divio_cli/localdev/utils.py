@@ -1,15 +1,13 @@
 import json
-import sys
 import os
+import sys
 from time import time
 
 import click
 import yaml
 
-from ..utils import check_output, is_windows, check_call
-from .. import exceptions
-from .. import settings
-from .. import config
+from .. import config, exceptions, settings
+from ..utils import check_call, check_output, is_windows
 
 DOT_ALDRYN_FILE_NOT_FOUND = (
     "Divio Cloud project file '.aldryn' could not be found!\n"
@@ -51,8 +49,8 @@ def get_project_home(path=None, silent=False):
     raise click.ClickException(DOT_ALDRYN_FILE_NOT_FOUND)
 
 
-UNIX_DOCKER_COMPOSE_FILENAME = 'docker-compose.yml'
-WINDOWS_DOCKER_COMPOSE_FILENAME = 'docker-compose-windows.yml'
+UNIX_DOCKER_COMPOSE_FILENAME = "docker-compose.yml"
+WINDOWS_DOCKER_COMPOSE_FILENAME = "docker-compose-windows.yml"
 
 
 def get_docker_compose_cmd(path):
@@ -63,7 +61,9 @@ def get_docker_compose_cmd(path):
         docker_compose_filename = UNIX_DOCKER_COMPOSE_FILENAME
 
     docker_compose_base = [
-        'docker-compose', '-f', os.path.join(path, docker_compose_filename)
+        "docker-compose",
+        "-f",
+        os.path.join(path, docker_compose_filename),
     ]
 
     def docker_compose(*commands):
@@ -104,20 +104,19 @@ def ensure_windows_docker_compose_file_exists(path):
     if not os.path.isfile(unix_path):
         # TODO: use correct exit from click
         click.secho(
-            'docker-compose.yml not found at {}'.format(unix_path),
-            fg='red',
+            "docker-compose.yml not found at {}".format(unix_path), fg="red"
         )
         sys.exit(1)
 
-    with open(unix_path, 'r') as fh:
+    with open(unix_path, "r") as fh:
         conf = yaml.load(fh)
 
     for component, sections in conf.items():
-        if 'volumes' not in sections:
+        if "volumes" not in sections:
             continue
         volumes = []
-        for volume in sections['volumes']:
-            parts = volume.split(':')
+        for volume in sections["volumes"]:
+            parts = volume.split(":")
             if len(parts) == 2:
                 old_host, container = parts
                 mode = None
@@ -127,43 +126,43 @@ def ensure_windows_docker_compose_file_exists(path):
             # assuming relative path's for old_host
             new_host = os.path.abspath(os.path.join(path, old_host))
             # replace C:\ with /c/, because, docker on windows
-            new_host = new_host.replace('C:\\', '/c/')
+            new_host = new_host.replace("C:\\", "/c/")
             # change to unix paths
-            new_host = new_host.replace('\\', '/')
+            new_host = new_host.replace("\\", "/")
             new_volume = [new_host, container]
             if mode:
                 new_volume.append(mode)
-            volumes.append(':'.join(new_volume))
+            volumes.append(":".join(new_volume))
 
-        conf[component]['volumes'] = volumes
+        conf[component]["volumes"] = volumes
 
-    with open(windows_path, 'w+') as fh:
+    with open(windows_path, "w+") as fh:
         yaml.safe_dump(conf, fh)
 
 
 def get_db_container_id(path, raise_on_missing=True):
     docker_compose = get_docker_compose_cmd(path)
-    output = check_output(docker_compose('ps', '-q', 'db')).rstrip(os.linesep)
+    output = check_output(docker_compose("ps", "-q", "db")).rstrip(os.linesep)
     if not output and raise_on_missing:
-        raise exceptions.AldrynException('Unable to find database container')
+        raise exceptions.AldrynException("Unable to find database container")
     return output
 
 
 def start_database_server(docker_compose):
     start_db = time()
-    click.secho(' ---> Starting local database server')
-    click.secho('      ', nl=False)
-    check_call(docker_compose('up', '-d', 'db'))
-    click.secho('      [{}s]'.format(int(time() - start_db)))
+    click.secho(" ---> Starting local database server")
+    click.secho("      ", nl=False)
+    check_call(docker_compose("up", "-d", "db"))
+    click.secho("      [{}s]".format(int(time() - start_db)))
 
 
 class DockerComposeConfig(object):
     def __init__(self, docker_compose):
         super(DockerComposeConfig, self).__init__()
-        self.config = yaml.load(check_output(docker_compose('config')))
+        self.config = yaml.load(check_output(docker_compose("config")))
 
     def get_services(self):
-        return self.config.get('services', {})
+        return self.config.get("services", {})
 
     def has_service(self, service):
         return service in self.get_services().keys()
@@ -180,8 +179,8 @@ class DockerComposeConfig(object):
         except KeyError:
             return False
 
-        for mount in service_config.get('volumes', []):
-            bits = mount.strip().split(':')
+        for mount in service_config.get("volumes", []):
+            bits = mount.strip().split(":")
             if len(bits) > 2 and bits[-2] == remote_path:
                 return True
 
@@ -191,14 +190,14 @@ def allow_remote_id_override(func):
 
     def read_remote_id(remote_id, *args, **kwargs):
         ERROR_MSG = (
-            'This command requires a Divio Cloud Project id. Please '
-            'provide one with the --remote-id option or call the '
-            'command from a project directory (with a .aldryn file).'
+            "This command requires a Divio Cloud Project id. Please "
+            "provide one with the --remote-id option or call the "
+            "command from a project directory (with a .aldryn file)."
         )
 
         if not remote_id:
             try:
-                remote_id = get_aldryn_project_settings(silent=True)['id']
+                remote_id = get_aldryn_project_settings(silent=True)["id"]
             except KeyError:
                 raise click.ClickException(ERROR_MSG)
             else:
@@ -207,11 +206,11 @@ def allow_remote_id_override(func):
         return func(remote_id, *args, **kwargs)
 
     return click.option(
-        '--remote-id',
-        'remote_id',
+        "--remote-id",
+        "remote_id",
         default=None,
         type=int,
-        help='Remote Project ID to use for project commands. '
-             'Defaults to the project in the current directory using the '
-             '.aldryn file.'
+        help="Remote Project ID to use for project commands. "
+        "Defaults to the project in the current directory using the "
+        ".aldryn file.",
     )(read_remote_id)
