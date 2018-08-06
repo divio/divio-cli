@@ -100,7 +100,7 @@ class APIRequest(object):
             requests.exceptions.Timeout,
         ) as e:
             raise click.ClickException(
-                messages.NETWORK_ERROR_MESSAGE + unicode(e)
+                messages.NETWORK_ERROR_MESSAGE + str(e)
             )
 
         return self.verify(response)
