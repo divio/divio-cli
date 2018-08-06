@@ -1,13 +1,12 @@
 import json
-import time
 import os
+import time
 from distutils.version import StrictVersion
 
-from . import utils, __version__, settings
-
+from . import __version__, settings, utils
 
 CONFIG_FILE_NAME = settings.ALDRYN_DOT_FILE
-CONFIG_FILE_PATH = os.path.join(os.path.expanduser('~'), CONFIG_FILE_NAME)
+CONFIG_FILE_PATH = os.path.join(os.path.expanduser("~"), CONFIG_FILE_NAME)
 
 
 class Config(object):
@@ -20,7 +19,7 @@ class Config(object):
 
     def read(self):
         try:
-            with open(self.config_path, 'r') as fh:
+            with open(self.config_path, "r") as fh:
                 config = json.load(fh)
         except IOError:
             # file doesn't exist
@@ -31,16 +30,16 @@ class Config(object):
         self.config = config
 
     def save(self):
-        with open(self.config_path, 'w+') as fh:
+        with open(self.config_path, "w+") as fh:
             json.dump(self.config, fh)
 
     def check_for_updates(self, force=False):
         """check for updates daily"""
-        if self.config.get('disable_update_check', False) and not force:
+        if self.config.get("disable_update_check", False) and not force:
             return
 
-        timestamp_key = 'update_check_timestamp'
-        version_key = 'update_check_version'
+        timestamp_key = "update_check_timestamp"
+        version_key = "update_check_version"
 
         last_checked = self.config.get(timestamp_key, None)
         now = int(time.time())
@@ -71,17 +70,16 @@ class Config(object):
             current=str(__version__),
             remote=str(newest_version),
             update_available=(
-                newest_version > installed_version
-                if newest_version else False
+                newest_version > installed_version if newest_version else False
             ),
             pypi_error=pypi_error,
         )
 
     def skip_doctor(self):
-        return self.config.get('skip_doctor')
+        return self.config.get("skip_doctor")
 
     def get_skip_doctor_checks(self):
-        checks = self.config.get('skip_doctor_checks')
+        checks = self.config.get("skip_doctor_checks")
         if not checks or not isinstance(checks, list):
             return []
         return checks
