@@ -7,7 +7,6 @@ matrix:
       os: osx
       before_install:
         - brew update
-        - brew install pyenv
         - pyenv install 3.6
         - pyenv local 3.6
         - python -V
