@@ -1,16 +1,15 @@
 import os
-
-import attr
 import struct
 
-from cryptography.hazmat.primitives import hmac, hashes
-from cryptography.hazmat.primitives.ciphers import Cipher, modes, algorithms
-from cryptography.hazmat.primitives.kdf import hkdf
+import attr
 from cryptography.hazmat import backends
+from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf import hkdf
 
 
 def iterchunks(data, chunksize):
-    current = ''
+    current = ""
 
     while True:
         nextchunk = data.read(chunksize)
@@ -27,7 +26,9 @@ def minval(length):
     def validator(instance, attribute, value):
         if value < length:
             raise ValueError(
-                '{} has to be >= {}'.format(attribute.name, length))
+                "{} has to be >= {}".format(attribute.name, length)
+            )
+
     return validator
 
 
@@ -36,7 +37,7 @@ class CipherMixin(object):
 
     # If anything below changes, the version also needs to be bumped and the
     # implementation adapted accordingly.
-    header_format = b'>B16s16s16s'
+    header_format = b">B16s16s16s"
     header_length = struct.calcsize(header_format)
     algorithm = algorithms.AES
     key_size = 256
@@ -45,8 +46,9 @@ class CipherMixin(object):
     auth_hash = hashes.SHA256
 
     def encode_header(self, iv, salt, auth_salt):
-        return struct.pack(self.header_format,
-                           self.version, iv, salt, auth_salt)
+        return struct.pack(
+            self.header_format, self.version, iv, salt, auth_salt
+        )
 
     def decode_header(self, data):
         version, iv, salt, auth_salt = struct.unpack(self.header_format, data)
@@ -63,7 +65,7 @@ class CipherMixin(object):
             length=self.key_size / 8,
             salt=salt,
             info=None,
-            backend=backends.default_backend()
+            backend=backends.default_backend(),
         )
         return kdf.derive(key)
 
@@ -84,16 +86,10 @@ class StreamEncryptor(CipherMixin, object):
         auth_key = self.stretch_key(self.key, auth_salt)
 
         encryptor = Cipher(
-            self.algorithm(key),
-            self.cipher_mode(iv),
-            backend=self.backend,
+            self.algorithm(key), self.cipher_mode(iv), backend=self.backend
         ).encryptor()
 
-        auth = self.auth(
-            auth_key,
-            self.auth_hash(),
-            backend=self.backend,
-        )
+        auth = self.auth(auth_key, self.auth_hash(), backend=self.backend)
 
         header = self.encode_header(iv, salt, auth_salt)
         auth.update(header)
@@ -132,24 +128,18 @@ class StreamDecryptor(CipherMixin, object):
         auth_key = self.stretch_key(self.key, auth_salt)
 
         decryptor = Cipher(
-            self.algorithm(key),
-            self.cipher_mode(iv),
-            backend=self.backend,
+            self.algorithm(key), self.cipher_mode(iv), backend=self.backend
         ).decryptor()
 
-        auth = self.auth(
-            auth_key,
-            self.auth_hash(),
-            backend=self.backend,
-        )
+        auth = self.auth(auth_key, self.auth_hash(), backend=self.backend)
 
         auth.update(header)
 
         for chunk, islast in iterchunks(fh, self.chunk_size):
             if islast:
                 chunk, signature = (
-                    chunk[:-self.signature_length],
-                    chunk[-self.signature_length:],
+                    chunk[: -self.signature_length],
+                    chunk[-self.signature_length :],
                 )
 
             auth.update(chunk)

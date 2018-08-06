@@ -1,16 +1,9 @@
 import json
 import os
 
-from .. import exceptions
-from .. import messages
+from .. import exceptions, messages
 
-
-VALID_LICENSE_FILENAMES = (
-    'LICENSE.txt',
-    'LICENSE',
-    'license.txt',
-    'license',
-)
+VALID_LICENSE_FILENAMES = ("LICENSE.txt", "LICENSE", "license.txt", "license")
 
 
 def get_license(path):
@@ -21,7 +14,7 @@ def get_license(path):
 
 
 def load_config(fname, path=None):
-    config_fpath = os.path.join(path or '.', fname)
+    config_fpath = os.path.join(path or ".", fname)
     if not os.path.exists(config_fpath):
         raise exceptions.AldrynException(
             messages.FILE_NOT_FOUND.format(config_fpath)
@@ -32,7 +25,7 @@ def load_config(fname, path=None):
             return json.load(f)
         except ValueError:
             raise exceptions.AldrynException(
-                'Config file could not be loaded: Invalid JSON'
+                "Config file could not be loaded: Invalid JSON"
             )
 
 
@@ -41,8 +34,8 @@ def validate_package_config(config, required_keys, config_path):
 
     if not get_license(config_path):
         errors.append(
-            'Required LICENSE file not found. Valid names are {}.'.format(
-                ', '.join(VALID_LICENSE_FILENAMES)
+            "Required LICENSE file not found. Valid names are {}.".format(
+                ", ".join(VALID_LICENSE_FILENAMES)
             )
         )
 

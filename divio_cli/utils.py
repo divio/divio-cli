@@ -1,11 +1,11 @@
+import io
 import json
-import subprocess
+import os
 import platform
+import subprocess
+import sys
 import tarfile
 import tempfile
-import io
-import os
-import sys
 from contextlib import contextmanager
 from distutils.version import StrictVersion
 from math import log
@@ -13,16 +13,16 @@ from math import log
 import click
 import requests
 from six import PY2
-from tabulate import tabulate
 from six.moves.urllib_parse import urljoin
+
+from tabulate import tabulate
 
 from . import __version__
 
+ALDRYN_DEFAULT_BRANCH_NAME = "develop"
 
-ALDRYN_DEFAULT_BRANCH_NAME = 'develop'
 
-
-def hr(char='-', width=None, **kwargs):
+def hr(char="-", width=None, **kwargs):
     if width is None:
         width = click.get_terminal_size()[0]
     click.secho(char * width, **kwargs)
@@ -33,19 +33,16 @@ def table(data, headers):
 
 
 def indent(text, spaces=4):
-    return '\n'.join(' ' * spaces + ln for ln in text.splitlines())
+    return "\n".join(" " * spaces + ln for ln in text.splitlines())
 
 
 def get_package_version(path):
-    return check_output(
-            ['python', 'setup.py', '--version'],
-            cwd=path
-    ).strip()
+    return check_output(["python", "setup.py", "--version"], cwd=path).strip()
 
 
 @contextmanager
 def dev_null():
-    with open(os.devnull, 'wb') as devnull:
+    with open(os.devnull, "wb") as devnull:
         yield devnull
 
 
@@ -84,15 +81,17 @@ def redirect_stderr(new_stream):
 
 
 def create_temp_dir():
-    return tempfile.mkdtemp(prefix='tmp_divio_cli_')
+    return tempfile.mkdtemp(prefix="tmp_divio_cli_")
 
 
 def get_bytes_io(*args, **kwargs):
     if PY2:
         from StringIO import StringIO
+
         cls = StringIO
     else:
         from io import BytesIO
+
         cls = BytesIO
     return cls(*args, **kwargs)
 
@@ -123,42 +122,42 @@ def get_subprocess_env():
     try:
         # See the following link for details
         # https://github.com/pyinstaller/pyinstaller/blob/master/doc/runtime-information.rst#ld_library_path--libpath-considerations
-        env['LD_LIBRARY_PATH'] = env.pop('LD_LIBRARY_PATH_ORIG')
+        env["LD_LIBRARY_PATH"] = env.pop("LD_LIBRARY_PATH_ORIG")
     except KeyError:
         pass
     return env
 
 
 def execute(func, *popenargs, **kwargs):
-    if 'env' not in kwargs:
-        kwargs['env'] = get_subprocess_env()
-    catch = kwargs.pop('catch', True)
-    if kwargs.pop('silent', False):
-        if 'stdout' not in kwargs:
-            kwargs['stdout'] = open(os.devnull, 'w')
+    if "env" not in kwargs:
+        kwargs["env"] = get_subprocess_env()
+    catch = kwargs.pop("catch", True)
+    if kwargs.pop("silent", False):
+        if "stdout" not in kwargs:
+            kwargs["stdout"] = open(os.devnull, "w")
             if not is_windows():
                 # close file descriptor devnull after exit
                 # unfortunately, close_fds is not supported on Windows
                 # platforms if you redirect stdin/stdout/stderr
                 # => http://svn.python.org/projects/python/
                 #    branches/py3k/Lib/subprocess.py
-                kwargs['close_fds'] = True
-        if 'stderr' not in kwargs:
-            kwargs['stderr'] = subprocess.STDOUT
+                kwargs["close_fds"] = True
+        if "stderr" not in kwargs:
+            kwargs["stderr"] = subprocess.STDOUT
     try:
         return func(*popenargs, **kwargs)
     except subprocess.CalledProcessError as exc:
         if not catch:
             raise
         output = (
-            'There was an error trying to run a command. This is most likely',
-            'not an issue with divio-cli, but the called program itself.',
-            'Try checking the output of the command above.',
-            'The command was:',
-            '  {command}'.format(command=' '.join(exc.cmd))
+            "There was an error trying to run a command. This is most likely",
+            "not an issue with divio-cli, but the called program itself.",
+            "Try checking the output of the command above.",
+            "The command was:",
+            "  {command}".format(command=" ".join(exc.cmd)),
         )
-        hr(fg='red')
-        click.secho(os.linesep.join(output), fg='red')
+        hr(fg="red")
+        click.secho(os.linesep.join(output), fg="red")
         sys.exit(1)
 
 
@@ -171,37 +170,36 @@ def check_output(*popenargs, **kwargs):
 
 
 def open_project_cloud_site(client, project_id, stage):
-    assert stage in ('test', 'live')
+    assert stage in ("test", "live")
     project_data = client.get_project(project_id)
-    url = project_data['{}_status'.format(stage)]['site_url']
+    url = project_data["{}_status".format(stage)]["site_url"]
     if url:
         click.launch(url)
     else:
-        click.secho('No {} server deployed yet.'.format(stage), fg='yellow')
+        click.secho("No {} server deployed yet.".format(stage), fg="yellow")
 
 
-def get_cp_url(client, project_id, section='dashboard'):
+def get_cp_url(client, project_id, section="dashboard"):
     project_data = client.get_project(project_id)
-    url = project_data['dashboard_url']
+    url = project_data["dashboard_url"]
 
-    if section != 'dashboard':
+    if section != "dashboard":
         url = urljoin(url, section)
 
     return url
 
 
 def is_windows():
-    return sys.platform == 'win32'
+    return sys.platform == "win32"
 
 
 def is_linux():
-    return sys.platform.startswith('linux')
+    return sys.platform.startswith("linux")
 
 
-unit_list = list(zip(
-        ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
-        [0, 0, 1, 2, 2, 2],
-))
+unit_list = list(
+    zip(["bytes", "kB", "MB", "GB", "TB", "PB"], [0, 0, 1, 2, 2, 2])
+)
 
 
 def pretty_size(num):
@@ -211,12 +209,12 @@ def pretty_size(num):
         exponent = min(int(log(num, 1024)), len(unit_list) - 1)
         quotient = float(num) / 1024 ** exponent
         unit, num_decimals = unit_list[exponent]
-        format_string = '{:.%sf} {}' % (num_decimals)
+        format_string = "{:.%sf} {}" % (num_decimals)
         return format_string.format(quotient, unit)
     elif num == 0:
-        return '0 bytes'
+        return "0 bytes"
     elif num == 1:
-        return '1 byte'
+        return "1 byte"
 
 
 def get_size(start_path):
@@ -242,11 +240,9 @@ def get_size(start_path):
 
 def get_latest_version_from_pypi():
     try:
-        response = requests.get(
-            'https://pypi.python.org/pypi/divio-cli/json'
-        )
+        response = requests.get("https://pypi.python.org/pypi/divio-cli/json")
         response.raise_for_status()
-        newest_version = StrictVersion(response.json()['info']['version'])
+        newest_version = StrictVersion(response.json()["info"]["version"])
         return newest_version, None
     except requests.RequestException as exc:
         return False, exc
@@ -256,23 +252,23 @@ def get_latest_version_from_pypi():
 
 def get_git_commit():
     script_home = os.path.dirname(__file__)
-    git_dir = os.path.join(script_home, '..', '.git')
+    git_dir = os.path.join(script_home, "..", ".git")
     if os.path.exists(git_dir):
         try:
-            return subprocess.check_output([
-                'git', '--git-dir', git_dir,
-                'rev-parse', '--short', 'HEAD'
-            ], env=get_subprocess_env()).strip()
+            return subprocess.check_output(
+                ["git", "--git-dir", git_dir, "rev-parse", "--short", "HEAD"],
+                env=get_subprocess_env(),
+            ).strip()
         except:
             pass
 
 
 def get_git_checked_branch():
     try:
-        return subprocess.check_output([
-            'git',
-            'rev-parse', '--abbrev-ref', 'HEAD'
-        ], env=get_subprocess_env()).strip()
+        return subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            env=get_subprocess_env(),
+        ).strip()
     except subprocess.CalledProcessError:
         return ALDRYN_DEFAULT_BRANCH_NAME
 
@@ -280,27 +276,25 @@ def get_git_checked_branch():
 def get_user_agent():
     revision = get_git_commit()
     if revision:
-        client = 'divio-cli/{}-{}'.format(__version__, revision)
+        client = "divio-cli/{}-{}".format(__version__, revision)
     else:
-        client = 'divio-cli/{}'.format(__version__)
+        client = "divio-cli/{}".format(__version__)
 
-    os_identifier = '{}/{}'.format(platform.system(), platform.release())
-    python = '{}/{}'.format(
-        platform.python_implementation(),
-        platform.python_version(),
+    os_identifier = "{}/{}".format(platform.system(), platform.release())
+    python = "{}/{}".format(
+        platform.python_implementation(), platform.python_version()
     )
-    return '{} ({}; {})'.format(client, os_identifier, python)
+    return "{} ({}; {})".format(client, os_identifier, python)
 
 
 def download_file(url, directory=None, filename=None):
     response = requests.get(url, stream=True)
 
     dump_path = os.path.join(
-        directory or create_temp_dir(),
-        filename or 'data.tar.gz',
+        directory or create_temp_dir(), filename or "data.tar.gz"
     )
 
-    with open(dump_path, 'wb') as f:
+    with open(dump_path, "wb") as f:
         for chunk in response.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
@@ -310,19 +304,19 @@ def download_file(url, directory=None, filename=None):
 
 def print_package_renamed_warning():
     message = (
-        'aldryn-client has been renamed to divio-cli. Please call it using '
-        '`divio` from now on, the shortcut `aldryn` is deprecated and will be '
-        'removed in a later version.'
+        "aldryn-client has been renamed to divio-cli. Please call it using "
+        "`divio` from now on, the shortcut `aldryn` is deprecated and will be "
+        "removed in a later version."
     )
 
-    hr(char='=', fg='red')
-    click.secho(message, fg='red')
-    hr(char='=', fg='red')
-    click.echo('')
+    hr(char="=", fg="red")
+    click.secho(message, fg="red")
+    hr(char="=", fg="red")
+    click.echo("")
 
 
 def json_dumps_unicode(d, **kwargs):
-    return json.dumps(d, ensure_ascii=False, **kwargs).encode('utf-8')
+    return json.dumps(d, ensure_ascii=False, **kwargs).encode("utf-8")
 
 
 class Map(dict):
@@ -331,6 +325,7 @@ class Map(dict):
     Example:
     m = Map({'first_name': 'Eduardo'}, last_name='Pool', age=24, sports=['Soccer'])
     """
+
     def __init__(self, *args, **kwargs):
         super(Map, self).__init__(*args, **kwargs)
         for arg in args:
