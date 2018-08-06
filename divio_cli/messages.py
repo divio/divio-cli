@@ -11,7 +11,8 @@ SERVER_ERROR = (
     "Please try again later"
 )
 AUTH_INVALID_TOKEN = "Login failed. Invalid token specified"
-RESOURCE_NOT_FOUND = "Requested resource could not be found. Are you logged in?"
+RESOURCE_NOT_FOUND_ANONYMOUS = "Resource not found"
+RESOURCE_NOT_FOUND = "Resource not found. You are logged in as '{login}', please check if you have permissions to access the ressource"
 LOGIN_SUCCESSFUL = (
     u"Welcome to Divio Cloud. You are now logged in as {greeting}"
 )

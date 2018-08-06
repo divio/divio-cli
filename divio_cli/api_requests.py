@@ -2,7 +2,7 @@ import os
 
 import click
 import requests
-from six.moves.urllib_parse import urljoin
+from six.moves.urllib_parse import urljoin, urlparse
 
 from . import messages
 from .utils import create_temp_dir, get_user_agent
@@ -45,7 +45,7 @@ class APIRequest(object):
     default_error_message = messages.SERVER_ERROR
     response_code_error_map = {
         requests.codes.forbidden: messages.AUTH_INVALID_TOKEN,
-        requests.codes.not_found: messages.RESOURCE_NOT_FOUND,
+        requests.codes.not_found: messages.RESOURCE_NOT_FOUND_ANONYMOUS,
     }
 
     method = "GET"
@@ -76,7 +76,25 @@ class APIRequest(object):
     def get_url(self):
         return self.url.format(**self.url_kwargs)
 
-    def get_error_code_map(self):
+    def get_login(self):
+        """ Tries to get the login name for the current request """
+        # import done here to prevent circular import
+        from . import cloud
+
+        netrc = cloud.WritableNetRC()
+        host = urlparse(self.session.host).hostname
+        data = netrc.hosts.get(host)
+        if data:
+            return data[0]
+        return False
+
+    def get_error_code_map(self, login=None):
+        # if a login is provided, change the errormessages accordingly
+        if login:
+            self.response_code_error_map[
+                requests.codes.not_found
+            ] = messages.RESOURCE_NOT_FOUND.format(login=login)
+
         return self.response_code_error_map
 
     def get_headers(self):
@@ -99,15 +117,15 @@ class APIRequest(object):
             requests.exceptions.ConnectionError,
             requests.exceptions.Timeout,
         ) as e:
-            raise click.ClickException(
-                messages.NETWORK_ERROR_MESSAGE + str(e)
-            )
+            raise click.ClickException(messages.NETWORK_ERROR_MESSAGE + str(e))
 
         return self.verify(response)
 
     def verify(self, response):
         if not response.ok:
-            error_msg = self.get_error_code_map().get(response.status_code)
+            error_msg = self.get_error_code_map(self.get_login()).get(
+                response.status_code
+            )
             if not error_msg:
                 response_content = response.content
                 if not self.session.debug:
