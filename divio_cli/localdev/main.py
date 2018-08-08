@@ -475,7 +475,7 @@ def pull_media(client, stage, remote_id=None, path=None):
         check_call(
             docker_compose(
                 'run', '--rm', 'web',
-                'chown', '-R', str(os.getuid()), remote_data_folder
+                'chown', str(os.getuid()), remote_data_folder
             )
         )
 
