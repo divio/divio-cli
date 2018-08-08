@@ -552,7 +552,6 @@ def pull_media(client, stage, remote_id=None, path=None):
                 "--rm",
                 "web",
                 "chown",
-                "-R",
                 str(os.getuid()),
                 remote_data_folder,
             )
