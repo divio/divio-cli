@@ -7,9 +7,10 @@ matrix:
       os: osx
       before_install:
         - brew update
-        - brew upgrade python
-        - pip3 install virtualenv
-        - virtualenv env -p python3
+        - pyenv install 3.6.3
+        - pyenv local 3.6.3
+        - pip install virtualenv
+        - virtualenv env
         - source env/bin/activate
     - language: python
       os: linux
