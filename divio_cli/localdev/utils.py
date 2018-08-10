@@ -72,30 +72,38 @@ def get_docker_compose_cmd(path):
     return docker_compose
 
 
+def prepare_yaml_for_windows(conf):
+    """
+    We have to make two changes for postgres on windows:
+
+    1) remove PGDATA environment variable
+    2) switch the postgres data volume to an anonymous volume
+
+    Both changes exist to prevent permission issues.
+
+    """
+    for component, containers in conf.items():
+        if component == "services":
+
+            for container_name, container in containers.items():
+
+                if "environment" in container and "PGDATA" in container["environment"]:
+                    del container["environment"]["PGDATA"]
+
+                if "volumes" in container:
+                    volumes = []
+                    for volume in container["volumes"]:
+                        if "/var/lib/postgresql/data" in volume:
+                            # due to permission issues, we just use an
+                            # anonymous volume on windows for the database
+                            volumes.append("/var/lib/postgresql/data")
+                        else:
+                            volumes.append(volume)
+
+                    conf[component][container_name]["volumes"] = volumes
+    return conf
+
 def ensure_windows_docker_compose_file_exists(path):
-    """
-    Unfortunately, docker-compose is not yet officially released
-     for Windows There's still some rough edges, and volume
-     configuration is one. There's also some open issues in
-     boot2docker for windows which makes things difficult.
-
-    We have to change the volume specifications to a very specific
-     format:
-
-     - absolute paths: relative one's are not yet supported
-     - currently only works if the project is running on the C:\ drive
-     - unix style paths: need to replace '\' with '/'
-     - paths have to start with /c/ instead of C:\ otherwise
-        docker-compose gets confused because they use : as separation
-
-    Example:
-      unix format:  .:/app:rw
-      cwd:          C:\\Users\\aldryn\\acme-portfolio
-      windows:     /c/Users/aldryn/acme-portfolio:/app:rw
-
-    Hope that's all. And of course, I'm sorry.
-    """
-
     windows_path = os.path.join(path, WINDOWS_DOCKER_COMPOSE_FILENAME)
     if os.path.isfile(windows_path):
         return
@@ -111,33 +119,11 @@ def ensure_windows_docker_compose_file_exists(path):
     with open(unix_path, "r") as fh:
         conf = yaml.load(fh)
 
-    for component, sections in conf.items():
-        if "volumes" not in sections:
-            continue
-        volumes = []
-        for volume in sections["volumes"]:
-            parts = volume.split(":")
-            if len(parts) == 2:
-                old_host, container = parts
-                mode = None
-            else:
-                old_host, container, mode = parts
-
-            # assuming relative path's for old_host
-            new_host = os.path.abspath(os.path.join(path, old_host))
-            # replace C:\ with /c/, because, docker on windows
-            new_host = new_host.replace("C:\\", "/c/")
-            # change to unix paths
-            new_host = new_host.replace("\\", "/")
-            new_volume = [new_host, container]
-            if mode:
-                new_volume.append(mode)
-            volumes.append(":".join(new_volume))
-
-        conf[component]["volumes"] = volumes
+    windows_conf = prepare_yaml_for_windows(conf)
 
     with open(windows_path, "w+") as fh:
-        yaml.safe_dump(conf, fh)
+        yaml.safe_dump(windows_conf, fh)
+
 
 
 def get_db_container_id(path, raise_on_missing=True):

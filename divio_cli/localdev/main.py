@@ -938,6 +938,9 @@ def open_project(open_browser=True):
         if docker_host_url:
             proto, host_port = os.environ.get("DOCKER_HOST").split("://")
             host = host_port.split(":")[0]
+        else:
+            # fallback to localhost if 0.0.0.0
+            host = "127.0.0.1"
 
     addr = "http://{}:{}/".format(host, port)
 
