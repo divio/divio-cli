@@ -319,6 +319,10 @@ def json_dumps_unicode(d, **kwargs):
     return json.dumps(d, ensure_ascii=False, **kwargs).encode("utf-8")
 
 
+def get_available_environments():
+    return ['test', 'live']
+
+
 class Map(dict):
     """
     A dictionary which also allows accessing values by dot notation.
