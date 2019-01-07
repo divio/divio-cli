@@ -1,6 +1,18 @@
 Changelog
 =========
 
+3.3.9 (2019-01-07)
+------------------
+
+* Improved DNS lookup check
+
+
+3.3.8 (2018-08-14)
+------------------
+
+* Ensure 'stage' argument sanity
+* Use a wrapper function to determine the available environments
+
 
 3.3.7 (2018-02-28)
 ------------------
