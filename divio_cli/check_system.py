@@ -177,7 +177,7 @@ class DockerEngineDNSCheck(DockerEngineBaseCheck):
         "busybox",
         "sh",
         "-c",  # run in new a shell to avoid problems with timeout
-        "timeout -t 5 nslookup control.divio.com",
+        "timeout -t 5 nslookup -type=a control.divio.com.",
     )
 
     def fmt_exception(self, exc):
