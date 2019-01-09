@@ -1,6 +1,12 @@
 Changelog
 =========
 
+3.3.11 (2019-01-09)
+------------------------
+
+* Updated DNS check to work with the latest busybox image. Older busybox versions must upgrade!
+
+
 3.3.10 (2019-01-07)
 ------------------------
 
