@@ -37,13 +37,19 @@ def get_git_host():
     return git_host
 
 
-def get_git_clone_url(slug):
-    return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
+def get_git_clone_url(slug, website_id, client):
+        remote_dsn = client.get_repository_dsn(website_id)
+        # if we could get a remote_dsn, us it! Otherwise, its probably a default git setup
+        if remote_dsn:
+            return remote_dsn
+        return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
 
 
-def clone_project(website_slug, path):
+def clone_project(website_slug, path, client):
     click.secho("\ncloning project repository", fg="green")
-    website_git_url = get_git_clone_url(website_slug)
+    website_id = client.get_website_id_for_slug(website_slug)
+
+    website_git_url = get_git_clone_url(website_slug, website_id, client=client)
     clone_args = ["git", "clone", website_git_url]
     if path:
         clone_args.append(path)
@@ -142,7 +148,7 @@ def create_workspace(
             sys.exit(1)
 
     # clone git project
-    clone_project(website_slug=website_slug, path=path)
+    clone_project(website_slug=website_slug, path=path, client=client)
 
     # check for new baseproject + add .aldryn
     configure_project(website_slug=website_slug, path=path, client=client)

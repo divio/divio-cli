@@ -368,3 +368,10 @@ class GetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
 class SetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
     method = "POST"
     url = "/api/v1/website/{website_id}/env/{stage}/environment-variables/custom/"
+
+
+
+# Repository
+
+class RepositoryRequest(JsonResponse, APIRequest):
+    url = "/api/v2/repositories/?website={website_id}"
