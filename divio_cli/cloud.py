@@ -364,7 +364,8 @@ class CloudClient(object):
             )
             response = request()
             parsed = giturlparse.parse(response["results"][0]["backend_config"]["repository_dsn"])
-            return "{protocol}://{user}@{resource}:{port}{pathname}".format(protocol=parsed.protocol, user = parsed.user or "git", resource=parsed.resource, port = parsed.port or "", pathname = parsed.pathname)
+            port = ":{}".format(parsed.port) if parsed.port else ""
+            return "{protocol}://{user}@{resource}{port}/{pathname}".format(protocol=parsed.protocol, user = parsed.user or "git", resource=parsed.resource, port = port, pathname = parsed.pathname)
         except IndexError:
             # happens when there is no remote repository configured
             return None
