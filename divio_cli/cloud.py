@@ -370,7 +370,7 @@ class CloudClient(object):
                 user = "git@"
             elif parsed.user:
                 user =  "{}@".format(parsed.user)
-            return "{protocol}://{user}{resource}{port}/{pathname}".format(protocol=parsed.protocol, user = user, resource=parsed.resource, port = port, pathname = parsed.pathname)
+            return "{protocol}://{user}{resource}{port}{pathname}".format(protocol=parsed.protocol, user = user, resource=parsed.resource, port = port, pathname = parsed.pathname)
         except IndexError:
             # happens when there is no remote repository configured
             return None
