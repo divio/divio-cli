@@ -15,6 +15,7 @@ import requests
 from six import PY2
 from six.moves.urllib_parse import urljoin
 
+import giturlparse
 from tabulate import tabulate
 
 from . import __version__
@@ -320,7 +321,7 @@ def json_dumps_unicode(d, **kwargs):
 
 
 def get_available_environments():
-    return ['test', 'live']
+    return ["test", "live"]
 
 
 class Map(dict):
@@ -357,3 +358,28 @@ class Map(dict):
     def __delitem__(self, key):
         super(Map, self).__delitem__(key)
         del self.__dict__[key]
+
+
+def normalize_git_url(url):
+    parsed = giturlparse.parse(url.lower())
+    port = ":{}".format(parsed.port) if parsed.port else ""
+    pathname = parsed.pathname
+    if not parsed.pathname.startswith("/"):
+        pathname = "/" + pathname 
+    
+    if parsed.protocol == "ssh":
+        user = parsed.user or "git"
+        return "ssh://{user}@{resource}{port}{pathname}".format(
+            user=user,
+            resource=parsed.resource,
+            port=port,
+            pathname=pathname,
+        )
+        
+    else:  # https, http
+        return "{protocol}://{resource}{port}{pathname}".format(
+            protocol=parsed.protocol,
+            resource=parsed.resource,
+            port=port,
+            pathname=pathname,
+        )

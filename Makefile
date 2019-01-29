@@ -10,3 +10,8 @@ autoflake:
 
 # isort must come first as black reformats the imports again
 lint: autoflake isort black
+
+
+
+test:
+	make CMD="TEST_MODE=1 py.test ${ARGS} --cov=. -m 'not integration'" dcr

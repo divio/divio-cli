@@ -38,18 +38,20 @@ def get_git_host():
 
 
 def get_git_clone_url(slug, website_id, client):
-        remote_dsn = client.get_repository_dsn(website_id)
-        # if we could get a remote_dsn, us it! Otherwise, its probably a default git setup
-        if remote_dsn:
-            return remote_dsn
-        return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
+    remote_dsn = client.get_repository_dsn(website_id)
+    # if we could get a remote_dsn, us it! Otherwise, its probably a default git setup
+    if remote_dsn:
+        return remote_dsn
+    return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
 
 
 def clone_project(website_slug, path, client):
     click.secho("\ncloning project repository", fg="green")
     website_id = client.get_website_id_for_slug(website_slug)
 
-    website_git_url = get_git_clone_url(website_slug, website_id, client=client)
+    website_git_url = get_git_clone_url(
+        website_slug, website_id, client=client
+    )
     clone_args = ["git", "clone", website_git_url]
     if path:
         clone_args.append(path)

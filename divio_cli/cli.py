@@ -15,13 +15,13 @@ from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
+    get_available_environments,
     get_cp_url,
     get_git_checked_branch,
     hr,
     open_project_cloud_site,
     print_package_renamed_warning,
     table,
-    get_available_environments,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -209,7 +209,9 @@ def project_list(obj, grouped, as_json):
 @click.option(
     "--backup/--no-backup", default=None, help="Take a backup on deployment."
 )
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @allow_remote_id_override
 @click.pass_obj
 def project_deploy(obj, remote_id, stage, backup):
@@ -218,7 +220,9 @@ def project_deploy(obj, remote_id, stage, backup):
 
 
 @project.command(name="deploy-log")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @allow_remote_id_override
 @click.pass_obj
 def project_deploy_log(obj, remote_id, stage):
@@ -419,7 +423,9 @@ def project_pull():
 
 
 @project_pull.command(name="db")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @allow_remote_id_override
 @click.pass_obj
 def pull_db(obj, remote_id, stage):
@@ -433,7 +439,9 @@ def pull_db(obj, remote_id, stage):
 
 
 @project_pull.command(name="media")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @allow_remote_id_override
 @click.pass_obj
 def pull_media(obj, remote_id, stage):
@@ -450,7 +458,9 @@ def project_push():
 
 
 @project_push.command(name="db")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @click.option(
     "-d",
     "--dumpfile",
@@ -488,7 +498,9 @@ def push_db(obj, remote_id, stage, dumpfile, noinput):
 
 
 @project_push.command(name="media")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @click.option(
     "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
 )

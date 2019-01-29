@@ -8,8 +8,7 @@ from six.moves.urllib_parse import urlparse
 
 from . import api_requests, messages, settings
 from .config import Config
-from .utils import json_dumps_unicode
-import giturlparse
+from .utils import json_dumps_unicode, normalize_git_url
 
 ENDPOINT = "https://control.{host}"
 DEFAULT_HOST = "divio.com"
@@ -353,7 +352,6 @@ class CloudClient(object):
         )
         return request()
 
-
     def get_repository_dsn(self, website_id):
         """
         Try to return the DSN of a remote reposiroty for a given website_id.
@@ -363,14 +361,10 @@ class CloudClient(object):
                 self.session, url_kwargs={"website_id": website_id}
             )
             response = request()
-            parsed = giturlparse.parse(response["results"][0]["backend_config"]["repository_dsn"])
-            port = ":{}".format(parsed.port) if parsed.port else ""
-            if parsed.protocol == "ssh":
-                user = parsed.user or "git"
-                return "ssh://{user}@{resource}{port}{pathname}".format(user = user, resource=parsed.resource, port = port, pathname = parsed.pathname)
-            else: # https, http
-                return "{protocol}://{resource}{port}{pathname}".format(protocol=parsed.protocol, resource=parsed.resource, port = port, pathname = parsed.pathname)
-            
+            return normalize_git_url(
+                response["results"][0]["backend_config"]["repository_dsn"]
+            )
+
         except IndexError:
             # happens when there is no remote repository configured
             return None
@@ -378,8 +372,6 @@ class CloudClient(object):
         raise click.ClickException(
             "Could not get remote repository information."
         )
-
-
 
 
 class WritableNetRC(netrc):
