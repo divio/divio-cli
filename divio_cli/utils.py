@@ -33,10 +33,6 @@ def table(data, headers):
     return tabulate(data, headers)
 
 
-def indent(text, spaces=4):
-    return "\n".join(" " * spaces + ln for ln in text.splitlines())
-
-
 def get_package_version(path):
     return check_output(["python", "setup.py", "--version"], cwd=path).strip()
 
@@ -380,3 +376,20 @@ def normalize_git_url(url):
             port=port,
             pathname=pathname,
         )
+
+
+def split(delimiters, string, maxsplit=0):
+    import re
+
+    regexPattern = "|".join(map(re.escape, delimiters))
+    return re.split(regexPattern, string, maxsplit)
+
+
+def get_local_git_remotes():
+    a = check_output(("git", "remote", "-v"))
+
+    ret = []
+    for line in a.splitlines():
+        name, url, method = split(["\t", " "], line)
+        ret.append(url)
+    return ret

@@ -11,6 +11,8 @@ from time import sleep, time
 import click
 import requests
 
+from divio_cli.utils import get_local_git_remotes
+
 from . import utils
 from .. import settings
 from ..cloud import get_aldryn_host
@@ -847,9 +849,27 @@ def push_media(client, stage, remote_id):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def update_local_project(git_branch):
+def update_local_project(git_branch, client, strict=False):
+    """
+    Makes all updates of the local project 
+    """
     project_home = utils.get_project_home()
     docker_compose = utils.get_docker_compose_cmd(project_home)
+
+    # We also check for remote repository configurations on a project update
+    # to warn the user just in case something changed
+    remote_dsn = client.get_repository_dsn(
+        utils.get_aldryn_project_settings(utils.get_project_home())["id"]
+    )
+
+    if remote_dsn not in get_local_git_remotes():
+        click.secho(
+            "Warning: The project has a git repository configured in the divio"
+            " cloud which is not present in your local git configuration.",
+            fg="red",
+        )
+        if strict:
+            sys.exit(1)
 
     click.secho("Pulling changes from git remote", fg="green")
     check_call(("git", "pull", "origin", git_branch))
