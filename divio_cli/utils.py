@@ -11,11 +11,11 @@ from distutils.version import StrictVersion
 from math import log
 
 import click
+import giturlparse
 import requests
 from six import PY2
 from six.moves.urllib_parse import urljoin
 
-import giturlparse
 from tabulate import tabulate
 
 from . import __version__
@@ -365,17 +365,14 @@ def normalize_git_url(url):
     port = ":{}".format(parsed.port) if parsed.port else ""
     pathname = parsed.pathname
     if not parsed.pathname.startswith("/"):
-        pathname = "/" + pathname 
-    
+        pathname = "/" + pathname
+
     if parsed.protocol == "ssh":
         user = parsed.user or "git"
         return "ssh://{user}@{resource}{port}{pathname}".format(
-            user=user,
-            resource=parsed.resource,
-            port=port,
-            pathname=pathname,
+            user=user, resource=parsed.resource, port=port, pathname=pathname
         )
-        
+
     else:  # https, http
         return "{protocol}://{resource}{port}{pathname}".format(
             protocol=parsed.protocol,
