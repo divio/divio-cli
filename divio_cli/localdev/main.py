@@ -862,7 +862,7 @@ def update_local_project(git_branch, client, strict=False):
         utils.get_aldryn_project_settings(utils.get_project_home())["id"]
     )
 
-    if remote_dsn not in get_local_git_remotes():
+    if remote_dsn and remote_dsn not in get_local_git_remotes():
         click.secho(
             "Warning: The project has a git repository configured in the divio"
             " cloud which is not present in your local git configuration.",
