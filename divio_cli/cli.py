@@ -361,18 +361,6 @@ def project_stop():
     localdev.stop_project()
 
 
-@project.command(name="cheatsheet")
-@allow_remote_id_override
-@click.pass_obj
-def project_cheatsheet(obj, remote_id):
-    """Show useful commands for your project"""
-    click.launch(
-        get_cp_url(
-            obj.client, project_id=remote_id, section="local-development/"
-        )
-    )
-
-
 @project.command(name="setup")
 @click.argument("slug")
 @click.option(

@@ -322,7 +322,7 @@ class UploadDBRequest(JsonResponse, APIRequest):
     url = "/api/v1/website/{website_id}/upload/db/"
     method = "POST"
 
-    def get_error_code_map(self):
+    def get_error_code_map(self, login=None):
         error_codes = super(UploadDBRequest, self).get_error_code_map()
         error_codes[requests.codes.bad_request] = messages.INVALID_DB_SUBMITTED
         return error_codes

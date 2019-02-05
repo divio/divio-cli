@@ -13,3 +13,4 @@ dist/
 env/
 venv*
 binary/
+test/data
