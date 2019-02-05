@@ -320,7 +320,7 @@ def json_dumps_unicode(d, **kwargs):
 
 
 def get_available_environments():
-    return ['test', 'live']
+    return ["test", "live"]
 
 
 class Map(dict):

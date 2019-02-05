@@ -1,4 +1,3 @@
-import base64
 import itertools
 import json
 import os
@@ -15,13 +14,13 @@ from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
+    get_available_environments,
     get_cp_url,
     get_git_checked_branch,
     hr,
     open_project_cloud_site,
     print_package_renamed_warning,
     table,
-    get_available_environments,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -206,19 +205,20 @@ def project_list(obj, grouped, as_json):
 
 
 @project.command(name="deploy")
-@click.option(
-    "--backup/--no-backup", default=None, help="Take a backup on deployment."
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
 )
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
 @allow_remote_id_override
 @click.pass_obj
-def project_deploy(obj, remote_id, stage, backup):
+def project_deploy(obj, remote_id, stage):
     """Deploy project"""
-    obj.client.deploy_project_or_get_progress(remote_id, stage, backup)
+    obj.client.deploy_project_or_get_progress(remote_id, stage)
 
 
 @project.command(name="deploy-log")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @allow_remote_id_override
 @click.pass_obj
 def project_deploy_log(obj, remote_id, stage):
@@ -407,7 +407,9 @@ def project_pull():
 
 
 @project_pull.command(name="db")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @allow_remote_id_override
 @click.pass_obj
 def pull_db(obj, remote_id, stage):
@@ -421,7 +423,9 @@ def pull_db(obj, remote_id, stage):
 
 
 @project_pull.command(name="media")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @allow_remote_id_override
 @click.pass_obj
 def pull_media(obj, remote_id, stage):
@@ -438,7 +442,9 @@ def project_push():
 
 
 @project_push.command(name="db")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @click.option(
     "-d",
     "--dumpfile",
@@ -476,7 +482,9 @@ def push_db(obj, remote_id, stage, dumpfile, noinput):
 
 
 @project_push.command(name="media")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @click.option(
     "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
 )
@@ -621,31 +629,6 @@ def boilerplate_upload(ctx, noinput):
     except exceptions.AldrynException as exc:
         raise click.ClickException(*exc.args)
     click.echo(ret)
-
-
-@cli.group()
-def backup():
-    """Manage backups for projects hosted on Divio Cloud"""
-
-
-@backup.command(name="decrypt")
-@click.argument("key", type=click.File("rb"))
-@click.argument("backup", type=click.File("rb"))
-@click.argument("destination", type=click.File("wb"))
-def backup_decrypt(key, backup, destination):
-    """Decrypt a backup downloaded from Divio Cloud"""
-    if not crypto:
-        click.secho(
-            "\nPlease install the crypo extensions to use the crypto commands: "
-            "pip install divio-cli[crypto]",
-            fg="red",
-        )
-        return
-    key = base64.b64decode(key.read(1024).strip())
-    decryptor = crypto.StreamDecryptor(key=key)
-
-    for chunk in decryptor(backup):
-        destination.write(chunk)
 
 
 @cli.command()
