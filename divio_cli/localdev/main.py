@@ -10,7 +10,6 @@ from time import sleep, time
 
 import click
 import requests
-
 from divio_cli.utils import get_local_git_remotes
 
 from . import utils

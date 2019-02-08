@@ -10,12 +10,12 @@ from contextlib import contextmanager
 from distutils.version import StrictVersion
 from math import log
 
-import click
-import giturlparse
-import requests
 from six import PY2
 from six.moves.urllib_parse import urljoin
 
+import click
+import giturlparse
+import requests
 from tabulate import tabulate
 
 from . import __version__

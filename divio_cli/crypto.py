@@ -2,6 +2,7 @@ import os
 import struct
 
 import attr
+
 from cryptography.hazmat import backends
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes

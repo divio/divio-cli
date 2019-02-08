@@ -3,8 +3,9 @@ import re
 from netrc import netrc
 from time import sleep
 
-import click
 from six.moves.urllib_parse import urlparse
+
+import click
 
 from . import api_requests, messages, settings
 from .config import Config

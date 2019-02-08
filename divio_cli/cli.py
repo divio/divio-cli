@@ -3,8 +3,9 @@ import json
 import os
 import sys
 
-import click
 import six
+
+import click
 
 from . import exceptions, localdev, messages
 from .check_system import check_requirements, check_requirements_human
