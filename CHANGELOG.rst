@@ -4,7 +4,7 @@ Changelog
 3.4.0 (2019-02-09)
 ------------------
 
- * Remote git repository support
+ * Added remote git repository support
  * Removed binary builds
  * Added testing
 
