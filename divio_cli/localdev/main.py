@@ -851,7 +851,7 @@ def push_media(client, stage, remote_id):
 
 def update_local_project(git_branch, client, strict=False):
     """
-    Makes all updates of the local project 
+    Makes all updates of the local project.
     """
     project_home = utils.get_project_home()
     docker_compose = utils.get_docker_compose_cmd(project_home)
