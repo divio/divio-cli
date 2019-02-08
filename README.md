@@ -16,6 +16,10 @@ pip install divio-cli
 
 See [Divio Support: How to use the Divio command-line interface](http://support.divio.com/local-development/divio-shell/divio-cli-reference)
 
+# Development
+
+Please use `tox` to run tests locally and use `make lint` to clean your code before submitting. 
+
 # Releasing the binary
 
 All of the binaries have to be built on the operating systems they're being built for.

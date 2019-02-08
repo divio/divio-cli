@@ -8,7 +8,7 @@ from six.moves.urllib_parse import urlparse
 
 from . import api_requests, messages, settings
 from .config import Config
-from .utils import json_dumps_unicode
+from .utils import json_dumps_unicode, normalize_git_url
 
 ENDPOINT = "https://control.{host}"
 DEFAULT_HOST = "divio.com"
@@ -349,6 +349,27 @@ class CloudClient(object):
             data={"vars": json_dumps_unicode(current_vars)},
         )
         return request()
+
+    def get_repository_dsn(self, website_id):
+        """
+        Try to return the DSN of a remote reposiroty for a given website_id.
+        """
+        try:
+            request = api_requests.RepositoryRequest(
+                self.session, url_kwargs={"website_id": website_id}
+            )
+            response = request()
+            return normalize_git_url(
+                response["results"][0]["backend_config"]["repository_dsn"]
+            )
+
+        except IndexError:
+            # happens when there is no remote repository configured
+            return None
+
+        raise click.ClickException(
+            "Could not get remote repository information."
+        )
 
 
 class WritableNetRC(netrc):

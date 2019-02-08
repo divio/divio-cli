@@ -247,9 +247,19 @@ def project_open():
 
 
 @project.command(name="update")
-def project_update():
+@click.option(
+    "--strict",
+    "strict",
+    default=False,
+    is_flag=True,
+    help="A strict update will fail on a warning",
+)
+@click.pass_obj
+def project_update(obj, strict):
     """Update project with latest changes from the Cloud"""
-    localdev.update_local_project(get_git_checked_branch())
+    localdev.update_local_project(
+        get_git_checked_branch(), client=obj.client, strict=strict
+    )
 
 
 @project.command(name="env-vars")
