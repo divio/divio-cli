@@ -631,6 +631,31 @@ def boilerplate_upload(ctx, noinput):
     click.echo(ret)
 
 
+@cli.group()
+def backup():
+    """Manage backups for projects hosted on Divio Cloud"""
+
+
+@backup.command(name="decrypt")
+@click.argument("key", type=click.File("rb"))
+@click.argument("backup", type=click.File("rb"))
+@click.argument("destination", type=click.File("wb"))
+def backup_decrypt(key, backup, destination):
+    """Decrypt a backup downloaded from Divio Cloud"""
+    if not crypto:
+        click.secho(
+            "\nPlease install the crypo extensions to use the crypto commands: "
+            "pip install divio-cli[crypto]",
+            fg="red",
+        )
+        return
+    key = base64.b64decode(key.read(1024).strip())
+    decryptor = crypto.StreamDecryptor(key=key)
+
+    for chunk in decryptor(backup):
+        destination.write(chunk)
+
+
 @cli.command()
 @click.option(
     "-s",
