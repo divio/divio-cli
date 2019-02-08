@@ -1,20 +1,27 @@
 Changelog
 =========
 
+3.4.0 (2019-02-09)
+------------------
+
+ * Remote git repository support
+ * Removed binary builds
+ * Added testing
+
 3.3.12 (2019-01-09)
-------------------------
+-------------------
 
 * Updated DNS check to be backwards compatible
 
 
 3.3.11 (2019-01-09)
-------------------------
+-------------------
 
 * Updated DNS check to work with the latest busybox image. Older busybox versions must upgrade!
 
 
 3.3.10 (2019-01-07)
-------------------------
+-------------------
 
 * Fixed windows build
 

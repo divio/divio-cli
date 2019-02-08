@@ -1,4 +1,0 @@
-builder:
-  build: .
-  volumes:
-    - .:/code/
