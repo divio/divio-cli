@@ -84,9 +84,9 @@ def ensure_windows_docker_compose_file_exists(path):
      format:
 
      - absolute paths: relative one's are not yet supported
-     - currently only works if the project is running on the C:\ drive
+     - currently only works if the project is running on the C:\\ drive
      - unix style paths: need to replace '\' with '/'
-     - paths have to start with /c/ instead of C:\ otherwise
+     - paths have to start with /c/ instead of C:\\ otherwise
         docker-compose gets confused because they use : as separation
 
     Example:
@@ -95,7 +95,7 @@ def ensure_windows_docker_compose_file_exists(path):
       windows:     /c/Users/aldryn/acme-portfolio:/app:rw
 
     Hope that's all. And of course, I'm sorry.
-    """  # NOQA
+    """
 
     windows_path = os.path.join(path, WINDOWS_DOCKER_COMPOSE_FILENAME)
     if os.path.isfile(windows_path):
@@ -173,8 +173,8 @@ class DockerComposeConfig(object):
         Services may look like the following depending on the OS:
 
         - /home/user/some/path:/app:rw
-        - C:\whatever\windows\path:/app:rw (windows)
-        """  # NOQA
+        - C:\\whatever\\windows\\path:/app:rw (windows)
+        """
         try:
             service_config = self.get_services()[service]
         except KeyError:
