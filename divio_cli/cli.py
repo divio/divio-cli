@@ -1,3 +1,4 @@
+import base64
 import itertools
 import json
 import os

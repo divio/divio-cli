@@ -904,7 +904,7 @@ def develop_package(package, no_rebuild=False):
             "sure it exists and try again.".format(package, addons_dev_dir)
         )
 
-    url_pattern = re.compile("(\S*/{}/\S*)".format(package))
+    url_pattern = re.compile("(\S*/{}/\S*)".format(package))  # NOQA
     new_package_path = "-e /app/addons-dev/{}\n".format(package)
 
     # add package to requirements.in for dependencies

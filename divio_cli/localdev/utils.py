@@ -95,7 +95,7 @@ def ensure_windows_docker_compose_file_exists(path):
       windows:     /c/Users/aldryn/acme-portfolio:/app:rw
 
     Hope that's all. And of course, I'm sorry.
-    """
+    """  # NOQA
 
     windows_path = os.path.join(path, WINDOWS_DOCKER_COMPOSE_FILENAME)
     if os.path.isfile(windows_path):
@@ -174,7 +174,7 @@ class DockerComposeConfig(object):
 
         - /home/user/some/path:/app:rw
         - C:\whatever\windows\path:/app:rw (windows)
-        """
+        """  # NOQA
         try:
             service_config = self.get_services()[service]
         except KeyError:
