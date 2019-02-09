@@ -11,6 +11,7 @@ from . import api_requests, messages, settings
 from .config import Config
 from .utils import json_dumps_unicode, normalize_git_url
 
+
 ENDPOINT = "https://control.{host}"
 DEFAULT_HOST = "divio.com"
 

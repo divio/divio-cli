@@ -9,6 +9,7 @@ from .. import messages, settings
 from ..utils import create_temp_dir, silence_stderr
 from .common import load_config, validate_package_config
 
+
 ADDON_REQUIRED_CONFIG_KEYS = ("package-name",)
 
 

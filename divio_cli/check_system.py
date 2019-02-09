@@ -8,6 +8,7 @@ import click
 
 from . import cloud, utils
 
+
 ERROR = 1
 WARNING = 0
 

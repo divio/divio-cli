@@ -10,6 +10,7 @@ from time import sleep, time
 
 import click
 import requests
+
 from divio_cli.utils import get_local_git_remotes
 
 from . import utils
@@ -24,6 +25,7 @@ from ..utils import (
     is_windows,
     pretty_size,
 )
+
 
 DEFAULT_GIT_HOST = "git@git.{aldryn_host}"
 GIT_CLONE_URL = "{git_host}:{project_slug}.git"

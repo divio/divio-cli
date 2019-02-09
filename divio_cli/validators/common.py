@@ -3,6 +3,7 @@ import os
 
 from .. import exceptions, messages
 
+
 VALID_LICENSE_FILENAMES = ("LICENSE.txt", "LICENSE", "license.txt", "license")
 
 

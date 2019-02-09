@@ -20,6 +20,7 @@ from tabulate import tabulate
 
 from . import __version__
 
+
 ALDRYN_DEFAULT_BRANCH_NAME = "develop"
 
 

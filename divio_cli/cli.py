@@ -26,6 +26,7 @@ from .utils import (
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
 
+
 try:
     import ipdb as pdb
 except ImportError:

@@ -1,7 +1,7 @@
 Changelog
 =========
 
-3.4.0 (2019-02-09)
+3.4.0 (2019-02-12)
 ------------------
 
  * Added remote git repository support
@@ -77,7 +77,7 @@ Changelog
 
 
 3.3.1 (2017-07-06)
------------------
+------------------
 
 * Minor bug fixes and automation improvements
 

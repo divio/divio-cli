@@ -8,5 +8,9 @@ isort:
 autoflake:
 	find divio_cli -name '*.py' | xargs autoflake --in-place --remove-unused-variables
 
+flake8:
+	flake8 src
+
+
 # isort must come first as black reformats the imports again
-lint: autoflake isort black
+lint: autoflake isort black flake8

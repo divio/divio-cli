@@ -9,6 +9,7 @@ import yaml
 from .. import config, exceptions, settings
 from ..utils import check_call, check_output, is_windows
 
+
 DOT_ALDRYN_FILE_NOT_FOUND = (
     "Divio Cloud project file '.aldryn' could not be found!\n"
     "Please make sure you're in a Divio Cloud project folder and the "
