@@ -77,7 +77,7 @@ def cli(ctx, debug):
     except IndexError:
         is_version_command = False
 
-    # skip if 'aldryn version' is run
+    # skip if 'divio version' is run
     if not is_version_command:
         # check for newer versions
         update_info = ctx.obj.client.config.check_for_updates()

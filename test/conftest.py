@@ -24,5 +24,6 @@ def divio_project(request):
     TEST_PROJECT_DIR_FULL_PATH = os.path.join(TEST_PROJECT_DIR, name_value)
 
     if not os.path.exists(TEST_PROJECT_DIR_FULL_PATH):
-        subprocess.run(["divio", "project", "setup", name_value], cwd=TEST_PROJECT_DIR, check=True)
+        process = subprocess.Popen(["divio", "project", "setup", name_value], cwd=TEST_PROJECT_DIR)
+        stdout, stderr = process.communicate()
     return TEST_PROJECT_DIR_FULL_PATH

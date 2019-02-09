@@ -5,8 +5,11 @@ Changelog
 ------------------
 
  * Added remote git repository support
- * Removed binary builds
  * Added testing
+ * Fixed issue on error handling while pulling files
+ * Removed binary builds
+ * Removed "cheatsheet" command
+
 
 3.3.12 (2019-01-09)
 -------------------
