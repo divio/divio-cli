@@ -13,4 +13,4 @@ dist/
 env/
 venv*
 binary/
-test/data
+divio_cli/test/data

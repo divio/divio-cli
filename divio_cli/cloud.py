@@ -354,7 +354,7 @@ class CloudClient(object):
 
     def get_repository_dsn(self, website_id):
         """
-        Try to return the DSN of a remote reposiroty for a given website_id.
+        Try to return the DSN of a remote repository for a given website_id.
         """
         try:
             request = api_requests.RepositoryRequest(
