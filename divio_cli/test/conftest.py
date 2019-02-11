@@ -6,7 +6,9 @@ import pytest
 
 def pytest_addoption(parser):
     parser.addoption("--test-project-name", action="store")
-    parser.addoption("--test-project-directory", action="store")
+    parser.addoption(
+        "--test-project-directory", action="store", default="test/data"
+    )
 
 
 @pytest.fixture(scope="session")
@@ -25,8 +27,6 @@ def divio_project(request):
         )
 
     test_project_directory = request.config.option.test_project_directory
-    if test_project_directory is None:
-        test_project_directory = "test/data"
 
     test_project_dir_full_path = os.path.join(
         test_project_directory, test_project_name
