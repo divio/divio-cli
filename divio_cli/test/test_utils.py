@@ -2,6 +2,7 @@ import pytest
 
 from divio_cli.utils import normalize_git_url
 
+
 TESTDATA_GITURL_NORMALIZE = [
     (
         "https://github.com/kinkerl/glowing-octo-succotash.git",

@@ -1,8 +1,6 @@
-
+import os
 
 import pytest
-
-import os
 
 from click.testing import CliRunner
 
@@ -39,7 +37,7 @@ TEST_COMMANDS_CLICK = (
 
 @pytest.mark.unit
 @pytest.mark.integration
-@pytest.mark.parametrize("command",TEST_COMMANDS_CLICK )
+@pytest.mark.parametrize("command", TEST_COMMANDS_CLICK)
 def test_call_click_commands(divio_project, command):
     current_dir = os.getcwd()
     os.chdir(os.path.join(current_dir, divio_project))
