@@ -4,11 +4,11 @@ Changelog
 3.4.0 (2019-02-12)
 ------------------
 
- * Added remote git repository support
- * Added testing
- * Fixed issue on error handling while pulling files
- * Removed binary builds
- * Removed "cheatsheet" command
+* Added remote git repository support
+* Added testing
+* Fixed issue on error handling while pulling files
+* Removed binary builds
+* Removed "cheatsheet" command
 
 
 3.3.12 (2019-01-09)
