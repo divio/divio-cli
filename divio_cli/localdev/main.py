@@ -11,6 +11,8 @@ from time import sleep, time
 import click
 import requests
 
+from divio_cli.utils import get_local_git_remotes
+
 from . import utils
 from .. import settings
 from ..cloud import get_aldryn_host
@@ -23,6 +25,7 @@ from ..utils import (
     is_windows,
     pretty_size,
 )
+
 
 DEFAULT_GIT_HOST = "git@git.{aldryn_host}"
 GIT_CLONE_URL = "{git_host}:{project_slug}.git"
@@ -37,13 +40,21 @@ def get_git_host():
     return git_host
 
 
-def get_git_clone_url(slug):
+def get_git_clone_url(slug, website_id, client):
+    remote_dsn = client.get_repository_dsn(website_id)
+    # if we could get a remote_dsn, us it! Otherwise, its probably a default git setup
+    if remote_dsn:
+        return remote_dsn
     return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
 
 
-def clone_project(website_slug, path):
+def clone_project(website_slug, path, client):
     click.secho("\ncloning project repository", fg="green")
-    website_git_url = get_git_clone_url(website_slug)
+    website_id = client.get_website_id_for_slug(website_slug)
+
+    website_git_url = get_git_clone_url(
+        website_slug, website_id, client=client
+    )
     clone_args = ["git", "clone", website_git_url]
     if path:
         clone_args.append(path)
@@ -142,7 +153,7 @@ def create_workspace(
             sys.exit(1)
 
     # clone git project
-    clone_project(website_slug=website_slug, path=path)
+    clone_project(website_slug=website_slug, path=path, client=client)
 
     # check for new baseproject + add .aldryn
     configure_project(website_slug=website_slug, path=path, client=client)
@@ -839,9 +850,27 @@ def push_media(client, stage, remote_id):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def update_local_project(git_branch):
+def update_local_project(git_branch, client, strict=False):
+    """
+    Makes all updates of the local project.
+    """
     project_home = utils.get_project_home()
     docker_compose = utils.get_docker_compose_cmd(project_home)
+
+    # We also check for remote repository configurations on a project update
+    # to warn the user just in case something changed
+    remote_dsn = client.get_repository_dsn(
+        utils.get_aldryn_project_settings(utils.get_project_home())["id"]
+    )
+
+    if remote_dsn and remote_dsn not in get_local_git_remotes():
+        click.secho(
+            "Warning: The project has a git repository configured in the divio"
+            " cloud which is not present in your local git configuration.",
+            fg="red",
+        )
+        if strict:
+            sys.exit(1)
 
     click.secho("Pulling changes from git remote", fg="green")
     check_call(("git", "pull", "origin", git_branch))
@@ -875,7 +904,7 @@ def develop_package(package, no_rebuild=False):
             "sure it exists and try again.".format(package, addons_dev_dir)
         )
 
-    url_pattern = re.compile("(\S*/{}/\S*)".format(package))
+    url_pattern = re.compile(r"(\S*/{}/\S*)".format(package))
     new_package_path = "-e /app/addons-dev/{}\n".format(package)
 
     # add package to requirements.in for dependencies

@@ -3,12 +3,14 @@ import re
 from netrc import netrc
 from time import sleep
 
-import click
 from six.moves.urllib_parse import urlparse
+
+import click
 
 from . import api_requests, messages, settings
 from .config import Config
-from .utils import json_dumps_unicode
+from .utils import json_dumps_unicode, normalize_git_url
+
 
 ENDPOINT = "https://control.{host}"
 DEFAULT_HOST = "divio.com"
@@ -119,7 +121,7 @@ class CloudClient(object):
                 fg="yellow",
             )
 
-    def deploy_project_or_get_progress(self, website_id, stage, backup):
+    def deploy_project_or_get_progress(self, website_id, stage):
         def fmt_progress(data):
             if not data:
                 return "Connecting to remote"
@@ -139,7 +141,7 @@ class CloudClient(object):
             )
         else:
             click.secho("Deploying {} server".format(stage), fg="green")
-            self.deploy_project(website_id, stage, backup)
+            self.deploy_project(website_id, stage)
             sleep(1)
             response = self.deploy_project_progress(website_id, stage)
         try:
@@ -188,10 +190,8 @@ class CloudClient(object):
         data = request()
         return data[stage]
 
-    def deploy_project(self, website_id, stage, backup):
+    def deploy_project(self, website_id, stage):
         data = {"stage": stage}
-        if backup is not None:
-            data["backup"] = backup
         request = api_requests.DeployProjectRequest(
             self.session, url_kwargs={"website_id": website_id}, data=data
         )
@@ -351,6 +351,27 @@ class CloudClient(object):
             data={"vars": json_dumps_unicode(current_vars)},
         )
         return request()
+
+    def get_repository_dsn(self, website_id):
+        """
+        Try to return the DSN of a remote repository for a given website_id.
+        """
+        try:
+            request = api_requests.RepositoryRequest(
+                self.session, url_kwargs={"website_id": website_id}
+            )
+            response = request()
+            return normalize_git_url(
+                response["results"][0]["backend_config"]["repository_dsn"]
+            )
+
+        except IndexError:
+            # happens when there is no remote repository configured
+            return None
+
+        raise click.ClickException(
+            "Could not get remote repository information."
+        )
 
 
 class WritableNetRC(netrc):

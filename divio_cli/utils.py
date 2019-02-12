@@ -10,14 +10,16 @@ from contextlib import contextmanager
 from distutils.version import StrictVersion
 from math import log
 
-import click
-import requests
 from six import PY2
 from six.moves.urllib_parse import urljoin
 
+import click
+import giturlparse
+import requests
 from tabulate import tabulate
 
 from . import __version__
+
 
 ALDRYN_DEFAULT_BRANCH_NAME = "develop"
 
@@ -30,10 +32,6 @@ def hr(char="-", width=None, **kwargs):
 
 def table(data, headers):
     return tabulate(data, headers)
-
-
-def indent(text, spaces=4):
-    return "\n".join(" " * spaces + ln for ln in text.splitlines())
 
 
 def get_package_version(path):
@@ -320,7 +318,7 @@ def json_dumps_unicode(d, **kwargs):
 
 
 def get_available_environments():
-    return ['test', 'live']
+    return ["test", "live"]
 
 
 class Map(dict):
@@ -357,3 +355,42 @@ class Map(dict):
     def __delitem__(self, key):
         super(Map, self).__delitem__(key)
         del self.__dict__[key]
+
+
+def normalize_git_url(url):
+    parsed = giturlparse.parse(url.lower())
+    port = ":{}".format(parsed.port) if parsed.port else ""
+    pathname = parsed.pathname
+    if not parsed.pathname.startswith("/"):
+        pathname = "/" + pathname
+
+    if parsed.protocol == "ssh":
+        user = parsed.user or "git"
+        return "ssh://{user}@{resource}{port}{pathname}".format(
+            user=user, resource=parsed.resource, port=port, pathname=pathname
+        )
+
+    else:  # https, http
+        return "{protocol}://{resource}{port}{pathname}".format(
+            protocol=parsed.protocol,
+            resource=parsed.resource,
+            port=port,
+            pathname=pathname,
+        )
+
+
+def split(delimiters, string, maxsplit=0):
+    import re
+
+    regexPattern = "|".join(map(re.escape, delimiters))
+    return re.split(regexPattern, string, maxsplit)
+
+
+def get_local_git_remotes():
+    a = check_output(("git", "remote", "-v"))
+
+    ret = []
+    for line in a.splitlines():
+        name, url, method = split(["\t", " "], line)
+        ret.append(url)
+    return ret

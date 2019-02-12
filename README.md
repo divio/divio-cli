@@ -16,71 +16,26 @@ pip install divio-cli
 
 See [Divio Support: How to use the Divio command-line interface](http://support.divio.com/local-development/divio-shell/divio-cli-reference)
 
-# Releasing the binary
 
-All of the binaries have to be built on the operating systems they're being built for.
 
-## OS X
+# Testing
 
-Currently only support for native builds 
+We have two kinds of tests. Small and quick unit tests and the more complex and involved integration tests.
 
-### Build
+## Unit tests
 
-```bash
-./scripts/build-unix.sh
-```
-
-### Test
-    
-```bash
-./binary/divio-Darwin version
-```
-
-## Linux
-
-Can be built by using either Linux natively or with Docker on a UNIX system
-
-### Build
-
-#### Native
+These do not require external communication and can be run with the following command:
 
 ```bash
-./scripts/build-unix.sh
+tox -- -m "not integration"
 ```
 
-#### with Docker
+## Integration tests
+
+These to require a more involved setup and will trigger actions on a real project. You have to provide the project name and your user must be logged in into divio cloud.
+
+You might get asked to provide authentication information during the test, depending on your setup.
 
 ```bash
-docker-compose build
-docker-compose run --rm builder
-```
-
-### Test
-
-#### Native
-
-```bash
-./binary/divio-Linux version
-```
-
-#### With Docker
-
-```bash
-./scripts/test-unix.sh
-```
-
-## Windows
-
-Use / connect to a Windows (virtual) machine (the only requirement is Python 2.7) and open a PowerShell
-
-### Build
-
-```powershell
-.\scripts\build-windows.ps1
-```
-
-### Test
-
-```powershell
-.\binary\divio-Windows version
+tox --  -m "integration" --test_project_name <NAME_OF_A_PROJECT_FOR_TESTING>
 ```

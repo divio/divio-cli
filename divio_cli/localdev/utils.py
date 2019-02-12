@@ -9,6 +9,7 @@ import yaml
 from .. import config, exceptions, settings
 from ..utils import check_call, check_output, is_windows
 
+
 DOT_ALDRYN_FILE_NOT_FOUND = (
     "Divio Cloud project file '.aldryn' could not be found!\n"
     "Please make sure you're in a Divio Cloud project folder and the "
@@ -83,9 +84,9 @@ def ensure_windows_docker_compose_file_exists(path):
      format:
 
      - absolute paths: relative one's are not yet supported
-     - currently only works if the project is running on the C:\ drive
+     - currently only works if the project is running on the C:\\ drive
      - unix style paths: need to replace '\' with '/'
-     - paths have to start with /c/ instead of C:\ otherwise
+     - paths have to start with /c/ instead of C:\\ otherwise
         docker-compose gets confused because they use : as separation
 
     Example:
@@ -172,7 +173,7 @@ class DockerComposeConfig(object):
         Services may look like the following depending on the OS:
 
         - /home/user/some/path:/app:rw
-        - C:\whatever\windows\path:/app:rw (windows)
+        - C:\\whatever\\windows\\path:/app:rw (windows)
         """
         try:
             service_config = self.get_services()[service]

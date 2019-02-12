@@ -1,6 +1,7 @@
 from .. import settings
 from .common import load_config, validate_package_config
 
+
 BOILERPLATE_REQUIRED_CONFIG_KEYS = (
     "package-name",
     "identifier",

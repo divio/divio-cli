@@ -4,8 +4,9 @@ import json
 import os
 import sys
 
-import click
 import six
+
+import click
 
 from . import exceptions, localdev, messages
 from .check_system import check_requirements, check_requirements_human
@@ -15,16 +16,17 @@ from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
+    get_available_environments,
     get_cp_url,
     get_git_checked_branch,
     hr,
     open_project_cloud_site,
     print_package_renamed_warning,
     table,
-    get_available_environments,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
+
 
 try:
     import ipdb as pdb
@@ -77,7 +79,7 @@ def cli(ctx, debug):
     except IndexError:
         is_version_command = False
 
-    # skip if 'aldryn version' is run
+    # skip if 'divio version' is run
     if not is_version_command:
         # check for newer versions
         update_info = ctx.obj.client.config.check_for_updates()
@@ -206,19 +208,20 @@ def project_list(obj, grouped, as_json):
 
 
 @project.command(name="deploy")
-@click.option(
-    "--backup/--no-backup", default=None, help="Take a backup on deployment."
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
 )
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
 @allow_remote_id_override
 @click.pass_obj
-def project_deploy(obj, remote_id, stage, backup):
+def project_deploy(obj, remote_id, stage):
     """Deploy project"""
-    obj.client.deploy_project_or_get_progress(remote_id, stage, backup)
+    obj.client.deploy_project_or_get_progress(remote_id, stage)
 
 
 @project.command(name="deploy-log")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @allow_remote_id_override
 @click.pass_obj
 def project_deploy_log(obj, remote_id, stage):
@@ -247,9 +250,19 @@ def project_open():
 
 
 @project.command(name="update")
-def project_update():
+@click.option(
+    "--strict",
+    "strict",
+    default=False,
+    is_flag=True,
+    help="A strict update will fail on a warning",
+)
+@click.pass_obj
+def project_update(obj, strict):
     """Update project with latest changes from the Cloud"""
-    localdev.update_local_project(get_git_checked_branch())
+    localdev.update_local_project(
+        get_git_checked_branch(), client=obj.client, strict=strict
+    )
 
 
 @project.command(name="env-vars")
@@ -361,18 +374,6 @@ def project_stop():
     localdev.stop_project()
 
 
-@project.command(name="cheatsheet")
-@allow_remote_id_override
-@click.pass_obj
-def project_cheatsheet(obj, remote_id):
-    """Show useful commands for your project"""
-    click.launch(
-        get_cp_url(
-            obj.client, project_id=remote_id, section="local-development/"
-        )
-    )
-
-
 @project.command(name="setup")
 @click.argument("slug")
 @click.option(
@@ -419,7 +420,9 @@ def project_pull():
 
 
 @project_pull.command(name="db")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @allow_remote_id_override
 @click.pass_obj
 def pull_db(obj, remote_id, stage):
@@ -433,7 +436,9 @@ def pull_db(obj, remote_id, stage):
 
 
 @project_pull.command(name="media")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @allow_remote_id_override
 @click.pass_obj
 def pull_media(obj, remote_id, stage):
@@ -450,7 +455,9 @@ def project_push():
 
 
 @project_push.command(name="db")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @click.option(
     "-d",
     "--dumpfile",
@@ -488,7 +495,9 @@ def push_db(obj, remote_id, stage, dumpfile, noinput):
 
 
 @project_push.command(name="media")
-@click.argument("stage", default="test", type=click.Choice(get_available_environments()))
+@click.argument(
+    "stage", default="test", type=click.Choice(get_available_environments())
+)
 @click.option(
     "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
 )
