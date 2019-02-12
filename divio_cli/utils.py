@@ -357,28 +357,6 @@ class Map(dict):
         del self.__dict__[key]
 
 
-def normalize_git_url(url):
-    parsed = giturlparse.parse(url.lower())
-    port = ":{}".format(parsed.port) if parsed.port else ""
-    pathname = parsed.pathname
-    if not parsed.pathname.startswith("/"):
-        pathname = "/" + pathname
-
-    if parsed.protocol == "ssh":
-        user = parsed.user or "git"
-        return "ssh://{user}@{resource}{port}{pathname}".format(
-            user=user, resource=parsed.resource, port=port, pathname=pathname
-        )
-
-    else:  # https, http
-        return "{protocol}://{resource}{port}{pathname}".format(
-            protocol=parsed.protocol,
-            resource=parsed.resource,
-            port=port,
-            pathname=pathname,
-        )
-
-
 def split(delimiters, string, maxsplit=0):
     import re
 

@@ -6,10 +6,11 @@ from time import sleep
 from six.moves.urllib_parse import urlparse
 
 import click
+from giturl import GitURL
 
 from . import api_requests, messages, settings
 from .config import Config
-from .utils import json_dumps_unicode, normalize_git_url
+from .utils import json_dumps_unicode
 
 
 ENDPOINT = "https://control.{host}"
@@ -361,8 +362,10 @@ class CloudClient(object):
                 self.session, url_kwargs={"website_id": website_id}
             )
             response = request()
-            return normalize_git_url(
-                response["results"][0]["backend_config"]["repository_dsn"]
+            return str(
+                GitURL.parse(
+                    response["results"][0]["backend_config"]["repository_dsn"]
+                )
             )
 
         except IndexError:

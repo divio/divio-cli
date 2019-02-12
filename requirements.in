@@ -4,4 +4,4 @@ tabulate
 six
 attrs
 pyaml
-git-url-parse
+giturl
