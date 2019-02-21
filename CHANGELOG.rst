@@ -1,6 +1,13 @@
 Changelog
 =========
 
+
+3.4.2 (2019-02-21)
+------------------
+
+* Removed the normalization of the git urls.
+
+
 3.4.1 (2019-02-21)
 ------------------
 
