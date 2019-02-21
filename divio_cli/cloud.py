@@ -6,7 +6,6 @@ from time import sleep
 from six.moves.urllib_parse import urlparse
 
 import click
-from giturl import GitURL
 
 from . import api_requests, messages, settings
 from .config import Config
@@ -362,11 +361,7 @@ class CloudClient(object):
                 self.session, url_kwargs={"website_id": website_id}
             )
             response = request()
-            return str(
-                GitURL.parse(
-                    response["results"][0]["backend_config"]["repository_dsn"]
-                )
-            )
+            return response["results"][0]["backend_config"]["repository_dsn"]
 
         except IndexError:
             # happens when there is no remote repository configured

@@ -4,4 +4,3 @@ tabulate
 six
 attrs
 pyaml
-giturl
