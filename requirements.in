@@ -1,5 +1,6 @@
+requests==2.20.1  # due to docker-compose requirements
+
 click
-requests
 tabulate
 six
 attrs
