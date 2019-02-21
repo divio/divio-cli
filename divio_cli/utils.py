@@ -18,6 +18,7 @@ import giturlparse
 import requests
 from tabulate import tabulate
 
+from giturl import GitURL
 from . import __version__
 
 
@@ -370,5 +371,5 @@ def get_local_git_remotes():
     ret = []
     for line in a.splitlines():
         name, url, method = split(["\t", " "], line)
-        ret.append(url)
+        ret.append(str(GitURL.parse(url)))
     return ret
