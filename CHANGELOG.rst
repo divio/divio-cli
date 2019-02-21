@@ -1,6 +1,13 @@
 Changelog
 =========
 
+3.4.1 (2019-02-21)
+------------------
+
+* Switched the git url parsing to the `giturl` package
+* Rolled back the version pinning due to problems
+
+
 3.4.0 (2019-02-12)
 ------------------
 
