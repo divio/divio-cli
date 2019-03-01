@@ -2,6 +2,13 @@ Changelog
 =========
 
 
+3.5.0 (2019-00-00)
+------------------
+
+* Pin Requirements
+* Pin busy box image for docker test
+
+
 3.4.2 (2019-02-21)
 ------------------
 
