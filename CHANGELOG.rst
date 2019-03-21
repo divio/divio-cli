@@ -5,7 +5,7 @@ Changelog
 3.5.0 (2019-00-00)
 ------------------
 
-* Pin Requirements
+* Pin requirements
 * Pin busy box image for docker test
 
 
