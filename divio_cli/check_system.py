@@ -7,6 +7,7 @@ from collections import OrderedDict
 import click
 
 from . import cloud, utils
+from .settings import DOCKER_TEST_IMAGE
 
 
 ERROR = 1
@@ -105,7 +106,7 @@ class DockerEngineBaseCheck(Check):
 
 class DockerEngineCheck(DockerEngineBaseCheck):
     name = "Docker Engine Connectivity"
-    command = ("docker", "run", "--rm", "busybox", "true")
+    command = ("docker", "run", "--rm", DOCKER_TEST_IMAGE, "true")
 
     def fmt_exception(self, exc):
         errors = super(DockerEngineCheck, self).fmt_exception(exc)
@@ -150,7 +151,7 @@ class DockerEnginePingCheck(DockerEngineBaseCheck):
         "docker",
         "run",
         "--rm",
-        "busybox",
+        DOCKER_TEST_IMAGE,
         "ping",
         "-c",
         "1",  # stop after one packet response
@@ -175,7 +176,7 @@ class DockerEngineDNSCheck(DockerEngineBaseCheck):
         "docker",
         "run",
         "--rm",
-        "busybox",
+        DOCKER_TEST_IMAGE,
         "sh",
         "-c",  # run in new a shell to avoid problems with timeout
         "timeout 5 nslookup -type=a control.divio.com. || timeout -t 5 nslookup -type=a control.divio.com.",
