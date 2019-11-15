@@ -379,7 +379,6 @@ class DatabaseImportBase(object):
                     )
 
         restore_command = self.get_db_restore_command()
-
         # TODO: use same dump-type detection like server side on db-api
         try:
             subprocess.call(
@@ -482,8 +481,10 @@ class ImportRemoteDatabase(DatabaseImportBase):
         db_dump_path = download_file(download_url, directory=self.path)
         click.echo(" [{}s]".format(int(time() - start_download)))
         # strip path from dump_path for use in the docker container
-        self.db_dump_path = "/app/{}".format(
-            db_dump_path.replace(self.path, "")
+        self.db_dump_path = os.path.join(
+            os.sep,
+            'app',
+            db_dump_path.replace(self.path, "").replace("/", ""),
         )
 
     def get_db_restore_command(self):
@@ -605,7 +606,7 @@ def dump_database(dump_filename, archive_filename=None):
             "--no-owner",
             "--no-privileges",
             "-f",
-            os.path.join("/app/", dump_filename),
+            os.path.join(os.sep, "app", dump_filename),
         ),
         env=get_subprocess_env(),
     )
