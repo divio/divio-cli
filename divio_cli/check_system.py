@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 from collections import OrderedDict
+import errno
 
 import click
 
@@ -24,7 +25,7 @@ class Check(object):
         try:
             utils.check_call(self.command, catch=False, silent=True)
         except OSError as exc:
-            if exc.errno == os.errno.ENOENT:
+            if exc.errno == errno.ENOENT:
                 errors.append(
                     "executable {} not found".format(self.command[0])
                 )
