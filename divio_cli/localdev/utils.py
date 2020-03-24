@@ -8,7 +8,7 @@ import yaml
 
 from .. import config, exceptions, settings
 from ..utils import check_call, check_output, is_windows
-
+import subprocess
 
 DOT_ALDRYN_FILE_NOT_FOUND = (
     "Divio Cloud project file '.aldryn' could not be found!\n"
@@ -141,19 +141,27 @@ def ensure_windows_docker_compose_file_exists(path):
         yaml.safe_dump(conf, fh)
 
 
-def get_db_container_id(path, raise_on_missing=True):
+def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
     docker_compose = get_docker_compose_cmd(path)
-    output = check_output(docker_compose("ps", "-q", "db")).rstrip(os.linesep)
-    if not output and raise_on_missing:
-        raise exceptions.AldrynException("Unable to find database container")
+    try:
+        output = check_output(docker_compose("ps", "-q", "database_{}".format(prefix).lower()), catch=False, stderr=open(os.devnull, "w")).rstrip(os.linesep)
+        if not output and raise_on_missing:
+            raise exceptions.AldrynException("Unable to find database container")
+    except subprocess.CalledProcessError:
+        output = check_output(docker_compose("ps", "-q", "db")).rstrip(os.linesep)
+        if not output and raise_on_missing:
+            raise exceptions.AldrynException("Unable to find database container")
     return output
 
 
-def start_database_server(docker_compose):
+def start_database_server(docker_compose, prefix):
     start_db = time()
     click.secho(" ---> Starting local database server")
     click.secho("      ", nl=False)
-    check_call(docker_compose("up", "-d", "db"))
+    try:
+        output = check_call(docker_compose("up", "-d", "database_{}".format(prefix).lower()), catch=False, stderr=open(os.devnull, "w"))
+    except subprocess.CalledProcessError:
+        check_call(docker_compose("up", "-d", "db"))
     click.secho("      [{}s]".format(int(time() - start_db)))
 
 
@@ -215,3 +223,20 @@ def allow_remote_id_override(func):
         "Defaults to the project in the current directory using the "
         ".aldryn file.",
     )(read_remote_id)
+
+
+def get_service_type(container_id):
+    output = check_output(
+        [
+            "docker",
+            "inspect",
+            "-f '{{range $index, $value := .Config.Env}}{{println $value}}{{end}}'",
+            container_id,
+        ],
+        catch=False,
+        silent=False,
+    )
+    for line in output.splitlines():
+        if line.startswith("SERVICE_MANAGER="):
+            return line[16:]
+    raise RuntimeError("Can not get service type")
