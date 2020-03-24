@@ -240,3 +240,22 @@ def get_service_type(container_id):
         if line.startswith("SERVICE_MANAGER="):
             return line[16:]
     raise RuntimeError("Can not get service type")
+
+
+
+def get_db_type(prefix):
+    project_home = get_project_home()
+    db_container_id = get_db_container_id(project_home, prefix=prefix)
+    try:
+        db_type = get_service_type(db_container_id)
+    except RuntimeError:
+        # legacy section. we try to look for the db, if it does not exist, fail
+        docker_compose = get_docker_compose_cmd(project_home)
+        docker_compose_config = DockerComposeConfig(docker_compose)
+        if not docker_compose_config.has_service("db"):
+            click.secho('No service "db" found in local project', fg="red")
+            sys.exit(1)
+        else:
+            # Fall back to database for legacy docker-compose files
+            db_type = "fsm-postgres"
+    return db_type

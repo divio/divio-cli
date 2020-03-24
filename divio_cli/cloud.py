@@ -271,11 +271,11 @@ class CloudClient(object):
         )
         return request()
 
-    def download_db_request(self, website_id, stage):
+    def download_db_request(self, website_id, stage, prefix):
         request = api_requests.DownloadDBRequestRequest(
             self.session,
             url_kwargs={"website_id": website_id},
-            data={"stage": stage},
+            data={"stage": stage, "prefix": prefix},
         )
         return request()
 
@@ -297,11 +297,11 @@ class CloudClient(object):
         )
         return request()
 
-    def upload_db(self, website_id, stage, archive_path):
+    def upload_db(self, website_id, stage, archive_path, prefix):
         request = api_requests.UploadDBRequest(
             self.session,
             url_kwargs={"website_id": website_id},
-            data={"stage": stage},
+            data={"stage": stage, "prefix": prefix},
             files={"db_dump": open(archive_path, "rb")},
         )
         return request()
@@ -310,11 +310,11 @@ class CloudClient(object):
         request = api_requests.UploadDBProgressRequest(self.session, url=url)
         return request()
 
-    def upload_media(self, website_id, stage, archive_path):
+    def upload_media(self, website_id, stage, archive_path, prefix):
         request = api_requests.UploadMediaFilesRequest(
             self.session,
             url_kwargs={"website_id": website_id},
-            data={"stage": stage},
+            data={"stage": stage, "prefix": prefix},
             files={"media_files": open(archive_path, "rb")},
         )
         return request()

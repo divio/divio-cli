@@ -184,17 +184,28 @@ def create_workspace(
 
 class DatabaseImportBase(object):
     restore_commands = {
-        "sql": "psql -U postgres db < {}",
-        "binary": (
-            "pg_restore -U postgres --dbname=db -n public "
-            "--no-owner --exit-on-error {}"
-        ),
-        "archived-binary": (
-            "tar -xzOf {}"
-            " | pg_restore -U postgres --dbname=db -n public "
-            "--no-owner --exit-on-error"
-        ),
-    }
+        "fsm-postgres":{
+            "sql": "psql -U postgres db < {}",
+            "binary": (
+                "pg_restore -U postgres --dbname=db -n public "
+                "--no-owner --exit-on-error {}"
+            ),
+            "archived-binary": (
+                "tar -xzOf {}"
+                " | pg_restore -U postgres --dbname=db -n public "
+                "--no-owner --exit-on-error"
+            ),
+        },
+        "fsm-mysql":{
+            "sql": "mysql db < {}",
+            "binary": "mysql db --binary-mode=1 < {}",
+            "archived-binary": "tar -xzOf {}| mysql db --binary-mode=1"
+        }
+    } 
+
+
+    
+    
 
     def __init__(self, *args, **kwargs):
         super(DatabaseImportBase, self).__init__()
@@ -321,7 +332,7 @@ class DatabaseImportBase(object):
             click.echo(" [{}s]".format(int(time() - start_remove)))
         
 
-    def get_db_restore_command(self):
+    def get_db_restore_command(self, db_type):
         raise NotImplementedError
 
     def restore_db(self):
@@ -329,6 +340,8 @@ class DatabaseImportBase(object):
         start_import = time()
 
         db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
+
+        restore_command = self.get_db_restore_command(self.db_type)
 
         if self.db_type == "fsm-postgres":
             check_call(
@@ -383,8 +396,6 @@ class DatabaseImportBase(object):
                             silent=True,
                         )
 
-            restore_command = self.get_db_restore_command()
-
             # TODO: use same dump-type detection like server side on db-api
             try:
                 subprocess.call(
@@ -403,17 +414,17 @@ class DatabaseImportBase(object):
 
             click.echo("\n      [{}s]".format(int(time() - start_import)))
         elif self.db_type == "fsm-mysql":
-            with open(self.custom_dump_path) as f:
-                subprocess.call(
-                    (
-                        "docker",
-                        "exec",
-                        db_container_id,
-                        "mysql",
-                    ),
-                    env=get_subprocess_env(),
-                    stdin=f,
-                )
+            check_call(
+                (
+                    "docker",
+                    "exec",
+                    db_container_id,
+                    "/bin/bash",
+                    "-c",
+                    restore_command,
+                ),
+                env=get_subprocess_env(),
+            )
 
     def finish(self):
         click.secho("Done", fg="green", nl=False)
@@ -427,8 +438,8 @@ class ImportLocalDatabase(DatabaseImportBase):
 
     def setup(self):
         click.secho(
-            " ===> Loading database dump {} into local database".format(
-                self.custom_dump_path
+            " ===> Loading database dump {} into local {} database".format(
+                self.custom_dump_path, self.prefix
             )
         )
         db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
@@ -449,12 +460,12 @@ class ImportLocalDatabase(DatabaseImportBase):
         click.echo(" [{}s]".format(int(time() - start_copy)))
         self.db_dump_path = "/tmp/dump"
 
-    def get_db_restore_command(self):
+    def get_db_restore_command(self, db_type):
         if self.custom_dump_path.endswith("sql"):
             kind = "sql"
         else:
             kind = "binary"
-        return self.restore_commands[kind].format(self.db_dump_path)
+        return self.restore_commands[db_type][kind].format(self.db_dump_path)
 
 
 class ImportRemoteDatabase(DatabaseImportBase):
@@ -477,7 +488,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         click.secho(" ---> Preparing download", nl=False)
         start_preparation = time()
         response = (
-            self.client.download_db_request(self.remote_id, self.stage) or {}
+            self.client.download_db_request(self.remote_id, self.stage, self.prefix) or {}
         )
         progress_url = response.get("progress_url")
         if not progress_url:
@@ -502,10 +513,9 @@ class ImportRemoteDatabase(DatabaseImportBase):
         self.db_dump_path = "/app/{}".format(
             db_dump_path.replace(self.path, "")
         )
-        self.custom_dump_path = db_dump_path
 
-    def get_db_restore_command(self):
-        cmd = self.restore_commands["archived-binary"]
+    def get_db_restore_command(self, db_type):
+        cmd = self.restore_commands[db_type]["archived-binary"]
         return cmd.format(self.db_dump_path)
 
 
@@ -774,7 +784,7 @@ def push_db(client, stage, remote_id, prefix, db_type):
 
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
-    response = client.upload_db(remote_id, stage, archive_path) or {}
+    response = client.upload_db(remote_id, stage, archive_path, prefix) or {}
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
     progress_url = response.get("progress_url")
@@ -801,7 +811,7 @@ def push_db(client, stage, remote_id, prefix, db_type):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_local_db(client, stage, dump_filename, website_id):
+def push_local_db(client, stage, dump_filename, website_id, prefix):
     archive_wd = os.path.dirname(os.path.realpath(dump_filename))
     archive_filename = dump_filename.replace(".sql", ".tar.gz")
     archive_path = os.path.join(archive_wd, archive_filename)
@@ -821,7 +831,7 @@ def push_local_db(client, stage, dump_filename, website_id):
 
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
-    response = client.upload_db(website_id, stage, archive_path) or {}
+    response = client.upload_db(website_id, stage, archive_path, prefix) or {}
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
     progress_url = response.get("progress_url")
