@@ -403,18 +403,16 @@ class DatabaseImportBase(object):
 
             click.echo("\n      [{}s]".format(int(time() - start_import)))
         elif self.db_type == "fsm-mysql":
-            with open(self.db_dump_path) as f:
+            with open(self.custom_dump_path) as f:
                 subprocess.call(
                     (
                         "docker",
                         "exec",
                         db_container_id,
                         "mysql",
-                        "db",
-
                     ),
                     env=get_subprocess_env(),
-                    stdin=f
+                    stdin=f,
                 )
 
     def finish(self):
@@ -504,6 +502,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         self.db_dump_path = "/app/{}".format(
             db_dump_path.replace(self.path, "")
         )
+        self.custom_dump_path = db_dump_path
 
     def get_db_restore_command(self):
         cmd = self.restore_commands["archived-binary"]
@@ -670,6 +669,29 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
             )
         click.echo(" [{}s]".format(int(time() - start_dump)))
 
+        if not archive_filename:
+            # archive filename not specified
+            # return path to uncompressed dump
+            return os.path.join(project_home, dump_filename)
+
+        archive_path = os.path.join(project_home, archive_filename)
+        sql_dump_size = os.path.getsize(dump_filename)
+        click.secho(
+            " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)),
+            nl=False,
+        )
+        start_compress = time()
+        with tarfile.open(archive_path, mode="w:gz") as tar:
+            tar.add(
+                os.path.join(project_home, dump_filename), arcname=dump_filename
+            )
+        compressed_size = os.path.getsize(archive_filename)
+        click.echo(
+            " {} [{}s]".format(
+                pretty_size(compressed_size), int(time() - start_compress)
+            )
+        )
+
 
     else:
         click.secho("db type not known")
@@ -726,7 +748,7 @@ def export_db(prefix):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_db(client, stage, remote_id, prefix):
+def push_db(client, stage, remote_id, prefix, db_type):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)["id"]
     dump_filename = DEFAULT_DUMP_FILENAME
@@ -745,8 +767,6 @@ def push_db(client, stage, remote_id, prefix):
         )
     )
     start_time = time()
-
-    db_type = utils.get_db_type(remote_id, stage=stage, prefix=prefix)
 
     dump_database(
         dump_filename=dump_filename, db_type=db_type, prefix=prefix, archive_filename=archive_filename

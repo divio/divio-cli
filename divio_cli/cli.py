@@ -434,8 +434,24 @@ def pull_db(obj, remote_id, stage, prefix):
     Pull database from your deployed website. Stage is either
     test (default) or live
     """
+    from .localdev import utils
+    project_home = utils.get_project_home()
+    db_container_id = utils.get_db_container_id(project_home, prefix=prefix)
+    try:
+        db_type = utils.get_service_type(db_container_id)
+    except RuntimeError:
+        # legacy section. we try to look for the db, if it does not exist, fail
+        docker_compose = utils.get_docker_compose_cmd(project_home)
+        docker_compose_config = utils.DockerComposeConfig(docker_compose)
+        if not docker_compose_config.has_service("db"):
+            click.secho('No service "db" found in local project', fg="red")
+            sys.exit(1)
+        else:
+            # Fall back to database for legacy docker-compose files
+            db_type = "fsm-postgres"
+
     localdev.ImportRemoteDatabase(
-        client=obj.client, stage=stage, prefix=prefix, remote_id=remote_id
+        client=obj.client, stage=stage, prefix=prefix, remote_id=remote_id, db_type=db_type,
     )()
 
 
@@ -484,11 +500,26 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
     test (default) or live
     """
     if not dumpfile:
+        from .localdev import utils
+        project_home = utils.get_project_home()
+        db_container_id = utils.get_db_container_id(project_home, prefix=prefix)
+        try:
+            db_type = utils.get_service_type(db_container_id)
+        except RuntimeError:
+            # legacy section. we try to look for the db, if it does not exist, fail
+            docker_compose = utils.get_docker_compose_cmd(project_home)
+            docker_compose_config = utils.DockerComposeConfig(docker_compose)
+            if not docker_compose_config.has_service("db"):
+                click.secho('No service "db" found in local project', fg="red")
+                sys.exit(1)
+            else:
+                # Fall back to database for legacy docker-compose files
+                db_type = "fsm-postgres"
         if not noinput:
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg="red")
             if not click.confirm("\nAre you sure you want to continue?"):
                 return
-        localdev.push_db(client=obj.client, stage=stage, remote_id=remote_id, prefix=prefix)
+        localdev.push_db(client=obj.client, stage=stage, remote_id=remote_id, prefix=prefix, db_type=db_type)
     else:
         if not noinput:
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg="red")
