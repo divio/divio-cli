@@ -742,19 +742,7 @@ def export_db(prefix):
 
     project_home = utils.get_project_home()
     db_container_id = utils.get_db_container_id(project_home, prefix=prefix)
-    try:
-        db_type = utils.get_service_type(db_container_id)
-    except RuntimeError:
-        # legacy section. we try to look for the db, if it does not exist, fail
-        docker_compose = utils.get_docker_compose_cmd(project_home)
-        docker_compose_config = utils.DockerComposeConfig(docker_compose)
-        if not docker_compose_config.has_service("db"):
-            click.secho('No service "db" found in local project', fg="red")
-            sys.exit(1)
-        else:
-            # Fall back to database for legacy docker-compose files
-            db_type = "fsm-postgres"
-
+    db_type = utils.get_db_type(prefix=prefix, path=project_home)
     dump_database(dump_filename=dump_filename, db_type=db_type, prefix=prefix)
 
     click.secho("Done", fg="green", nl=False)

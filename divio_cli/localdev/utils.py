@@ -225,29 +225,21 @@ def allow_remote_id_override(func):
     )(read_remote_id)
 
 
-def get_service_type(container_id):
-    output = check_output(
-        [
-            "docker",
-            "inspect",
-            "-f '{{range $index, $value := .Config.Env}}{{println $value}}{{end}}'",
-            container_id,
-        ],
-        catch=False,
-        silent=False,
-    )
-    for line in output.splitlines():
-        if line.startswith("SERVICE_MANAGER="):
-            return line[16:]
+def get_service_type(identifier, path=None):
+    project_home = get_project_home(path)
+    docker_compose = get_docker_compose_cmd(project_home)
+    docker_compose_config = DockerComposeConfig(docker_compose)
+    services = docker_compose_config.get_services()
+    if identifier in services and "environment" in services[identifier] and "SERVICE_MANAGER" in services[identifier]["environment"]:
+        return services[identifier]["environment"]["SERVICE_MANAGER"]
+
     raise RuntimeError("Can not get service type")
 
 
 
 def get_db_type(prefix, path=None):
-    project_home = get_project_home(path)
-    db_container_id = get_db_container_id(project_home, prefix=prefix)
     try:
-        db_type = get_service_type(db_container_id)
+        db_type = get_service_type("database_{}".format(prefix.lower()), path=path)
     except RuntimeError:
         # legacy section. we try to look for the db, if it does not exist, fail
         docker_compose = get_docker_compose_cmd(project_home)
