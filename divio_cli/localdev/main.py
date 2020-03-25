@@ -82,13 +82,13 @@ def configure_project(website_slug, path, client):
     website_data = {"id": website_id, "slug": website_slug}
     with open(os.path.join(path, settings.ALDRYN_DOT_FILE), "w+") as fh:
         json.dump(website_data, fh)
-
+    
 
 def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX):
     docker_compose = utils.get_docker_compose_cmd(path)
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
-    if docker_compose_config.has_service("db"):
+    if docker_compose_config.has_service("db") or docker_compose_config.has_service("database_{}".format(prefix).lower()) :
         has_db_service = True
         existing_db_container_id = utils.get_db_container_id(
             path=path, raise_on_missing=False
@@ -115,7 +115,10 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
 
     if has_db_service:
         click.secho("creating new database container", fg="green")
-        ImportRemoteDatabase(client=client, stage=stage, path=path, prefix=prefix)()
+        utils.start_database_server(docker_compose, prefix=prefix)
+        db_type = utils.get_db_type(prefix, path=path)
+        
+        ImportRemoteDatabase(client=client, stage=stage, path=path, prefix=prefix, db_type=db_type)()
 
         click.secho("syncing and migrating database", fg="green")
 

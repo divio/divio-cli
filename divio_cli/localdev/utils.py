@@ -243,8 +243,8 @@ def get_service_type(container_id):
 
 
 
-def get_db_type(prefix):
-    project_home = get_project_home()
+def get_db_type(prefix, path=None):
+    project_home = get_project_home(path)
     db_container_id = get_db_container_id(project_home, prefix=prefix)
     try:
         db_type = get_service_type(db_container_id)
