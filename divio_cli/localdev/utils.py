@@ -242,7 +242,7 @@ def get_db_type(prefix, path=None):
         db_type = get_service_type("database_{}".format(prefix.lower()), path=path)
     except RuntimeError:
         # legacy section. we try to look for the db, if it does not exist, fail
-        docker_compose = get_docker_compose_cmd(project_home)
+        docker_compose = get_docker_compose_cmd(path)
         docker_compose_config = DockerComposeConfig(docker_compose)
         if not docker_compose_config.has_service("db"):
             click.secho('No service "db" found in local project', fg="red")

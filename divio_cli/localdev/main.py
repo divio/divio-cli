@@ -110,8 +110,12 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
 
     if existing_db_container_id:
         click.secho("removing old database container", fg="green")
-        check_call(docker_compose("stop", "db"))
-        check_call(docker_compose("rm", "-f", "db"))
+        try:
+            check_call(docker_compose("stop", "database_default"), catch=False)
+            check_call(docker_compose("rm", "-f", "database_default"), catch=False)
+        except:
+            check_call(docker_compose("stop", "db"))
+            check_call(docker_compose("rm", "-f", "db"))
 
     if has_db_service:
         click.secho("creating new database container", fg="green")
@@ -333,7 +337,32 @@ class DatabaseImportBase(object):
             )  # TODO: silence me
 
             click.echo(" [{}s]".format(int(time() - start_remove)))
-        
+        else:
+            for attempt in range(10):
+                try:
+                    check_call(
+                        [
+                            "docker",
+                            "exec",
+                            db_container_id,
+                            "ls",
+                            "/var/run/mysqld/mysqld.sock",
+                        ],
+                        catch=False,
+                        silent=True,
+                    )
+                except subprocess.CalledProcessError:
+                    sleep(5)
+                else:
+                    break
+            else:
+                click.secho(
+                    "Couldn't connect to database container. "
+                    "Database server may not have started.",
+                    fg="red",
+                )
+                sys.exit(1)
+            click.echo(" [{}s]".format(int(time() - start_wait)))
 
     def get_db_restore_command(self, db_type):
         raise NotImplementedError
