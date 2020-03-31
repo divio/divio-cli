@@ -516,9 +516,13 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 @click.option(
     "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
 )
+@click.argument(
+    "prefix",
+    default=localdev.DEFAULT_SERVICE_PREFIX,
+)
 @allow_remote_id_override
 @click.pass_obj
-def push_media(obj, remote_id, stage, noinput):
+def push_media(obj, remote_id, prefix, stage, noinput):
     """
     Push database to your deployed website. Stage is either
     test (default) or live
@@ -528,7 +532,7 @@ def push_media(obj, remote_id, stage, noinput):
         click.secho(messages.PUSH_MEDIA_WARNING.format(stage=stage), fg="red")
         if not click.confirm("\nAre you sure you want to continue?"):
             return
-    localdev.push_media(obj.client, stage=stage, remote_id=remote_id)
+    localdev.push_media(obj.client, stage=stage, remote_id=remote_id, prefix=prefix)
 
 
 @project.group(name="import")

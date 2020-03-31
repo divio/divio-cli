@@ -310,7 +310,7 @@ class CloudClient(object):
         request = api_requests.UploadDBProgressRequest(self.session, url=url)
         return request()
 
-    def upload_media(self, website_id, stage, archive_path, prefix):
+    def upload_media(self, website_id, stage, archive_path, prefix="DEFAULT"):
         request = api_requests.UploadMediaFilesRequest(
             self.session,
             url_kwargs={"website_id": website_id},

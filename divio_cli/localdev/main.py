@@ -884,7 +884,7 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_media(client, stage, remote_id):
+def push_media(client, stage, remote_id, prefix):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)["id"]
     archive_path = os.path.join(project_home, "local_media.tar.gz")
@@ -935,7 +935,7 @@ def push_media(client, stage, remote_id):
     )
     click.secho("Uploading", nl=False)
     start_upload = time()
-    response = client.upload_media(remote_id, stage, archive_path) or {}
+    response = client.upload_media(remote_id, stage, archive_path, prefix) or {}
     click.echo(" [{}s]".format(int(time() - start_upload)))
     progress_url = response.get("progress_url")
     if not progress_url:
