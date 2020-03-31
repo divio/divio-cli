@@ -238,7 +238,9 @@ class DatabaseImportBase(object):
     def run(self):
         self.setup()
         self.prepare_db_server()
-        self.restore_db()
+        if self.db_dump_path:
+            # Only restore if we have something to restore
+            self.restore_db()
         self.finish()
 
     def get_active_db_extensions(self):
@@ -539,12 +541,16 @@ class ImportRemoteDatabase(DatabaseImportBase):
 
         click.secho(" ---> Downloading database", nl=False)
         start_download = time()
-        db_dump_path = download_file(download_url, directory=self.path)
-        click.echo(" [{}s]".format(int(time() - start_download)))
-        # strip path from dump_path for use in the docker container
-        self.db_dump_path = "/app/{}".format(
-            db_dump_path.replace(self.path, "")
-        )
+        if download_url:
+            db_dump_path = download_file(download_url, directory=self.path)
+            click.echo(" [{}s]".format(int(time() - start_download)))
+            # strip path from dump_path for use in the docker container
+            self.db_dump_path = "/app/{}".format(
+                db_dump_path.replace(self.path, "")
+            )
+        else:
+            click.secho(" -> empty")
+            self.db_dump_path = None
 
     def get_db_restore_command(self, db_type):
         cmd = self.restore_commands[db_type]["archived-binary"]
