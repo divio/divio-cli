@@ -435,7 +435,8 @@ def pull_db(obj, remote_id, stage, prefix):
     test (default) or live
     """
     from .localdev import utils
-    db_type = utils.get_db_type(prefix)
+    project_home = utils.get_project_home()
+    db_type = utils.get_db_type(prefix, path=project_home)
     localdev.ImportRemoteDatabase(
         client=obj.client, stage=stage, prefix=prefix, remote_id=remote_id, db_type=db_type,
     )()
@@ -486,7 +487,8 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
     test (default) or live
     """
     from .localdev import utils
-    db_type = utils.get_db_type(prefix)
+    project_home = utils.get_project_home()
+    db_type = utils.get_db_type(prefix, path=project_home)
     if not dumpfile:
         if not noinput:
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg="red")
@@ -550,7 +552,8 @@ def import_db(obj, dump_path, prefix):
     Load a database dump into your local database
     """
     from .localdev import utils
-    db_type = utils.get_db_type(prefix)
+    project_home = utils.get_project_home()
+    db_type = utils.get_db_type(prefix, path=project_home)
     localdev.ImportLocalDatabase(
         client=obj.client, custom_dump_path=dump_path, prefix=prefix, db_type=db_type
     )()
