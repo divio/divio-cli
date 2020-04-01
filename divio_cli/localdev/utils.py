@@ -142,6 +142,9 @@ def ensure_windows_docker_compose_file_exists(path):
 
 
 def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
+    """
+    Returns the container id for a running database with a given prefix.
+    """
     docker_compose = get_docker_compose_cmd(path)
     try:
         output = check_output(docker_compose("ps", "-q", "database_{}".format(prefix).lower()), catch=False, stderr=open(os.devnull, "w")).rstrip(os.linesep)
@@ -158,9 +161,10 @@ def start_database_server(docker_compose, prefix):
     start_db = time()
     click.secho(" ---> Starting local database server")
     click.secho("      ", nl=False)
-    try:
-        output = check_call(docker_compose("up", "-d", "database_{}".format(prefix).lower()), catch=False, stderr=open(os.devnull, "w"))
-    except subprocess.CalledProcessError:
+    docker_compose_config = DockerComposeConfig(docker_compose)
+    if "database_{}".format(prefix).lower()) in docker_compose_config.get_services():
+        check_call(docker_compose("up", "-d", "database_{}".format(prefix).lower()))
+    else:
         check_call(docker_compose("up", "-d", "db"))
     click.secho("      [{}s]".format(int(time() - start_db)))
 
@@ -226,6 +230,10 @@ def allow_remote_id_override(func):
 
 
 def get_service_type(identifier, path=None):
+    """
+    Retrieves the service type based on the `SERVICE_MANAGER` environment
+    variable of a services from the docker-compose file.
+    """
     project_home = get_project_home(path)
     docker_compose = get_docker_compose_cmd(project_home)
     docker_compose_config = DockerComposeConfig(docker_compose)
@@ -238,6 +246,10 @@ def get_service_type(identifier, path=None):
 
 
 def get_db_type(prefix, path=None):
+    """
+    Utility function to wrap `get_service_type` to search for databases so we
+    can properly fall back to PostgreSQL in case of old structures.
+    """
     try:
         db_type = get_service_type("database_{}".format(prefix.lower()), path=path)
     except RuntimeError:
