@@ -110,16 +110,16 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
 
     if existing_db_container_id:
         click.secho("removing old database container", fg="green")
-        try:
+        if docker_compose_config.has_service("database_default"):
             check_call(docker_compose("stop", "database_default"), catch=False)
             check_call(docker_compose("rm", "-f", "database_default"), catch=False)
-        except:
+        else:
             check_call(docker_compose("stop", "db"))
             check_call(docker_compose("rm", "-f", "db"))
 
     if has_db_service:
         click.secho("creating new database container", fg="green")
-        utils.start_database_server(docker_compose, prefix=prefix)
+        
         db_type = utils.get_db_type(prefix, path=path)
         
         ImportRemoteDatabase(client=client, stage=stage, path=path, prefix=prefix, db_type=db_type)()
@@ -209,10 +209,6 @@ class DatabaseImportBase(object):
             "archived-binary": "tar -xzOf {}| mysql db --binary-mode=1"
         }
     } 
-
-
-    
-    
 
     def __init__(self, *args, **kwargs):
         super(DatabaseImportBase, self).__init__()
@@ -369,14 +365,7 @@ class DatabaseImportBase(object):
     def get_db_restore_command(self, db_type):
         raise NotImplementedError
 
-    def restore_db(self):
-        click.secho(" ---> Importing database", nl=False)
-        start_import = time()
-
-        db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
-
-        restore_command = self.get_db_restore_command(self.db_type)
-
+    def create_local_db(self, db_container_id):
         if self.db_type == "fsm-postgres":
             check_call(
                 [
@@ -389,7 +378,11 @@ class DatabaseImportBase(object):
                     "db",
                 ]
             )
+        else:
+            pass
 
+    def create_local_db_extentions(self, db_container_id):
+        if self.db_type == "fsm-postgres":
             if self.database_extensions:
                 available_extensions = check_output(
                     [
@@ -429,7 +422,12 @@ class DatabaseImportBase(object):
                             ],
                             silent=True,
                         )
+        else:
 
+    def _restore_db(self, db_container_id):
+        restore_command = self.get_db_restore_command(self.db_type)
+        
+        if self.db_type == "fsm-postgres":
             # TODO: use same dump-type detection like server side on db-api
             try:
                 subprocess.call(
@@ -446,7 +444,6 @@ class DatabaseImportBase(object):
             except subprocess.CalledProcessError:
                 pass
 
-            click.echo("\n      [{}s]".format(int(time() - start_import)))
         elif self.db_type == "fsm-mysql":
             check_call(
                 (
@@ -459,6 +456,19 @@ class DatabaseImportBase(object):
                 ),
                 env=get_subprocess_env(),
             )
+
+    def restore_db(self):
+        click.secho(" ---> Importing database", nl=False)
+        start_import = time()
+
+        db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
+
+        self.create_local_db(db_container_id):
+        self.create_local_db_extentions(db_container_id)
+        self._restore_db(db_container_id)
+
+        click.echo("\n      [{}s]".format(int(time() - start_import)))
+       
 
     def finish(self):
         click.secho("Done", fg="green", nl=False)
