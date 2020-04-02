@@ -162,7 +162,7 @@ def start_database_server(docker_compose, prefix):
     click.secho(" ---> Starting local database server")
     click.secho("      ", nl=False)
     docker_compose_config = DockerComposeConfig(docker_compose)
-    if "database_{}".format(prefix).lower()) in docker_compose_config.get_services():
+    if "database_{}".format(prefix).lower() in docker_compose_config.get_services():
         check_call(docker_compose("up", "-d", "database_{}".format(prefix).lower()))
     else:
         check_call(docker_compose("up", "-d", "db"))

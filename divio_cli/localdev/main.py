@@ -335,7 +335,7 @@ class DatabaseImportBase(object):
             )  # TODO: silence me
 
             click.echo(" [{}s]".format(int(time() - start_remove)))
-        else:
+        elif self.db_type == "fsm-mysql":
             for attempt in range(10):
                 try:
                     check_call(
@@ -365,87 +365,64 @@ class DatabaseImportBase(object):
     def get_db_restore_command(self, db_type):
         raise NotImplementedError
 
-    def create_local_db(self, db_container_id):
-        if self.db_type == "fsm-postgres":
-            check_call(
+    def restore_db_postgres(self, db_container_id):
+        restore_command = self.get_db_restore_command(self.db_type)
+        # Create db
+        check_call(
+            [
+                "docker",
+                "exec",
+                db_container_id,
+                "createdb",
+                "-U",
+                "postgres",
+                "db",
+            ]
+        )
+
+        if self.database_extensions:
+            available_extensions = check_output(
                 [
                     "docker",
                     "exec",
                     db_container_id,
-                    "createdb",
+                    "psql",
                     "-U",
                     "postgres",
-                    "db",
+                    "--dbname=postgres",
+                    "-c",
+                    "SELECT name FROM pg_catalog.pg_available_extensions",
                 ]
             )
-        else:
-            pass
 
-    def create_local_db_extentions(self, db_container_id):
-        if self.db_type == "fsm-postgres":
-            if self.database_extensions:
-                available_extensions = check_output(
-                    [
-                        "docker",
-                        "exec",
-                        db_container_id,
-                        "psql",
-                        "-U",
-                        "postgres",
-                        "--dbname=postgres",
-                        "-c",
-                        "SELECT name FROM pg_catalog.pg_available_extensions",
-                    ]
-                )
+            # TODO: solve extensions in a generic way in
+            # harmony with server side db-api
+            click.echo("")
+            for extension in self.database_extensions:
+                if extension in available_extensions:
+                    click.echo(
+                        "      Enabling extension: {}".format(extension)
+                    )
+                    check_call(
+                        [
+                            "docker",
+                            "exec",
+                            db_container_id,
+                            "psql",
+                            "-U",
+                            "postgres",
+                            "--dbname=db",
+                            "-c",
+                            "CREATE EXTENSION IF NOT EXISTS {};".format(
+                                extension
+                            ),
+                        ],
+                        silent=True,
+                    )
 
-                # TODO: solve extensions in a generic way in
-                # harmony with server side db-api
-                click.echo("")
-                for extension in self.database_extensions:
-                    if extension in available_extensions:
-                        click.echo(
-                            "      Enabling extension: {}".format(extension)
-                        )
-                        check_call(
-                            [
-                                "docker",
-                                "exec",
-                                db_container_id,
-                                "psql",
-                                "-U",
-                                "postgres",
-                                "--dbname=db",
-                                "-c",
-                                "CREATE EXTENSION IF NOT EXISTS {};".format(
-                                    extension
-                                ),
-                            ],
-                            silent=True,
-                        )
-        else:
-
-    def _restore_db(self, db_container_id):
-        restore_command = self.get_db_restore_command(self.db_type)
-        
-        if self.db_type == "fsm-postgres":
-            # TODO: use same dump-type detection like server side on db-api
-            try:
-                subprocess.call(
-                    (
-                        "docker",
-                        "exec",
-                        db_container_id,
-                        "/bin/bash",
-                        "-c",
-                        restore_command,
-                    ),
-                    env=get_subprocess_env(),
-                )
-            except subprocess.CalledProcessError:
-                pass
-
-        elif self.db_type == "fsm-mysql":
-            check_call(
+        # TODO: use same dump-type detection like server side on db-api
+        try:
+            subprocess.call(
                 (
                     "docker",
                     "exec",
@@ -456,6 +433,34 @@ class DatabaseImportBase(object):
                 ),
                 env=get_subprocess_env(),
             )
+        except subprocess.CalledProcessError:
+            pass
+
+    def restore_db_mysql(self, db_container_id):
+        restore_command = self.get_db_restore_command(self.db_type)
+
+        check_call(
+            [
+                "docker",
+                "exec",
+                db_container_id,
+                "/bin/bash",
+                "-c",
+                "mysql -u root --execute='CREATE DATABASE db;' > /dev/null 2>&1 | true",
+            ]
+        )
+
+        check_call(
+            (
+                "docker",
+                "exec",
+                db_container_id,
+                "/bin/bash",
+                "-c",
+                restore_command,
+            ),
+            env=get_subprocess_env(),
+        )
 
     def restore_db(self):
         click.secho(" ---> Importing database", nl=False)
@@ -463,9 +468,10 @@ class DatabaseImportBase(object):
 
         db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
 
-        self.create_local_db(db_container_id):
-        self.create_local_db_extentions(db_container_id)
-        self._restore_db(db_container_id)
+        if self.db_type == "fsm-postgres":
+            self.restore_db_postgres(db_container_id)
+        elif self.db_type == "fsm-mysql":
+            self.restore_db_mysql(db_container_id)
 
         click.echo("\n      [{}s]".format(int(time() - start_import)))
        
