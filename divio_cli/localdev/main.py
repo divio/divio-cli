@@ -119,7 +119,7 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
 
     if has_db_service:
         click.secho("creating new database container", fg="green")
-        utils.start_database_server(docker_compose, prefix=prefix)
+
         db_type = utils.get_db_type(prefix, path=path)
         
         ImportRemoteDatabase(client=client, stage=stage, path=path, prefix=prefix, db_type=db_type)()
@@ -345,7 +345,7 @@ class DatabaseImportBase(object):
                             db_container_id,
                             "/bin/bash",
                             "-c",
-                            "mysql -e '\q'",
+                            "mysql --user=root  --execute \"SHOW DATABASES;\"",
                         ],
                         catch=False,
                         silent=True,
