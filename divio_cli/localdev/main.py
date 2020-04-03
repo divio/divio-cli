@@ -133,7 +133,7 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
             check_call(docker_compose("run", "-d", "web", "start", "migrate"))
             sleep(30)
         else:
-            check_call(docker_compose("run", "web", "start", "migrate"))
+            check_call(docker_compose("run", "--service-ports", "web", "start", "migrate"))
 
 
 def create_workspace(
