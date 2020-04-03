@@ -133,7 +133,7 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
             check_call(docker_compose("run", "-d", "web", "start", "migrate"))
             sleep(30)
         else:
-            check_call(docker_compose("run", "--service-ports", "web", "start", "migrate"))
+            check_call(docker_compose("run", "web", "/bin/bash","-c", "sleep 5; start migrate"))
 
 
 def create_workspace(
@@ -265,10 +265,10 @@ class DatabaseImportBase(object):
         start_wait = time()
         # check for postgres in db container to start
 
-        # sleep 5 seconds initially because the server is quickly
+        # sleep 10 seconds initially because the server is quickly
         # available during startup, but will go down again to
-        # create the initial database. We're giving postgres a head start
-        sleep(5)
+        # create the initial database. We're giving the database a head start
+        sleep(10)
 
         if self.db_type == "fsm-postgres":
             for attempt in range(10):
