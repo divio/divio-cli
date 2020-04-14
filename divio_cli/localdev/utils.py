@@ -8,7 +8,7 @@ import yaml
 
 from .. import config, exceptions, settings
 from ..utils import check_call, check_output, is_windows
-
+import subprocess
 
 DOT_ALDRYN_FILE_NOT_FOUND = (
     "Divio Cloud project file '.aldryn' could not be found!\n"
@@ -141,19 +141,31 @@ def ensure_windows_docker_compose_file_exists(path):
         yaml.safe_dump(conf, fh)
 
 
-def get_db_container_id(path, raise_on_missing=True):
+def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
+    """
+    Returns the container id for a running database with a given prefix.
+    """
     docker_compose = get_docker_compose_cmd(path)
-    output = check_output(docker_compose("ps", "-q", "db")).rstrip(os.linesep)
-    if not output and raise_on_missing:
-        raise exceptions.AldrynException("Unable to find database container")
+    try:
+        output = check_output(docker_compose("ps", "-q", "database_{}".format(prefix).lower()), catch=False, stderr=open(os.devnull, "w")).rstrip(os.linesep)
+        if not output and raise_on_missing:
+            raise exceptions.AldrynException("Unable to find database container")
+    except subprocess.CalledProcessError:
+        output = check_output(docker_compose("ps", "-q", "db")).rstrip(os.linesep)
+        if not output and raise_on_missing:
+            raise exceptions.AldrynException("Unable to find database container")
     return output
 
 
-def start_database_server(docker_compose):
+def start_database_server(docker_compose, prefix):
     start_db = time()
     click.secho(" ---> Starting local database server")
     click.secho("      ", nl=False)
-    check_call(docker_compose("up", "-d", "db"))
+    docker_compose_config = DockerComposeConfig(docker_compose)
+    if "database_{}".format(prefix).lower() in docker_compose_config.get_services():
+        check_call(docker_compose("up", "-d", "database_{}".format(prefix).lower()))
+    else:
+        check_call(docker_compose("up", "-d", "db"))
     click.secho("      [{}s]".format(int(time() - start_db)))
 
 
@@ -215,3 +227,39 @@ def allow_remote_id_override(func):
         "Defaults to the project in the current directory using the "
         ".aldryn file.",
     )(read_remote_id)
+
+
+def get_service_type(identifier, path=None):
+    """
+    Retrieves the service type based on the `SERVICE_MANAGER` environment
+    variable of a services from the docker-compose file.
+    """
+    project_home = get_project_home(path)
+    docker_compose = get_docker_compose_cmd(project_home)
+    docker_compose_config = DockerComposeConfig(docker_compose)
+    services = docker_compose_config.get_services()
+    if identifier in services and "environment" in services[identifier] and "SERVICE_MANAGER" in services[identifier]["environment"]:
+        return services[identifier]["environment"]["SERVICE_MANAGER"]
+
+    raise RuntimeError("Can not get service type")
+
+
+
+def get_db_type(prefix, path=None):
+    """
+    Utility function to wrap `get_service_type` to search for databases so we
+    can properly fall back to PostgreSQL in case of old structures.
+    """
+    try:
+        db_type = get_service_type("database_{}".format(prefix.lower()), path=path)
+    except RuntimeError:
+        # legacy section. we try to look for the db, if it does not exist, fail
+        docker_compose = get_docker_compose_cmd(path)
+        docker_compose_config = DockerComposeConfig(docker_compose)
+        if not docker_compose_config.has_service("db"):
+            click.secho('No service "db" found in local project', fg="red")
+            sys.exit(1)
+        else:
+            # Fall back to database for legacy docker-compose files
+            db_type = "fsm-postgres"
+    return db_type

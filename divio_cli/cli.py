@@ -423,15 +423,22 @@ def project_pull():
 @click.argument(
     "stage", default="test", type=click.Choice(get_available_environments())
 )
+@click.argument(
+    "prefix",
+    default=localdev.DEFAULT_SERVICE_PREFIX,
+)
 @allow_remote_id_override
 @click.pass_obj
-def pull_db(obj, remote_id, stage):
+def pull_db(obj, remote_id, stage, prefix):
     """
     Pull database from your deployed website. Stage is either
     test (default) or live
     """
+    from .localdev import utils
+    project_home = utils.get_project_home()
+    db_type = utils.get_db_type(prefix, path=project_home)
     localdev.ImportRemoteDatabase(
-        client=obj.client, stage=stage, remote_id=remote_id
+        client=obj.client, stage=stage, prefix=prefix, remote_id=remote_id, db_type=db_type,
     )()
 
 
@@ -468,19 +475,26 @@ def project_push():
 @click.option(
     "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
 )
+@click.argument(
+    "prefix",
+    default=localdev.DEFAULT_SERVICE_PREFIX,
+)
 @allow_remote_id_override
 @click.pass_obj
-def push_db(obj, remote_id, stage, dumpfile, noinput):
+def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
     """
     Push database to your deployed website. Stage is either
     test (default) or live
     """
+    from .localdev import utils
+    project_home = utils.get_project_home()
+    db_type = utils.get_db_type(prefix, path=project_home)
     if not dumpfile:
         if not noinput:
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg="red")
             if not click.confirm("\nAre you sure you want to continue?"):
                 return
-        localdev.push_db(obj.client, stage=stage, remote_id=remote_id)
+        localdev.push_db(client=obj.client, stage=stage, remote_id=remote_id, prefix=prefix, db_type=db_type)
     else:
         if not noinput:
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg="red")
@@ -491,6 +505,7 @@ def push_db(obj, remote_id, stage, dumpfile, noinput):
             stage=stage,
             dump_filename=dumpfile,
             website_id=remote_id,
+            prefix=prefix,
         )
 
 
@@ -501,9 +516,13 @@ def push_db(obj, remote_id, stage, dumpfile, noinput):
 @click.option(
     "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
 )
+@click.argument(
+    "prefix",
+    default=localdev.DEFAULT_SERVICE_PREFIX,
+)
 @allow_remote_id_override
 @click.pass_obj
-def push_media(obj, remote_id, stage, noinput):
+def push_media(obj, remote_id, prefix, stage, noinput):
     """
     Push database to your deployed website. Stage is either
     test (default) or live
@@ -513,7 +532,7 @@ def push_media(obj, remote_id, stage, noinput):
         click.secho(messages.PUSH_MEDIA_WARNING.format(stage=stage), fg="red")
         if not click.confirm("\nAre you sure you want to continue?"):
             return
-    localdev.push_media(obj.client, stage=stage, remote_id=remote_id)
+    localdev.push_media(obj.client, stage=stage, remote_id=remote_id, prefix=prefix)
 
 
 @project.group(name="import")
@@ -523,17 +542,24 @@ def project_import():
 
 @project_import.command(name="db")
 @click.argument(
+    "prefix",
+    default=localdev.DEFAULT_SERVICE_PREFIX,
+)
+@click.argument(
     "dump-path",
     default=localdev.DEFAULT_DUMP_FILENAME,
     type=click.Path(exists=True),
 )
 @click.pass_obj
-def import_db(obj, dump_path):
+def import_db(obj, dump_path, prefix):
     """
     Load a database dump into your local database
     """
+    from .localdev import utils
+    project_home = utils.get_project_home()
+    db_type = utils.get_db_type(prefix, path=project_home)
     localdev.ImportLocalDatabase(
-        client=obj.client, custom_dump_path=dump_path
+        client=obj.client, custom_dump_path=dump_path, prefix=prefix, db_type=db_type
     )()
 
 
@@ -543,11 +569,15 @@ def project_export():
 
 
 @project_export.command(name="db")
-def export_db():
+@click.argument(
+    "prefix",
+    default=localdev.DEFAULT_SERVICE_PREFIX,
+)
+def export_db(prefix):
     """
     Export a dump of your local database
     """
-    localdev.export_db()
+    localdev.export_db(prefix=prefix)
 
 
 @project.command(name="develop")

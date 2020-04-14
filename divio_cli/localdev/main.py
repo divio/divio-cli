@@ -31,6 +31,10 @@ DEFAULT_GIT_HOST = "git@git.{aldryn_host}"
 GIT_CLONE_URL = "{git_host}:{project_slug}.git"
 
 
+DEFAULT_DUMP_FILENAME = "local_db.sql"
+DEFAULT_SERVICE_PREFIX = "DEFAULT"
+
+
 def get_git_host():
     git_host = os.environ.get("ALDRYN_GIT_HOST")
     if git_host:
@@ -78,13 +82,13 @@ def configure_project(website_slug, path, client):
     website_data = {"id": website_id, "slug": website_slug}
     with open(os.path.join(path, settings.ALDRYN_DOT_FILE), "w+") as fh:
         json.dump(website_data, fh)
+    
 
-
-def setup_website_containers(client, stage, path):
+def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX):
     docker_compose = utils.get_docker_compose_cmd(path)
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
-    if docker_compose_config.has_service("db"):
+    if docker_compose_config.has_service("db") or docker_compose_config.has_service("database_{}".format(prefix).lower()) :
         has_db_service = True
         existing_db_container_id = utils.get_db_container_id(
             path=path, raise_on_missing=False
@@ -106,12 +110,19 @@ def setup_website_containers(client, stage, path):
 
     if existing_db_container_id:
         click.secho("removing old database container", fg="green")
-        check_call(docker_compose("stop", "db"))
-        check_call(docker_compose("rm", "-f", "db"))
+        if docker_compose_config.has_service("database_default"):
+            check_call(docker_compose("stop", "database_default"), catch=False)
+            check_call(docker_compose("rm", "-f", "database_default"), catch=False)
+        else:
+            check_call(docker_compose("stop", "db"))
+            check_call(docker_compose("rm", "-f", "db"))
 
     if has_db_service:
         click.secho("creating new database container", fg="green")
-        ImportRemoteDatabase(client=client, stage=stage, path=path)()
+
+        db_type = utils.get_db_type(prefix, path=path)
+        
+        ImportRemoteDatabase(client=client, stage=stage, path=path, prefix=prefix, db_type=db_type)()
 
         click.secho("syncing and migrating database", fg="green")
 
@@ -122,7 +133,7 @@ def setup_website_containers(client, stage, path):
             check_call(docker_compose("run", "-d", "web", "start", "migrate"))
             sleep(30)
         else:
-            check_call(docker_compose("run", "web", "start", "migrate"))
+            check_call(docker_compose("run", "web", "/bin/bash","-c", "sleep 5; start migrate"))
 
 
 def create_workspace(
@@ -180,21 +191,31 @@ def create_workspace(
 
 class DatabaseImportBase(object):
     restore_commands = {
-        "sql": "psql -U postgres db < {}",
-        "binary": (
-            "pg_restore -U postgres --dbname=db -n public "
-            "--no-owner --exit-on-error {}"
-        ),
-        "archived-binary": (
-            "tar -xzOf {}"
-            " | pg_restore -U postgres --dbname=db -n public "
-            "--no-owner --exit-on-error"
-        ),
-    }
+        "fsm-postgres":{
+            "sql": "psql -U postgres db < {}",
+            "binary": (
+                "pg_restore -U postgres --dbname=db -n public "
+                "--no-owner --exit-on-error {}"
+            ),
+            "archived-binary": (
+                "tar -xzOf {}"
+                " | pg_restore -U postgres --dbname=db -n public "
+                "--no-owner --exit-on-error"
+            ),
+        },
+        "fsm-mysql":{
+            "sql": "mysql db < {}",
+            "binary": "mysql db --binary-mode=1 < {}",
+            "archived-binary": "tar -xzOf {}| mysql db --binary-mode=1"
+        }
+    } 
 
     def __init__(self, *args, **kwargs):
         super(DatabaseImportBase, self).__init__()
         self.client = kwargs.pop("client")
+        self.prefix = kwargs.pop("prefix")
+        self.db_type = kwargs.pop("db_type")
+        
         self.path = kwargs.pop("path", None) or utils.get_project_home()
         self.website_id = utils.get_aldryn_project_settings(self.path)["id"]
         self.website_slug = utils.get_aldryn_project_settings(self.path)[
@@ -202,11 +223,6 @@ class DatabaseImportBase(object):
         ]
         self.docker_compose = utils.get_docker_compose_cmd(self.path)
         self.database_extensions = self.get_active_db_extensions()
-        docker_compose_config = utils.DockerComposeConfig(self.docker_compose)
-        if not docker_compose_config.has_service("db"):
-            click.secho('No service "db" found in local project', fg="red")
-            sys.exit(1)
-
         self.start_time = time()
 
     def __call__(self, *args, **kwargs):
@@ -218,7 +234,9 @@ class DatabaseImportBase(object):
     def run(self):
         self.setup()
         self.prepare_db_server()
-        self.restore_db()
+        if self.db_dump_path:
+            # Only restore if we have something to restore
+            self.restore_db()
         self.finish()
 
     def get_active_db_extensions(self):
@@ -237,21 +255,7 @@ class DatabaseImportBase(object):
         else:
             return default_db_extensions
 
-    def prepare_db_server(self):
-        utils.start_database_server(self.docker_compose)
-
-        click.secho(" ---> Waiting for local database server", nl=False)
-
-        db_container_id = utils.get_db_container_id(self.path)
-
-        start_wait = time()
-        # check for postgres in db container to start
-
-        # sleep 5 seconds initially because the server is quickly
-        # available during startup, but will go down again to
-        # create the initial database. We're giving postgres a head start
-        sleep(5)
-
+    def prepare_db_server_postgres(self, db_container_id, start_wait):
         for attempt in range(10):
             try:
                 check_call(
@@ -317,15 +321,63 @@ class DatabaseImportBase(object):
 
         click.echo(" [{}s]".format(int(time() - start_remove)))
 
-    def get_db_restore_command(self):
+    def prepare_db_server_mysql(self, db_container_id, start_wait):
+        for attempt in range(10):
+            try:
+                check_call(
+                    [
+                        "docker",
+                        "exec",
+                        db_container_id,
+                        "/bin/bash",
+                        "-c",
+                        "mysql --user=root  --execute \"SHOW DATABASES;\"",
+                    ],
+                    catch=False,
+                    silent=True,
+                )
+            except subprocess.CalledProcessError:
+                sleep(5)
+            else:
+                break
+        else:
+            click.secho(
+                "Couldn't connect to database container. "
+                "Database server may not have started.",
+                fg="red",
+            )
+            sys.exit(1)
+        click.echo(" [{}s]".format(int(time() - start_wait)))
+
+    def prepare_db_server(self):
+        utils.start_database_server(self.docker_compose, prefix=self.prefix)
+
+        click.secho(" ---> Waiting for local database server", nl=False)
+
+        db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
+
+        start_wait = time()
+        # check for postgres in db container to start
+
+        # sleep 10 seconds initially because the server is quickly
+        # available during startup, but will go down again to
+        # create the initial database. We're giving the database a head start
+        sleep(10)
+
+        if self.db_type == "fsm-postgres":
+           self.prepare_db_server_postgres(db_container_id, start_wait) 
+        elif self.db_type == "fsm-mysql":
+           self.prepare_db_server_mysql(db_container_id, start_wait)
+        else:
+            click.secho("db type not known")
+            sys.exit(1)
+
+    def get_db_restore_command(self, db_type):
         raise NotImplementedError
 
-    def restore_db(self):
-        click.secho(" ---> Importing database", nl=False)
-        start_import = time()
-
-        db_container_id = utils.get_db_container_id(self.path)
-
+    def restore_db_postgres(self, db_container_id):
+        restore_command = self.get_db_restore_command(self.db_type)
+        # Create db
         check_call(
             [
                 "docker",
@@ -378,8 +430,6 @@ class DatabaseImportBase(object):
                         silent=True,
                     )
 
-        restore_command = self.get_db_restore_command()
-
         # TODO: use same dump-type detection like server side on db-api
         try:
             subprocess.call(
@@ -396,7 +446,47 @@ class DatabaseImportBase(object):
         except subprocess.CalledProcessError:
             pass
 
+    def restore_db_mysql(self, db_container_id):
+        restore_command = self.get_db_restore_command(self.db_type)
+
+        check_call(
+            [
+                "docker",
+                "exec",
+                db_container_id,
+                "/bin/bash",
+                "-c",
+                "mysql -u root --execute='CREATE DATABASE db;' > /dev/null 2>&1 | true",
+            ]
+        )
+
+        check_call(
+            (
+                "docker",
+                "exec",
+                db_container_id,
+                "/bin/bash",
+                "-c",
+                restore_command,
+            ),
+            env=get_subprocess_env(),
+        )
+
+    def restore_db(self):
+        click.secho(" ---> Importing database", nl=False)
+        start_import = time()
+
+        db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
+
+        if self.db_type == "fsm-postgres":
+            self.restore_db_postgres(db_container_id)
+        elif self.db_type == "fsm-mysql":
+            self.restore_db_mysql(db_container_id)
+        else:
+            click.secho("db type not known")
+            sys.exit(1)
         click.echo("\n      [{}s]".format(int(time() - start_import)))
+       
 
     def finish(self):
         click.secho("Done", fg="green", nl=False)
@@ -410,11 +500,11 @@ class ImportLocalDatabase(DatabaseImportBase):
 
     def setup(self):
         click.secho(
-            " ===> Loading database dump {} into local database".format(
-                self.custom_dump_path
+            " ===> Loading database dump {} into local {} database".format(
+                self.custom_dump_path, self.prefix
             )
         )
-        db_container_id = utils.get_db_container_id(self.path)
+        db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
 
         start_copy = time()
 
@@ -432,12 +522,12 @@ class ImportLocalDatabase(DatabaseImportBase):
         click.echo(" [{}s]".format(int(time() - start_copy)))
         self.db_dump_path = "/tmp/dump"
 
-    def get_db_restore_command(self):
+    def get_db_restore_command(self, db_type):
         if self.custom_dump_path.endswith("sql"):
             kind = "sql"
         else:
             kind = "binary"
-        return self.restore_commands[kind].format(self.db_dump_path)
+        return self.restore_commands[db_type][kind].format(self.db_dump_path)
 
 
 class ImportRemoteDatabase(DatabaseImportBase):
@@ -460,7 +550,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         click.secho(" ---> Preparing download", nl=False)
         start_preparation = time()
         response = (
-            self.client.download_db_request(self.remote_id, self.stage) or {}
+            self.client.download_db_request(self.remote_id, self.stage, self.prefix) or {}
         )
         progress_url = response.get("progress_url")
         if not progress_url:
@@ -479,15 +569,19 @@ class ImportRemoteDatabase(DatabaseImportBase):
 
         click.secho(" ---> Downloading database", nl=False)
         start_download = time()
-        db_dump_path = download_file(download_url, directory=self.path)
-        click.echo(" [{}s]".format(int(time() - start_download)))
-        # strip path from dump_path for use in the docker container
-        self.db_dump_path = "/app/{}".format(
-            db_dump_path.replace(self.path, "")
-        )
+        if download_url:
+            db_dump_path = download_file(download_url, directory=self.path)
+            click.echo(" [{}s]".format(int(time() - start_download)))
+            # strip path from dump_path for use in the docker container
+            self.db_dump_path = "/app/{}".format(
+                db_dump_path.replace(self.path, "")
+            )
+        else:
+            click.secho(" -> empty")
+            self.db_dump_path = None
 
-    def get_db_restore_command(self):
-        cmd = self.restore_commands["archived-binary"]
+    def get_db_restore_command(self, db_type):
+        cmd = self.restore_commands[db_type]["archived-binary"]
         return cmd.format(self.db_dump_path)
 
 
@@ -579,36 +673,58 @@ def pull_media(client, stage, remote_id=None, path=None):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def dump_database(dump_filename, archive_filename=None):
+def dump_database(dump_filename, db_type, prefix, archive_filename=None):
     project_home = utils.get_project_home()
     docker_compose = utils.get_docker_compose_cmd(project_home)
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
-    if not docker_compose_config.has_service("db"):
-        click.secho('No service "db" found in local project', fg="red")
-        sys.exit(1)
 
-    utils.start_database_server(docker_compose)
+
+    utils.start_database_server(docker_compose, prefix=prefix)
 
     click.secho(" ---> Dumping local database", nl=False)
     start_dump = time()
-    db_container_id = utils.get_db_container_id(project_home)
-    subprocess.call(
-        (
-            "docker",
-            "exec",
-            db_container_id,
-            "pg_dump",
-            "-U",
-            "postgres",
-            "-d",
-            "db",
-            "--no-owner",
-            "--no-privileges",
-            "-f",
-            os.path.join("/app/", dump_filename),
-        ),
-        env=get_subprocess_env(),
-    )
+    db_container_id = utils.get_db_container_id(project_home, prefix=prefix)
+    #TODO: database
+    if db_type =="fsm-postgres":
+        subprocess.call(
+            (
+                "docker",
+                "exec",
+                db_container_id,
+                "pg_dump",
+                "-U",
+                "postgres",
+                "-d",
+                "db",
+                "--no-owner",
+                "--no-privileges",
+                "-f",
+                os.path.join("/app/", dump_filename),
+            ),
+            env=get_subprocess_env(),
+        )
+
+    elif db_type =="fsm-mysql":
+        with open(dump_filename, "w") as f:
+            subprocess.call(
+                (
+                    "docker",
+                    "exec",
+                    db_container_id,
+                    "mysqldump",
+                    "--user=root",
+                    "--compress",
+                    "db"
+                ),
+                env=get_subprocess_env(),
+                stdout=f
+            )
+
+    else:
+        click.secho("db type not known")
+        sys.exit(1)
+
+
     click.echo(" [{}s]".format(int(time() - start_dump)))
 
     if not archive_filename:
@@ -659,22 +775,22 @@ def compress_db(dump_filename, archive_filename=None, archive_wd=None):
     )
 
 
-DEFAULT_DUMP_FILENAME = "local_db.sql"
-
-
-def export_db():
+def export_db(prefix):
     dump_filename = DEFAULT_DUMP_FILENAME
 
-    click.secho(" ===> Exporting local database to {}".format(dump_filename))
+    click.secho(" ===> Exporting local database {} to {}".format(prefix, dump_filename))
     start_time = time()
 
-    dump_database(dump_filename=dump_filename)
+    project_home = utils.get_project_home()
+    db_container_id = utils.get_db_container_id(project_home, prefix=prefix)
+    db_type = utils.get_db_type(prefix=prefix, path=project_home)
+    dump_database(dump_filename=dump_filename, db_type=db_type, prefix=prefix)
 
     click.secho("Done", fg="green", nl=False)
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_db(client, stage, remote_id):
+def push_db(client, stage, remote_id, prefix, db_type):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)["id"]
     dump_filename = DEFAULT_DUMP_FILENAME
@@ -695,12 +811,12 @@ def push_db(client, stage, remote_id):
     start_time = time()
 
     dump_database(
-        dump_filename=dump_filename, archive_filename=archive_filename
+        dump_filename=dump_filename, db_type=db_type, prefix=prefix, archive_filename=archive_filename
     )
 
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
-    response = client.upload_db(remote_id, stage, archive_path) or {}
+    response = client.upload_db(remote_id, stage, archive_path, prefix) or {}
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
     progress_url = response.get("progress_url")
@@ -727,7 +843,7 @@ def push_db(client, stage, remote_id):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_local_db(client, stage, dump_filename, website_id):
+def push_local_db(client, stage, dump_filename, website_id, prefix):
     archive_wd = os.path.dirname(os.path.realpath(dump_filename))
     archive_filename = dump_filename.replace(".sql", ".tar.gz")
     archive_path = os.path.join(archive_wd, archive_filename)
@@ -747,7 +863,7 @@ def push_local_db(client, stage, dump_filename, website_id):
 
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
-    response = client.upload_db(website_id, stage, archive_path) or {}
+    response = client.upload_db(website_id, stage, archive_path, prefix) or {}
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
     progress_url = response.get("progress_url")
@@ -774,7 +890,7 @@ def push_local_db(client, stage, dump_filename, website_id):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_media(client, stage, remote_id):
+def push_media(client, stage, remote_id, prefix):
     project_home = utils.get_project_home()
     website_id = utils.get_aldryn_project_settings(project_home)["id"]
     archive_path = os.path.join(project_home, "local_media.tar.gz")
@@ -825,7 +941,7 @@ def push_media(client, stage, remote_id):
     )
     click.secho("Uploading", nl=False)
     start_upload = time()
-    response = client.upload_media(remote_id, stage, archive_path) or {}
+    response = client.upload_media(remote_id, stage, archive_path, prefix) or {}
     click.echo(" [{}s]".format(int(time() - start_upload)))
     progress_url = response.get("progress_url")
     if not progress_url:
