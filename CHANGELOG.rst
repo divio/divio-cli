@@ -1,6 +1,13 @@
 Changelog
 =========
 
+3.6.0 (2020-04-14)
+------------------
+
+* Add MySQL support for projects
+* Add PREFIX support for services
+* Add support for new docker-compose backing services structure
+
 
 3.5.1 (2020-02-17)
 ------------------
