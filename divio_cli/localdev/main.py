@@ -255,6 +255,100 @@ class DatabaseImportBase(object):
         else:
             return default_db_extensions
 
+    def prepare_db_server_postgres(self, db_container_id, start_wait):
+        for attempt in range(10):
+            try:
+                check_call(
+                    [
+                        "docker",
+                        "exec",
+                        db_container_id,
+                        "ls",
+                        "/var/run/postgresql/.s.PGSQL.5432",
+                    ],
+                    catch=False,
+                    silent=True,
+                )
+            except subprocess.CalledProcessError:
+                sleep(5)
+            else:
+                break
+        else:
+            click.secho(
+                "Couldn't connect to database container. "
+                "Database server may not have started.",
+                fg="red",
+            )
+            sys.exit(1)
+        click.echo(" [{}s]".format(int(time() - start_wait)))
+
+        # drop any existing connections
+        check_call(
+            [
+                "docker",
+                "exec",
+                db_container_id,
+                "psql",
+                "-U",
+                "postgres",
+                "-c",
+                "SELECT pg_terminate_backend(pg_stat_activity.pid) "
+                "FROM   pg_stat_activity "
+                "WHERE  pg_stat_activity.datname = 'db' "
+                "  AND  pid <> pg_backend_pid();",
+            ],
+            silent=True,
+        )
+        # sometimes postgres takes a while to drop the connections
+        sleep(5)
+
+        click.secho(" ---> Removing local database", nl=False)
+        start_remove = time()
+        # create empty db
+        subprocess.call(
+            [
+                "docker",
+                "exec",
+                db_container_id,
+                "dropdb",
+                "-U",
+                "postgres",
+                "db",
+                "--if-exists",
+            ],
+            env=get_subprocess_env(),
+        )  # TODO: silence me
+
+        click.echo(" [{}s]".format(int(time() - start_remove)))
+
+    def prepare_db_server_mysql(self, db_container_id, start_wait):
+        for attempt in range(10):
+            try:
+                check_call(
+                    [
+                        "docker",
+                        "exec",
+                        db_container_id,
+                        "/bin/bash",
+                        "-c",
+                        "mysql --user=root  --execute \"SHOW DATABASES;\"",
+                    ],
+                    catch=False,
+                    silent=True,
+                )
+            except subprocess.CalledProcessError:
+                sleep(5)
+            else:
+                break
+        else:
+            click.secho(
+                "Couldn't connect to database container. "
+                "Database server may not have started.",
+                fg="red",
+            )
+            sys.exit(1)
+        click.echo(" [{}s]".format(int(time() - start_wait)))
+
     def prepare_db_server(self):
         utils.start_database_server(self.docker_compose, prefix=self.prefix)
 
@@ -271,97 +365,9 @@ class DatabaseImportBase(object):
         sleep(10)
 
         if self.db_type == "fsm-postgres":
-            for attempt in range(10):
-                try:
-                    check_call(
-                        [
-                            "docker",
-                            "exec",
-                            db_container_id,
-                            "ls",
-                            "/var/run/postgresql/.s.PGSQL.5432",
-                        ],
-                        catch=False,
-                        silent=True,
-                    )
-                except subprocess.CalledProcessError:
-                    sleep(5)
-                else:
-                    break
-            else:
-                click.secho(
-                    "Couldn't connect to database container. "
-                    "Database server may not have started.",
-                    fg="red",
-                )
-                sys.exit(1)
-            click.echo(" [{}s]".format(int(time() - start_wait)))
-
-            # drop any existing connections
-            check_call(
-                [
-                    "docker",
-                    "exec",
-                    db_container_id,
-                    "psql",
-                    "-U",
-                    "postgres",
-                    "-c",
-                    "SELECT pg_terminate_backend(pg_stat_activity.pid) "
-                    "FROM   pg_stat_activity "
-                    "WHERE  pg_stat_activity.datname = 'db' "
-                    "  AND  pid <> pg_backend_pid();",
-                ],
-                silent=True,
-            )
-            # sometimes postgres takes a while to drop the connections
-            sleep(5)
-
-            click.secho(" ---> Removing local database", nl=False)
-            start_remove = time()
-            # create empty db
-            subprocess.call(
-                [
-                    "docker",
-                    "exec",
-                    db_container_id,
-                    "dropdb",
-                    "-U",
-                    "postgres",
-                    "db",
-                    "--if-exists",
-                ],
-                env=get_subprocess_env(),
-            )  # TODO: silence me
-
-            click.echo(" [{}s]".format(int(time() - start_remove)))
+           self.prepare_db_server_postgres(db_container_id, start_wait) 
         elif self.db_type == "fsm-mysql":
-            for attempt in range(10):
-                try:
-                    check_call(
-                        [
-                            "docker",
-                            "exec",
-                            db_container_id,
-                            "/bin/bash",
-                            "-c",
-                            "mysql --user=root  --execute \"SHOW DATABASES;\"",
-                        ],
-                        catch=False,
-                        silent=True,
-                    )
-                except subprocess.CalledProcessError:
-                    sleep(5)
-                else:
-                    break
-            else:
-                click.secho(
-                    "Couldn't connect to database container. "
-                    "Database server may not have started.",
-                    fg="red",
-                )
-                sys.exit(1)
-            click.echo(" [{}s]".format(int(time() - start_wait)))
+           self.prepare_db_server_mysql(db_container_id, start_wait)
 
     def get_db_restore_command(self, db_type):
         raise NotImplementedError
