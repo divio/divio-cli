@@ -368,6 +368,9 @@ class DatabaseImportBase(object):
            self.prepare_db_server_postgres(db_container_id, start_wait) 
         elif self.db_type == "fsm-mysql":
            self.prepare_db_server_mysql(db_container_id, start_wait)
+        else:
+            click.secho("db type not known")
+            sys.exit(1)
 
     def get_db_restore_command(self, db_type):
         raise NotImplementedError
@@ -479,7 +482,9 @@ class DatabaseImportBase(object):
             self.restore_db_postgres(db_container_id)
         elif self.db_type == "fsm-mysql":
             self.restore_db_mysql(db_container_id)
-
+        else:
+            click.secho("db type not known")
+            sys.exit(1)
         click.echo("\n      [{}s]".format(int(time() - start_import)))
        
 
@@ -698,30 +703,6 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
             ),
             env=get_subprocess_env(),
         )
-        click.echo(" [{}s]".format(int(time() - start_dump)))
-
-        if not archive_filename:
-            # archive filename not specified
-            # return path to uncompressed dump
-            return os.path.join(project_home, dump_filename)
-
-        archive_path = os.path.join(project_home, archive_filename)
-        sql_dump_size = os.path.getsize(dump_filename)
-        click.secho(
-            " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)),
-            nl=False,
-        )
-        start_compress = time()
-        with tarfile.open(archive_path, mode="w:gz") as tar:
-            tar.add(
-                os.path.join(project_home, dump_filename), arcname=dump_filename
-            )
-        compressed_size = os.path.getsize(archive_filename)
-        click.echo(
-            " {} [{}s]".format(
-                pretty_size(compressed_size), int(time() - start_compress)
-            )
-        )
 
     elif db_type =="fsm-mysql":
         with open(dump_filename, "w") as f:
@@ -738,35 +719,37 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
                 env=get_subprocess_env(),
                 stdout=f
             )
-        click.echo(" [{}s]".format(int(time() - start_dump)))
-
-        if not archive_filename:
-            # archive filename not specified
-            # return path to uncompressed dump
-            return os.path.join(project_home, dump_filename)
-
-        archive_path = os.path.join(project_home, archive_filename)
-        sql_dump_size = os.path.getsize(dump_filename)
-        click.secho(
-            " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)),
-            nl=False,
-        )
-        start_compress = time()
-        with tarfile.open(archive_path, mode="w:gz") as tar:
-            tar.add(
-                os.path.join(project_home, dump_filename), arcname=dump_filename
-            )
-        compressed_size = os.path.getsize(archive_filename)
-        click.echo(
-            " {} [{}s]".format(
-                pretty_size(compressed_size), int(time() - start_compress)
-            )
-        )
-
 
     else:
         click.secho("db type not known")
         sys.exit(1)
+
+
+    click.echo(" [{}s]".format(int(time() - start_dump)))
+
+    if not archive_filename:
+        # archive filename not specified
+        # return path to uncompressed dump
+        return os.path.join(project_home, dump_filename)
+
+    archive_path = os.path.join(project_home, archive_filename)
+    sql_dump_size = os.path.getsize(dump_filename)
+    click.secho(
+        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)),
+        nl=False,
+    )
+    start_compress = time()
+    with tarfile.open(archive_path, mode="w:gz") as tar:
+        tar.add(
+            os.path.join(project_home, dump_filename), arcname=dump_filename
+        )
+    compressed_size = os.path.getsize(archive_filename)
+    click.echo(
+        " {} [{}s]".format(
+            pretty_size(compressed_size), int(time() - start_compress)
+        )
+    )
+
 
 def compress_db(dump_filename, archive_filename=None, archive_wd=None):
 
