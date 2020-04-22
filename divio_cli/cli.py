@@ -16,7 +16,6 @@ from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
-    get_available_environments,
     get_cp_url,
     get_git_checked_branch,
     hr,
@@ -32,12 +31,6 @@ try:
     import ipdb as pdb
 except ImportError:
     import pdb
-
-
-try:
-    from . import crypto
-except ImportError:
-    crypto = None
 
 
 @click.group()
@@ -209,7 +202,7 @@ def project_list(obj, grouped, as_json):
 
 @project.command(name="deploy")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @allow_remote_id_override
 @click.pass_obj
@@ -220,7 +213,7 @@ def project_deploy(obj, remote_id, stage):
 
 @project.command(name="deploy-log")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @allow_remote_id_override
 @click.pass_obj
@@ -244,9 +237,20 @@ def project_up():
 
 
 @project.command(name="open")
-def project_open():
-    """Open local project in browser"""
-    localdev.open_project()
+@click.argument(
+    "stage", default=""
+)
+@allow_remote_id_override
+@click.pass_obj
+def project_open(obj, remote_id, stage):
+    """Open local or cloud projects in a browser"""
+    if stage:
+        open_project_cloud_site(obj.client, project_id=remote_id, stage=stage)
+    else:
+        localdev.open_project()
+
+
+
 
 
 @project.command(name="update")
@@ -346,20 +350,6 @@ def environment_variables(
         click.echo_via_pager(output)
 
 
-@project.command(name="test")
-@allow_remote_id_override
-@click.pass_obj
-def project_open_test(obj, remote_id):
-    """Open project test site"""
-    open_project_cloud_site(obj.client, project_id=remote_id, stage="test")
-
-
-@project.command(name="live")
-@allow_remote_id_override
-@click.pass_obj
-def project_open_live(obj, remote_id):
-    """Open project live site"""
-    open_project_cloud_site(obj.client, project_id=remote_id, stage="live")
 
 
 @project.command(name="status")
@@ -421,7 +411,7 @@ def project_pull():
 
 @project_pull.command(name="db")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @click.argument(
     "prefix",
@@ -444,7 +434,7 @@ def pull_db(obj, remote_id, stage, prefix):
 
 @project_pull.command(name="media")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @allow_remote_id_override
 @click.pass_obj
@@ -463,7 +453,7 @@ def project_push():
 
 @project_push.command(name="db")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @click.option(
     "-d",
@@ -511,7 +501,7 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 
 @project_push.command(name="media")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @click.option(
     "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
@@ -679,24 +669,6 @@ def backup():
     """Manage backups for projects hosted on Divio Cloud"""
 
 
-@backup.command(name="decrypt")
-@click.argument("key", type=click.File("rb"))
-@click.argument("backup", type=click.File("rb"))
-@click.argument("destination", type=click.File("wb"))
-def backup_decrypt(key, backup, destination):
-    """Decrypt a backup downloaded from Divio Cloud"""
-    if not crypto:
-        click.secho(
-            "\nPlease install the crypo extensions to use the crypto commands: "
-            "pip install divio-cli[crypto]",
-            fg="red",
-        )
-        return
-    key = base64.b64decode(key.read(1024).strip())
-    decryptor = crypto.StreamDecryptor(key=key)
-
-    for chunk in decryptor(backup):
-        destination.write(chunk)
 
 
 @cli.command()

@@ -218,6 +218,9 @@ def allow_remote_id_override(func):
                     raise click.ClickException(ERROR_MSG)
         return func(remote_id, *args, **kwargs)
 
+    # Fix to actually show the correct help strings if this decorator is used.
+    read_remote_id.__doc__ = func.__doc__
+
     return click.option(
         "--remote-id",
         "remote_id",
