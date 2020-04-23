@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from time import time
+import functools
 
 import click
 import yaml
@@ -201,6 +202,7 @@ class DockerComposeConfig(object):
 def allow_remote_id_override(func):
     """Adds an identifier option to the command, and gets the proper id"""
 
+    @functools.wraps(func)
     def read_remote_id(remote_id, *args, **kwargs):
         ERROR_MSG = (
             "This command requires a Divio Cloud Project id. Please "
@@ -217,9 +219,6 @@ def allow_remote_id_override(func):
                 if not remote_id:
                     raise click.ClickException(ERROR_MSG)
         return func(remote_id, *args, **kwargs)
-
-    # Fix to actually show the correct help strings if this decorator is used.
-    read_remote_id.__doc__ = func.__doc__
 
     return click.option(
         "--remote-id",
