@@ -77,24 +77,13 @@ class DockerClientCheck(Check):
     command = ("docker", "--version")
 
 
-class DockerMachineCheck(Check):
-    name = "Docker Machine"
-    command = ("docker-machine", "--version")
-    error_level = WARNING
-
-
 class DockerComposeCheck(Check):
     name = "Docker Compose"
     command = ("docker-compose", "--version")
 
 
 def get_engine_down_error():
-    msg = "Couldn't connect to Docker daemon. "
-    if utils.is_linux():
-        msg += "Please start the docker service."
-    else:
-        msg += "You might need to run `docker-machine start`."
-    return msg
+    return "Couldn't connect to Docker daemon. Please start the docker service."
 
 
 class DockerEngineBaseCheck(Check):
@@ -198,7 +187,6 @@ ALL_CHECKS = OrderedDict(
         ("login", LoginCheck),
         ("git", GitCheck),
         ("docker-client", DockerClientCheck),
-        ("docker-machine", DockerMachineCheck),
         ("docker-compose", DockerComposeCheck),
         ("docker-server", DockerEngineCheck),
         ("docker-server-ping", DockerEnginePingCheck),
