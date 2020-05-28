@@ -275,7 +275,7 @@ def project_update(obj, strict):
     "--stage",
     default="test",
     type=six.text_type,
-    help="get data from stage (test or live)",
+    help="get data from environment",
 )
 @click.option(
     "--all/--custom",
@@ -367,7 +367,7 @@ def project_stop():
 @project.command(name="setup")
 @click.argument("slug")
 @click.option(
-    "-s", "--stage", default="test", help="pull data from stage (test or live)"
+    "-s", "--stage", default="test", help="pull data from environment"
 )
 @click.option(
     "-p",
@@ -421,8 +421,7 @@ def project_pull():
 @click.pass_obj
 def pull_db(obj, remote_id, stage, prefix):
     """
-    Pull database from your deployed website. Stage is either
-    test (default) or live
+    Pull database from your deployed website.
     """
     from .localdev import utils
     project_home = utils.get_project_home()
@@ -440,8 +439,7 @@ def pull_db(obj, remote_id, stage, prefix):
 @click.pass_obj
 def pull_media(obj, remote_id, stage):
     """
-    Pull media files from your deployed website. Stage is either
-    test (default) or live
+    Pull media files from your deployed website.
     """
     localdev.pull_media(obj.client, stage=stage, remote_id=remote_id)
 
@@ -473,8 +471,7 @@ def project_push():
 @click.pass_obj
 def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
     """
-    Push database to your deployed website. Stage is either
-    test (default) or live
+    Push database to your deployed website.
     """
     from .localdev import utils
     project_home = utils.get_project_home()
@@ -514,8 +511,7 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 @click.pass_obj
 def push_media(obj, remote_id, prefix, stage, noinput):
     """
-    Push database to your deployed website. Stage is either
-    test (default) or live
+    Push database to your deployed website.
     """
 
     if not noinput:
