@@ -1076,7 +1076,11 @@ def open_project(open_browser=True):
         ):
             return start_project()
         return
-    host, port = addr.rstrip(os.linesep).split(":")
+    try:
+        host, port = addr.rstrip(os.linesep).split(":")
+    except ValueError:
+        click.secho("Can not get port of the project.", fg="red")
+        sys.exit(1)
 
     if host == "0.0.0.0":
         docker_host_url = os.environ.get("DOCKER_HOST")
