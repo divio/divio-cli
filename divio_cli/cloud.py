@@ -1,6 +1,7 @@
 import os
 import re
 from netrc import netrc
+import sys
 from time import sleep
 
 from six.moves.urllib_parse import urlparse
@@ -188,7 +189,11 @@ class CloudClient(object):
             self.session, url_kwargs={"website_id": website_id}
         )
         data = request()
-        return data[stage]
+        try:
+            return data[stage]
+        except KeyError:
+            click.secho("Environment with the name '{}' does not exist.".format(stage))
+            sys.exit(1)
 
     def deploy_project(self, website_id, stage):
         data = {"stage": stage}
