@@ -547,7 +547,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         )
 
     def setup(self):
-        click.secho(" ---> Preparing download", nl=False)
+        click.secho(" ---> Preparing download ", nl=False)
         start_preparation = time()
         response = (
             self.client.download_db_request(self.remote_id, self.stage, self.prefix) or {}
@@ -611,7 +611,7 @@ def pull_media(client, stage, remote_id=None, path=None):
         )
     )
     start_time = time()
-    click.secho(" ---> Preparing download", nl=False)
+    click.secho(" ---> Preparing download ", nl=False)
     start_preparation = time()
     response = client.download_media_request(remote_id, stage) or {}
     progress_url = response.get("progress_url")
