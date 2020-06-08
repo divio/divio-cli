@@ -114,7 +114,7 @@ class CloudClient(object):
                 "status"
             ]
         except KeyError:
-            click.secho("Environment name not known.", fg="red")
+            click.secho("Environment with the name '{}' does not exist.".format(stage), fg="red")
             sys.exit(1)
         if status:
             deploy_log = self.get_deploy_log(website_id, stage)
