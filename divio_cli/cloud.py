@@ -198,7 +198,7 @@ class CloudClient(object):
         try:
             return data[stage]
         except KeyError:
-            click.secho("Environment with the name '{}' does not exist.".format(stage))
+            click.secho("Environment with the name '{}' does not exist.".format(stage), fg="red")
             sys.exit(1)
 
     def deploy_project(self, website_id, stage):

@@ -171,7 +171,7 @@ def open_project_cloud_site(client, project_id, stage):
     try:
         url = project_data["{}_status".format(stage)]["site_url"]
     except KeyError:
-        click.secho("Environment name not known.", fg="red")
+        click.secho("Environment with the name '{}' does not exist.".format(stage), fg="red")
         sys.exit(1)
     if url:
         click.launch(url)
