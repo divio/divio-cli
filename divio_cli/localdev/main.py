@@ -1068,8 +1068,9 @@ def develop_package(package, no_rebuild=False):
 
 def open_project(open_browser=True):
     docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+    CHECKING_PORT = "80"
     try:
-        addr = check_output(docker_compose("port", "web", "80"), catch=False)
+        addr = check_output(docker_compose("port", "web", CHECKING_PORT), catch=False)
     except subprocess.CalledProcessError:
         if click.prompt(
             "Your project is not running. Do you want to start " "it now?"
@@ -1079,7 +1080,7 @@ def open_project(open_browser=True):
     try:
         host, port = addr.rstrip(os.linesep).split(":")
     except ValueError:
-        click.secho("Can not get port of the project. Please check `docker-compose logs` in case the project did not start correctly and please verify that a port is exposed.", fg="red")
+        click.secho("Can not get port of the project. Please check `docker-compose logs` in case the project did not start correctly and please verify that a port {} is exposed.".format(CHECKING_PORT), fg="red")
         sys.exit(1)
 
     if host == "0.0.0.0":
