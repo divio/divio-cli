@@ -109,9 +109,14 @@ class CloudClient(object):
     def show_deploy_log(self, website_id, stage):
         project_data = self.get_project(website_id)
         # If we have tried to deploy before, there will be a log
-        if project_data["{}_status".format(stage)]["last_deployment"][
-            "status"
-        ]:
+        try:
+            status = project_data["{}_status".format(stage)]["last_deployment"][
+                "status"
+            ]
+        except KeyError:
+            click.secho("Environment name not known.", fg="red")
+            sys.exit(1)
+        if status:
             deploy_log = self.get_deploy_log(website_id, stage)
             task_id = "Deploy Log {}".format(deploy_log["task_id"])
             output = task_id + "\n" + deploy_log["output"]
@@ -121,6 +126,7 @@ class CloudClient(object):
                 "No {} server deployed yet, no log available.".format(stage),
                 fg="yellow",
             )
+        
 
     def deploy_project_or_get_progress(self, website_id, stage):
         def fmt_progress(data):
