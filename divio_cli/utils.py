@@ -169,7 +169,11 @@ def check_output(*popenargs, **kwargs):
 def open_project_cloud_site(client, project_id, stage):
     assert stage in ("test", "live")
     project_data = client.get_project(project_id)
-    url = project_data["{}_status".format(stage)]["site_url"]
+    try:
+        url = project_data["{}_status".format(stage)]["site_url"]
+    except KeyError:
+        click.secho("Environment name not known.", fg="red")
+        sys.exit(1)
     if url:
         click.launch(url)
     else:
