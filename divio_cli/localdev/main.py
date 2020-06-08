@@ -1079,7 +1079,7 @@ def open_project(open_browser=True):
     try:
         host, port = addr.rstrip(os.linesep).split(":")
     except ValueError:
-        click.secho("Can not get port of the project.", fg="red")
+        click.secho("Can not get port of the project. Please check `docker-compose logs` in case the project did not start correctly and please verify that a port is exposed.", fg="red")
         sys.exit(1)
 
     if host == "0.0.0.0":
