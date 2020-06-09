@@ -167,9 +167,12 @@ def check_output(*popenargs, **kwargs):
 
 
 def open_project_cloud_site(client, project_id, stage):
-    assert stage in ("test", "live")
     project_data = client.get_project(project_id)
-    url = project_data["{}_status".format(stage)]["site_url"]
+    try:
+        url = project_data["{}_status".format(stage)]["site_url"]
+    except KeyError:
+        click.secho("Environment with the name '{}' does not exist.".format(stage), fg="red")
+        sys.exit(1)
     if url:
         click.launch(url)
     else:
@@ -315,9 +318,6 @@ def print_package_renamed_warning():
 def json_dumps_unicode(d, **kwargs):
     return json.dumps(d, ensure_ascii=False, **kwargs).encode("utf-8")
 
-
-def get_available_environments():
-    return ["test", "live"]
 
 
 class Map(dict):
