@@ -40,9 +40,8 @@ PUSH_DB_WARNING = "\n".join(
         "  - CMS Pages & Plugins",
         "\nYou will also lose any changes that have been made on the {stage} ",
         "environment since you pulled its database to your local environment. ",
-        "\nIt is recommended to go the project settings on control.divio.com",
-        "and take a backup before restoring the database. You can find this ",
-        'action in the "Manage Project" section.',
+        "\nIt is recommended to go the backup section on control.divio.com",
+        "and take a backup before restoring the database.",
         "\nPlease proceed with caution!",
     )
 )
@@ -56,9 +55,8 @@ PUSH_MEDIA_WARNING = "\n".join(
         "ones you are about to push.",
         "\nYou will also lose any changes that have been made on the {stage} ",
         "environment since you pulled its files to your local environment. ",
-        "\nIt is recommended to go the project settings on control.divio.com",
-        "and take a backup before restoring media files. You can find this ",
-        'action in the "Manage Project" section.',
+        "\nIt is recommended to go the backup section on control.divio.com",
+        "and take a backup before restoring media files.",
         "\nPlease proceed with caution!",
     )
 )
