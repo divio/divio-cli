@@ -541,7 +541,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
             else "Project {}".format(self.remote_id)
         )
         click.secho(
-            " ===> Pulling database from {} {} server".format(
+            " ===> Pulling database from {} {} environment".format(
                 remote_project_name, self.stage
             )
         )
@@ -606,7 +606,7 @@ def pull_media(client, stage, remote_id=None, path=None):
         return
 
     click.secho(
-        " ===> Pulling media files from {} {} server".format(
+        " ===> Pulling media files from {} {} environment".format(
             remote_project_name, stage
         )
     )
@@ -804,7 +804,7 @@ def push_db(client, stage, remote_id, prefix, db_type):
     )
 
     click.secho(
-        " ===> Pushing local database to {} {} server".format(
+        " ===> Pushing local database to {} {} environment".format(
             remote_project_name, stage
         )
     )
@@ -849,7 +849,7 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
     archive_path = os.path.join(archive_wd, archive_filename)
 
     click.secho(
-        " ===> Pushing local database to {} {} server".format(
+        " ===> Pushing local database to {} {} environment".format(
             website_id, stage
         )
     )
@@ -902,7 +902,7 @@ def push_media(client, stage, remote_id, prefix):
     )
 
     click.secho(
-        " ---> Pushing local media to {} {} server".format(
+        " ---> Pushing local media to {} {} environment".format(
             remote_project_name, stage
         )
     )
