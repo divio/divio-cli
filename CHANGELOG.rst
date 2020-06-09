@@ -6,7 +6,7 @@ Changelog
 
 * Removed docker-machine doctor test
 * Added multienvironment support
-
+* Bugfixes
 
 3.6.0 (2020-04-14)
 ------------------
