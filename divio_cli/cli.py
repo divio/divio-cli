@@ -244,8 +244,8 @@ def project_up():
     localdev.start_project()
 
 
-@project.command(name="down", aliases=['stop'])
-def project_down():
+@project.command(name="stop", aliases=['down'])
+def project_stop():
     """Stop local project"""
     localdev.stop_project()
 
