@@ -176,7 +176,7 @@ def open_project_cloud_site(client, project_id, stage):
     if url:
         click.launch(url)
     else:
-        click.secho("No {} server deployed yet.".format(stage), fg="yellow")
+        click.secho("No {} environment deployed yet.".format(stage), fg="yellow")
 
 
 def get_cp_url(client, project_id, section="dashboard"):

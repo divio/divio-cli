@@ -5,3 +5,4 @@ tabulate
 six
 attrs
 pyaml
+click_aliases

@@ -7,6 +7,7 @@ import sys
 import six
 
 import click
+from click_aliases import ClickAliasedGroup
 
 from . import exceptions, localdev, messages
 from .check_system import check_requirements, check_requirements_human
@@ -117,7 +118,7 @@ def login(ctx, token, check):
     sys.exit(0 if success else 1)
 
 
-@cli.group()
+@cli.group(cls=ClickAliasedGroup)
 def project():
     """Manage your projects"""
 
@@ -230,10 +231,16 @@ def project_dashboard(obj, remote_id):
     click.launch(get_cp_url(client=obj.client, project_id=remote_id))
 
 
-@project.command(name="up")
+@project.command(name="up", aliases=['start'])
 def project_up():
     """Start local project"""
     localdev.start_project()
+
+
+@project.command(name="stop", aliases=['down'])
+def project_stop():
+    """Stop local project"""
+    localdev.stop_project()
 
 
 @project.command(name="open")
@@ -356,12 +363,6 @@ def environment_variables(
 def project_status():
     """Show local project status"""
     localdev.show_project_status()
-
-
-@project.command(name="stop")
-def project_stop():
-    """Stop local project"""
-    localdev.stop_project()
 
 
 @project.command(name="setup")

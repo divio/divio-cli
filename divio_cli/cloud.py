@@ -123,7 +123,7 @@ class CloudClient(object):
             click.echo_via_pager(output)
         else:
             click.secho(
-                "No {} server deployed yet, no log available.".format(stage),
+                "No {} environment deployed yet, no log available.".format(stage),
                 fg="yellow",
             )
         
@@ -142,12 +142,12 @@ class CloudClient(object):
         response = self.deploy_project_progress(website_id, stage)
         if response["is_deploying"]:
             click.secho(
-                "Already deploying {} server, attaching to running "
+                "Already deploying {} environment, attaching to running "
                 "deployment".format(stage),
                 fg="yellow",
             )
         else:
-            click.secho("Deploying {} server".format(stage), fg="green")
+            click.secho("Deploying {} environment".format(stage), fg="green")
             self.deploy_project(website_id, stage)
             sleep(1)
             response = self.deploy_project_progress(website_id, stage)
