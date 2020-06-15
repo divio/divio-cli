@@ -1,7 +1,7 @@
 Changelog
 =========
 
-3.7.0 (2020-06-10)
+3.7.0 (2020-06-15)
 ------------------
 
 * Removed docker-machine doctor test
