@@ -1,6 +1,7 @@
 import os
 import re
 from netrc import netrc
+import sys
 from time import sleep
 
 from six.moves.urllib_parse import urlparse
@@ -108,18 +109,24 @@ class CloudClient(object):
     def show_deploy_log(self, website_id, stage):
         project_data = self.get_project(website_id)
         # If we have tried to deploy before, there will be a log
-        if project_data["{}_status".format(stage)]["last_deployment"][
-            "status"
-        ]:
+        try:
+            status = project_data["{}_status".format(stage)]["last_deployment"][
+                "status"
+            ]
+        except KeyError:
+            click.secho("Environment with the name '{}' does not exist.".format(stage), fg="red")
+            sys.exit(1)
+        if status:
             deploy_log = self.get_deploy_log(website_id, stage)
             task_id = "Deploy Log {}".format(deploy_log["task_id"])
             output = task_id + "\n" + deploy_log["output"]
             click.echo_via_pager(output)
         else:
             click.secho(
-                "No {} server deployed yet, no log available.".format(stage),
+                "No {} environment deployed yet, no log available.".format(stage),
                 fg="yellow",
             )
+        
 
     def deploy_project_or_get_progress(self, website_id, stage):
         def fmt_progress(data):
@@ -135,12 +142,12 @@ class CloudClient(object):
         response = self.deploy_project_progress(website_id, stage)
         if response["is_deploying"]:
             click.secho(
-                "Already deploying {} server, attaching to running "
+                "Already deploying {} environment, attaching to running "
                 "deployment".format(stage),
                 fg="yellow",
             )
         else:
-            click.secho("Deploying {} server".format(stage), fg="green")
+            click.secho("Deploying {} environment".format(stage), fg="green")
             self.deploy_project(website_id, stage)
             sleep(1)
             response = self.deploy_project_progress(website_id, stage)
@@ -188,7 +195,11 @@ class CloudClient(object):
             self.session, url_kwargs={"website_id": website_id}
         )
         data = request()
-        return data[stage]
+        try:
+            return data[stage]
+        except KeyError:
+            click.secho("Environment with the name '{}' does not exist.".format(stage), fg="red")
+            sys.exit(1)
 
     def deploy_project(self, website_id, stage):
         data = {"stage": stage}

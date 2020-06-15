@@ -7,6 +7,7 @@ import sys
 import six
 
 import click
+from click_aliases import ClickAliasedGroup
 
 from . import exceptions, localdev, messages
 from .check_system import check_requirements, check_requirements_human
@@ -16,7 +17,6 @@ from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
-    get_available_environments,
     get_cp_url,
     get_git_checked_branch,
     hr,
@@ -32,12 +32,6 @@ try:
     import ipdb as pdb
 except ImportError:
     import pdb
-
-
-try:
-    from . import crypto
-except ImportError:
-    crypto = None
 
 
 @click.group()
@@ -124,7 +118,7 @@ def login(ctx, token, check):
     sys.exit(0 if success else 1)
 
 
-@cli.group()
+@cli.group(cls=ClickAliasedGroup)
 def project():
     """Manage your projects"""
 
@@ -209,7 +203,7 @@ def project_list(obj, grouped, as_json):
 
 @project.command(name="deploy")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @allow_remote_id_override
 @click.pass_obj
@@ -220,7 +214,7 @@ def project_deploy(obj, remote_id, stage):
 
 @project.command(name="deploy-log")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @allow_remote_id_override
 @click.pass_obj
@@ -237,16 +231,33 @@ def project_dashboard(obj, remote_id):
     click.launch(get_cp_url(client=obj.client, project_id=remote_id))
 
 
-@project.command(name="up")
+@project.command(name="up", aliases=['start'])
 def project_up():
     """Start local project"""
     localdev.start_project()
 
 
+@project.command(name="stop", aliases=['down'])
+def project_stop():
+    """Stop local project"""
+    localdev.stop_project()
+
+
 @project.command(name="open")
-def project_open():
-    """Open local project in browser"""
-    localdev.open_project()
+@click.argument(
+    "stage", default=""
+)
+@allow_remote_id_override
+@click.pass_obj
+def project_open(obj, remote_id, stage):
+    """Open local or cloud projects in a browser"""
+    if stage:
+        open_project_cloud_site(obj.client, project_id=remote_id, stage=stage)
+    else:
+        localdev.open_project()
+
+
+
 
 
 @project.command(name="update")
@@ -271,7 +282,7 @@ def project_update(obj, strict):
     "--stage",
     default="test",
     type=six.text_type,
-    help="get data from stage (test or live)",
+    help="get data from environment",
 )
 @click.option(
     "--all/--custom",
@@ -346,20 +357,6 @@ def environment_variables(
         click.echo_via_pager(output)
 
 
-@project.command(name="test")
-@allow_remote_id_override
-@click.pass_obj
-def project_open_test(obj, remote_id):
-    """Open project test site"""
-    open_project_cloud_site(obj.client, project_id=remote_id, stage="test")
-
-
-@project.command(name="live")
-@allow_remote_id_override
-@click.pass_obj
-def project_open_live(obj, remote_id):
-    """Open project live site"""
-    open_project_cloud_site(obj.client, project_id=remote_id, stage="live")
 
 
 @project.command(name="status")
@@ -368,16 +365,10 @@ def project_status():
     localdev.show_project_status()
 
 
-@project.command(name="stop")
-def project_stop():
-    """Stop local project"""
-    localdev.stop_project()
-
-
 @project.command(name="setup")
 @click.argument("slug")
 @click.option(
-    "-s", "--stage", default="test", help="pull data from stage (test or live)"
+    "-s", "--stage", default="test", help="pull data from environment"
 )
 @click.option(
     "-p",
@@ -421,7 +412,7 @@ def project_pull():
 
 @project_pull.command(name="db")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @click.argument(
     "prefix",
@@ -431,8 +422,7 @@ def project_pull():
 @click.pass_obj
 def pull_db(obj, remote_id, stage, prefix):
     """
-    Pull database from your deployed website. Stage is either
-    test (default) or live
+    Pull database from your deployed website.
     """
     from .localdev import utils
     project_home = utils.get_project_home()
@@ -444,14 +434,13 @@ def pull_db(obj, remote_id, stage, prefix):
 
 @project_pull.command(name="media")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @allow_remote_id_override
 @click.pass_obj
 def pull_media(obj, remote_id, stage):
     """
-    Pull media files from your deployed website. Stage is either
-    test (default) or live
+    Pull media files from your deployed website.
     """
     localdev.pull_media(obj.client, stage=stage, remote_id=remote_id)
 
@@ -463,7 +452,7 @@ def project_push():
 
 @project_push.command(name="db")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @click.option(
     "-d",
@@ -483,8 +472,7 @@ def project_push():
 @click.pass_obj
 def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
     """
-    Push database to your deployed website. Stage is either
-    test (default) or live
+    Push database to your deployed website.
     """
     from .localdev import utils
     project_home = utils.get_project_home()
@@ -511,7 +499,7 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 
 @project_push.command(name="media")
 @click.argument(
-    "stage", default="test", type=click.Choice(get_available_environments())
+    "stage", default="test"
 )
 @click.option(
     "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
@@ -524,8 +512,7 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 @click.pass_obj
 def push_media(obj, remote_id, prefix, stage, noinput):
     """
-    Push database to your deployed website. Stage is either
-    test (default) or live
+    Push database to your deployed website.
     """
 
     if not noinput:
@@ -679,24 +666,6 @@ def backup():
     """Manage backups for projects hosted on Divio Cloud"""
 
 
-@backup.command(name="decrypt")
-@click.argument("key", type=click.File("rb"))
-@click.argument("backup", type=click.File("rb"))
-@click.argument("destination", type=click.File("wb"))
-def backup_decrypt(key, backup, destination):
-    """Decrypt a backup downloaded from Divio Cloud"""
-    if not crypto:
-        click.secho(
-            "\nPlease install the crypo extensions to use the crypto commands: "
-            "pip install divio-cli[crypto]",
-            fg="red",
-        )
-        return
-    key = base64.b64decode(key.read(1024).strip())
-    decryptor = crypto.StreamDecryptor(key=key)
-
-    for chunk in decryptor(backup):
-        destination.write(chunk)
 
 
 @cli.command()

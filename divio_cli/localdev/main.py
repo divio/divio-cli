@@ -541,13 +541,13 @@ class ImportRemoteDatabase(DatabaseImportBase):
             else "Project {}".format(self.remote_id)
         )
         click.secho(
-            " ===> Pulling database from {} {} server".format(
+            " ===> Pulling database from {} {} environment".format(
                 remote_project_name, self.stage
             )
         )
 
     def setup(self):
-        click.secho(" ---> Preparing download", nl=False)
+        click.secho(" ---> Preparing download ", nl=False)
         start_preparation = time()
         response = (
             self.client.download_db_request(self.remote_id, self.stage, self.prefix) or {}
@@ -606,12 +606,12 @@ def pull_media(client, stage, remote_id=None, path=None):
         return
 
     click.secho(
-        " ===> Pulling media files from {} {} server".format(
+        " ===> Pulling media files from {} {} environment".format(
             remote_project_name, stage
         )
     )
     start_time = time()
-    click.secho(" ---> Preparing download", nl=False)
+    click.secho(" ---> Preparing download ", nl=False)
     start_preparation = time()
     response = client.download_media_request(remote_id, stage) or {}
     progress_url = response.get("progress_url")
@@ -804,7 +804,7 @@ def push_db(client, stage, remote_id, prefix, db_type):
     )
 
     click.secho(
-        " ===> Pushing local database to {} {} server".format(
+        " ===> Pushing local database to {} {} environment".format(
             remote_project_name, stage
         )
     )
@@ -849,7 +849,7 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
     archive_path = os.path.join(archive_wd, archive_filename)
 
     click.secho(
-        " ===> Pushing local database to {} {} server".format(
+        " ===> Pushing local database to {} {} environment".format(
             website_id, stage
         )
     )
@@ -902,7 +902,7 @@ def push_media(client, stage, remote_id, prefix):
     )
 
     click.secho(
-        " ---> Pushing local media to {} {} server".format(
+        " ---> Pushing local media to {} {} environment".format(
             remote_project_name, stage
         )
     )
@@ -1068,15 +1068,20 @@ def develop_package(package, no_rebuild=False):
 
 def open_project(open_browser=True):
     docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+    CHECKING_PORT = "80"
     try:
-        addr = check_output(docker_compose("port", "web", "80"), catch=False)
+        addr = check_output(docker_compose("port", "web", CHECKING_PORT), catch=False)
     except subprocess.CalledProcessError:
         if click.prompt(
             "Your project is not running. Do you want to start " "it now?"
         ):
             return start_project()
         return
-    host, port = addr.rstrip(os.linesep).split(":")
+    try:
+        host, port = addr.rstrip(os.linesep).split(":")
+    except ValueError:
+        click.secho("Can not get port of the project. Please check `docker-compose logs` in case the project did not start correctly and please verify that a port {} is exposed.".format(CHECKING_PORT), fg="red")
+        sys.exit(1)
 
     if host == "0.0.0.0":
         docker_host_url = os.environ.get("DOCKER_HOST")

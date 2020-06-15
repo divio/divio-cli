@@ -12,7 +12,7 @@ SERVER_ERROR = (
 )
 AUTH_INVALID_TOKEN = "Login failed. Invalid token specified"
 RESOURCE_NOT_FOUND_ANONYMOUS = "Resource not found"
-RESOURCE_NOT_FOUND = "Resource not found. You are logged in as '{login}', please check if you have permissions to access the ressource"
+RESOURCE_NOT_FOUND = "Resource not found. You are logged in as '{login}', please check if you have permissions to access the resource"
 LOGIN_SUCCESSFUL = (
     u"Welcome to Divio Cloud. You are now logged in as {greeting}"
 )
@@ -33,16 +33,15 @@ PUSH_DB_WARNING = "\n".join(
     (
         "WARNING",
         "=======",
-        "\nYou are about to push your local database to the {stage} server on ",
+        "\nYou are about to push your local database to the {stage} environment on ",
         "the Divio Cloud. This will replace ALL data on the Divio Cloud {stage} ",
-        "server with the data you are about to push, including (but not limited to):",
+        "environment with the data you are about to push, including (but not limited to):",
         "  - User accounts",
         "  - CMS Pages & Plugins",
         "\nYou will also lose any changes that have been made on the {stage} ",
-        "server since you pulled its database to your local environment. ",
-        "\nIt is recommended to go the project settings on control.divio.com",
-        "and take a backup before restoring the database. You can find this ",
-        'action in the "Manage Project" section.',
+        "environment since you pulled its database to your local environment. ",
+        "\nIt is recommended to go the backup section on control.divio.com",
+        "and take a backup before restoring the database.",
         "\nPlease proceed with caution!",
     )
 )
@@ -51,14 +50,13 @@ PUSH_MEDIA_WARNING = "\n".join(
     (
         "WARNING",
         "=======",
-        "\nYou are about to push your local media files to the {stage} server on ",
+        "\nYou are about to push your local media files to the {stage} environment on ",
         "the Divio Cloud. This will replace ALL existing media files with the ",
         "ones you are about to push.",
         "\nYou will also lose any changes that have been made on the {stage} ",
-        "server since you pulled its files to your local environment. ",
-        "\nIt is recommended to go the project settings on control.divio.com",
-        "and take a backup before restoring media files. You can find this ",
-        'action in the "Manage Project" section.',
+        "environment since you pulled its files to your local environment. ",
+        "\nIt is recommended to go the backup section on control.divio.com",
+        "and take a backup before restoring media files.",
         "\nPlease proceed with caution!",
     )
 )
