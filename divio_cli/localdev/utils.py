@@ -38,18 +38,18 @@ def get_project_home(path=None, silent=False):
     """
     previous_path = None
     current_path = path or os.getcwd()
+    global_config_path = config.get_global_config_path()
 
     # loop until we're at the root of the volume
     while current_path != previous_path:
-
         # check if configuration file exists in current directory
         dotfile = os.path.join(current_path, settings.ALDRYN_DOT_FILE)
-        if os.path.exists(dotfile) and dotfile not in [config.CONFIG_FILE_PATH_ALDRYN, config.CONFIG_FILE_PATH_DIVIO]:
+        if os.path.exists(dotfile) and not dotfile == global_config_path:
             return current_path
 
         # check if configuration file exists in current directory
         dotfile = os.path.join(current_path, settings.DIVIO_DOT_FILE)
-        if os.path.exists(dotfile) and dotfile not in [config.CONFIG_FILE_PATH_ALDRYN, config.CONFIG_FILE_PATH_DIVIO]:
+        if os.path.exists(dotfile) and not dotfile == global_config_path:
             return current_path
 
         # traversing up the tree

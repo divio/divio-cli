@@ -83,6 +83,18 @@ def configure_project(website_slug, path, client):
     else:
         path = os.path.join(path, settings.DIVIO_DOT_FILE)
 
+    # Create folders if they don't exist yet.
+    if not os.path.exists(os.path.dirname(path)):
+        try:
+            os.makedirs(os.path.dirname(path))
+        except OSError as exc: # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+
+    if not os.path.isdir(os.path.dirname(path)):
+        raise click.ClickException("{} is not a directory".format(os.path.dirname(path)))
+
+    # Write the file
     with open(path, "w+") as fh:
         json.dump(website_data, fh, indent=4)
     
