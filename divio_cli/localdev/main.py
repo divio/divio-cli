@@ -1132,8 +1132,9 @@ def open_project(open_browser=True):
     return addr
 
 def configure(client):
-    website_slug = click.prompt('Please enter the website slug of the project you want to configure', type=str)
-    configure_project(website_slug=website_slug, path=os.getcwd(), client=client)
+    if click.confirm('This action will overwrite the local Divio configuration file for your project or create a new one. Do you want to continue?'):
+        website_slug = click.prompt('Please enter the application slug of the local project', type=str)
+        configure_project(website_slug=website_slug, path=os.getcwd(), client=client)
 
 
 
