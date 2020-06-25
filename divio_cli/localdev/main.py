@@ -73,15 +73,14 @@ def configure_project(website_slug, path, client):
     compose_config = os.path.join(path, "docker-compose.yml")
     if not os.path.isfile(compose_config):
         raise click.ClickException(
-            "Could not find a valid 'docker-compose.yml' file. Please make "
-            "sure that this project has been updated on the Divio Cloud to "
-            "use Base Project version 3 or higher."
+            "Could not find a valid 'docker-compose.yml' file."
         )
 
-    # create .aldryn file
+    # create configuration file
     website_data = {"id": website_id, "slug": website_slug}
     with open(os.path.join(path, settings.ALDRYN_DOT_FILE), "w+") as fh:
-        json.dump(website_data, fh)
+        json.dump(website_data, fh, indent=4)
+    click.secho("{} file written".format(settings.ALDRYN_DOT_FILE), fg="green")
     
 
 def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX):
@@ -166,7 +165,7 @@ def create_workspace(
     # clone git project
     clone_project(website_slug=website_slug, path=path, client=client)
 
-    # check for new baseproject + add .aldryn
+    # check for new baseproject + add configuration file
     configure_project(website_slug=website_slug, path=path, client=client)
 
     # setup docker website containers
@@ -1116,6 +1115,11 @@ def open_project(open_browser=True):
     if open_browser:
         click.launch(addr)
     return addr
+
+def configure(client):
+    website_slug = click.prompt('Please enter the website slug of the project you want to configure', type=str)
+    configure_project(website_slug=website_slug, path=os.getcwd(), client=client)
+
 
 
 def start_project():

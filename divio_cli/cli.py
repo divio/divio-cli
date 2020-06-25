@@ -223,6 +223,13 @@ def project_deploy_log(obj, remote_id, stage):
     obj.client.show_deploy_log(remote_id, stage)
 
 
+@project.command(name="configure")
+@click.pass_obj
+def configure(obj):
+    """Configures an existing local project"""
+    localdev.configure(client=obj.client)
+
+
 @project.command(name="dashboard")
 @allow_remote_id_override
 @click.pass_obj
