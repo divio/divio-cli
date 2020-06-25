@@ -6,15 +6,20 @@ from distutils.version import StrictVersion
 from . import __version__, settings, utils
 
 # Path to the global configuration
-CONFIG_FILE_PATH = os.path.join(os.path.expanduser("~"), settings.ALDRYN_DOT_FILE)
+CONFIG_FILE_PATH_ALDRYN = os.path.join(os.path.expanduser("~"), settings.ALDRYN_DOT_FILE)
+CONFIG_FILE_PATH_DIVIO = os.path.join(os.path.expanduser("~"), settings.DIVIO_DOT_FILE)
+
 
 
 class Config(object):
-    config_path = CONFIG_FILE_PATH
     config = {}
 
     def __init__(self):
         super(Config, self).__init__()
+        if os.path.exists(CONFIG_FILE_PATH_DIVIO):
+            self.config_path = CONFIG_FILE_PATH_DIVIO
+        else:
+            self.config_path = CONFIG_FILE_PATH_ALDRYN
         self.read()
 
     def read(self):

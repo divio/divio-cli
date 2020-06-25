@@ -78,9 +78,13 @@ def configure_project(website_slug, path, client):
 
     # create configuration file
     website_data = {"id": website_id, "slug": website_slug}
-    with open(os.path.join(path, settings.ALDRYN_DOT_FILE), "w+") as fh:
+    if os.path.exists(os.path.join(path, settings.ALDRYN_DOT_FILE)):
+        path = os.path.join(path, settings.ALDRYN_DOT_FILE)
+    else:
+        path = os.path.join(path, settings.DIVIO_DOT_FILE)
+
+    with open(path, "w+") as fh:
         json.dump(website_data, fh, indent=4)
-    click.secho("{} file written".format(settings.ALDRYN_DOT_FILE), fg="green")
     
 
 def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX):
@@ -245,9 +249,8 @@ class DatabaseImportBase(object):
         if "db_extensions" in project_settings:
             if not isinstance(project_settings["db_extensions"], list):
                 raise click.ClickException(
-                    '{} file contains invalid "db_extensions" value. '
-                    "It should contain a list of extensions, for instance: {}".format(
-                        settings.ALDRYN_DOT_FILE, default_db_extensions
+                    'Divio configuration file contains invalid "db_extensions" value. '
+                    "It should contain a list of extensions, for instance: {}".format(default_db_extensions
                     )
                 )
             return project_settings["db_extensions"]
