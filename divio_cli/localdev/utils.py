@@ -12,9 +12,11 @@ from ..utils import check_call, check_output, is_windows
 import subprocess
 
 DOT_ALDRYN_FILE_NOT_FOUND = (
-    "Divio Cloud project file '{}' could not be found!\n"
+    "Divio Cloud configuration file '{}' could not be found!\n"
     "Please make sure you're in a Divio Cloud project folder and the "
-    "file exists.".format(settings.ALDRYN_DOT_FILE)
+    "file exists.\n\n"
+    "You can create a new configuration file for an existing project "
+    "with the `divio project configure` command.".format(settings.ALDRYN_DOT_FILE)
 )
 
 
