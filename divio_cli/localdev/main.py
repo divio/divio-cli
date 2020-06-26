@@ -74,10 +74,27 @@ def configure_project(website_slug, path, client):
     if not os.path.isfile(compose_config):
         click.secho("Warning: Could not find a 'docker-compose.yml' file.", fg="red")
 
-    # create .aldryn file
+    # create configuration file
     website_data = {"id": website_id, "slug": website_slug}
-    with open(os.path.join(path, settings.ALDRYN_DOT_FILE), "w+") as fh:
-        json.dump(website_data, fh)
+    if os.path.exists(os.path.join(path, settings.ALDRYN_DOT_FILE)):
+        path = os.path.join(path, settings.ALDRYN_DOT_FILE)
+    else:
+        path = os.path.join(path, settings.DIVIO_DOT_FILE)
+
+    # Create folders if they don't exist yet.
+    if not os.path.exists(os.path.dirname(path)):
+        try:
+            os.makedirs(os.path.dirname(path))
+        except OSError as exc: # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+
+    if not os.path.isdir(os.path.dirname(path)):
+        raise click.ClickException("{} is not a directory".format(os.path.dirname(path)))
+
+    # Write the file
+    with open(path, "w+") as fh:
+        json.dump(website_data, fh, indent=4)
     
 
 def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX):
@@ -167,7 +184,7 @@ def create_workspace(
     # clone git project
     clone_project(website_slug=website_slug, path=path, client=client)
 
-    # check for new baseproject + add .aldryn
+    # check for new baseproject + add configuration file
     configure_project(website_slug=website_slug, path=path, client=client)
 
     # setup docker website containers
@@ -250,9 +267,8 @@ class DatabaseImportBase(object):
         if "db_extensions" in project_settings:
             if not isinstance(project_settings["db_extensions"], list):
                 raise click.ClickException(
-                    '{} file contains invalid "db_extensions" value. '
-                    "It should contain a list of extensions, for instance: {}".format(
-                        settings.ALDRYN_DOT_FILE, default_db_extensions
+                    'Divio configuration file contains invalid "db_extensions" value. '
+                    "It should contain a list of extensions, for instance: {}".format(default_db_extensions
                     )
                 )
             return project_settings["db_extensions"]
@@ -1145,6 +1161,12 @@ def open_project(open_browser=True):
     if open_browser:
         click.launch(addr)
     return addr
+
+def configure(client):
+    if click.confirm('This action will overwrite the local Divio configuration file for your project or create a new one. Do you want to continue?'):
+        website_slug = click.prompt('Please enter the application slug of the local project', type=str)
+        configure_project(website_slug=website_slug, path=os.getcwd(), client=client)
+
 
 
 def start_project():

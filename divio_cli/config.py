@@ -5,17 +5,21 @@ from distutils.version import StrictVersion
 
 from . import __version__, settings, utils
 
-
-CONFIG_FILE_NAME = settings.ALDRYN_DOT_FILE
-CONFIG_FILE_PATH = os.path.join(os.path.expanduser("~"), CONFIG_FILE_NAME)
+def get_global_config_path():
+    old_path = os.path.join(os.path.expanduser("~"), settings.ALDRYN_DOT_FILE)
+    if os.path.exists(old_path):
+        return old_path
+    else:
+        return settings.DIVIO_GLOBAL_CONFIG_FILE
+        
 
 
 class Config(object):
-    config_path = CONFIG_FILE_PATH
     config = {}
 
     def __init__(self):
         super(Config, self).__init__()
+        self.config_path = get_global_config_path()
         self.read()
 
     def read(self):
@@ -31,6 +35,14 @@ class Config(object):
         self.config = config
 
     def save(self):
+        # Create folders if they don't exist yet.
+        if not os.path.exists(os.path.dirname(self.config_path)):
+            try:
+                os.makedirs(os.path.dirname(self.config_path))
+            except OSError as exc: # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
+
         with open(self.config_path, "w+") as fh:
             json.dump(self.config, fh)
 
