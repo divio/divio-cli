@@ -100,7 +100,8 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
     except RuntimeError:
         # Docker-compose does not exist
         click.secho(
-            "Warning: docker-compose.yml does not exist. Will continue without..."
+            "Warning: docker-compose.yml does not exist. Will continue without...",
+            fg="red"
         )
         return
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
