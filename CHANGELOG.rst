@@ -1,6 +1,15 @@
 Changelog
 =========
 
+3.8.0 (2020-07-14)
+------------------
+
+* renamed `.aldryn` file in a project to `.divio/conifg.json`
+* renamed global configuration file as well. 
+* made `docker-compose.yml` files optional
+* added command to recreated `.divio/config.json`
+
+
 3.7.0 (2020-06-15)
 ------------------
 
