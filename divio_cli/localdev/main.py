@@ -74,7 +74,12 @@ def configure_project(website_slug, path, client):
 
     # create configuration file
     website_data = {"id": website_id, "slug": website_slug}
+    if os.path.exists(os.path.join(path, settings.ALDRYN_DOT_FILE)):
+        path = os.path.join(path, settings.ALDRYN_DOT_FILE)
+    else:
+        path = os.path.join(path, settings.DIVIO_DOT_FILE)
     path = os.path.join(path, settings.DIVIO_DOT_FILE)
+
 
     # Create folders if they don't exist yet.
     if not os.path.exists(os.path.dirname(path)):
