@@ -73,10 +73,15 @@ def get_docker_compose_cmd(path):
     else:
         docker_compose_filename = UNIX_DOCKER_COMPOSE_FILENAME
 
+    docker_compose_filename = os.path.join(path, docker_compose_filename)
+    
+    if not os.path.isfile(docker_compose_filename):
+        raise RuntimeError("Warning: Could not find a 'docker-compose.yml' file.")        
+
     docker_compose_base = [
         "docker-compose",
         "-f",
-        os.path.join(path, docker_compose_filename),
+        docker_compose_filename,
     ]
 
     def docker_compose(*commands):
@@ -157,7 +162,10 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
     """
     Returns the container id for a running database with a given prefix.
     """
-    docker_compose = get_docker_compose_cmd(path)
+    try:
+        docker_compose = get_docker_compose_cmd(path)
+    except RuntimeError:
+        raise exceptions.AldrynException("docker-compose.yml not found. Unable to find database container")
     try:
         output = check_output(docker_compose("ps", "-q", "database_{}".format(prefix).lower()), catch=False, stderr=open(os.devnull, "w")).rstrip(os.linesep)
         if not output and raise_on_missing:
@@ -248,7 +256,12 @@ def get_service_type(identifier, path=None):
     variable of a services from the docker-compose file.
     """
     project_home = get_project_home(path)
-    docker_compose = get_docker_compose_cmd(project_home)
+    try:
+        docker_compose = get_docker_compose_cmd(project_home)
+    except RuntimeError:
+        # Docker-compose does not exist
+        click.secho("Warning: docker-compose.yml does not exist. Can not get the service type without!", fg="red")
+        sys.exit(1)
     docker_compose_config = DockerComposeConfig(docker_compose)
     services = docker_compose_config.get_services()
     if identifier in services and "environment" in services[identifier] and "SERVICE_MANAGER" in services[identifier]["environment"]:
@@ -267,7 +280,12 @@ def get_db_type(prefix, path=None):
         db_type = get_service_type("database_{}".format(prefix.lower()), path=path)
     except RuntimeError:
         # legacy section. we try to look for the db, if it does not exist, fail
-        docker_compose = get_docker_compose_cmd(path)
+        try:
+            docker_compose = get_docker_compose_cmd(path)
+        except RuntimeError:
+            # Docker-compose does not exist
+            click.secho("Warning: docker-compose.yml does not exist. Can not get the service type without!", fg="red")
+            sys.exit(1) 
         docker_compose_config = DockerComposeConfig(docker_compose)
         if not docker_compose_config.has_service("db"):
             click.secho('No service "db" found in local project', fg="red")
