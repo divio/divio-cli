@@ -67,11 +67,6 @@ def clone_project(website_slug, path, client):
 def configure_project(website_slug, path, client):
     website_id = client.get_website_id_for_slug(website_slug)
 
-    # Detect old style or invalid projects
-    compose_config = os.path.join(path, "docker-compose.yml")
-    if not os.path.isfile(compose_config):
-        click.secho("Warning: Could not find a 'docker-compose.yml' file.", fg="red")
-
     # create configuration file
     website_data = {"id": website_id, "slug": website_slug}
     if os.path.exists(os.path.join(path, settings.ALDRYN_DOT_FILE)):
