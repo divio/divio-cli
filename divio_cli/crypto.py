@@ -26,9 +26,7 @@ def iterchunks(data, chunksize):
 def minval(length):
     def validator(instance, attribute, value):
         if value < length:
-            raise ValueError(
-                "{} has to be >= {}".format(attribute.name, length)
-            )
+            raise ValueError("{} has to be >= {}".format(attribute.name, length))
 
     return validator
 
@@ -47,9 +45,7 @@ class CipherMixin(object):
     auth_hash = hashes.SHA256
 
     def encode_header(self, iv, salt, auth_salt):
-        return struct.pack(
-            self.header_format, self.version, iv, salt, auth_salt
-        )
+        return struct.pack(self.header_format, self.version, iv, salt, auth_salt)
 
     def decode_header(self, data):
         version, iv, salt, auth_salt = struct.unpack(self.header_format, data)

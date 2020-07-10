@@ -16,7 +16,9 @@ DOT_ALDRYN_FILE_NOT_FOUND = (
     "Please make sure you're in a Divio Cloud project folder and the "
     "file exists.\n\n"
     "You can create a new configuration file for an existing project "
-    "with the `divio project configure` command.".format(settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE)
+    "with the `divio project configure` command.".format(
+        settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
+    )
 )
 
 
@@ -25,7 +27,7 @@ def get_aldryn_project_settings(path=None, silent=False):
     try:
         if os.path.exists(os.path.join(project_home, settings.ALDRYN_DOT_FILE)):
             path = os.path.join(project_home, settings.ALDRYN_DOT_FILE)
-        else: 
+        else:
             path = os.path.join(project_home, settings.DIVIO_DOT_FILE)
         with open(path) as fh:
             return json.load(fh)
@@ -74,15 +76,11 @@ def get_docker_compose_cmd(path):
         docker_compose_filename = UNIX_DOCKER_COMPOSE_FILENAME
 
     docker_compose_filename = os.path.join(path, docker_compose_filename)
-    
-    if not os.path.isfile(docker_compose_filename):
-        raise RuntimeError("Warning: Could not find a 'docker-compose.yml' file.")        
 
-    docker_compose_base = [
-        "docker-compose",
-        "-f",
-        docker_compose_filename,
-    ]
+    if not os.path.isfile(docker_compose_filename):
+        raise RuntimeError("Warning: Could not find a 'docker-compose.yml' file.")
+
+    docker_compose_base = ["docker-compose", "-f", docker_compose_filename]
 
     def docker_compose(*commands):
         return docker_compose_base + [cmd for cmd in commands]
@@ -121,9 +119,7 @@ def ensure_windows_docker_compose_file_exists(path):
     unix_path = os.path.join(path, UNIX_DOCKER_COMPOSE_FILENAME)
     if not os.path.isfile(unix_path):
         # TODO: use correct exit from click
-        click.secho(
-            "docker-compose.yml not found at {}".format(unix_path), fg="red"
-        )
+        click.secho("docker-compose.yml not found at {}".format(unix_path), fg="red")
         sys.exit(1)
 
     with open(unix_path, "r") as fh:
@@ -165,9 +161,15 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
     try:
         docker_compose = get_docker_compose_cmd(path)
     except RuntimeError:
-        raise exceptions.AldrynException("docker-compose.yml not found. Unable to find database container")
+        raise exceptions.AldrynException(
+            "docker-compose.yml not found. Unable to find database container"
+        )
     try:
-        output = check_output(docker_compose("ps", "-q", "database_{}".format(prefix).lower()), catch=False, stderr=open(os.devnull, "w")).rstrip(os.linesep)
+        output = check_output(
+            docker_compose("ps", "-q", "database_{}".format(prefix).lower()),
+            catch=False,
+            stderr=open(os.devnull, "w"),
+        ).rstrip(os.linesep)
         if not output and raise_on_missing:
             raise exceptions.AldrynException("Unable to find database container")
     except subprocess.CalledProcessError:
@@ -260,15 +262,21 @@ def get_service_type(identifier, path=None):
         docker_compose = get_docker_compose_cmd(project_home)
     except RuntimeError:
         # Docker-compose does not exist
-        click.secho("Warning: docker-compose.yml does not exist. Can not get the service type without!", fg="red")
+        click.secho(
+            "Warning: docker-compose.yml does not exist. Can not get the service type without!",
+            fg="red",
+        )
         sys.exit(1)
     docker_compose_config = DockerComposeConfig(docker_compose)
     services = docker_compose_config.get_services()
-    if identifier in services and "environment" in services[identifier] and "SERVICE_MANAGER" in services[identifier]["environment"]:
+    if (
+        identifier in services
+        and "environment" in services[identifier]
+        and "SERVICE_MANAGER" in services[identifier]["environment"]
+    ):
         return services[identifier]["environment"]["SERVICE_MANAGER"]
 
     raise RuntimeError("Can not get service type")
-
 
 
 def get_db_type(prefix, path=None):
@@ -284,8 +292,11 @@ def get_db_type(prefix, path=None):
             docker_compose = get_docker_compose_cmd(path)
         except RuntimeError:
             # Docker-compose does not exist
-            click.secho("Warning: docker-compose.yml does not exist. Can not get the service type without!", fg="red")
-            sys.exit(1) 
+            click.secho(
+                "Warning: docker-compose.yml does not exist. Can not get the service type without!",
+                fg="red",
+            )
+            sys.exit(1)
         docker_compose_config = DockerComposeConfig(docker_compose)
         if not docker_compose_config.has_service("db"):
             click.secho('No service "db" found in local project', fg="red")

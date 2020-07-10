@@ -50,9 +50,7 @@ def validate_aldryn_config_py(path):
 def validate_addon(path=None):
     setup_py_path = os.path.join(path or ".", "setup.py")
     if not os.path.exists(setup_py_path):
-        raise click.ClickException(
-            messages.FILE_NOT_FOUND.format(setup_py_path)
-        )
+        raise click.ClickException(messages.FILE_NOT_FOUND.format(setup_py_path))
 
     config = load_config(settings.ADDON_CONFIG_FILENAME, path)
     validate_aldryn_config_py(path)

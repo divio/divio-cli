@@ -5,13 +5,13 @@ from distutils.version import StrictVersion
 
 from . import __version__, settings, utils
 
+
 def get_global_config_path():
     old_path = os.path.join(os.path.expanduser("~"), settings.ALDRYN_DOT_FILE)
     if os.path.exists(old_path):
         return old_path
     else:
         return settings.DIVIO_GLOBAL_CONFIG_FILE
-        
 
 
 class Config(object):
@@ -39,7 +39,7 @@ class Config(object):
         if not os.path.exists(os.path.dirname(self.config_path)):
             try:
                 os.makedirs(os.path.dirname(self.config_path))
-            except OSError as exc: # Guard against race condition
+            except OSError as exc:  # Guard against race condition
                 if exc.errno != errno.EEXIST:
                     raise
 

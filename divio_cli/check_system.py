@@ -26,9 +26,7 @@ class Check(object):
             utils.check_call(self.command, catch=False, silent=True)
         except OSError as exc:
             if exc.errno == errno.ENOENT:
-                errors.append(
-                    "executable {} not found".format(self.command[0])
-                )
+                errors.append("executable {} not found".format(self.command[0]))
             else:
                 msg = "Command '{}' returned non-zero exit status {}".format(
                     self.fmt_command(), exc.errno

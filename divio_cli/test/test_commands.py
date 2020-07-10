@@ -8,11 +8,11 @@ from divio_cli import cli
 
 
 TEST_COMMANDS_CLICK = (
-    ("doctor"),
+    "doctor",
     ("doctor", "-m"),
     ("doctor", "-c", "login"),
     ("login", "--check"),
-    ("project"),
+    "project",
     ("project", "dashboard"),
     ("project", "deploy"),
     ("project", "deploy-log"),
@@ -29,7 +29,7 @@ TEST_COMMANDS_CLICK = (
     ("project", "stop"),
     ("project", "test"),
     ("project", "update"),
-    ("version"),
+    "version",
     ("version", "-s"),  # don't check PyPI for newer version
     ("version", "-m"),  # Show this message and exit.
 )

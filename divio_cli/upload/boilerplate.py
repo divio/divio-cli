@@ -19,12 +19,8 @@ def normalize_path(path):
 
 
 def get_boilerplate_files(boilerplate_path):
-    config = load_config(
-        settings.BOILERPLATE_CONFIG_FILENAME, boilerplate_path
-    )
-    excluded_patterns = (
-        config.get("excluded", []) + BOILERPLATE_EXCLUDE_DEFAULTS
-    )
+    config = load_config(settings.BOILERPLATE_CONFIG_FILENAME, boilerplate_path)
+    excluded_patterns = config.get("excluded", []) + BOILERPLATE_EXCLUDE_DEFAULTS
     # glob excludes
     excluded = []
     for exclude in excluded_patterns:

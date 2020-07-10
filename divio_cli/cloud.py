@@ -52,8 +52,7 @@ class CloudClient(object):
 
     def get_access_token_url(self):
         return "{}/{}".format(
-            self.endpoint.rstrip("/"),
-            settings.ACCESS_TOKEN_URL_PATH.lstrip("/"),
+            self.endpoint.rstrip("/"), settings.ACCESS_TOKEN_URL_PATH.lstrip("/")
         )
 
     def init_session(self):
@@ -68,9 +67,7 @@ class CloudClient(object):
         self.session.headers["Authorization"] = "Basic {}".format(token)
 
     def login(self, token):
-        request = api_requests.LoginRequest(
-            self.session, data={"token": token}
-        )
+        request = api_requests.LoginRequest(self.session, data={"token": token})
         user_data = request()
 
         self.authenticate(token)
@@ -114,7 +111,9 @@ class CloudClient(object):
                 "status"
             ]
         except KeyError:
-            click.secho("Environment with the name '{}' does not exist.".format(stage), fg="red")
+            click.secho(
+                "Environment with the name '{}' does not exist.".format(stage), fg="red"
+            )
             sys.exit(1)
         if status:
             deploy_log = self.get_deploy_log(website_id, stage)
@@ -126,7 +125,6 @@ class CloudClient(object):
                 "No {} environment deployed yet, no log available.".format(stage),
                 fg="yellow",
             )
-        
 
     def deploy_project_or_get_progress(self, website_id, stage):
         def fmt_progress(data):
@@ -162,10 +160,7 @@ class CloudClient(object):
                 while response["is_deploying"]:
                     response = self.deploy_project_progress(website_id, stage)
                     bar.current_item = progress = response["deploy_progress"]
-                    if (
-                        "main_percent" in progress
-                        and "extra_percent" in progress
-                    ):
+                    if "main_percent" in progress and "extra_percent" in progress:
                         # update the difference of the current percentage
                         # to the new percentage
                         progress_percent = (
@@ -198,7 +193,9 @@ class CloudClient(object):
         try:
             return data[stage]
         except KeyError:
-            click.secho("Environment with the name '{}' does not exist.".format(stage), fg="red")
+            click.secho(
+                "Environment with the name '{}' does not exist.".format(stage), fg="red"
+            )
             sys.exit(1)
 
     def deploy_project(self, website_id, stage):
@@ -296,16 +293,12 @@ class CloudClient(object):
 
     def download_media_request(self, website_id, stage):
         request = api_requests.DownloadMediaRequestRequest(
-            self.session,
-            url_kwargs={"website_id": website_id},
-            data={"stage": stage},
+            self.session, url_kwargs={"website_id": website_id}, data={"stage": stage}
         )
         return request()
 
     def download_media_progress(self, url):
-        request = api_requests.DownloadMediaProgressRequest(
-            self.session, url=url
-        )
+        request = api_requests.DownloadMediaProgressRequest(self.session, url=url)
         return request()
 
     def upload_db(self, website_id, stage, archive_path, prefix):
@@ -331,9 +324,7 @@ class CloudClient(object):
         return request()
 
     def upload_media_progress(self, url):
-        request = api_requests.UploadMediaFilesProgressRequest(
-            self.session, url=url
-        )
+        request = api_requests.UploadMediaFilesProgressRequest(self.session, url=url)
         return request()
 
     def get_environment_variables(self, website_id, stage, custom_only=True):
@@ -347,9 +338,7 @@ class CloudClient(object):
         )
         return request()
 
-    def set_custom_environment_variables(
-        self, website_id, stage, set_vars, unset_vars
-    ):
+    def set_custom_environment_variables(self, website_id, stage, set_vars, unset_vars):
         current_vars = self.get_environment_variables(
             website_id, stage, custom_only=True
         )
@@ -378,9 +367,7 @@ class CloudClient(object):
             # happens when there is no remote repository configured
             return None
 
-        raise click.ClickException(
-            "Could not get remote repository information."
-        )
+        raise click.ClickException("Could not get remote repository information.")
 
 
 class WritableNetRC(netrc):

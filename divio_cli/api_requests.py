@@ -36,9 +36,7 @@ class SingleHostSession(requests.Session):
 
     def request(self, method, url, *args, **kwargs):
         url = urljoin(self.host, url)
-        return super(SingleHostSession, self).request(
-            method, url, *args, **kwargs
-        )
+        return super(SingleHostSession, self).request(method, url, *args, **kwargs)
 
 
 class APIRequest(object):
@@ -55,14 +53,7 @@ class APIRequest(object):
     headers = {}
 
     def __init__(
-        self,
-        session,
-        url=None,
-        url_kwargs=None,
-        data=None,
-        files=None,
-        *args,
-        **kwargs
+        self, session, url=None, url_kwargs=None, data=None, files=None, *args, **kwargs
     ):
         self.session = session
         if url:
@@ -114,10 +105,7 @@ class APIRequest(object):
                 *args,
                 **kwargs
             )
-        except (
-            requests.exceptions.ConnectionError,
-            requests.exceptions.Timeout,
-        ) as e:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             raise click.ClickException(messages.NETWORK_ERROR_MESSAGE + str(e))
 
         return self.verify(response)

@@ -39,10 +39,7 @@ except ImportError:
     "-d",
     "--debug/--no-debug",
     default=False,
-    help=(
-        "Drop into the debugger if the command execution raises "
-        "an exception."
-    ),
+    help=("Drop into the debugger if the command execution raises " "an exception."),
 )
 @click.pass_context
 def cli(ctx, debug):
@@ -53,8 +50,7 @@ def cli(ctx, debug):
 
         def exception_handler(type, value, traceback):
             click.secho(
-                "\nAn exception occurred while executing the requested "
-                "command:",
+                "\nAn exception occurred while executing the requested " "command:",
                 fg="red",
             )
             hr(fg="red")
@@ -80,9 +76,7 @@ def cli(ctx, debug):
         if update_info["update_available"]:
             click.secho(
                 "New version {} is available. Type `divio version` to "
-                "show information about upgrading.".format(
-                    update_info["remote"]
-                ),
+                "show information about upgrading.".format(update_info["remote"]),
                 fg="yellow",
             )
 
@@ -99,10 +93,7 @@ def login_token_helper(ctx, value):
 @cli.command()
 @click.argument("token", required=False)
 @click.option(
-    "--check",
-    is_flag=True,
-    default=False,
-    help="Check for current login status",
+    "--check", is_flag=True, default=False, help="Check for current login status"
 )
 @click.pass_context
 def login(ctx, token, check):
@@ -125,11 +116,7 @@ def project():
 
 @project.command(name="list")
 @click.option(
-    "-g",
-    "--grouped",
-    is_flag=True,
-    default=False,
-    help="Group by organisation",
+    "-g", "--grouped", is_flag=True, default=False, help="Group by organisation"
 )
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
@@ -168,9 +155,7 @@ def project_list(obj, grouped, as_json):
             (six.text_type(website["id"]), website["domain"], website["name"])
         )
 
-    accounts = itertools.chain(
-        groups["users"].items(), groups["organisations"].items()
-    )
+    accounts = itertools.chain(groups["users"].items(), groups["organisations"].items())
 
     def sort_projects(items):
         return sorted(items, key=lambda x: x[0].lower())
@@ -202,9 +187,7 @@ def project_list(obj, grouped, as_json):
 
 
 @project.command(name="deploy")
-@click.argument(
-    "stage", default="test"
-)
+@click.argument("stage", default="test")
 @allow_remote_id_override
 @click.pass_obj
 def project_deploy(obj, remote_id, stage):
@@ -213,9 +196,7 @@ def project_deploy(obj, remote_id, stage):
 
 
 @project.command(name="deploy-log")
-@click.argument(
-    "stage", default="test"
-)
+@click.argument("stage", default="test")
 @allow_remote_id_override
 @click.pass_obj
 def project_deploy_log(obj, remote_id, stage):
@@ -238,22 +219,20 @@ def project_dashboard(obj, remote_id):
     click.launch(get_cp_url(client=obj.client, project_id=remote_id))
 
 
-@project.command(name="up", aliases=['start'])
+@project.command(name="up", aliases=["start"])
 def project_up():
     """Start local project"""
     localdev.start_project()
 
 
-@project.command(name="stop", aliases=['down'])
+@project.command(name="stop", aliases=["down"])
 def project_stop():
     """Stop local project"""
     localdev.stop_project()
 
 
 @project.command(name="open")
-@click.argument(
-    "stage", default=""
-)
+@click.argument("stage", default="")
 @allow_remote_id_override
 @click.pass_obj
 def project_open(obj, remote_id, stage):
@@ -262,9 +241,6 @@ def project_open(obj, remote_id, stage):
         open_project_cloud_site(obj.client, project_id=remote_id, stage=stage)
     else:
         localdev.open_project()
-
-
-
 
 
 @project.command(name="update")
@@ -325,14 +301,7 @@ def project_update(obj, strict):
 @allow_remote_id_override
 @click.pass_obj
 def environment_variables(
-    obj,
-    remote_id,
-    stage,
-    show_all_vars,
-    as_json,
-    get_vars,
-    set_vars,
-    unset_vars,
+    obj, remote_id, stage, show_all_vars, as_json, get_vars, set_vars, unset_vars
 ):
     """
     Get and set environment vars.
@@ -342,19 +311,14 @@ def environment_variables(
     if set_vars or unset_vars:
         set_vars = dict(set_vars)
         data = obj.client.set_custom_environment_variables(
-            website_id=remote_id,
-            stage=stage,
-            set_vars=set_vars,
-            unset_vars=unset_vars,
+            website_id=remote_id, stage=stage, set_vars=set_vars, unset_vars=unset_vars
         )
     else:
         data = obj.client.get_environment_variables(
             website_id=remote_id, stage=stage, custom_only=not show_all_vars
         )
         if get_vars:
-            data = {
-                key: value for key, value in data.items() if key in get_vars
-            }
+            data = {key: value for key, value in data.items() if key in get_vars}
     if as_json:
         click.echo(json.dumps(data, indent=2, sort_keys=True))
     else:
@@ -362,8 +326,6 @@ def environment_variables(
         data = sorted([(key, value) for key, value in data.items()])
         output = table(data, header)
         click.echo_via_pager(output)
-
-
 
 
 @project.command(name="status")
@@ -374,9 +336,7 @@ def project_status():
 
 @project.command(name="setup")
 @click.argument("slug")
-@click.option(
-    "-s", "--stage", default="test", help="pull data from environment"
-)
+@click.option("-s", "--stage", default="test", help="pull data from environment")
 @click.option(
     "-p",
     "--path",
@@ -418,13 +378,8 @@ def project_pull():
 
 
 @project_pull.command(name="db")
-@click.argument(
-    "stage", default="test"
-)
-@click.argument(
-    "prefix",
-    default=localdev.DEFAULT_SERVICE_PREFIX,
-)
+@click.argument("stage", default="test")
+@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
 @click.pass_obj
 def pull_db(obj, remote_id, stage, prefix):
@@ -432,17 +387,20 @@ def pull_db(obj, remote_id, stage, prefix):
     Pull database from your deployed website.
     """
     from .localdev import utils
+
     project_home = utils.get_project_home()
     db_type = utils.get_db_type(prefix, path=project_home)
     localdev.ImportRemoteDatabase(
-        client=obj.client, stage=stage, prefix=prefix, remote_id=remote_id, db_type=db_type,
+        client=obj.client,
+        stage=stage,
+        prefix=prefix,
+        remote_id=remote_id,
+        db_type=db_type,
     )()
 
 
 @project_pull.command(name="media")
-@click.argument(
-    "stage", default="test"
-)
+@click.argument("stage", default="test")
 @allow_remote_id_override
 @click.pass_obj
 def pull_media(obj, remote_id, stage):
@@ -458,9 +416,7 @@ def project_push():
 
 
 @project_push.command(name="db")
-@click.argument(
-    "stage", default="test"
-)
+@click.argument("stage", default="test")
 @click.option(
     "-d",
     "--dumpfile",
@@ -471,10 +427,7 @@ def project_push():
 @click.option(
     "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
 )
-@click.argument(
-    "prefix",
-    default=localdev.DEFAULT_SERVICE_PREFIX,
-)
+@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
 @click.pass_obj
 def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
@@ -482,6 +435,7 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
     Push database to your deployed website.
     """
     from .localdev import utils
+
     project_home = utils.get_project_home()
     db_type = utils.get_db_type(prefix, path=project_home)
     if not dumpfile:
@@ -489,7 +443,13 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg="red")
             if not click.confirm("\nAre you sure you want to continue?"):
                 return
-        localdev.push_db(client=obj.client, stage=stage, remote_id=remote_id, prefix=prefix, db_type=db_type)
+        localdev.push_db(
+            client=obj.client,
+            stage=stage,
+            remote_id=remote_id,
+            prefix=prefix,
+            db_type=db_type,
+        )
     else:
         if not noinput:
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg="red")
@@ -505,16 +465,11 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 
 
 @project_push.command(name="media")
-@click.argument(
-    "stage", default="test"
-)
+@click.argument("stage", default="test")
 @click.option(
     "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
 )
-@click.argument(
-    "prefix",
-    default=localdev.DEFAULT_SERVICE_PREFIX,
-)
+@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
 @click.pass_obj
 def push_media(obj, remote_id, prefix, stage, noinput):
@@ -535,14 +490,9 @@ def project_import():
 
 
 @project_import.command(name="db")
+@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @click.argument(
-    "prefix",
-    default=localdev.DEFAULT_SERVICE_PREFIX,
-)
-@click.argument(
-    "dump-path",
-    default=localdev.DEFAULT_DUMP_FILENAME,
-    type=click.Path(exists=True),
+    "dump-path", default=localdev.DEFAULT_DUMP_FILENAME, type=click.Path(exists=True)
 )
 @click.pass_obj
 def import_db(obj, dump_path, prefix):
@@ -550,6 +500,7 @@ def import_db(obj, dump_path, prefix):
     Load a database dump into your local database
     """
     from .localdev import utils
+
     project_home = utils.get_project_home()
     db_type = utils.get_db_type(prefix, path=project_home)
     localdev.ImportLocalDatabase(
@@ -563,10 +514,7 @@ def project_export():
 
 
 @project_export.command(name="db")
-@click.argument(
-    "prefix",
-    default=localdev.DEFAULT_SERVICE_PREFIX,
-)
+@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 def export_db(prefix):
     """
     Export a dump of your local database
@@ -619,18 +567,14 @@ def addon_upload(ctx):
 @addon.command(name="register")
 @click.argument("verbose_name")
 @click.argument("package_name")
-@click.option(
-    "-o", "--organisation", help="Register for an organisation", type=int
-)
+@click.option("-o", "--organisation", help="Register for an organisation", type=int)
 @click.pass_context
 def addon_register(ctx, package_name, verbose_name, organisation):
     """Register your addon on the Divio Cloud\n
     - Verbose Name:        Name of the Addon as it appears in the Marketplace.
     - Package Name:        System wide unique Python package name
     """
-    ret = ctx.obj.client.register_addon(
-        package_name, verbose_name, organisation
-    )
+    ret = ctx.obj.client.register_addon(package_name, verbose_name, organisation)
     click.echo(ret)
 
 
@@ -660,9 +604,7 @@ def boilerplate_validate(ctx):
 def boilerplate_upload(ctx, noinput):
     """Upload boilerplate to the Divio Cloud"""
     try:
-        ret = upload_boilerplate(
-            ctx.obj.client, ctx.parent.params["path"], noinput
-        )
+        ret = upload_boilerplate(ctx.obj.client, ctx.parent.params["path"], noinput)
     except exceptions.AldrynException as exc:
         raise click.ClickException(*exc.args)
     click.echo(ret)
@@ -671,8 +613,6 @@ def boilerplate_upload(ctx, noinput):
 @cli.group()
 def backup():
     """Manage backups for projects hosted on Divio Cloud"""
-
-
 
 
 @cli.command()
@@ -753,8 +693,6 @@ def doctor(obj, machine_readable, checks):
         click.echo(json.dumps(errors), nl=False)
     else:
         click.echo("Verifying your system setup")
-        exitcode = (
-            0 if check_requirements_human(obj.client.config, checks) else 1
-        )
+        exitcode = 0 if check_requirements_human(obj.client.config, checks) else 1
 
     sys.exit(exitcode)

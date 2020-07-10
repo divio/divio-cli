@@ -14,9 +14,7 @@ def validate_boilerplate_config(config, path):
     errors = []
 
     errors += validate_package_config(
-        config=config,
-        required_keys=BOILERPLATE_REQUIRED_CONFIG_KEYS,
-        path=path,
+        config=config, required_keys=BOILERPLATE_REQUIRED_CONFIG_KEYS, path=path
     )
 
     templates = config.get("templates", [])

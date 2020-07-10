@@ -171,7 +171,9 @@ def open_project_cloud_site(client, project_id, stage):
     try:
         url = project_data["{}_status".format(stage)]["site_url"]
     except KeyError:
-        click.secho("Environment with the name '{}' does not exist.".format(stage), fg="red")
+        click.secho(
+            "Environment with the name '{}' does not exist.".format(stage), fg="red"
+        )
         sys.exit(1)
     if url:
         click.launch(url)
@@ -197,9 +199,7 @@ def is_linux():
     return sys.platform.startswith("linux")
 
 
-unit_list = list(
-    zip(["bytes", "kB", "MB", "GB", "TB", "PB"], [0, 0, 1, 2, 2, 2])
-)
+unit_list = list(zip(["bytes", "kB", "MB", "GB", "TB", "PB"], [0, 0, 1, 2, 2, 2]))
 
 
 def pretty_size(num):
@@ -209,7 +209,7 @@ def pretty_size(num):
         exponent = min(int(log(num, 1024)), len(unit_list) - 1)
         quotient = float(num) / 1024 ** exponent
         unit, num_decimals = unit_list[exponent]
-        format_string = "{:.%sf} {}" % (num_decimals)
+        format_string = "{:.%sf} {}" % num_decimals
         return format_string.format(quotient, unit)
     elif num == 0:
         return "0 bytes"
@@ -266,8 +266,7 @@ def get_git_commit():
 def get_git_checked_branch():
     try:
         return subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            env=get_subprocess_env(),
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], env=get_subprocess_env()
         ).strip()
     except subprocess.CalledProcessError:
         return ALDRYN_DEFAULT_BRANCH_NAME
@@ -281,18 +280,14 @@ def get_user_agent():
         client = "divio-cli/{}".format(__version__)
 
     os_identifier = "{}/{}".format(platform.system(), platform.release())
-    python = "{}/{}".format(
-        platform.python_implementation(), platform.python_version()
-    )
+    python = "{}/{}".format(platform.python_implementation(), platform.python_version())
     return "{} ({}; {})".format(client, os_identifier, python)
 
 
 def download_file(url, directory=None, filename=None):
     response = requests.get(url, stream=True)
 
-    dump_path = os.path.join(
-        directory or create_temp_dir(), filename or "data.tar.gz"
-    )
+    dump_path = os.path.join(directory or create_temp_dir(), filename or "data.tar.gz")
 
     with open(dump_path, "wb") as f:
         for chunk in response.iter_content(chunk_size=1024):
@@ -317,7 +312,6 @@ def print_package_renamed_warning():
 
 def json_dumps_unicode(d, **kwargs):
     return json.dumps(d, ensure_ascii=False, **kwargs).encode("utf-8")
-
 
 
 class Map(dict):

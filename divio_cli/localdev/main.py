@@ -56,9 +56,7 @@ def clone_project(website_slug, path, client):
     click.secho("\ncloning project repository", fg="green")
     website_id = client.get_website_id_for_slug(website_slug)
 
-    website_git_url = get_git_clone_url(
-        website_slug, website_id, client=client
-    )
+    website_git_url = get_git_clone_url(website_slug, website_id, client=client)
     clone_args = ["git", "clone", website_git_url]
     if path:
         clone_args.append(path)
@@ -82,28 +80,34 @@ def configure_project(website_slug, path, client):
     if not os.path.exists(os.path.dirname(path)):
         try:
             os.makedirs(os.path.dirname(path))
-        except OSError as exc: # Guard against race condition
+        except OSError as exc:  # Guard against race condition
             if exc.errno != errno.EEXIST:
                 raise
 
     if not os.path.isdir(os.path.dirname(path)):
-        raise click.ClickException("{} is not a directory".format(os.path.dirname(path)))
+        raise click.ClickException(
+            "{} is not a directory".format(os.path.dirname(path))
+        )
 
     # Write the file
     with open(path, "w+") as fh:
         json.dump(website_data, fh, indent=4)
-    
+
 
 def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX):
     try:
         docker_compose = utils.get_docker_compose_cmd(path)
     except RuntimeError:
         # Docker-compose does not exist
-        click.secho("Warning: docker-compose.yml does not exist. Will continue without...")
-        return 
+        click.secho(
+            "Warning: docker-compose.yml does not exist. Will continue without..."
+        )
+        return
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
-    if docker_compose_config.has_service("db") or docker_compose_config.has_service("database_{}".format(prefix).lower()) :
+    if docker_compose_config.has_service("db") or docker_compose_config.has_service(
+        "database_{}".format(prefix).lower()
+    ):
         has_db_service = True
         existing_db_container_id = utils.get_db_container_id(
             path=path, raise_on_missing=False
@@ -136,8 +140,10 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
         click.secho("creating new database container", fg="green")
 
         db_type = utils.get_db_type(prefix, path=path)
-        
-        ImportRemoteDatabase(client=client, stage=stage, path=path, prefix=prefix, db_type=db_type)()
+
+        ImportRemoteDatabase(
+            client=client, stage=stage, path=path, prefix=prefix, db_type=db_type
+        )()
 
         click.secho("syncing and migrating database", fg="green")
 
@@ -148,17 +154,17 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
             check_call(docker_compose("run", "-d", "web", "start", "migrate"))
             sleep(30)
         else:
-            check_call(docker_compose("run", "web", "/bin/bash","-c", "sleep 5; start migrate"))
+            check_call(
+                docker_compose(
+                    "run", "web", "/bin/bash", "-c", "sleep 5; start migrate"
+                )
+            )
 
 
-def create_workspace(
-    client, website_slug, stage, path=None, force_overwrite=False
-):
+def create_workspace(client, website_slug, stage, path=None, force_overwrite=False):
     click.secho("Creating workspace", fg="green")
 
-    path = os.path.abspath(
-        os.path.join(path, website_slug) if path else website_slug
-    )
+    path = os.path.abspath(os.path.join(path, website_slug) if path else website_slug)
 
     if os.path.exists(path) and (not os.path.isdir(path) or os.listdir(path)):
         if force_overwrite or click.confirm(
@@ -206,7 +212,7 @@ def create_workspace(
 
 class DatabaseImportBase(object):
     restore_commands = {
-        "fsm-postgres":{
+        "fsm-postgres": {
             "sql": "psql -U postgres db < {}",
             "binary": (
                 "pg_restore -U postgres --dbname=db -n public "
@@ -218,28 +224,26 @@ class DatabaseImportBase(object):
                 "--no-owner --exit-on-error"
             ),
         },
-        "fsm-mysql":{
+        "fsm-mysql": {
             "sql": "mysql db < {}",
             "binary": "mysql db --binary-mode=1 < {}",
-            "archived-binary": "tar -xzOf {}| mysql db --binary-mode=1"
-        }
-    } 
+            "archived-binary": "tar -xzOf {}| mysql db --binary-mode=1",
+        },
+    }
 
     def __init__(self, *args, **kwargs):
         super(DatabaseImportBase, self).__init__()
         self.client = kwargs.pop("client")
         self.prefix = kwargs.pop("prefix")
         self.db_type = kwargs.pop("db_type")
-        
+
         self.path = kwargs.pop("path", None) or utils.get_project_home()
         self.website_id = utils.get_aldryn_project_settings(self.path)["id"]
-        self.website_slug = utils.get_aldryn_project_settings(self.path)[
-            "slug"
-        ]
+        self.website_slug = utils.get_aldryn_project_settings(self.path)["slug"]
         try:
             self.docker_compose = utils.get_docker_compose_cmd(self.path)
         except RuntimeError:
-            self.docker_compose = None 
+            self.docker_compose = None
         self.database_extensions = self.get_active_db_extensions()
         self.start_time = time()
 
@@ -265,7 +269,8 @@ class DatabaseImportBase(object):
             if not isinstance(project_settings["db_extensions"], list):
                 raise click.ClickException(
                     'Divio configuration file contains invalid "db_extensions" value. '
-                    "It should contain a list of extensions, for instance: {}".format(default_db_extensions
+                    "It should contain a list of extensions, for instance: {}".format(
+                        default_db_extensions
                     )
                 )
             return project_settings["db_extensions"]
@@ -348,7 +353,7 @@ class DatabaseImportBase(object):
                         db_container_id,
                         "/bin/bash",
                         "-c",
-                        "mysql --user=root  --execute \"SHOW DATABASES;\"",
+                        'mysql --user=root  --execute "SHOW DATABASES;"',
                     ],
                     catch=False,
                     silent=True,
@@ -382,9 +387,9 @@ class DatabaseImportBase(object):
         sleep(10)
 
         if self.db_type == "fsm-postgres":
-           self.prepare_db_server_postgres(db_container_id, start_wait) 
+            self.prepare_db_server_postgres(db_container_id, start_wait)
         elif self.db_type == "fsm-mysql":
-           self.prepare_db_server_mysql(db_container_id, start_wait)
+            self.prepare_db_server_mysql(db_container_id, start_wait)
         else:
             click.secho("db type not known")
             sys.exit(1)
@@ -396,15 +401,7 @@ class DatabaseImportBase(object):
         restore_command = self.get_db_restore_command(self.db_type)
         # Create db
         check_call(
-            [
-                "docker",
-                "exec",
-                db_container_id,
-                "createdb",
-                "-U",
-                "postgres",
-                "db",
-            ]
+            ["docker", "exec", db_container_id, "createdb", "-U", "postgres", "db"]
         )
 
         if self.database_extensions:
@@ -427,9 +424,7 @@ class DatabaseImportBase(object):
             click.echo("")
             for extension in self.database_extensions:
                 if extension in available_extensions:
-                    click.echo(
-                        "      Enabling extension: {}".format(extension)
-                    )
+                    click.echo("      Enabling extension: {}".format(extension))
                     check_call(
                         [
                             "docker",
@@ -440,9 +435,7 @@ class DatabaseImportBase(object):
                             "postgres",
                             "--dbname=db",
                             "-c",
-                            "CREATE EXTENSION IF NOT EXISTS {};".format(
-                                extension
-                            ),
+                            "CREATE EXTENSION IF NOT EXISTS {};".format(extension),
                         ],
                         silent=True,
                     )
@@ -450,14 +443,7 @@ class DatabaseImportBase(object):
         # TODO: use same dump-type detection like server side on db-api
         try:
             subprocess.call(
-                (
-                    "docker",
-                    "exec",
-                    db_container_id,
-                    "/bin/bash",
-                    "-c",
-                    restore_command,
-                ),
+                ("docker", "exec", db_container_id, "/bin/bash", "-c", restore_command),
                 env=get_subprocess_env(),
             )
         except subprocess.CalledProcessError:
@@ -478,14 +464,7 @@ class DatabaseImportBase(object):
         )
 
         check_call(
-            (
-                "docker",
-                "exec",
-                db_container_id,
-                "/bin/bash",
-                "-c",
-                restore_command,
-            ),
+            ("docker", "exec", db_container_id, "/bin/bash", "-c", restore_command),
             env=get_subprocess_env(),
         )
 
@@ -503,7 +482,6 @@ class DatabaseImportBase(object):
             click.secho("db type not known")
             sys.exit(1)
         click.echo("\n      [{}s]".format(int(time() - start_import)))
-       
 
     def finish(self):
         click.secho("Done", fg="green", nl=False)
@@ -567,7 +545,8 @@ class ImportRemoteDatabase(DatabaseImportBase):
         click.secho(" ---> Preparing download ", nl=False)
         start_preparation = time()
         response = (
-            self.client.download_db_request(self.remote_id, self.stage, self.prefix) or {}
+            self.client.download_db_request(self.remote_id, self.stage, self.prefix)
+            or {}
         )
         progress_url = response.get("progress_url")
         if not progress_url:
@@ -590,9 +569,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
             db_dump_path = download_file(download_url, directory=self.path)
             click.echo(" [{}s]".format(int(time() - start_download)))
             # strip path from dump_path for use in the docker container
-            self.db_dump_path = "/app/{}".format(
-                db_dump_path.replace(self.path, "")
-            )
+            self.db_dump_path = "/app/{}".format(db_dump_path.replace(self.path, ""))
         else:
             click.secho(" -> empty")
             self.db_dump_path = None
@@ -608,17 +585,18 @@ def pull_media(client, stage, remote_id=None, path=None):
     website_slug = utils.get_aldryn_project_settings(project_home)["slug"]
     remote_id = remote_id or website_id
     remote_project_name = (
-        website_slug
-        if remote_id == website_id
-        else "Project {}".format(remote_id)
+        website_slug if remote_id == website_id else "Project {}".format(remote_id)
     )
     try:
         docker_compose = utils.get_docker_compose_cmd(project_home)
     except RuntimeError:
         # Docker-compose does not exist
-        click.secho("Warning: docker-compose.yml does not exist. Can not handle media without!", fg="red")
+        click.secho(
+            "Warning: docker-compose.yml does not exist. Can not handle media without!",
+            fg="red",
+        )
         return
- 
+
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
     local_data_folder = os.path.join(project_home, "data")
@@ -676,12 +654,7 @@ def pull_media(client, stage, remote_id=None, path=None):
         # allow the invoking user to create files inside it.
         check_call(
             docker_compose(
-                "run",
-                "--rm",
-                "web",
-                "chown",
-                str(os.getuid()),
-                remote_data_folder,
+                "run", "--rm", "web", "chown", str(os.getuid()), remote_data_folder
             )
         )
 
@@ -702,18 +675,20 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
         docker_compose = utils.get_docker_compose_cmd(project_home)
     except RuntimeError:
         # Docker-compose does not exist
-        click.secho("Warning: docker-compose.yml does not exist. Can not handle database without!", fg="red")
+        click.secho(
+            "Warning: docker-compose.yml does not exist. Can not handle database without!",
+            fg="red",
+        )
         return
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
-
 
     utils.start_database_server(docker_compose, prefix=prefix)
 
     click.secho(" ---> Dumping local database", nl=False)
     start_dump = time()
     db_container_id = utils.get_db_container_id(project_home, prefix=prefix)
-    #TODO: database
-    if db_type =="fsm-postgres":
+    # TODO: database
+    if db_type == "fsm-postgres":
         subprocess.call(
             (
                 "docker",
@@ -732,7 +707,7 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
             env=get_subprocess_env(),
         )
 
-    elif db_type =="fsm-mysql":
+    elif db_type == "fsm-mysql":
         with open(dump_filename, "w") as f:
             subprocess.call(
                 (
@@ -742,16 +717,15 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
                     "mysqldump",
                     "--user=root",
                     "--compress",
-                    "db"
+                    "db",
                 ),
                 env=get_subprocess_env(),
-                stdout=f
+                stdout=f,
             )
 
     else:
         click.secho("db type not known")
         sys.exit(1)
-
 
     click.echo(" [{}s]".format(int(time() - start_dump)))
 
@@ -763,19 +737,14 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
     archive_path = os.path.join(project_home, archive_filename)
     sql_dump_size = os.path.getsize(dump_filename)
     click.secho(
-        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)),
-        nl=False,
+        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)), nl=False
     )
     start_compress = time()
     with tarfile.open(archive_path, mode="w:gz") as tar:
-        tar.add(
-            os.path.join(project_home, dump_filename), arcname=dump_filename
-        )
+        tar.add(os.path.join(project_home, dump_filename), arcname=dump_filename)
     compressed_size = os.path.getsize(archive_filename)
     click.echo(
-        " {} [{}s]".format(
-            pretty_size(compressed_size), int(time() - start_compress)
-        )
+        " {} [{}s]".format(pretty_size(compressed_size), int(time() - start_compress))
     )
 
 
@@ -789,17 +758,14 @@ def compress_db(dump_filename, archive_filename=None, archive_wd=None):
     archive_path = os.path.join(archive_wd, archive_filename)
     sql_dump_size = os.path.getsize(dump_filename)
     click.secho(
-        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)),
-        nl=False,
+        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)), nl=False
     )
     start_compress = time()
     with tarfile.open(archive_path, mode="w:gz") as tar:
         tar.add(os.path.join(archive_wd, dump_filename), arcname=dump_filename)
     compressed_size = os.path.getsize(archive_filename)
     click.echo(
-        " {} [{}s]".format(
-            pretty_size(compressed_size), int(time() - start_compress)
-        )
+        " {} [{}s]".format(pretty_size(compressed_size), int(time() - start_compress))
     )
 
 
@@ -826,9 +792,7 @@ def push_db(client, stage, remote_id, prefix, db_type):
     archive_path = os.path.join(project_home, archive_filename)
     website_slug = utils.get_aldryn_project_settings(project_home)["slug"]
     remote_project_name = (
-        website_slug
-        if remote_id == website_id
-        else "Project {}".format(remote_id)
+        website_slug if remote_id == website_id else "Project {}".format(remote_id)
     )
 
     click.secho(
@@ -839,7 +803,10 @@ def push_db(client, stage, remote_id, prefix, db_type):
     start_time = time()
 
     dump_database(
-        dump_filename=dump_filename, db_type=db_type, prefix=prefix, archive_filename=archive_filename
+        dump_filename=dump_filename,
+        db_type=db_type,
+        prefix=prefix,
+        archive_filename=archive_filename,
     )
 
     click.secho(" ---> Uploading", nl=False)
@@ -877,9 +844,7 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
     archive_path = os.path.join(archive_wd, archive_filename)
 
     click.secho(
-        " ===> Pushing local database to {} {} environment".format(
-            website_id, stage
-        )
+        " ===> Pushing local database to {} {} environment".format(website_id, stage)
     )
     start_time = time()
 
@@ -924,9 +889,7 @@ def push_media(client, stage, remote_id, prefix):
     archive_path = os.path.join(project_home, "local_media.tar.gz")
     website_slug = utils.get_aldryn_project_settings(project_home)["slug"]
     remote_project_name = (
-        website_slug
-        if remote_id == website_id
-        else "Project {}".format(remote_id)
+        website_slug if remote_id == website_id else "Project {}".format(remote_id)
     )
 
     click.secho(
@@ -1003,7 +966,7 @@ def update_local_project(git_branch, client, strict=False):
         docker_compose = utils.get_docker_compose_cmd(project_home)
     except RuntimeError:
         # Docker-compose does not exist
-        docker_compose=None
+        docker_compose = None
 
     # We also check for remote repository configurations on a project update
     # to warn the user just in case something changed
@@ -1107,22 +1070,28 @@ def open_project(open_browser=True):
         docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
     except RuntimeError:
         # Docker-compose does not exist
-        click.secho("Warning: docker-compose.yml does not exist. Can not open project without!", fg="red")
+        click.secho(
+            "Warning: docker-compose.yml does not exist. Can not open project without!",
+            fg="red",
+        )
         return
-    
+
     CHECKING_PORT = "80"
     try:
         addr = check_output(docker_compose("port", "web", CHECKING_PORT), catch=False)
     except subprocess.CalledProcessError:
-        if click.prompt(
-            "Your project is not running. Do you want to start " "it now?"
-        ):
+        if click.prompt("Your project is not running. Do you want to start " "it now?"):
             return start_project()
         return
     try:
         host, port = addr.rstrip(os.linesep).split(":")
     except ValueError:
-        click.secho("Can not get port of the project. Please check `docker-compose logs` in case the project did not start correctly and please verify that a port {} is exposed.".format(CHECKING_PORT), fg="red")
+        click.secho(
+            "Can not get port of the project. Please check `docker-compose logs` in case the project did not start correctly and please verify that a port {} is exposed.".format(
+                CHECKING_PORT
+            ),
+            fg="red",
+        )
         sys.exit(1)
 
     if host == "0.0.0.0":
@@ -1133,9 +1102,7 @@ def open_project(open_browser=True):
 
     addr = "http://{}:{}/".format(host, port)
 
-    click.secho(
-        "Your project is configured to run at {}".format(addr), fg="green"
-    )
+    click.secho("Your project is configured to run at {}".format(addr), fg="green")
 
     click.secho("Waiting for project to start..", fg="green", nl=False)
     # wait 30s for runserver to startup
@@ -1159,11 +1126,15 @@ def open_project(open_browser=True):
         click.launch(addr)
     return addr
 
-def configure(client):
-    if click.confirm('This action will overwrite the local Divio configuration file for your project or create a new one. Do you want to continue?'):
-        website_slug = click.prompt('Please enter the application slug of the local project', type=str)
-        configure_project(website_slug=website_slug, path=os.getcwd(), client=client)
 
+def configure(client):
+    if click.confirm(
+        "This action will overwrite the local Divio configuration file for your project or create a new one. Do you want to continue?"
+    ):
+        website_slug = click.prompt(
+            "Please enter the application slug of the local project", type=str
+        )
+        configure_project(website_slug=website_slug, path=os.getcwd(), client=client)
 
 
 def start_project():
@@ -1171,12 +1142,13 @@ def start_project():
         docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
     except RuntimeError:
         # Docker-compose does not exist
-        click.secho("Warning: docker-compose.yml does not exist. Can not start project without!", fg="red")
+        click.secho(
+            "Warning: docker-compose.yml does not exist. Can not start project without!",
+            fg="red",
+        )
         return
     try:
-        check_output(
-            docker_compose("up", "-d"), catch=False, stderr=subprocess.STDOUT
-        )
+        check_output(docker_compose("up", "-d"), catch=False, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
         output = exc.output.decode()
         if "port is already allocated" in output:
@@ -1197,7 +1169,10 @@ def show_project_status():
         check_call(docker_compose("ps"))
     except RuntimeError:
         # Docker-compose does not exist
-        click.secho("Warning: docker-compose.yml does not exist. Can not show status without!", fg="red")
+        click.secho(
+            "Warning: docker-compose.yml does not exist. Can not show status without!",
+            fg="red",
+        )
         return
 
 
@@ -1207,5 +1182,8 @@ def stop_project():
         check_call(docker_compose("stop"))
     except RuntimeError:
         # Docker-compose does not exist
-        click.secho("Warning: docker-compose.yml does not exist. Can not stop project without!", fg="red")
+        click.secho(
+            "Warning: docker-compose.yml does not exist. Can not stop project without!",
+            fg="red",
+        )
         return
