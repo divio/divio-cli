@@ -39,6 +39,13 @@ class SingleHostSession(requests.Session):
         return super(SingleHostSession, self).request(method, url, *args, **kwargs)
 
 
+class APIRequestError(click.ClickException):
+    def show(self, file=None):
+        click.secho(
+            f"\nError: {self.format_message()}", file=file, err=True, fg="red"
+        )
+
+
 class APIRequest(object):
     network_exception_message = messages.NETWORK_ERROR_MESSAGE
     default_error_message = messages.SERVER_ERROR
@@ -116,13 +123,13 @@ class APIRequest(object):
                 response.status_code
             )
             if not error_msg:
-                response_content = response.content
+                response_content = response.text
                 if not self.session.debug:
                     response_content = response_content[:300]
                 error_msg = "{}\n\n{}".format(
                     self.default_error_message, response_content
                 )
-            raise click.ClickException(error_msg)
+            raise APIRequestError(error_msg)
         return self.process(response)
 
     def process(self, response):
