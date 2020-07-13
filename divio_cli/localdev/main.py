@@ -16,7 +16,7 @@ from divio_cli.utils import get_local_git_remotes
 
 from . import utils
 from .. import settings
-from ..cloud import get_aldryn_host
+from ..cloud import get_divio_host
 from ..utils import (
     check_call,
     check_output,
@@ -28,7 +28,7 @@ from ..utils import (
 )
 
 
-DEFAULT_GIT_HOST = "git@git.{aldryn_host}"
+DEFAULT_GIT_HOST = "git@git.{divio_host}"
 GIT_CLONE_URL = "{git_host}:{project_slug}.git"
 
 
@@ -41,7 +41,7 @@ def get_git_host():
     if git_host:
         click.secho("Using custom git host {}\n".format(git_host), fg="yellow")
     else:
-        git_host = DEFAULT_GIT_HOST.format(aldryn_host=get_aldryn_host())
+        git_host = DEFAULT_GIT_HOST.format(divio_host=get_divio_host())
     return git_host
 
 
