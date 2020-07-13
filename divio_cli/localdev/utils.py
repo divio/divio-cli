@@ -22,7 +22,7 @@ DOT_ALDRYN_FILE_NOT_FOUND = (
 )
 
 
-def get_aldryn_project_settings(path=None, silent=False):
+def get_project_settings(path=None, silent=False):
     project_home = get_project_home(path, silent=silent)
     try:
         if os.path.exists(os.path.join(project_home, settings.ALDRYN_DOT_FILE)):
@@ -236,7 +236,7 @@ def allow_remote_id_override(func):
 
         if not remote_id:
             try:
-                remote_id = get_aldryn_project_settings(silent=True)["id"]
+                remote_id = get_project_settings(silent=True)["id"]
             except KeyError:
                 raise click.ClickException(ERROR_MSG)
             else:
