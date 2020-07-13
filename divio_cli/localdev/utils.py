@@ -12,18 +12,22 @@ from ..utils import check_call, check_output, is_windows
 import subprocess
 
 DOT_ALDRYN_FILE_NOT_FOUND = (
-    "Divio Cloud configuration file '{}' could not be found!\n"
+    "Divio Cloud configuration file '{}' or '{}' could not be found!\n"
     "Please make sure you're in a Divio Cloud project folder and the "
     "file exists.\n\n"
     "You can create a new configuration file for an existing project "
-    "with the `divio project configure` command.".format(settings.ALDRYN_DOT_FILE)
+    "with the `divio project configure` command.".format(settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE)
 )
 
 
 def get_aldryn_project_settings(path=None, silent=False):
     project_home = get_project_home(path, silent=silent)
     try:
-        with open(os.path.join(project_home, settings.ALDRYN_DOT_FILE)) as fh:
+        if os.path.exists(os.path.join(project_home, settings.ALDRYN_DOT_FILE)):
+            path = os.path.join(project_home, settings.ALDRYN_DOT_FILE)
+        else: 
+            path = os.path.join(project_home, settings.DIVIO_DOT_FILE)
+        with open(path) as fh:
             return json.load(fh)
     except (TypeError, OSError):
         raise click.ClickException(DOT_ALDRYN_FILE_NOT_FOUND)
@@ -36,13 +40,18 @@ def get_project_home(path=None, silent=False):
     """
     previous_path = None
     current_path = path or os.getcwd()
+    global_config_path = config.get_global_config_path()
 
     # loop until we're at the root of the volume
     while current_path != previous_path:
-
         # check if configuration file exists in current directory
         dotfile = os.path.join(current_path, settings.ALDRYN_DOT_FILE)
-        if os.path.exists(dotfile) and dotfile != config.CONFIG_FILE_PATH:
+        if os.path.exists(dotfile) and not dotfile == global_config_path:
+            return current_path
+
+        # check if configuration file exists in current directory
+        dotfile = os.path.join(current_path, settings.DIVIO_DOT_FILE)
+        if os.path.exists(dotfile) and not dotfile == global_config_path:
             return current_path
 
         # traversing up the tree
@@ -64,10 +73,15 @@ def get_docker_compose_cmd(path):
     else:
         docker_compose_filename = UNIX_DOCKER_COMPOSE_FILENAME
 
+    docker_compose_filename = os.path.join(path, docker_compose_filename)
+    
+    if not os.path.isfile(docker_compose_filename):
+        raise RuntimeError("Warning: Could not find a 'docker-compose.yml' file.")        
+
     docker_compose_base = [
         "docker-compose",
         "-f",
-        os.path.join(path, docker_compose_filename),
+        docker_compose_filename,
     ]
 
     def docker_compose(*commands):
@@ -148,7 +162,10 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
     """
     Returns the container id for a running database with a given prefix.
     """
-    docker_compose = get_docker_compose_cmd(path)
+    try:
+        docker_compose = get_docker_compose_cmd(path)
+    except RuntimeError:
+        raise exceptions.AldrynException("docker-compose.yml not found. Unable to find database container")
     try:
         output = check_output(docker_compose("ps", "-q", "database_{}".format(prefix).lower()), catch=False, stderr=open(os.devnull, "w")).rstrip(os.linesep)
         if not output and raise_on_missing:
@@ -209,7 +226,7 @@ def allow_remote_id_override(func):
         ERROR_MSG = (
             "This command requires a Divio Cloud Project id. Please "
             "provide one with the --remote-id option or call the "
-            "command from a project directory (with a '{}' file).".format(settings.ALDRYN_DOT_FILE)
+            "command from a project directory."
         )
 
         if not remote_id:
@@ -229,7 +246,7 @@ def allow_remote_id_override(func):
         type=int,
         help="Remote Project ID to use for project commands. "
         "Defaults to the project in the current directory using the "
-        "'{}' file.".format(settings.ALDRYN_DOT_FILE),
+        "configuration file.",
     )(read_remote_id)
 
 
@@ -239,7 +256,12 @@ def get_service_type(identifier, path=None):
     variable of a services from the docker-compose file.
     """
     project_home = get_project_home(path)
-    docker_compose = get_docker_compose_cmd(project_home)
+    try:
+        docker_compose = get_docker_compose_cmd(project_home)
+    except RuntimeError:
+        # Docker-compose does not exist
+        click.secho("Warning: docker-compose.yml does not exist. Can not get the service type without!", fg="red")
+        sys.exit(1)
     docker_compose_config = DockerComposeConfig(docker_compose)
     services = docker_compose_config.get_services()
     if identifier in services and "environment" in services[identifier] and "SERVICE_MANAGER" in services[identifier]["environment"]:
@@ -258,7 +280,12 @@ def get_db_type(prefix, path=None):
         db_type = get_service_type("database_{}".format(prefix.lower()), path=path)
     except RuntimeError:
         # legacy section. we try to look for the db, if it does not exist, fail
-        docker_compose = get_docker_compose_cmd(path)
+        try:
+            docker_compose = get_docker_compose_cmd(path)
+        except RuntimeError:
+            # Docker-compose does not exist
+            click.secho("Warning: docker-compose.yml does not exist. Can not get the service type without!", fg="red")
+            sys.exit(1) 
         docker_compose_config = DockerComposeConfig(docker_compose)
         if not docker_compose_config.has_service("db"):
             click.secho('No service "db" found in local project', fg="red")

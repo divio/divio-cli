@@ -72,19 +72,38 @@ def configure_project(website_slug, path, client):
     # Detect old style or invalid projects
     compose_config = os.path.join(path, "docker-compose.yml")
     if not os.path.isfile(compose_config):
-        raise click.ClickException(
-            "Could not find a valid 'docker-compose.yml' file."
-        )
+        click.secho("Warning: Could not find a 'docker-compose.yml' file.", fg="red")
 
     # create configuration file
     website_data = {"id": website_id, "slug": website_slug}
-    with open(os.path.join(path, settings.ALDRYN_DOT_FILE), "w+") as fh:
+    if os.path.exists(os.path.join(path, settings.ALDRYN_DOT_FILE)):
+        path = os.path.join(path, settings.ALDRYN_DOT_FILE)
+    else:
+        path = os.path.join(path, settings.DIVIO_DOT_FILE)
+
+    # Create folders if they don't exist yet.
+    if not os.path.exists(os.path.dirname(path)):
+        try:
+            os.makedirs(os.path.dirname(path))
+        except OSError as exc: # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+
+    if not os.path.isdir(os.path.dirname(path)):
+        raise click.ClickException("{} is not a directory".format(os.path.dirname(path)))
+
+    # Write the file
+    with open(path, "w+") as fh:
         json.dump(website_data, fh, indent=4)
-    click.secho("{} file written".format(settings.ALDRYN_DOT_FILE), fg="green")
     
 
 def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX):
-    docker_compose = utils.get_docker_compose_cmd(path)
+    try:
+        docker_compose = utils.get_docker_compose_cmd(path)
+    except RuntimeError:
+        # Docker-compose does not exist
+        click.secho("Warning: docker-compose.yml does not exist. Will continue without...")
+        return 
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
     if docker_compose_config.has_service("db") or docker_compose_config.has_service("database_{}".format(prefix).lower()) :
@@ -220,7 +239,10 @@ class DatabaseImportBase(object):
         self.website_slug = utils.get_aldryn_project_settings(self.path)[
             "slug"
         ]
-        self.docker_compose = utils.get_docker_compose_cmd(self.path)
+        try:
+            self.docker_compose = utils.get_docker_compose_cmd(self.path)
+        except RuntimeError:
+            self.docker_compose = None 
         self.database_extensions = self.get_active_db_extensions()
         self.start_time = time()
 
@@ -245,9 +267,8 @@ class DatabaseImportBase(object):
         if "db_extensions" in project_settings:
             if not isinstance(project_settings["db_extensions"], list):
                 raise click.ClickException(
-                    '{} file contains invalid "db_extensions" value. '
-                    "It should contain a list of extensions, for instance: {}".format(
-                        settings.ALDRYN_DOT_FILE, default_db_extensions
+                    'Divio configuration file contains invalid "db_extensions" value. '
+                    "It should contain a list of extensions, for instance: {}".format(default_db_extensions
                     )
                 )
             return project_settings["db_extensions"]
@@ -594,7 +615,13 @@ def pull_media(client, stage, remote_id=None, path=None):
         if remote_id == website_id
         else "Project {}".format(remote_id)
     )
-    docker_compose = utils.get_docker_compose_cmd(project_home)
+    try:
+        docker_compose = utils.get_docker_compose_cmd(project_home)
+    except RuntimeError:
+        # Docker-compose does not exist
+        click.secho("Warning: docker-compose.yml does not exist. Can not handle media without!", fg="red")
+        return
+ 
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
     local_data_folder = os.path.join(project_home, "data")
@@ -674,7 +701,12 @@ def pull_media(client, stage, remote_id=None, path=None):
 
 def dump_database(dump_filename, db_type, prefix, archive_filename=None):
     project_home = utils.get_project_home()
-    docker_compose = utils.get_docker_compose_cmd(project_home)
+    try:
+        docker_compose = utils.get_docker_compose_cmd(project_home)
+    except RuntimeError:
+        # Docker-compose does not exist
+        click.secho("Warning: docker-compose.yml does not exist. Can not handle database without!", fg="red")
+        return
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
 
@@ -970,7 +1002,11 @@ def update_local_project(git_branch, client, strict=False):
     Makes all updates of the local project.
     """
     project_home = utils.get_project_home()
-    docker_compose = utils.get_docker_compose_cmd(project_home)
+    try:
+        docker_compose = utils.get_docker_compose_cmd(project_home)
+    except RuntimeError:
+        # Docker-compose does not exist
+        docker_compose=None
 
     # We also check for remote repository configurations on a project update
     # to warn the user just in case something changed
@@ -989,19 +1025,20 @@ def update_local_project(git_branch, client, strict=False):
 
     click.secho("Pulling changes from git remote", fg="green")
     check_call(("git", "pull", "origin", git_branch))
-    click.secho("Pulling docker images", fg="green")
-    check_call(docker_compose("pull"))
-    click.secho("Building local docker images", fg="green")
-    check_call(docker_compose("build"))
-    click.secho("syncing and migrating database", fg="green")
-    if is_windows():
-        # interactive mode is not yet supported with docker-compose
-        # on windows. that's why we have to call it as daemon
-        # and just wait a sane time
-        check_call(docker_compose("run", "-d", "web", "start", "migrate"))
-        sleep(30)
-    else:
-        check_call(docker_compose("run", "web", "start", "migrate"))
+    if docker_compose:
+        click.secho("Pulling docker images", fg="green")
+        check_call(docker_compose("pull"))
+        click.secho("Building local docker images", fg="green")
+        check_call(docker_compose("build"))
+        click.secho("syncing and migrating database", fg="green")
+        if is_windows():
+            # interactive mode is not yet supported with docker-compose
+            # on windows. that's why we have to call it as daemon
+            # and just wait a sane time
+            check_call(docker_compose("run", "-d", "web", "start", "migrate"))
+            sleep(30)
+        else:
+            check_call(docker_compose("run", "web", "start", "migrate"))
 
 
 def develop_package(package, no_rebuild=False):
@@ -1054,9 +1091,12 @@ def develop_package(package, no_rebuild=False):
 
     if not no_rebuild:
         # build web again
-        docker_compose = utils.get_docker_compose_cmd(project_home)
-
-        check_call(docker_compose("build", "web"))
+        try:
+            docker_compose = utils.get_docker_compose_cmd(project_home)
+            check_call(docker_compose("build", "web"))
+        except RuntimeError:
+            # Docker-compose does not exist
+            click.echo("Can not rebuild without docker-compose.yml", fg="red")
 
     click.secho(
         "The package {} has been added to your local development project!".format(
@@ -1066,7 +1106,13 @@ def develop_package(package, no_rebuild=False):
 
 
 def open_project(open_browser=True):
-    docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+    try:
+        docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+    except RuntimeError:
+        # Docker-compose does not exist
+        click.secho("Warning: docker-compose.yml does not exist. Can not open project without!", fg="red")
+        return
+    
     CHECKING_PORT = "80"
     try:
         addr = check_output(docker_compose("port", "web", CHECKING_PORT), catch=False)
@@ -1124,7 +1170,12 @@ def configure(client):
 
 
 def start_project():
-    docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+    try:
+        docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+    except RuntimeError:
+        # Docker-compose does not exist
+        click.secho("Warning: docker-compose.yml does not exist. Can not start project without!", fg="red")
+        return
     try:
         check_output(
             docker_compose("up", "-d"), catch=False, stderr=subprocess.STDOUT
@@ -1144,10 +1195,20 @@ def start_project():
 
 
 def show_project_status():
-    docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
-    check_call(docker_compose("ps"))
+    try:
+        docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+        check_call(docker_compose("ps"))
+    except RuntimeError:
+        # Docker-compose does not exist
+        click.secho("Warning: docker-compose.yml does not exist. Can not show status without!", fg="red")
+        return
 
 
 def stop_project():
-    docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
-    check_call(docker_compose("stop"))
+    try:
+        docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+        check_call(docker_compose("stop"))
+    except RuntimeError:
+        # Docker-compose does not exist
+        click.secho("Warning: docker-compose.yml does not exist. Can not stop project without!", fg="red")
+        return
