@@ -1,7 +1,7 @@
 Changelog
 =========
 
-3.8.0 (2020-07-14)
+3.8.0 (2020-xx-xx)
 ------------------
 
 * renamed `.aldryn` file in a project to `.divio/conifg.json`
