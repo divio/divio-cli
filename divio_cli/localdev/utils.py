@@ -164,7 +164,7 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
     try:
         docker_compose = get_docker_compose_cmd(path)
     except RuntimeError:
-        raise exceptions.AldrynException(
+        raise exceptions.DivioException(
             "docker-compose.yml not found. Unable to find database container"
         )
     try:
@@ -174,11 +174,11 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
             stderr=open(os.devnull, "w"),
         ).rstrip(os.linesep)
         if not output and raise_on_missing:
-            raise exceptions.AldrynException("Unable to find database container")
+            raise exceptions.DivioException("Unable to find database container")
     except subprocess.CalledProcessError:
         output = check_output(docker_compose("ps", "-q", "db")).rstrip(os.linesep)
         if not output and raise_on_missing:
-            raise exceptions.AldrynException("Unable to find database container")
+            raise exceptions.DivioException("Unable to find database container")
     return output
 
 
