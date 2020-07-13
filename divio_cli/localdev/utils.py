@@ -12,9 +12,11 @@ from ..utils import check_call, check_output, is_windows
 import subprocess
 
 DOT_ALDRYN_FILE_NOT_FOUND = (
-    "Divio Cloud project file '.aldryn' could not be found!\n"
+    "Divio Cloud configuration file '{}' could not be found!\n"
     "Please make sure you're in a Divio Cloud project folder and the "
-    "file exists."
+    "file exists.\n\n"
+    "You can create a new configuration file for an existing project "
+    "with the `divio project configure` command.".format(settings.ALDRYN_DOT_FILE)
 )
 
 
@@ -30,7 +32,7 @@ def get_aldryn_project_settings(path=None, silent=False):
 def get_project_home(path=None, silent=False):
     """
     find project root by traversing up the tree looking for
-    the '.aldryn' file
+    the configuration file
     """
     previous_path = None
     current_path = path or os.getcwd()
@@ -38,7 +40,7 @@ def get_project_home(path=None, silent=False):
     # loop until we're at the root of the volume
     while current_path != previous_path:
 
-        # check if '.aldryn' file exists in current directory
+        # check if configuration file exists in current directory
         dotfile = os.path.join(current_path, settings.ALDRYN_DOT_FILE)
         if os.path.exists(dotfile) and dotfile != config.CONFIG_FILE_PATH:
             return current_path
@@ -207,7 +209,7 @@ def allow_remote_id_override(func):
         ERROR_MSG = (
             "This command requires a Divio Cloud Project id. Please "
             "provide one with the --remote-id option or call the "
-            "command from a project directory (with a .aldryn file)."
+            "command from a project directory (with a '{}' file).".format(settings.ALDRYN_DOT_FILE)
         )
 
         if not remote_id:
@@ -227,7 +229,7 @@ def allow_remote_id_override(func):
         type=int,
         help="Remote Project ID to use for project commands. "
         "Defaults to the project in the current directory using the "
-        ".aldryn file.",
+        "'{}' file.".format(settings.ALDRYN_DOT_FILE),
     )(read_remote_id)
 
 

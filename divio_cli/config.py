@@ -5,9 +5,8 @@ from distutils.version import StrictVersion
 
 from . import __version__, settings, utils
 
-
-CONFIG_FILE_NAME = settings.ALDRYN_DOT_FILE
-CONFIG_FILE_PATH = os.path.join(os.path.expanduser("~"), CONFIG_FILE_NAME)
+# Path to the global configuration
+CONFIG_FILE_PATH = os.path.join(os.path.expanduser("~"), settings.ALDRYN_DOT_FILE)
 
 
 class Config(object):
