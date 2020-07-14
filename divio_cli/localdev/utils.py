@@ -22,7 +22,7 @@ DOT_ALDRYN_FILE_NOT_FOUND = (
 )
 
 
-def get_aldryn_project_settings(path=None, silent=False):
+def get_project_settings(path=None, silent=False):
     project_home = get_project_home(path, silent=silent)
     try:
         if os.path.exists(os.path.join(project_home, settings.ALDRYN_DOT_FILE)):
@@ -164,7 +164,7 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
     try:
         docker_compose = get_docker_compose_cmd(path)
     except RuntimeError:
-        raise exceptions.AldrynException(
+        raise exceptions.DivioException(
             "docker-compose.yml not found. Unable to find database container"
         )
     try:
@@ -174,11 +174,11 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
             stderr=open(os.devnull, "w"),
         ).rstrip(os.linesep)
         if not output and raise_on_missing:
-            raise exceptions.AldrynException("Unable to find database container")
+            raise exceptions.DivioException("Unable to find database container")
     except subprocess.CalledProcessError:
         output = check_output(docker_compose("ps", "-q", "db")).rstrip(os.linesep)
         if not output and raise_on_missing:
-            raise exceptions.AldrynException("Unable to find database container")
+            raise exceptions.DivioException("Unable to find database container")
     return output
 
 
@@ -236,7 +236,7 @@ def allow_remote_id_override(func):
 
         if not remote_id:
             try:
-                remote_id = get_aldryn_project_settings(silent=True)["id"]
+                remote_id = get_project_settings(silent=True)["id"]
             except KeyError:
                 raise click.ClickException(ERROR_MSG)
             else:

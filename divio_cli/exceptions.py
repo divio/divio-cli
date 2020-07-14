@@ -1,2 +1,2 @@
-class AldrynException(Exception):
+class DivioException(Exception):
     pass

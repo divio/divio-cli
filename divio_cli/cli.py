@@ -548,7 +548,7 @@ def addon_validate(ctx):
     """Validate addon configuration"""
     try:
         validate_addon(ctx.parent.params["path"])
-    except exceptions.AldrynException as exc:
+    except exceptions.DivioException as exc:
         raise click.ClickException(*exc.args)
     click.echo("Addon is valid!")
 
@@ -559,7 +559,7 @@ def addon_upload(ctx):
     """Upload addon to the Divio Cloud"""
     try:
         ret = upload_addon(ctx.obj.client, ctx.parent.params["path"])
-    except exceptions.AldrynException as exc:
+    except exceptions.DivioException as exc:
         raise click.ClickException(*exc.args)
     click.echo(ret)
 
@@ -591,7 +591,7 @@ def boilerplate_validate(ctx):
     """Validate boilerplate configuration"""
     try:
         validate_boilerplate(ctx.parent.params["path"])
-    except exceptions.AldrynException as exc:
+    except exceptions.DivioException as exc:
         raise click.ClickException(*exc.args)
     click.echo("Boilerplate is valid!")
 
@@ -605,7 +605,7 @@ def boilerplate_upload(ctx, noinput):
     """Upload boilerplate to the Divio Cloud"""
     try:
         ret = upload_boilerplate(ctx.obj.client, ctx.parent.params["path"], noinput)
-    except exceptions.AldrynException as exc:
+    except exceptions.DivioException as exc:
         raise click.ClickException(*exc.args)
     click.echo(ret)
 

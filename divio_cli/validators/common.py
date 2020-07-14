@@ -17,13 +17,13 @@ def get_license(path):
 def load_config(fname, path=None):
     config_fpath = os.path.join(path or ".", fname)
     if not os.path.exists(config_fpath):
-        raise exceptions.AldrynException(messages.FILE_NOT_FOUND.format(config_fpath))
+        raise exceptions.DivioException(messages.FILE_NOT_FOUND.format(config_fpath))
 
     with open(config_fpath) as f:
         try:
             return json.load(f)
         except ValueError:
-            raise exceptions.AldrynException(
+            raise exceptions.DivioException(
                 "Config file could not be loaded: Invalid JSON"
             )
 
