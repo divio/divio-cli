@@ -8,6 +8,7 @@ Changelog
 * renamed global configuration file as well. 
 * made `docker-compose.yml` files optional
 * added command to recreated `.divio/config.json`
+* renamed interal environment variable from `ALDRYN_HOST` to `DIVIO_HOST`
 
 
 3.7.0 (2020-06-15)
