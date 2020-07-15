@@ -371,3 +371,7 @@ class SetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
 
 class RepositoryRequest(JsonResponse, APIRequest):
     url = "/api/v2/repositories/?website={website_id}"
+
+class LogRequest(JsonResponse, APIRequest):
+    url = "https://api.local.aldryn.net/apps/v3/environments/{environment_uuid}/logs/"
+    method = "GET"

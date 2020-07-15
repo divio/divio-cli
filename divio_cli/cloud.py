@@ -47,7 +47,7 @@ class CloudClient(object):
         host = urlparse(self.endpoint).hostname
         data = self.netrc.hosts.get(host)
         if data:
-            return {"Authorization": "Basic {}".format(data[2])}
+            return {"Authorization": "Token {}".format(data[2])}
         return {}
 
     def get_access_token_url(self):
@@ -64,7 +64,7 @@ class CloudClient(object):
         )
 
     def authenticate(self, token):
-        self.session.headers["Authorization"] = "Basic {}".format(token)
+        self.session.headers["Authorization"] = "Token {}".format(token)
 
     def login(self, token):
         request = api_requests.LoginRequest(self.session, data={"token": token})
@@ -102,6 +102,31 @@ class CloudClient(object):
     def get_projects(self):
         request = api_requests.ProjectListRequest(self.session)
         return request()
+
+
+    def show_log(self, website_id, stage):
+        project_data = self.get_project(website_id)
+        # If we have tried to deploy before, there will be a log
+        try:
+            status = project_data["{}_status".format(stage)]
+        except KeyError:
+            click.secho(
+                "Environment with the name '{}' does not exist.".format(stage), fg="red"
+            )
+            sys.exit(1)
+        if status:
+            log = self.get_log(project_data["{}_status".format(stage)]["uuid"])
+            for line in log["results"][::-1]:
+                click.secho("{}: {}".format(line["timestamp"], line["message"]) )
+            sys.exit(0)
+
+        else:
+            click.secho(
+                "No {} environment deployed yet, no log available.".format(stage),
+                fg="yellow",
+            )
+
+
 
     def show_deploy_log(self, website_id, stage):
         project_data = self.get_project(website_id)
@@ -210,6 +235,13 @@ class CloudClient(object):
             self.session, url_kwargs={"website_id": website_id, "stage": stage}
         )
         return request()
+
+    def get_log(self, environment_uuid):
+        request = api_requests.LogRequest(
+            self.session, url_kwargs={"environment_uuid": environment_uuid}
+        )
+        return request()
+    
 
     def get_project(self, website_id):
         request = api_requests.ProjectDetailRequest(

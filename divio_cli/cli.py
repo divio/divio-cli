@@ -203,6 +203,15 @@ def project_deploy_log(obj, remote_id, stage):
     """View last deployment log"""
     obj.client.show_deploy_log(remote_id, stage)
 
+@project.command(name="log")
+@click.argument("stage", default="test")
+@allow_remote_id_override
+@click.pass_obj
+def project_log(obj, remote_id, stage):
+    """View  log"""
+    obj.client.show_log(remote_id, stage)
+
+
 
 @project.command(name="configure")
 @click.pass_obj
