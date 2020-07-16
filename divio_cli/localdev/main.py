@@ -16,7 +16,7 @@ from divio_cli.utils import get_local_git_remotes
 
 from . import utils
 from .. import settings
-from ..cloud import get_aldryn_host
+from ..cloud import get_divio_host
 from ..utils import (
     check_call,
     check_output,
@@ -28,7 +28,7 @@ from ..utils import (
 )
 
 
-DEFAULT_GIT_HOST = "git@git.{aldryn_host}"
+DEFAULT_GIT_HOST = "git@git.{divio_host}"
 GIT_CLONE_URL = "{git_host}:{project_slug}.git"
 
 
@@ -41,7 +41,7 @@ def get_git_host():
     if git_host:
         click.secho("Using custom git host {}\n".format(git_host), fg="yellow")
     else:
-        git_host = DEFAULT_GIT_HOST.format(aldryn_host=get_aldryn_host())
+        git_host = DEFAULT_GIT_HOST.format(divio_host=get_divio_host())
     return git_host
 
 
@@ -238,8 +238,8 @@ class DatabaseImportBase(object):
         self.db_type = kwargs.pop("db_type")
 
         self.path = kwargs.pop("path", None) or utils.get_project_home()
-        self.website_id = utils.get_aldryn_project_settings(self.path)["id"]
-        self.website_slug = utils.get_aldryn_project_settings(self.path)["slug"]
+        self.website_id = utils.get_project_settings(self.path)["id"]
+        self.website_slug = utils.get_project_settings(self.path)["slug"]
         try:
             self.docker_compose = utils.get_docker_compose_cmd(self.path)
         except RuntimeError:
@@ -262,7 +262,7 @@ class DatabaseImportBase(object):
         self.finish()
 
     def get_active_db_extensions(self):
-        project_settings = utils.get_aldryn_project_settings(self.path)
+        project_settings = utils.get_project_settings(self.path)
         default_db_extensions = ["hstore", "postgis"]
 
         if "db_extensions" in project_settings:
@@ -581,8 +581,8 @@ class ImportRemoteDatabase(DatabaseImportBase):
 
 def pull_media(client, stage, remote_id=None, path=None):
     project_home = utils.get_project_home(path)
-    website_id = utils.get_aldryn_project_settings(project_home)["id"]
-    website_slug = utils.get_aldryn_project_settings(project_home)["slug"]
+    website_id = utils.get_project_settings(project_home)["id"]
+    website_slug = utils.get_project_settings(project_home)["slug"]
     remote_id = remote_id or website_id
     remote_project_name = (
         website_slug if remote_id == website_id else "Project {}".format(remote_id)
@@ -786,11 +786,11 @@ def export_db(prefix):
 
 def push_db(client, stage, remote_id, prefix, db_type):
     project_home = utils.get_project_home()
-    website_id = utils.get_aldryn_project_settings(project_home)["id"]
+    website_id = utils.get_project_settings(project_home)["id"]
     dump_filename = DEFAULT_DUMP_FILENAME
     archive_filename = dump_filename.replace(".sql", ".tar.gz")
     archive_path = os.path.join(project_home, archive_filename)
-    website_slug = utils.get_aldryn_project_settings(project_home)["slug"]
+    website_slug = utils.get_project_settings(project_home)["slug"]
     remote_project_name = (
         website_slug if remote_id == website_id else "Project {}".format(remote_id)
     )
@@ -885,9 +885,9 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
 
 def push_media(client, stage, remote_id, prefix):
     project_home = utils.get_project_home()
-    website_id = utils.get_aldryn_project_settings(project_home)["id"]
+    website_id = utils.get_project_settings(project_home)["id"]
     archive_path = os.path.join(project_home, "local_media.tar.gz")
-    website_slug = utils.get_aldryn_project_settings(project_home)["slug"]
+    website_slug = utils.get_project_settings(project_home)["slug"]
     remote_project_name = (
         website_slug if remote_id == website_id else "Project {}".format(remote_id)
     )
@@ -971,7 +971,7 @@ def update_local_project(git_branch, client, strict=False):
     # We also check for remote repository configurations on a project update
     # to warn the user just in case something changed
     remote_dsn = client.get_repository_dsn(
-        utils.get_aldryn_project_settings(utils.get_project_home())["id"]
+        utils.get_project_settings(utils.get_project_home())["id"]
     )
 
     if remote_dsn and remote_dsn not in get_local_git_remotes():

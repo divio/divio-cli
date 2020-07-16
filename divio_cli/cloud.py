@@ -17,13 +17,13 @@ ENDPOINT = "https://control.{host}"
 DEFAULT_HOST = "divio.com"
 
 
-def get_aldryn_host():
-    return os.environ.get("ALDRYN_HOST", DEFAULT_HOST)  # FIXME: Rename
+def get_divio_host():
+    return os.environ.get("DIVIO_HOST", DEFAULT_HOST)  # FIXME: Rename
 
 
 def get_endpoint(host=None):
     if not host:
-        host = get_aldryn_host()
+        host = get_divio_host()
     if re.match("^https?://", host):
         endpoint = host
     else:
