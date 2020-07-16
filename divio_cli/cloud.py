@@ -104,7 +104,7 @@ class CloudClient(object):
         return request()
 
 
-    def show_log(self, website_id, stage):
+    def show_log(self, website_id, stage, tail=False):
         project_data = self.get_project(website_id)
         # If we have tried to deploy before, there will be a log
         try:
@@ -115,10 +115,32 @@ class CloudClient(object):
             )
             sys.exit(1)
         if status:
-            log = self.get_log(project_data["{}_status".format(stage)]["uuid"])
-            for line in log["results"][::-1]:
-                click.secho("{}: {}".format(line["timestamp"], line["message"]) )
-            sys.exit(0)
+            if tail:
+                last_entry = None
+                from_ts = None
+                try:
+                    
+                    while True:
+                        if last_entry:
+                            from_ts = last_entry["timestamp_ts"]
+                        
+                        log = self.get_log(project_data["{}_status".format(stage)]["uuid"], from_ts=from_ts)
+                        
+                        for entry in log["results"][::-1]:
+                            if entry == last_entry:
+                                continue
+                            click.secho("{}: {}".format(entry["timestamp"], entry["message"]) )
+                            last_entry = entry
+
+                        sleep(2)
+                except (KeyboardInterrupt, SystemExit):
+                    sys.exit(1)
+
+            else:
+                log = self.get_log(project_data["{}_status".format(stage)]["uuid"])
+                for line in log["results"][::-1]:
+                    click.secho("{}: {}".format(line["timestamp"], line["message"]) )
+                sys.exit(0)
 
         else:
             click.secho(
@@ -236,10 +258,12 @@ class CloudClient(object):
         )
         return request()
 
-    def get_log(self, environment_uuid):
+    def get_log(self, environment_uuid, from_ts=None, till_ts=None):
         request = api_requests.LogRequest(
             self.session, url_kwargs={"environment_uuid": environment_uuid}
         )
+        request.from_ts = from_ts
+        request.till_ts = till_ts
         return request()
     
 

@@ -205,11 +205,18 @@ def project_deploy_log(obj, remote_id, stage):
 
 @project.command(name="log")
 @click.argument("stage", default="test")
+@click.option(
+    "--tail",
+    "tail",
+    default=False,
+    is_flag=True,
+    help="tail the output",
+)
 @allow_remote_id_override
 @click.pass_obj
-def project_log(obj, remote_id, stage):
+def project_log(obj, remote_id, stage, tail):
     """View  log"""
-    obj.client.show_log(remote_id, stage)
+    obj.client.show_log(remote_id, stage, tail)
 
 
 

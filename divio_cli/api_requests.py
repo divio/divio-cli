@@ -375,3 +375,18 @@ class RepositoryRequest(JsonResponse, APIRequest):
 class LogRequest(JsonResponse, APIRequest):
     url = "https://api.local.aldryn.net/apps/v3/environments/{environment_uuid}/logs/"
     method = "GET"
+    from_ts = None
+    till_ts = None
+
+    def get_url(self):
+        url = super(LogRequest, self).get_url()
+        query_parameters = []
+        if self.from_ts:
+            query_parameters.append(f"from_ts={self.from_ts}")
+        if self.till_ts:
+            query_parameters.append(f"till_ts={self.till_ts}")
+        if not query_parameters:
+            return url
+        return url+"?"+",".join(query_parameters)
+
+
