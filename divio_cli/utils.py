@@ -258,7 +258,7 @@ def get_git_commit():
             return subprocess.check_output(
                 ["git", "--git-dir", git_dir, "rev-parse", "--short", "HEAD"],
                 env=get_subprocess_env(),
-            ).strip()
+            ).strip().decode("utf-8")
         except:
             pass
 
@@ -267,7 +267,7 @@ def get_git_checked_branch():
     try:
         return subprocess.check_output(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"], env=get_subprocess_env()
-        ).strip()
+        ).strip().decode("utf-8")
     except subprocess.CalledProcessError:
         return ALDRYN_DEFAULT_BRANCH_NAME
 
