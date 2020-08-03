@@ -1,7 +1,7 @@
 Changelog
 =========
 
-3.9.0 (2020-xx-xx)
+3.8.1 (2020-08-03)
 ------------------
 
 * fixed string encoding issue on two commands
