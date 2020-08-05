@@ -105,6 +105,10 @@ class CloudClient(object):
 
 
     def show_log(self, website_id, stage, tail=False):
+        def print_log_data(data):
+            for entry in data:
+                click.secho("{} {}".format(click.style(entry["timestamp"], fg="yellow"),entry["message"]))
+
         project_data = self.get_project(website_id)
         # If we have tried to deploy before, there will be a log
         try:
@@ -115,33 +119,24 @@ class CloudClient(object):
             )
             sys.exit(1)
         if status:
-            if tail:
-                last_entry = None
-                from_ts = None
-                try:
-                    
-                    while True:
-                        if last_entry:
-                            from_ts = last_entry["timestamp_ts"]
-                        
-                        log = self.get_log(project_data["{}_status".format(stage)]["uuid"], from_ts=from_ts)
-                        
-                        for entry in log["results"][::-1]:
-                            if entry == last_entry:
-                                continue
-                            click.secho("{}: {}".format(entry["timestamp"], entry["message"]) )
-                            last_entry = entry
 
-                        sleep(2)
+            # Make the initial log request
+            response = api_requests.LogRequest(
+                self.session, url_kwargs={"environment_uuid": project_data["{}_status".format(stage)]["uuid"]}
+            )()
+
+            print_log_data(response["results"])
+
+            if tail:
+                # Now continue to poll
+                try:
+                    while True:
+                        # In this case, we can not construct the urls anymore and we have to rely on the previous response we got
+                        response = self.session.request(url=response["next"], method="GET").json()
+                        print_log_data(response["results"])
+                        sleep(1)
                 except (KeyboardInterrupt, SystemExit):
                     sys.exit(1)
-
-            else:
-                log = self.get_log(project_data["{}_status".format(stage)]["uuid"])
-                for line in log["results"][::-1]:
-                    click.secho("{}: {}".format(line["timestamp"], line["message"]) )
-                sys.exit(0)
-
         else:
             click.secho(
                 "No {} environment deployed yet, no log available.".format(stage),
@@ -258,13 +253,7 @@ class CloudClient(object):
         )
         return request()
 
-    def get_log(self, environment_uuid, from_ts=None, till_ts=None):
-        request = api_requests.LogRequest(
-            self.session, url_kwargs={"environment_uuid": environment_uuid}
-        )
-        request.from_ts = from_ts
-        request.till_ts = till_ts
-        return request()
+
     
 
     def get_project(self, website_id):
