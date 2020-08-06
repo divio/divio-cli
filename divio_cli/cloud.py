@@ -104,11 +104,14 @@ class CloudClient(object):
         request = api_requests.ProjectListRequest(self.session)
         return request()
 
-
     def show_log(self, website_id, stage, tail=False):
         def print_log_data(data):
             for entry in data:
-                click.secho("{} - {}".format(click.style(entry["timestamp"], fg="yellow"), entry["message"]))
+                click.secho(
+                    "{} - {}".format(
+                        click.style(entry["timestamp"], fg="yellow"), entry["message"]
+                    )
+                )
 
         project_data = self.get_project(website_id)
         # If we have tried to deploy before, there will be a log
@@ -124,9 +127,14 @@ class CloudClient(object):
             try:
                 # Make the initial log request
                 response = api_requests.LogRequest(
-                    self.session, url_kwargs={"environment_uuid": project_data["{}_status".format(stage)]["uuid"]}
+                    self.session,
+                    url_kwargs={
+                        "environment_uuid": project_data["{}_status".format(stage)][
+                            "uuid"
+                        ]
+                    },
                 )()
-                
+
                 print_log_data(response["results"])
 
                 if tail:
@@ -134,16 +142,16 @@ class CloudClient(object):
                     try:
                         while True:
                             # In this case, we can not construct the urls anymore and we have to rely on the previous response we got
-                            response = self.session.request(url=response["next"], method="GET").json()
-                            
+                            response = self.session.request(
+                                url=response["next"], method="GET"
+                            ).json()
+
                             print_log_data(response["results"])
                             sleep(1)
                     except (KeyboardInterrupt, SystemExit):
                         sys.exit(1)
             except (KeyError, json.decoder.JSONDecodeError):
-                click.secho(
-                    "Error retrieving logging.".format(stage), fg="red"
-                )
+                click.secho("Error retrieving logging.".format(stage), fg="red")
                 sys.exit(1)
 
         else:
@@ -151,8 +159,6 @@ class CloudClient(object):
                 "No {} environment deployed yet, no log available.".format(stage),
                 fg="yellow",
             )
-
-
 
     def show_deploy_log(self, website_id, stage):
         project_data = self.get_project(website_id)
@@ -261,9 +267,6 @@ class CloudClient(object):
             self.session, url_kwargs={"website_id": website_id, "stage": stage}
         )
         return request()
-
-
-    
 
     def get_project(self, website_id):
         request = api_requests.ProjectDetailRequest(
