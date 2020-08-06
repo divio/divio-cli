@@ -149,6 +149,7 @@ class CloudClient(object):
                             print_log_data(response["results"])
                             sleep(1)
                     except (KeyboardInterrupt, SystemExit):
+                        click.secho("Exiting...")
                         sys.exit(1)
             except (KeyError, json.decoder.JSONDecodeError):
                 click.secho("Error retrieving logging.".format(stage), fg="red")
