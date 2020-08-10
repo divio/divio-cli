@@ -203,7 +203,7 @@ def project_deploy_log(obj, remote_id, stage):
     """View last deployment log"""
     obj.client.show_deploy_log(remote_id, stage)
 
-@project.command(name="log")
+@project.command(name="logs")
 @click.argument("stage", default="test")
 @click.option(
     "--tail",
@@ -212,11 +212,18 @@ def project_deploy_log(obj, remote_id, stage):
     is_flag=True,
     help="tail the output",
 )
+@click.option(
+    "--utc",
+    "utc",
+    default=False,
+    is_flag=True,
+    help="show times in UTC",
+)
 @allow_remote_id_override
 @click.pass_obj
-def project_log(obj, remote_id, stage, tail):
-    """View  log"""
-    obj.client.show_log(remote_id, stage, tail)
+def project_logs(obj, remote_id, stage, tail, utc):
+    """View  logs"""
+    obj.client.show_log(remote_id, stage, tail, utc)
 
 
 

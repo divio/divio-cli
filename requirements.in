@@ -6,3 +6,5 @@ six
 attrs
 pyaml
 click_aliases
+tzlocal
+python-dateutil
