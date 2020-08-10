@@ -152,7 +152,7 @@ class CloudClient(object):
                         click.secho("Exiting...")
                         sys.exit(1)
             except (KeyError, json.decoder.JSONDecodeError):
-                click.secho("Error retrieving logging.".format(stage), fg="red")
+                click.secho("Error retrieving logs.".format(stage), fg="red")
                 sys.exit(1)
 
         else:
