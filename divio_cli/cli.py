@@ -222,7 +222,7 @@ def project_deploy_log(obj, remote_id, stage):
 @allow_remote_id_override
 @click.pass_obj
 def project_logs(obj, remote_id, stage, tail, utc):
-    """View  logs"""
+    """View logs"""
     obj.client.show_log(remote_id, stage, tail, utc)
 
 

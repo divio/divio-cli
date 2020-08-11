@@ -4,8 +4,8 @@ from netrc import netrc
 import sys
 from time import sleep
 import datetime
-from tzlocal import get_localzone # $ pip install tzlocal
-from dateutil.parser import parse
+from tzlocal import get_localzone
+from dateutil.parser import isoparse
 
 from six.moves.urllib_parse import urlparse
 
@@ -109,7 +109,7 @@ class CloudClient(object):
     def show_log(self, website_id, stage, tail=False, utc=True):
         def print_log_data(data):
             for entry in data:
-                dt = parse(entry["timestamp"])
+                dt = isoparse(entry["timestamp"])
                 if not utc:
                     dt = dt.astimezone(get_localzone())
                 click.secho(
