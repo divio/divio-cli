@@ -54,6 +54,7 @@ class APIRequest(object):
     default_error_message = messages.SERVER_ERROR
     response_code_error_map = {
         requests.codes.forbidden: messages.AUTH_INVALID_TOKEN,
+        requests.codes.unauthorized: messages.AUTH_INVALID_TOKEN,
         requests.codes.not_found: messages.RESOURCE_NOT_FOUND_ANONYMOUS,
     }
 
