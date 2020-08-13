@@ -152,7 +152,8 @@ class CloudClient(object):
                             ).json()
 
                             print_log_data(response["results"])
-                            sleep(1)
+                            if not response["results"]:
+                                sleep(1)
                     except (KeyboardInterrupt, SystemExit):
                         click.secho("Exiting...")
                         sys.exit(1)
