@@ -34,7 +34,7 @@ def get_project_settings(path=None, silent=False):
     except (TypeError, OSError):
         raise click.ClickException(DOT_ALDRYN_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError:
-        click.secho(f"Error: Unexpected value in {path}", fg="red")
+        click.secho("Error: Unexpected value in {}".format(path), fg="red")
         sys.exit(1)
 
 

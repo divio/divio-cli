@@ -42,7 +42,7 @@ class SingleHostSession(requests.Session):
 class APIRequestError(click.ClickException):
     def show(self, file=None):
         click.secho(
-            f"\nError: {self.format_message()}", file=file, err=True, fg="red"
+            "\nError: {}".format(self.format_message()), file=file, err=True, fg="red"
         )
 
 
