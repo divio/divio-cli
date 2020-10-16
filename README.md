@@ -14,7 +14,7 @@ pip install divio-cli
 
 # Using the CLI
 
-See [Divio Support: How to use the Divio command-line interface](http://support.divio.com/local-development/divio-shell/divio-cli-reference)
+See [Divio developer handbook: How to use the Divio command-line interface](https://docs.divio.com/en/latest/how-to/local-cli/)
 
 
 
