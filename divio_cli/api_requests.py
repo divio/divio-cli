@@ -385,3 +385,7 @@ class APIV3Request(APIRequest):
 class LogRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/environments/{environment_uuid}/logs/"
     method = "GET"
+
+class EnvironmentRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/environments/{environment_uuid}/"
+    method = "GET"

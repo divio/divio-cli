@@ -106,6 +106,48 @@ class CloudClient(object):
         request = api_requests.ProjectListRequest(self.session)
         return request()
 
+    def ssh(self, website_id, stage):
+        project_data = self.get_project(website_id)
+        # If we have tried to deploy before, there will be a log
+        try:
+            status = project_data["{}_status".format(stage)]
+        except KeyError:
+            click.secho(
+                "Environment with the name '{}' does not exist.".format(stage), fg="red"
+            )
+            sys.exit(1)
+        if status:
+
+            try:
+                response =  api_requests.EnvironmentRequest(
+                    self.session,
+                    url_kwargs={
+                        "environment_uuid": project_data["{}_status".format(stage)][
+                            "uuid"
+                        ]
+                    },
+                )()
+                
+                import subprocess
+                ssh_command = [
+                    "ssh",
+                    "{}@{}".format(response["ssh_endpoint"]["user"],response["ssh_endpoint"]["host"]),
+                    "-p {}".format(response["ssh_endpoint"]["port"])
+                ]
+                click.secho(" ".join(ssh_command), fg="green")
+                ssh = subprocess.call(ssh_command) 
+
+
+
+            except (KeyError, json.decoder.JSONDecodeError):
+                click.secho("Error establishing ssh connection.".format(stage), fg="red")
+                sys.exit(1)
+
+        else:
+            click.secho(
+                "No {} environment deployed yet, no ssh connection available.".format(stage),
+                fg="yellow",
+            )
     def show_log(self, website_id, stage, tail=False, utc=True):
         def print_log_data(data):
             for entry in data:

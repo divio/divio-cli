@@ -226,6 +226,14 @@ def project_logs(obj, remote_id, stage, tail, utc):
     obj.client.show_log(remote_id, stage, tail, utc)
 
 
+@project.command(name="ssh")
+@click.argument("stage", default="test")
+@allow_remote_id_override
+@click.pass_obj
+def project_ssh(obj, remote_id, stage):
+    """Establish ssh connection"""
+    obj.client.ssh(remote_id, stage)
+
 
 @project.command(name="configure")
 @click.pass_obj
