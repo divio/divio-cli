@@ -379,12 +379,13 @@ class RepositoryRequest(JsonResponse, APIRequest):
 
 class APIV3Request(APIRequest):
     def request(self, *args, **kwargs):
-        return super(APIV3Request, self).request(v3_compatibilty=True, *args,  **kwargs)
+        return super(APIV3Request, self).request(v3_compatibilty=True, *args, **kwargs)
 
 
 class LogRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/environments/{environment_uuid}/logs/"
     method = "GET"
+
 
 class EnvironmentRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/environments/{environment_uuid}/"

@@ -6,6 +6,7 @@ from time import sleep
 import datetime
 from tzlocal import get_localzone
 from dateutil.parser import isoparse
+import subprocess
 
 from six.moves.urllib_parse import urlparse
 
@@ -119,7 +120,7 @@ class CloudClient(object):
         if status:
 
             try:
-                response =  api_requests.EnvironmentRequest(
+                response = api_requests.EnvironmentRequest(
                     self.session,
                     url_kwargs={
                         "environment_uuid": project_data["{}_status".format(stage)][
@@ -127,27 +128,32 @@ class CloudClient(object):
                         ]
                     },
                 )()
-                
-                import subprocess
+
                 ssh_command = [
                     "ssh",
-                    "{}@{}".format(response["ssh_endpoint"]["user"],response["ssh_endpoint"]["host"]),
-                    "-p {}".format(response["ssh_endpoint"]["port"])
+                    "{}@{}".format(
+                        response["ssh_endpoint"]["user"],
+                        response["ssh_endpoint"]["host"],
+                    ),
+                    "-p {}".format(response["ssh_endpoint"]["port"]),
                 ]
                 click.secho(" ".join(ssh_command), fg="green")
-                ssh = subprocess.call(ssh_command) 
-
-
+                ssh = subprocess.call(ssh_command)
 
             except (KeyError, json.decoder.JSONDecodeError):
-                click.secho("Error establishing ssh connection.".format(stage), fg="red")
+                click.secho(
+                    "Error establishing ssh connection.".format(stage), fg="red"
+                )
                 sys.exit(1)
 
         else:
             click.secho(
-                "No {} environment deployed yet, no ssh connection available.".format(stage),
+                "No {} environment deployed yet, no ssh connection available.".format(
+                    stage
+                ),
                 fg="yellow",
             )
+
     def show_log(self, website_id, stage, tail=False, utc=True):
         def print_log_data(data):
             for entry in data:

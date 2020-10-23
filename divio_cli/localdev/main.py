@@ -100,7 +100,7 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
         # Docker-compose does not exist
         click.secho(
             "Warning: docker-compose.yml does not exist. Will continue without...",
-            fg="red"
+            fg="red",
         )
         return
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
