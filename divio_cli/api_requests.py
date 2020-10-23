@@ -34,8 +34,11 @@ class SingleHostSession(requests.Session):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def request(self, method, url, *args, **kwargs):
+    def request(self, method, url, v3_compatibilty=False, *args, **kwargs):
         url = urljoin(self.host, url)
+        if v3_compatibilty:
+            # V3 compatibility hack
+            url = url.replace("control", "api", 1)
         return super(SingleHostSession, self).request(method, url, *args, **kwargs)
 
 
@@ -51,6 +54,7 @@ class APIRequest(object):
     default_error_message = messages.SERVER_ERROR
     response_code_error_map = {
         requests.codes.forbidden: messages.AUTH_INVALID_TOKEN,
+        requests.codes.unauthorized: messages.AUTH_INVALID_TOKEN,
         requests.codes.not_found: messages.RESOURCE_NOT_FOUND_ANONYMOUS,
     }
 
@@ -371,3 +375,13 @@ class SetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
 
 class RepositoryRequest(JsonResponse, APIRequest):
     url = "/api/v2/repositories/?website={website_id}"
+
+
+class APIV3Request(APIRequest):
+    def request(self, *args, **kwargs):
+        return super(APIV3Request, self).request(v3_compatibilty=True, *args,  **kwargs)
+
+
+class LogRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/environments/{environment_uuid}/logs/"
+    method = "GET"
