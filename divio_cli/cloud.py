@@ -3,6 +3,9 @@ import re
 from netrc import netrc
 import sys
 from time import sleep
+import datetime
+from tzlocal import get_localzone
+from dateutil.parser import isoparse
 
 from six.moves.urllib_parse import urlparse
 
@@ -11,7 +14,7 @@ import click
 from . import api_requests, messages, settings
 from .config import Config
 from .utils import json_dumps_unicode
-
+import json
 
 ENDPOINT = "https://control.{host}"
 DEFAULT_HOST = "divio.com"
@@ -47,7 +50,7 @@ class CloudClient(object):
         host = urlparse(self.endpoint).hostname
         data = self.netrc.hosts.get(host)
         if data:
-            return {"Authorization": "Basic {}".format(data[2])}
+            return {"Authorization": "Token {}".format(data[2])}
         return {}
 
     def get_access_token_url(self):
@@ -64,7 +67,7 @@ class CloudClient(object):
         )
 
     def authenticate(self, token):
-        self.session.headers["Authorization"] = "Basic {}".format(token)
+        self.session.headers["Authorization"] = "Token {}".format(token)
 
     def login(self, token):
         request = api_requests.LoginRequest(self.session, data={"token": token})
@@ -102,6 +105,67 @@ class CloudClient(object):
     def get_projects(self):
         request = api_requests.ProjectListRequest(self.session)
         return request()
+
+    def show_log(self, website_id, stage, tail=False, utc=True):
+        def print_log_data(data):
+            for entry in data:
+                dt = isoparse(entry["timestamp"])
+                if not utc:
+                    dt = dt.astimezone(get_localzone())
+                click.secho(
+                    "{} - {}".format(
+                        click.style(str(dt), fg="yellow"), entry["message"]
+                    )
+                )
+
+        project_data = self.get_project(website_id)
+        # If we have tried to deploy before, there will be a log
+        try:
+            status = project_data["{}_status".format(stage)]
+        except KeyError:
+            click.secho(
+                "Environment with the name '{}' does not exist.".format(stage), fg="red"
+            )
+            sys.exit(1)
+        if status:
+
+            try:
+                # Make the initial log request
+                response = api_requests.LogRequest(
+                    self.session,
+                    url_kwargs={
+                        "environment_uuid": project_data["{}_status".format(stage)][
+                            "uuid"
+                        ]
+                    },
+                )()
+
+                print_log_data(response["results"])
+
+                if tail:
+                    # Now continue to poll
+                    try:
+                        while True:
+                            # In this case, we can not construct the urls anymore and we have to rely on the previous response we got
+                            response = self.session.request(
+                                url=response["next"], method="GET"
+                            ).json()
+
+                            print_log_data(response["results"])
+                            if not response["results"]:
+                                sleep(1)
+                    except (KeyboardInterrupt, SystemExit):
+                        click.secho("Exiting...")
+                        sys.exit(1)
+            except (KeyError, json.decoder.JSONDecodeError):
+                click.secho("Error retrieving logs.".format(stage), fg="red")
+                sys.exit(1)
+
+        else:
+            click.secho(
+                "No {} environment deployed yet, no log available.".format(stage),
+                fg="yellow",
+            )
 
     def show_deploy_log(self, website_id, stage):
         project_data = self.get_project(website_id)
