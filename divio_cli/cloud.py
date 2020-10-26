@@ -167,7 +167,6 @@ class CloudClient(object):
                 )
 
         project_data = self.get_project(website_id)
-        # If we have tried to deploy before, there will be a log
         try:
             status = project_data["{}_status".format(stage)]
         except KeyError:
