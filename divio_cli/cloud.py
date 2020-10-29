@@ -6,7 +6,6 @@ from time import sleep
 import datetime
 from tzlocal import get_localzone
 from dateutil.parser import isoparse
-import subprocess
 
 from six.moves.urllib_parse import urlparse
 
@@ -121,7 +120,7 @@ class CloudClient(object):
                 response = api_requests.EnvironmentRequest(
                     self.session,
                     url_kwargs={
-                        "environment_uuid": project_data["{}_status".format(stage)][
+                        "environment_uuid": status[
                             "uuid"
                         ]
                     },
@@ -136,7 +135,7 @@ class CloudClient(object):
                     "-p {}".format(response["ssh_endpoint"]["port"]),
                 ]
                 click.secho(" ".join(ssh_command), fg="green")
-                ssh = subprocess.call(ssh_command)
+                os.execvp("ssh", ssh_command)
 
             except (KeyError, json.decoder.JSONDecodeError):
                 click.secho(
@@ -146,7 +145,7 @@ class CloudClient(object):
 
         else:
             click.secho(
-                "No {} environment deployed yet, no ssh connection available.".format(
+                "SSH connection not available: environment {} not deployed yet.".format(
                     stage
                 ),
                 fg="yellow",
@@ -179,7 +178,7 @@ class CloudClient(object):
                 response = api_requests.LogRequest(
                     self.session,
                     url_kwargs={
-                        "environment_uuid": project_data["{}_status".format(stage)][
+                        "environment_uuid": status[
                             "uuid"
                         ]
                     },
