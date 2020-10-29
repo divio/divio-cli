@@ -158,8 +158,8 @@ class CloudClient(object):
                 if not utc:
                     dt = dt.astimezone(get_localzone())
                 click.secho(
-                    "{} - {}".format(
-                        click.style(str(dt), fg="yellow"), entry["message"]
+                    "{} - {} - {}".format(
+                        click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), entry["message"].replace("\r", "")
                     )
                 )
 
@@ -172,7 +172,6 @@ class CloudClient(object):
             )
             sys.exit(1)
         if status:
-
             try:
                 # Make the initial log request
                 response = api_requests.LogRequest(
