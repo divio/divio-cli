@@ -117,7 +117,6 @@ class CloudClient(object):
             )
             sys.exit(1)
         if status:
-
             try:
                 response = api_requests.EnvironmentRequest(
                     self.session,
