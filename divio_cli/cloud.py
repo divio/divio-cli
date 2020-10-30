@@ -125,7 +125,6 @@ class CloudClient(object):
                         ]
                     },
                 )()
-
                 ssh_command = [
                     "ssh",
                     "{}@{}".format(
@@ -133,7 +132,7 @@ class CloudClient(object):
                         response["ssh_endpoint"]["host"],
                     ),
                     "-p",
-                    response["ssh_endpoint"]["port"],
+                    str(response["ssh_endpoint"]["port"]),
                 ]
                 click.secho(" ".join(ssh_command), fg="green")
                 os.execvp("ssh", ssh_command)
