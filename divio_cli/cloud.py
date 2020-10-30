@@ -207,7 +207,7 @@ class CloudClient(object):
 
         else:
             click.secho(
-                "No '{}' environment deployed yet, no log available.".format(stage),
+                "Logs not available: environment '{}' not deployed yet.".format(stage),
                 fg="yellow",
             )
             sys.exit(1)
