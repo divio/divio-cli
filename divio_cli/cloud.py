@@ -173,8 +173,7 @@ class CloudClient(object):
                     dt = dt.astimezone(get_localzone())
                 click.secho(
                     "{} \u2502 {:^16} \u2502 {}".format(
-                        # click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), click.unstyle(entry["message"]).replace("\r", "")
-                        click.style(str(dt), fg="bright_black"),
+                        str(dt),
                         click.style(
                             entry["service"],
                             fg=get_service_color(entry["service"]),
