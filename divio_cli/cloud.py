@@ -145,11 +145,12 @@ class CloudClient(object):
 
         else:
             click.secho(
-                "SSH connection not available: environment {} not deployed yet.".format(
+                "SSH connection not available: environment '{}' not deployed yet.".format(
                     stage
                 ),
                 fg="yellow",
             )
+            sys.exit(1)
 
     def show_log(self, website_id, stage, tail=False, utc=True):
         def print_log_data(data):
