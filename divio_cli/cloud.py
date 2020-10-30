@@ -106,20 +106,8 @@ class CloudClient(object):
         request = api_requests.ProjectListRequest(self.session)
         return request()
 
-    def show_log(self, website_id, stage, tail=False, utc=True):
-        def print_log_data(data):
-            for entry in data:
-                dt = isoparse(entry["timestamp"])
-                if not utc:
-                    dt = dt.astimezone(get_localzone())
-                click.secho(
-                    "{} - {}".format(
-                        click.style(str(dt), fg="yellow"), entry["message"]
-                    )
-                )
-
+    def ssh(self, website_id, stage):
         project_data = self.get_project(website_id)
-        # If we have tried to deploy before, there will be a log
         try:
             status = project_data["{}_status".format(stage)]
         except KeyError:
@@ -127,14 +115,71 @@ class CloudClient(object):
                 "Environment with the name '{}' does not exist.".format(stage), fg="red"
             )
             sys.exit(1)
-        if status:
+        if status["deployed_before"]:
+            try:
+                response = api_requests.EnvironmentRequest(
+                    self.session,
+                    url_kwargs={
+                        "environment_uuid": status[
+                            "uuid"
+                        ]
+                    },
+                )()
+                ssh_command = [
+                    "ssh",
+                    "-p",
+                    str(response["ssh_endpoint"]["port"]),
+                    "{}@{}".format(
+                        response["ssh_endpoint"]["user"],
+                        response["ssh_endpoint"]["host"],
+                    ),
+                ]
+                click.secho(" ".join(ssh_command), fg="green")
+                os.execvp("ssh", ssh_command)
 
+            except (KeyError, json.decoder.JSONDecodeError):
+                click.secho(
+                    "Error establishing ssh connection.".format(stage), fg="red"
+                )
+                sys.exit(1)
+
+        else:
+            click.secho(
+                "SSH connection not available: environment '{}' not deployed yet.".format(
+                    stage
+                ),
+                fg="yellow",
+            )
+            sys.exit(1)
+
+    def show_log(self, website_id, stage, tail=False, utc=True):
+        def print_log_data(data):
+            for entry in data:
+                dt = isoparse(entry["timestamp"])
+                if not utc:
+                    dt = dt.astimezone(get_localzone())
+                click.secho(
+                    "{} - {} - {}".format(
+                        #click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), click.unstyle(entry["message"]).replace("\r", "")
+                        click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), entry["message"].replace("\r", "").replace("\x1b[6n", "").replace("\x1b[J", "").replace("\x1b[H", "")
+                    )
+                )
+
+        project_data = self.get_project(website_id)
+        try:
+            status = project_data["{}_status".format(stage)]
+        except KeyError:
+            click.secho(
+                "Environment with the name '{}' does not exist.".format(stage), fg="red"
+            )
+            sys.exit(1)
+        if status["deployed_before"]:
             try:
                 # Make the initial log request
                 response = api_requests.LogRequest(
                     self.session,
                     url_kwargs={
-                        "environment_uuid": project_data["{}_status".format(stage)][
+                        "environment_uuid": status[
                             "uuid"
                         ]
                     },
@@ -163,9 +208,10 @@ class CloudClient(object):
 
         else:
             click.secho(
-                "No {} environment deployed yet, no log available.".format(stage),
+                "Logs not available: environment '{}' not deployed yet.".format(stage),
                 fg="yellow",
             )
+            sys.exit(1)
 
     def show_deploy_log(self, website_id, stage):
         project_data = self.get_project(website_id)

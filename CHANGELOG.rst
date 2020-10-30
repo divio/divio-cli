@@ -1,10 +1,11 @@
 Changelog
 =========
 
-3.9.0 (2020-10-21)
+3.9.0 (2020-10-30)
 ------------------
 
-* Added logging support
+* added logging support
+* added SSH support
 
 3.8.1 (2020-08-03)
 ------------------
