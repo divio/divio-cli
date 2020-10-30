@@ -36,6 +36,19 @@ def get_endpoint(host=None):
     return endpoint
 
 
+def get_service_color(service):
+    color_mapping = {
+        "web": "blue",
+        "cronjob": "bright_cyan",
+        "shell": "bright_red",
+        "worker": "bright_blue",
+    }
+    try:
+        return color_mapping[service]
+    except KeyError:
+        return "yellow"
+
+
 class CloudClient(object):
     def __init__(self, endpoint, debug=False):
         self.debug = debug
@@ -159,10 +172,13 @@ class CloudClient(object):
                 if not utc:
                     dt = dt.astimezone(get_localzone())
                 click.secho(
-                    "{} - {} - {}".format(
+                    "{} \u2502 {:^16} \u2502 {}".format(
                         # click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), click.unstyle(entry["message"]).replace("\r", "")
-                        click.style(str(dt), fg="yellow"),
-                        click.style(entry["service"], fg="yellow"),
+                        click.style(str(dt), fg="bright_black"),
+                        click.style(
+                            entry["service"],
+                            fg=get_service_color(entry["service"]),
+                        ),
                         entry["message"]
                         .replace("\r", "")
                         .replace("\x1b[6n", "")
