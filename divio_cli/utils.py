@@ -255,19 +255,27 @@ def get_git_commit():
     git_dir = os.path.join(script_home, "..", ".git")
     if os.path.exists(git_dir):
         try:
-            return subprocess.check_output(
-                ["git", "--git-dir", git_dir, "rev-parse", "--short", "HEAD"],
-                env=get_subprocess_env(),
-            ).strip().decode("utf-8")
+            return (
+                subprocess.check_output(
+                    ["git", "--git-dir", git_dir, "rev-parse", "--short", "HEAD"],
+                    env=get_subprocess_env(),
+                )
+                .strip()
+                .decode("utf-8")
+            )
         except:
             pass
 
 
 def get_git_checked_branch():
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], env=get_subprocess_env()
-        ).strip().decode("utf-8")
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"], env=get_subprocess_env()
+            )
+            .strip()
+            .decode("utf-8")
+        )
     except subprocess.CalledProcessError:
         return ALDRYN_DEFAULT_BRANCH_NAME
 
