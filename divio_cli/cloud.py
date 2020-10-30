@@ -161,7 +161,7 @@ class CloudClient(object):
                 click.secho(
                     "{} - {} - {}".format(
                         #click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), click.unstyle(entry["message"]).replace("\r", "")
-                        click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), entry["message"].replace("\r", "").replace("\x1b[6n", "").replace("\x1b[J", "")
+                        click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), entry["message"].replace("\r", "").replace("\x1b[6n", "").replace("\x1b[J", "").replace("\x1b[H", "")
                     )
                 )
 
