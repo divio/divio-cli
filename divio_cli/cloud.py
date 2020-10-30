@@ -207,9 +207,10 @@ class CloudClient(object):
 
         else:
             click.secho(
-                "No {} environment deployed yet, no log available.".format(stage),
+                "No '{}' environment deployed yet, no log available.".format(stage),
                 fg="yellow",
             )
+            sys.exit(1)
 
     def show_deploy_log(self, website_id, stage):
         project_data = self.get_project(website_id)
