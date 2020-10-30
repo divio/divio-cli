@@ -132,7 +132,11 @@ def project():
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
 def project_list(obj, grouped, as_json):
-    """List all your projects"""
+    """
+    Lists your Divio projects.
+
+    *Not specific to a particular project.*
+    """
     api_response = obj.client.get_projects()
 
     if as_json:
@@ -228,7 +232,15 @@ def project_deploy_log(obj, remote_id, stage):
 @allow_remote_id_override
 @click.pass_obj
 def project_logs(obj, remote_id, stage, tail, utc):
-    """View logs"""
+    """
+    Displays runtime logs from a cloud environment.
+
+    .. _divio-project-logs:
+
+    Takes the name of the environment (e.g. ``test`` or ``live``; if not specified, defaults to ``test``). Use the
+    ``--remote-id <project id>`` option to obtain the logs of another project, ``--tail`` to tail the output and
+    ``--utc`` to show times in UTC.
+    """
     obj.client.show_log(remote_id, stage, tail, utc)
 
 
@@ -237,7 +249,14 @@ def project_logs(obj, remote_id, stage, tail, utc):
 @allow_remote_id_override
 @click.pass_obj
 def project_ssh(obj, remote_id, stage):
-    """Establish ssh connection"""
+    """
+    Opens an SSH session in a cloud container.
+
+    .. _divio-project-ssh:
+
+    Takes the name of the environment (e.g. ``test`` or ``live``; if not specified, defaults to
+    ``test``). Use the ``--remote-id <project id>`` option to SSH to another project.
+    """
     obj.client.ssh(remote_id, stage)
 
 
@@ -258,13 +277,13 @@ def project_dashboard(obj, remote_id):
 
 @project.command(name="up", aliases=["start"])
 def project_up():
-    """Start local project"""
+    """Start up the local project"""
     localdev.start_project()
 
 
 @project.command(name="stop", aliases=["down"])
 def project_stop():
-    """Stop local project"""
+    """Stops the local project (if it is running)."""
     localdev.stop_project()
 
 
@@ -273,7 +292,7 @@ def project_stop():
 @allow_remote_id_override
 @click.pass_obj
 def project_open(obj, remote_id, stage):
-    """Open local or cloud projects in a browser"""
+    """Open local or cloud project's site in the browser"""
     if stage:
         open_project_cloud_site(obj.client, project_id=remote_id, stage=stage)
     else:
@@ -290,7 +309,14 @@ def project_open(obj, remote_id, stage):
 )
 @click.pass_obj
 def project_update(obj, strict):
-    """Update project with latest changes from the Cloud"""
+    """
+Updates the local project with new code changes from the Cloud, then builds it. Runs::
+
+    git pull
+    docker-compose pull
+    docker-compose build
+    docker-compose run web start migrate
+    """
     localdev.update_local_project(
         get_git_checked_branch(), client=obj.client, strict=strict
     )
@@ -348,7 +374,15 @@ def environment_variables(
     unset_vars,
 ):
     """
-    Get and set environment vars.
+    Get and set environment variables. 
+    
+    .. _divio-project-env-vars:
+    By default, these operations work on the *Test* server (e.g. ``divio project
+    env-vars --set SOMEKEY somevalue`` will be applied to the *Test* server,
+    and will appear there).
+
+    Note that this command applies only to the *Live* and *Test* servers, not the local server. See :ref:`Local
+    environment variables <local-environment-variables>`.
 
     WARNING: This command is experimental and may change in a future release.
     """
@@ -379,7 +413,7 @@ def environment_variables(
 
 @project.command(name="status")
 def project_status():
-    """Show local project status"""
+    """Shows the status of the local project."""
     localdev.show_project_status()
 
 
@@ -409,7 +443,13 @@ def project_status():
 )
 @click.pass_obj
 def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
-    """Set up a development environment for a Divio Cloud project"""
+    """
+    Replicates and builds a Divio project locally.
+
+    Takes a single argument, the slug of the project.
+
+    *Can be run outside a project folder.*
+    """
     if not skip_doctor and not check_requirements_human(
         config=obj.client.config, silent=True
     ):
@@ -425,7 +465,16 @@ def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
 
 @project.group(name="pull")
 def project_pull():
-    """Pull db or files from the Divio Cloud"""
+    """
+    Pulls the database or media files from the Divio cloud environment.
+
+    .. _divio-project-pull:
+
+    Takes a required argument, ``db`` or ``media``, followed optionally by
+    ``test`` or ``live`` (if not specified, defaults to ``test``), and by
+    ``--remote-id <project id>`` to pull from another project.
+
+    """
 
 
 @project_pull.command(name="db")
@@ -463,7 +512,15 @@ def pull_media(obj, remote_id, stage):
 
 @project.group(name="push")
 def project_push():
-    """Push db or media files to the Divio Cloud"""
+    """    
+    Pushes the database or media files to the Divio cloud environment.
+
+    .. _divio-project-push:
+
+    Takes a required argument, ``db`` or ``media``, followed optionally by
+    ``test`` or ``live`` (if not specified, defaults to ``test``), and by
+    ``--remote-id <project id>`` to push to another project.
+    """
 
 
 @project_push.command(name="db")
@@ -552,7 +609,10 @@ def project_import():
 @click.pass_obj
 def import_db(obj, dump_path, prefix):
     """
-    Load a database dump into your local database
+    Imports a database dump file into the local database.
+
+    If the ``path`` argument is not supplied, it will expect a file
+    ``local_db.sql``.
     """
     from .localdev import utils
 
@@ -575,7 +635,7 @@ def project_export():
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 def export_db(prefix):
     """
-    Export a dump of your local database
+    Exports the local database to ``local_db.sql``.
     """
     localdev.export_db(prefix=prefix)
 
@@ -631,8 +691,8 @@ def addon_upload(ctx):
 @click.pass_context
 def addon_register(ctx, package_name, verbose_name, organisation):
     """Register your addon on the Divio Cloud\n
-    - Verbose Name:        Name of the Addon as it appears in the Marketplace.
-    - Package Name:        System wide unique Python package name
+    - Verbose Name: Name of the Addon as it appears in the Marketplace.
+    - Package Name: System wide unique Python package name
     """
     ret = ctx.obj.client.register_addon(
         package_name, verbose_name, organisation
@@ -690,7 +750,7 @@ def backup():
 @click.option("-m", "--machine-readable", is_flag=True, default=False)
 @click.pass_obj
 def version(obj, skip_check, machine_readable):
-    """Show version info"""
+    """Returns version information about the divio-cli."""
     if skip_check:
         from . import __version__
 
