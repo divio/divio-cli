@@ -160,7 +160,8 @@ class CloudClient(object):
                     dt = dt.astimezone(get_localzone())
                 click.secho(
                     "{} - {} - {}".format(
-                        click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), entry["message"].replace("\r", "")
+                        #click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), click.unstyle(entry["message"]).replace("\r", "")
+                        click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), entry["message"].replace("\r", "").replace("\x1b[6n", "").replace("\x1b[J", "")
                     )
                 )
 
