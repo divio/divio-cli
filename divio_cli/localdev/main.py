@@ -57,7 +57,9 @@ def clone_project(website_slug, path, client):
     click.secho("\ncloning project repository", fg="green")
     website_id = client.get_website_id_for_slug(website_slug)
 
-    website_git_url = get_git_clone_url(website_slug, website_id, client=client)
+    website_git_url = get_git_clone_url(
+        website_slug, website_id, client=client
+    )
     clone_args = ["git", "clone", website_git_url]
     if path:
         clone_args.append(path)
@@ -93,7 +95,9 @@ def configure_project(website_slug, path, client):
         json.dump(website_data, fh, indent=4)
 
 
-def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX):
+def setup_website_containers(
+    client, stage, path, prefix=DEFAULT_SERVICE_PREFIX
+):
     try:
         docker_compose = utils.get_docker_compose_cmd(path)
     except RuntimeError:
@@ -105,7 +109,9 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
         return
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
-    if docker_compose_config.has_service("db") or docker_compose_config.has_service(
+    if docker_compose_config.has_service(
+        "db"
+    ) or docker_compose_config.has_service(
         "database_{}".format(prefix).lower()
     ):
         has_db_service = True
@@ -131,7 +137,9 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
         click.secho("removing old database container", fg="green")
         if docker_compose_config.has_service("database_default"):
             check_call(docker_compose("stop", "database_default"), catch=False)
-            check_call(docker_compose("rm", "-f", "database_default"), catch=False)
+            check_call(
+                docker_compose("rm", "-f", "database_default"), catch=False
+            )
         else:
             check_call(docker_compose("stop", "db"))
             check_call(docker_compose("rm", "-f", "db"))
@@ -142,7 +150,11 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
         db_type = utils.get_db_type(prefix, path=path)
 
         ImportRemoteDatabase(
-            client=client, stage=stage, path=path, prefix=prefix, db_type=db_type
+            client=client,
+            stage=stage,
+            path=path,
+            prefix=prefix,
+            db_type=db_type,
         )()
 
         click.secho("syncing and migrating database", fg="green")
@@ -161,10 +173,14 @@ def setup_website_containers(client, stage, path, prefix=DEFAULT_SERVICE_PREFIX)
             )
 
 
-def create_workspace(client, website_slug, stage, path=None, force_overwrite=False):
+def create_workspace(
+    client, website_slug, stage, path=None, force_overwrite=False
+):
     click.secho("Creating workspace", fg="green")
 
-    path = os.path.abspath(os.path.join(path, website_slug) if path else website_slug)
+    path = os.path.abspath(
+        os.path.join(path, website_slug) if path else website_slug
+    )
 
     if os.path.exists(path) and (not os.path.isdir(path) or os.listdir(path)):
         if force_overwrite or click.confirm(
@@ -376,7 +392,9 @@ class DatabaseImportBase(object):
 
         click.secho(" ---> Waiting for local database server", nl=False)
 
-        db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
+        db_container_id = utils.get_db_container_id(
+            self.path, prefix=self.prefix
+        )
 
         start_wait = time()
         # check for postgres in db container to start
@@ -401,7 +419,15 @@ class DatabaseImportBase(object):
         restore_command = self.get_db_restore_command(self.db_type)
         # Create db
         check_call(
-            ["docker", "exec", db_container_id, "createdb", "-U", "postgres", "db"]
+            [
+                "docker",
+                "exec",
+                db_container_id,
+                "createdb",
+                "-U",
+                "postgres",
+                "db",
+            ]
         )
 
         if self.database_extensions:
@@ -424,7 +450,9 @@ class DatabaseImportBase(object):
             click.echo("")
             for extension in self.database_extensions:
                 if extension in available_extensions:
-                    click.echo("      Enabling extension: {}".format(extension))
+                    click.echo(
+                        "      Enabling extension: {}".format(extension)
+                    )
                     check_call(
                         [
                             "docker",
@@ -435,7 +463,9 @@ class DatabaseImportBase(object):
                             "postgres",
                             "--dbname=db",
                             "-c",
-                            "CREATE EXTENSION IF NOT EXISTS {};".format(extension),
+                            "CREATE EXTENSION IF NOT EXISTS {};".format(
+                                extension
+                            ),
                         ],
                         silent=True,
                     )
@@ -443,7 +473,14 @@ class DatabaseImportBase(object):
         # TODO: use same dump-type detection like server side on db-api
         try:
             subprocess.call(
-                ("docker", "exec", db_container_id, "/bin/bash", "-c", restore_command),
+                (
+                    "docker",
+                    "exec",
+                    db_container_id,
+                    "/bin/bash",
+                    "-c",
+                    restore_command,
+                ),
                 env=get_subprocess_env(),
             )
         except subprocess.CalledProcessError:
@@ -464,7 +501,14 @@ class DatabaseImportBase(object):
         )
 
         check_call(
-            ("docker", "exec", db_container_id, "/bin/bash", "-c", restore_command),
+            (
+                "docker",
+                "exec",
+                db_container_id,
+                "/bin/bash",
+                "-c",
+                restore_command,
+            ),
             env=get_subprocess_env(),
         )
 
@@ -472,7 +516,9 @@ class DatabaseImportBase(object):
         click.secho(" ---> Importing database", nl=False)
         start_import = time()
 
-        db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
+        db_container_id = utils.get_db_container_id(
+            self.path, prefix=self.prefix
+        )
 
         if self.db_type == "fsm-postgres":
             self.restore_db_postgres(db_container_id)
@@ -499,7 +545,9 @@ class ImportLocalDatabase(DatabaseImportBase):
                 self.custom_dump_path, self.prefix
             )
         )
-        db_container_id = utils.get_db_container_id(self.path, prefix=self.prefix)
+        db_container_id = utils.get_db_container_id(
+            self.path, prefix=self.prefix
+        )
 
         start_copy = time()
 
@@ -545,7 +593,9 @@ class ImportRemoteDatabase(DatabaseImportBase):
         click.secho(" ---> Preparing download ", nl=False)
         start_preparation = time()
         response = (
-            self.client.download_db_request(self.remote_id, self.stage, self.prefix)
+            self.client.download_db_request(
+                self.remote_id, self.stage, self.prefix
+            )
             or {}
         )
         progress_url = response.get("progress_url")
@@ -569,7 +619,9 @@ class ImportRemoteDatabase(DatabaseImportBase):
             db_dump_path = download_file(download_url, directory=self.path)
             click.echo(" [{}s]".format(int(time() - start_download)))
             # strip path from dump_path for use in the docker container
-            self.db_dump_path = "/app/{}".format(db_dump_path.replace(self.path, ""))
+            self.db_dump_path = "/app/{}".format(
+                db_dump_path.replace(self.path, "")
+            )
         else:
             click.secho(" -> empty")
             self.db_dump_path = None
@@ -585,7 +637,9 @@ def pull_media(client, stage, remote_id=None, path=None):
     website_slug = utils.get_project_settings(project_home)["slug"]
     remote_id = remote_id or website_id
     remote_project_name = (
-        website_slug if remote_id == website_id else "Project {}".format(remote_id)
+        website_slug
+        if remote_id == website_id
+        else "Project {}".format(remote_id)
     )
     try:
         docker_compose = utils.get_docker_compose_cmd(project_home)
@@ -654,7 +708,12 @@ def pull_media(client, stage, remote_id=None, path=None):
         # allow the invoking user to create files inside it.
         check_call(
             docker_compose(
-                "run", "--rm", "web", "chown", str(os.getuid()), remote_data_folder
+                "run",
+                "--rm",
+                "web",
+                "chown",
+                str(os.getuid()),
+                remote_data_folder,
             )
         )
 
@@ -680,7 +739,7 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
             fg="red",
         )
         return
-    docker_compose_config = utils.DockerComposeConfig(docker_compose)
+    utils.DockerComposeConfig(docker_compose)
 
     utils.start_database_server(docker_compose, prefix=prefix)
 
@@ -737,14 +796,19 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
     archive_path = os.path.join(project_home, archive_filename)
     sql_dump_size = os.path.getsize(dump_filename)
     click.secho(
-        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)), nl=False
+        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)),
+        nl=False,
     )
     start_compress = time()
     with tarfile.open(archive_path, mode="w:gz") as tar:
-        tar.add(os.path.join(project_home, dump_filename), arcname=dump_filename)
+        tar.add(
+            os.path.join(project_home, dump_filename), arcname=dump_filename
+        )
     compressed_size = os.path.getsize(archive_filename)
     click.echo(
-        " {} [{}s]".format(pretty_size(compressed_size), int(time() - start_compress))
+        " {} [{}s]".format(
+            pretty_size(compressed_size), int(time() - start_compress)
+        )
     )
 
 
@@ -758,25 +822,29 @@ def compress_db(dump_filename, archive_filename=None, archive_wd=None):
     archive_path = os.path.join(archive_wd, archive_filename)
     sql_dump_size = os.path.getsize(dump_filename)
     click.secho(
-        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)), nl=False
+        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)),
+        nl=False,
     )
     start_compress = time()
     with tarfile.open(archive_path, mode="w:gz") as tar:
         tar.add(os.path.join(archive_wd, dump_filename), arcname=dump_filename)
     compressed_size = os.path.getsize(archive_filename)
     click.echo(
-        " {} [{}s]".format(pretty_size(compressed_size), int(time() - start_compress))
+        " {} [{}s]".format(
+            pretty_size(compressed_size), int(time() - start_compress)
+        )
     )
 
 
 def export_db(prefix):
     dump_filename = DEFAULT_DUMP_FILENAME
 
-    click.secho(" ===> Exporting local database {} to {}".format(prefix, dump_filename))
+    click.secho(
+        " ===> Exporting local database {} to {}".format(prefix, dump_filename)
+    )
     start_time = time()
 
     project_home = utils.get_project_home()
-    db_container_id = utils.get_db_container_id(project_home, prefix=prefix)
     db_type = utils.get_db_type(prefix=prefix, path=project_home)
     dump_database(dump_filename=dump_filename, db_type=db_type, prefix=prefix)
 
@@ -792,7 +860,9 @@ def push_db(client, stage, remote_id, prefix, db_type):
     archive_path = os.path.join(project_home, archive_filename)
     website_slug = utils.get_project_settings(project_home)["slug"]
     remote_project_name = (
-        website_slug if remote_id == website_id else "Project {}".format(remote_id)
+        website_slug
+        if remote_id == website_id
+        else "Project {}".format(remote_id)
     )
 
     click.secho(
@@ -844,7 +914,9 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
     archive_path = os.path.join(archive_wd, archive_filename)
 
     click.secho(
-        " ===> Pushing local database to {} {} environment".format(website_id, stage)
+        " ===> Pushing local database to {} {} environment".format(
+            website_id, stage
+        )
     )
     start_time = time()
 
@@ -889,7 +961,9 @@ def push_media(client, stage, remote_id, prefix):
     archive_path = os.path.join(project_home, "local_media.tar.gz")
     website_slug = utils.get_project_settings(project_home)["slug"]
     remote_project_name = (
-        website_slug if remote_id == website_id else "Project {}".format(remote_id)
+        website_slug
+        if remote_id == website_id
+        else "Project {}".format(remote_id)
     )
 
     click.secho(
@@ -932,7 +1006,9 @@ def push_media(client, stage, remote_id, prefix):
     )
     click.secho("Uploading", nl=False)
     start_upload = time()
-    response = client.upload_media(remote_id, stage, archive_path, prefix) or {}
+    response = (
+        client.upload_media(remote_id, stage, archive_path, prefix) or {}
+    )
     click.echo(" [{}s]".format(int(time() - start_upload)))
     progress_url = response.get("progress_url")
     if not progress_url:
@@ -1078,9 +1154,13 @@ def open_project(open_browser=True):
 
     CHECKING_PORT = "80"
     try:
-        addr = check_output(docker_compose("port", "web", CHECKING_PORT), catch=False)
+        addr = check_output(
+            docker_compose("port", "web", CHECKING_PORT), catch=False
+        )
     except subprocess.CalledProcessError:
-        if click.prompt("Your project is not running. Do you want to start " "it now?"):
+        if click.prompt(
+            "Your project is not running. Do you want to start " "it now?"
+        ):
             return start_project()
         return
     try:
@@ -1102,7 +1182,9 @@ def open_project(open_browser=True):
 
     addr = "http://{}:{}/".format(host, port)
 
-    click.secho("Your project is configured to run at {}".format(addr), fg="green")
+    click.secho(
+        "Your project is configured to run at {}".format(addr), fg="green"
+    )
 
     click.secho("Waiting for project to start..", fg="green", nl=False)
     # wait 30s for runserver to startup
@@ -1134,7 +1216,9 @@ def configure(client):
         website_slug = click.prompt(
             "Please enter the application slug of the local project", type=str
         )
-        configure_project(website_slug=website_slug, path=os.getcwd(), client=client)
+        configure_project(
+            website_slug=website_slug, path=os.getcwd(), client=client
+        )
 
 
 def start_project():
@@ -1148,7 +1232,9 @@ def start_project():
         )
         return
     try:
-        check_output(docker_compose("up", "-d"), catch=False, stderr=subprocess.STDOUT)
+        check_output(
+            docker_compose("up", "-d"), catch=False, stderr=subprocess.STDOUT
+        )
     except subprocess.CalledProcessError as exc:
         output = exc.output.decode()
         if "port is already allocated" in output:

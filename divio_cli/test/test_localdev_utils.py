@@ -1,9 +1,8 @@
+import click
 import pytest
 
-import click
-
-from divio_cli.localdev import utils
 from divio_cli import settings
+from divio_cli.localdev import utils
 
 
 def test_get_project_home(tmp_path):

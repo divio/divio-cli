@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
+import errno
 import os
 import subprocess
 import sys
 from collections import OrderedDict
-import errno
 
 import click
 
@@ -26,7 +26,9 @@ class Check(object):
             utils.check_call(self.command, catch=False, silent=True)
         except OSError as exc:
             if exc.errno == errno.ENOENT:
-                errors.append("executable {} not found".format(self.command[0]))
+                errors.append(
+                    "executable {} not found".format(self.command[0])
+                )
             else:
                 msg = "Command '{}' returned non-zero exit status {}".format(
                     self.fmt_command(), exc.errno
@@ -81,7 +83,9 @@ class DockerComposeCheck(Check):
 
 
 def get_engine_down_error():
-    return "Couldn't connect to Docker daemon. Please start the docker service."
+    return (
+        "Couldn't connect to Docker daemon. Please start the docker service."
+    )
 
 
 class DockerEngineBaseCheck(Check):

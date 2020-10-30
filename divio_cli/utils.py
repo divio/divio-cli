@@ -10,11 +10,10 @@ from contextlib import contextmanager
 from distutils.version import StrictVersion
 from math import log
 
-from six import PY2
-from six.moves.urllib_parse import urljoin
-
 import click
 import requests
+from six import PY2
+from six.moves.urllib_parse import urljoin
 from tabulate import tabulate
 
 from . import __version__
@@ -172,13 +171,16 @@ def open_project_cloud_site(client, project_id, stage):
         url = project_data["{}_status".format(stage)]["site_url"]
     except KeyError:
         click.secho(
-            "Environment with the name '{}' does not exist.".format(stage), fg="red"
+            "Environment with the name '{}' does not exist.".format(stage),
+            fg="red",
         )
         sys.exit(1)
     if url:
         click.launch(url)
     else:
-        click.secho("No {} environment deployed yet.".format(stage), fg="yellow")
+        click.secho(
+            "No {} environment deployed yet.".format(stage), fg="yellow"
+        )
 
 
 def get_cp_url(client, project_id, section="dashboard"):
@@ -199,7 +201,9 @@ def is_linux():
     return sys.platform.startswith("linux")
 
 
-unit_list = list(zip(["bytes", "kB", "MB", "GB", "TB", "PB"], [0, 0, 1, 2, 2, 2]))
+unit_list = list(
+    zip(["bytes", "kB", "MB", "GB", "TB", "PB"], [0, 0, 1, 2, 2, 2])
+)
 
 
 def pretty_size(num):
@@ -257,7 +261,14 @@ def get_git_commit():
         try:
             return (
                 subprocess.check_output(
-                    ["git", "--git-dir", git_dir, "rev-parse", "--short", "HEAD"],
+                    [
+                        "git",
+                        "--git-dir",
+                        git_dir,
+                        "rev-parse",
+                        "--short",
+                        "HEAD",
+                    ],
                     env=get_subprocess_env(),
                 )
                 .strip()
@@ -271,7 +282,8 @@ def get_git_checked_branch():
     try:
         return (
             subprocess.check_output(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"], env=get_subprocess_env()
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                env=get_subprocess_env(),
             )
             .strip()
             .decode("utf-8")
@@ -288,14 +300,18 @@ def get_user_agent():
         client = "divio-cli/{}".format(__version__)
 
     os_identifier = "{}/{}".format(platform.system(), platform.release())
-    python = "{}/{}".format(platform.python_implementation(), platform.python_version())
+    python = "{}/{}".format(
+        platform.python_implementation(), platform.python_version()
+    )
     return "{} ({}; {})".format(client, os_identifier, python)
 
 
 def download_file(url, directory=None, filename=None):
     response = requests.get(url, stream=True)
 
-    dump_path = os.path.join(directory or create_temp_dir(), filename or "data.tar.gz")
+    dump_path = os.path.join(
+        directory or create_temp_dir(), filename or "data.tar.gz"
+    )
 
     with open(dump_path, "wb") as f:
         for chunk in response.iter_content(chunk_size=1024):

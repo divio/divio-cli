@@ -1,15 +1,16 @@
+import functools
 import json
 import os
+import subprocess
 import sys
 from time import time
-import functools
 
 import click
 import yaml
 
 from .. import config, exceptions, settings
 from ..utils import check_call, check_output, is_windows
-import subprocess
+
 
 DOT_ALDRYN_FILE_NOT_FOUND = (
     "Divio Cloud configuration file '{}' or '{}' could not be found!\n"
@@ -25,7 +26,9 @@ DOT_ALDRYN_FILE_NOT_FOUND = (
 def get_project_settings(path=None, silent=False):
     project_home = get_project_home(path, silent=silent)
     try:
-        if os.path.exists(os.path.join(project_home, settings.ALDRYN_DOT_FILE)):
+        if os.path.exists(
+            os.path.join(project_home, settings.ALDRYN_DOT_FILE)
+        ):
             path = os.path.join(project_home, settings.ALDRYN_DOT_FILE)
         else:
             path = os.path.join(project_home, settings.DIVIO_DOT_FILE)
@@ -81,7 +84,9 @@ def get_docker_compose_cmd(path):
     docker_compose_filename = os.path.join(path, docker_compose_filename)
 
     if not os.path.isfile(docker_compose_filename):
-        raise RuntimeError("Warning: Could not find a 'docker-compose.yml' file.")
+        raise RuntimeError(
+            "Warning: Could not find a 'docker-compose.yml' file."
+        )
 
     docker_compose_base = ["docker-compose", "-f", docker_compose_filename]
 
@@ -122,7 +127,9 @@ def ensure_windows_docker_compose_file_exists(path):
     unix_path = os.path.join(path, UNIX_DOCKER_COMPOSE_FILENAME)
     if not os.path.isfile(unix_path):
         # TODO: use correct exit from click
-        click.secho("docker-compose.yml not found at {}".format(unix_path), fg="red")
+        click.secho(
+            "docker-compose.yml not found at {}".format(unix_path), fg="red"
+        )
         sys.exit(1)
 
     with open(unix_path, "r") as fh:
@@ -174,11 +181,17 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
             stderr=open(os.devnull, "w"),
         ).rstrip(os.linesep)
         if not output and raise_on_missing:
-            raise exceptions.DivioException("Unable to find database container")
+            raise exceptions.DivioException(
+                "Unable to find database container"
+            )
     except subprocess.CalledProcessError:
-        output = check_output(docker_compose("ps", "-q", "db")).rstrip(os.linesep)
+        output = check_output(docker_compose("ps", "-q", "db")).rstrip(
+            os.linesep
+        )
         if not output and raise_on_missing:
-            raise exceptions.DivioException("Unable to find database container")
+            raise exceptions.DivioException(
+                "Unable to find database container"
+            )
     return output
 
 
@@ -187,8 +200,13 @@ def start_database_server(docker_compose, prefix):
     click.secho(" ---> Starting local database server")
     click.secho("      ", nl=False)
     docker_compose_config = DockerComposeConfig(docker_compose)
-    if "database_{}".format(prefix).lower() in docker_compose_config.get_services():
-        check_call(docker_compose("up", "-d", "database_{}".format(prefix).lower()))
+    if (
+        "database_{}".format(prefix).lower()
+        in docker_compose_config.get_services()
+    ):
+        check_call(
+            docker_compose("up", "-d", "database_{}".format(prefix).lower())
+        )
     else:
         check_call(docker_compose("up", "-d", "db"))
     click.secho("      [{}s]".format(int(time() - start_db)))
@@ -288,7 +306,9 @@ def get_db_type(prefix, path=None):
     can properly fall back to PostgreSQL in case of old structures.
     """
     try:
-        db_type = get_service_type("database_{}".format(prefix.lower()), path=path)
+        db_type = get_service_type(
+            "database_{}".format(prefix.lower()), path=path
+        )
     except RuntimeError:
         # legacy section. we try to look for the db, if it does not exist, fail
         try:

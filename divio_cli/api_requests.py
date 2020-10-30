@@ -1,9 +1,8 @@
 import os
 
-from six.moves.urllib_parse import urljoin, urlparse
-
 import click
 import requests
+from six.moves.urllib_parse import urljoin, urlparse
 
 from . import messages
 from .utils import create_temp_dir, get_user_agent
@@ -39,13 +38,18 @@ class SingleHostSession(requests.Session):
         if v3_compatibilty:
             # V3 compatibility hack
             url = url.replace("control", "api", 1)
-        return super(SingleHostSession, self).request(method, url, *args, **kwargs)
+        return super(SingleHostSession, self).request(
+            method, url, *args, **kwargs
+        )
 
 
 class APIRequestError(click.ClickException):
     def show(self, file=None):
         click.secho(
-            "\nError: {}".format(self.format_message()), file=file, err=True, fg="red"
+            "\nError: {}".format(self.format_message()),
+            file=file,
+            err=True,
+            fg="red",
         )
 
 
@@ -64,7 +68,14 @@ class APIRequest(object):
     headers = {}
 
     def __init__(
-        self, session, url=None, url_kwargs=None, data=None, files=None, *args, **kwargs
+        self,
+        session,
+        url=None,
+        url_kwargs=None,
+        data=None,
+        files=None,
+        *args,
+        **kwargs
     ):
         self.session = session
         if url:
@@ -116,7 +127,10 @@ class APIRequest(object):
                 *args,
                 **kwargs
             )
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+        ) as e:
             raise click.ClickException(messages.NETWORK_ERROR_MESSAGE + str(e))
 
         return self.verify(response)
@@ -379,7 +393,9 @@ class RepositoryRequest(JsonResponse, APIRequest):
 
 class APIV3Request(APIRequest):
     def request(self, *args, **kwargs):
-        return super(APIV3Request, self).request(v3_compatibilty=True, *args, **kwargs)
+        return super(APIV3Request, self).request(
+            v3_compatibilty=True, *args, **kwargs
+        )
 
 
 class LogRequest(JsonResponse, APIV3Request):

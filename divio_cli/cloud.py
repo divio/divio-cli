@@ -1,20 +1,19 @@
+import json
 import os
 import re
-from netrc import netrc
 import sys
+from netrc import netrc
 from time import sleep
-import datetime
-from tzlocal import get_localzone
-from dateutil.parser import isoparse
-
-from six.moves.urllib_parse import urlparse
 
 import click
+from dateutil.parser import isoparse
+from six.moves.urllib_parse import urlparse
+from tzlocal import get_localzone
 
 from . import api_requests, messages, settings
 from .config import Config
 from .utils import json_dumps_unicode
-import json
+
 
 ENDPOINT = "https://control.{host}"
 DEFAULT_HOST = "divio.com"
@@ -55,7 +54,8 @@ class CloudClient(object):
 
     def get_access_token_url(self):
         return "{}/{}".format(
-            self.endpoint.rstrip("/"), settings.ACCESS_TOKEN_URL_PATH.lstrip("/")
+            self.endpoint.rstrip("/"),
+            settings.ACCESS_TOKEN_URL_PATH.lstrip("/"),
         )
 
     def init_session(self):
@@ -70,7 +70,9 @@ class CloudClient(object):
         self.session.headers["Authorization"] = "Token {}".format(token)
 
     def login(self, token):
-        request = api_requests.LoginRequest(self.session, data={"token": token})
+        request = api_requests.LoginRequest(
+            self.session, data={"token": token}
+        )
         user_data = request()
 
         self.authenticate(token)
@@ -112,18 +114,15 @@ class CloudClient(object):
             status = project_data["{}_status".format(stage)]
         except KeyError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(stage), fg="red"
+                "Environment with the name '{}' does not exist.".format(stage),
+                fg="red",
             )
             sys.exit(1)
         if status["deployed_before"]:
             try:
                 response = api_requests.EnvironmentRequest(
                     self.session,
-                    url_kwargs={
-                        "environment_uuid": status[
-                            "uuid"
-                        ]
-                    },
+                    url_kwargs={"environment_uuid": status["uuid"]},
                 )()
                 ssh_command = [
                     "ssh",
@@ -139,7 +138,8 @@ class CloudClient(object):
 
             except (KeyError, json.decoder.JSONDecodeError):
                 click.secho(
-                    "Error establishing ssh connection.".format(stage), fg="red"
+                    "Error establishing ssh connection.".format(stage),
+                    fg="red",
                 )
                 sys.exit(1)
 
@@ -160,8 +160,14 @@ class CloudClient(object):
                     dt = dt.astimezone(get_localzone())
                 click.secho(
                     "{} - {} - {}".format(
-                        #click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), click.unstyle(entry["message"]).replace("\r", "")
-                        click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), entry["message"].replace("\r", "").replace("\x1b[6n", "").replace("\x1b[J", "").replace("\x1b[H", "")
+                        # click.style(str(dt), fg="yellow"), click.style(entry["service"], fg="yellow"), click.unstyle(entry["message"]).replace("\r", "")
+                        click.style(str(dt), fg="yellow"),
+                        click.style(entry["service"], fg="yellow"),
+                        entry["message"]
+                        .replace("\r", "")
+                        .replace("\x1b[6n", "")
+                        .replace("\x1b[J", "")
+                        .replace("\x1b[H", ""),
                     )
                 )
 
@@ -170,7 +176,8 @@ class CloudClient(object):
             status = project_data["{}_status".format(stage)]
         except KeyError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(stage), fg="red"
+                "Environment with the name '{}' does not exist.".format(stage),
+                fg="red",
             )
             sys.exit(1)
         if status["deployed_before"]:
@@ -178,11 +185,7 @@ class CloudClient(object):
                 # Make the initial log request
                 response = api_requests.LogRequest(
                     self.session,
-                    url_kwargs={
-                        "environment_uuid": status[
-                            "uuid"
-                        ]
-                    },
+                    url_kwargs={"environment_uuid": status["uuid"]},
                 )()
 
                 print_log_data(response["results"])
@@ -202,13 +205,19 @@ class CloudClient(object):
                     except (KeyboardInterrupt, SystemExit):
                         click.secho("Exiting...")
                         sys.exit(1)
-            except (KeyError, json.decoder.JSONDecodeError, api_requests.APIRequestError):
+            except (
+                KeyError,
+                json.decoder.JSONDecodeError,
+                api_requests.APIRequestError,
+            ):
                 click.secho("Error retrieving logs.".format(stage), fg="red")
                 sys.exit(1)
 
         else:
             click.secho(
-                "Logs not available: environment '{}' not deployed yet.".format(stage),
+                "Logs not available: environment '{}' not deployed yet.".format(
+                    stage
+                ),
                 fg="yellow",
             )
             sys.exit(1)
@@ -217,12 +226,13 @@ class CloudClient(object):
         project_data = self.get_project(website_id)
         # If we have tried to deploy before, there will be a log
         try:
-            status = project_data["{}_status".format(stage)]["last_deployment"][
-                "status"
-            ]
+            status = project_data["{}_status".format(stage)][
+                "last_deployment"
+            ]["status"]
         except KeyError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(stage), fg="red"
+                "Environment with the name '{}' does not exist.".format(stage),
+                fg="red",
             )
             sys.exit(1)
         if status:
@@ -232,7 +242,9 @@ class CloudClient(object):
             click.echo_via_pager(output)
         else:
             click.secho(
-                "No {} environment deployed yet, no log available.".format(stage),
+                "No {} environment deployed yet, no log available.".format(
+                    stage
+                ),
                 fg="yellow",
             )
 
@@ -270,7 +282,10 @@ class CloudClient(object):
                 while response["is_deploying"]:
                     response = self.deploy_project_progress(website_id, stage)
                     bar.current_item = progress = response["deploy_progress"]
-                    if "main_percent" in progress and "extra_percent" in progress:
+                    if (
+                        "main_percent" in progress
+                        and "extra_percent" in progress
+                    ):
                         # update the difference of the current percentage
                         # to the new percentage
                         progress_percent = (
@@ -304,7 +319,8 @@ class CloudClient(object):
             return data[stage]
         except KeyError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(stage), fg="red"
+                "Environment with the name '{}' does not exist.".format(stage),
+                fg="red",
             )
             sys.exit(1)
 
@@ -403,12 +419,16 @@ class CloudClient(object):
 
     def download_media_request(self, website_id, stage):
         request = api_requests.DownloadMediaRequestRequest(
-            self.session, url_kwargs={"website_id": website_id}, data={"stage": stage}
+            self.session,
+            url_kwargs={"website_id": website_id},
+            data={"stage": stage},
         )
         return request()
 
     def download_media_progress(self, url):
-        request = api_requests.DownloadMediaProgressRequest(self.session, url=url)
+        request = api_requests.DownloadMediaProgressRequest(
+            self.session, url=url
+        )
         return request()
 
     def upload_db(self, website_id, stage, archive_path, prefix):
@@ -434,7 +454,9 @@ class CloudClient(object):
         return request()
 
     def upload_media_progress(self, url):
-        request = api_requests.UploadMediaFilesProgressRequest(self.session, url=url)
+        request = api_requests.UploadMediaFilesProgressRequest(
+            self.session, url=url
+        )
         return request()
 
     def get_environment_variables(self, website_id, stage, custom_only=True):
@@ -448,7 +470,9 @@ class CloudClient(object):
         )
         return request()
 
-    def set_custom_environment_variables(self, website_id, stage, set_vars, unset_vars):
+    def set_custom_environment_variables(
+        self, website_id, stage, set_vars, unset_vars
+    ):
         current_vars = self.get_environment_variables(
             website_id, stage, custom_only=True
         )
@@ -477,7 +501,9 @@ class CloudClient(object):
             # happens when there is no remote repository configured
             return None
 
-        raise click.ClickException("Could not get remote repository information.")
+        raise click.ClickException(
+            "Could not get remote repository information."
+        )
 
 
 class WritableNetRC(netrc):
