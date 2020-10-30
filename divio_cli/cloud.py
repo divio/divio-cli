@@ -115,7 +115,7 @@ class CloudClient(object):
                 "Environment with the name '{}' does not exist.".format(stage), fg="red"
             )
             sys.exit(1)
-        if status:
+        if status["deployed_before"]:
             try:
                 response = api_requests.EnvironmentRequest(
                     self.session,
@@ -127,12 +127,12 @@ class CloudClient(object):
                 )()
                 ssh_command = [
                     "ssh",
+                    "-p",
+                    str(response["ssh_endpoint"]["port"]),
                     "{}@{}".format(
                         response["ssh_endpoint"]["user"],
                         response["ssh_endpoint"]["host"],
                     ),
-                    "-p",
-                    str(response["ssh_endpoint"]["port"]),
                 ]
                 click.secho(" ".join(ssh_command), fg="green")
                 os.execvp("ssh", ssh_command)
@@ -171,7 +171,7 @@ class CloudClient(object):
                 "Environment with the name '{}' does not exist.".format(stage), fg="red"
             )
             sys.exit(1)
-        if status:
+        if status["deployed_before"]:
             try:
                 # Make the initial log request
                 response = api_requests.LogRequest(
