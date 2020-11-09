@@ -50,6 +50,7 @@ def get_git_clone_url(slug, website_id, client):
     # if we could get a remote_dsn, us it! Otherwise, its probably a default git setup
     if remote_dsn:
         return remote_dsn
+    # TODO: mirrors should fail here
     return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
 
 
@@ -93,6 +94,18 @@ def configure_project(website_slug, path, client):
     # Write the file
     with open(path, "w+") as fh:
         json.dump(website_data, fh, indent=4)
+
+    click.secho(
+        "Configuration file: {}".format(click.style(path, fg="bright_green"))
+    )
+    click.secho(
+        "Git remote:         {}".format(
+            click.style(
+                get_git_clone_url(website_slug, website_id, client),
+                fg="bright_green",
+            )
+        )
+    )
 
 
 def setup_website_containers(
