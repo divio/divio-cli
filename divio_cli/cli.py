@@ -38,7 +38,7 @@ except ImportError:
     "--debug/--no-debug",
     default=False,
     help=(
-        "Drop into the debugger if the command execution raises "
+        "Drop into the debugger if command execution raises "
         "an exception."
     ),
 )
@@ -90,7 +90,7 @@ def login_token_helper(ctx, value):
         url = ctx.obj.client.get_access_token_url()
         click.secho("Your browser has been opened to visit: {}".format(url))
         click.launch(url)
-        value = click.prompt("Please copy the access token and paste it here")
+        value = click.prompt("Please copy the access token and paste it here.")
     return value
 
 
@@ -100,11 +100,11 @@ def login_token_helper(ctx, value):
     "--check",
     is_flag=True,
     default=False,
-    help="Check for current login status",
+    help="Check for current login status.",
 )
 @click.pass_context
 def login(ctx, token, check):
-    """Authorize your machine with the Divio Cloud"""
+    """Authorise your machine with the Divio Control Panel."""
     success = True
     if check:
         success, msg = ctx.obj.client.check_login_status()
@@ -118,7 +118,7 @@ def login(ctx, token, check):
 
 @cli.group(cls=ClickAliasedGroup)
 def project():
-    """Manage your projects"""
+    """Manage your projects."""
 
 
 @project.command(name="list")
@@ -127,12 +127,12 @@ def project():
     "--grouped",
     is_flag=True,
     default=False,
-    help="Group by organisation",
+    help="Group by organisation.",
 )
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
 def project_list(obj, grouped, as_json):
-    """List all your projects"""
+    """List all your projects."""
     api_response = obj.client.get_projects()
 
     if as_json:
@@ -204,7 +204,7 @@ def project_list(obj, grouped, as_json):
 @allow_remote_id_override
 @click.pass_obj
 def project_deploy(obj, remote_id, stage):
-    """Deploy project"""
+    """Deploy project."""
     obj.client.deploy_project_or_get_progress(remote_id, stage)
 
 
@@ -213,22 +213,22 @@ def project_deploy(obj, remote_id, stage):
 @allow_remote_id_override
 @click.pass_obj
 def project_deploy_log(obj, remote_id, stage):
-    """View last deployment log"""
+    """View last deployment log."""
     obj.client.show_deploy_log(remote_id, stage)
 
 
 @project.command(name="logs")
 @click.argument("stage", default="test")
 @click.option(
-    "--tail", "tail", default=False, is_flag=True, help="tail the output"
+    "--tail", "tail", default=False, is_flag=True, help="Tail the output."
 )
 @click.option(
-    "--utc", "utc", default=False, is_flag=True, help="show times in UTC"
+    "--utc", "utc", default=False, is_flag=True, help="Show times in UTC/"
 )
 @allow_remote_id_override
 @click.pass_obj
 def project_logs(obj, remote_id, stage, tail, utc):
-    """View logs"""
+    """View logs."""
     obj.client.show_log(remote_id, stage, tail, utc)
 
 
@@ -237,14 +237,14 @@ def project_logs(obj, remote_id, stage, tail, utc):
 @allow_remote_id_override
 @click.pass_obj
 def project_ssh(obj, remote_id, stage):
-    """Establish ssh connection"""
+    """Establish SSH connection."""
     obj.client.ssh(remote_id, stage)
 
 
 @project.command(name="configure")
 @click.pass_obj
 def configure(obj):
-    """Configures an existing local project"""
+    """Associate a local project directory with a Divio cloud project."""
     localdev.configure(client=obj.client)
 
 
@@ -252,19 +252,19 @@ def configure(obj):
 @allow_remote_id_override
 @click.pass_obj
 def project_dashboard(obj, remote_id):
-    """Open project dashboard"""
+    """Open the project dashboard on the Divio Control Panel."""
     click.launch(get_cp_url(client=obj.client, project_id=remote_id))
 
 
 @project.command(name="up", aliases=["start"])
 def project_up():
-    """Start local project"""
+    """Start the local project (equivalent to: docker-compose up)."""
     localdev.start_project()
 
 
 @project.command(name="stop", aliases=["down"])
 def project_stop():
-    """Stop local project"""
+    """Stop the local project."""
     localdev.stop_project()
 
 
@@ -273,7 +273,7 @@ def project_stop():
 @allow_remote_id_override
 @click.pass_obj
 def project_open(obj, remote_id, stage):
-    """Open local or cloud projects in a browser"""
+    """Open local or cloud projects in a browser."""
     if stage:
         open_project_cloud_site(obj.client, project_id=remote_id, stage=stage)
     else:
@@ -286,11 +286,17 @@ def project_open(obj, remote_id, stage):
     "strict",
     default=False,
     is_flag=True,
-    help="A strict update will fail on a warning",
+    help="A strict update will fail on a warning.",
 )
 @click.pass_obj
 def project_update(obj, strict):
-    """Update project with latest changes from the Cloud"""
+    """Update the local project with new code changes from the remote Git repository, then build it. Runs:
+
+    git pull
+    docker-compose pull
+    docker-compose build
+    docker-compose run web start migrate"""
+
     localdev.update_local_project(
         get_git_checked_branch(), client=obj.client, strict=strict
     )
@@ -302,13 +308,13 @@ def project_update(obj, strict):
     "--stage",
     default="test",
     type=six.text_type,
-    help="get data from environment",
+    help="Manage the cloud project's envrinment variables.",
 )
 @click.option(
     "--all/--custom",
     "show_all_vars",
     default=False,
-    help="use --all to show all env vars, not just the custom ones",
+    help="--all shows automatically applied environment variables as well as user-specified variables.",
 )
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.option(
@@ -317,7 +323,7 @@ def project_update(obj, strict):
     default=None,
     type=six.text_type,
     multiple=True,
-    help="get a specific environment variable",
+    help="Get a specific environment variable.",
 )
 @click.option(
     "--set",
@@ -325,7 +331,8 @@ def project_update(obj, strict):
     default=None,
     type=click.Tuple([six.text_type, six.text_type]),
     multiple=True,
-    help="set a specific custom environment variable",
+    help="Set a specific custom environment variable\n\n"
+        "example: divio project env-vars set DEBUG False",
 )
 @click.option(
     "--unset",
@@ -333,7 +340,7 @@ def project_update(obj, strict):
     default=None,
     type=six.text_type,
     multiple=True,
-    help="unset an environment variable",
+    help="Remove an environment variable.",
 )
 @allow_remote_id_override
 @click.pass_obj
@@ -379,37 +386,37 @@ def environment_variables(
 
 @project.command(name="status")
 def project_status():
-    """Show local project status"""
+    """Show local project status."""
     localdev.show_project_status()
 
 
 @project.command(name="setup")
 @click.argument("slug")
 @click.option(
-    "-s", "--stage", default="test", help="pull data from environment"
+    "-s", "--stage", default="test", help="Specify environment from which media and content data will be pulled."
 )
 @click.option(
     "-p",
     "--path",
     default=".",
-    help="install project to path",
+    help="Install project in path.",
     type=click.Path(writable=True, readable=True),
 )
 @click.option(
     "--overwrite",
     is_flag=True,
     default=False,
-    help="Overwrite the project directory if it already exists",
+    help="Overwrite the project directory if it already exists.",
 )
 @click.option(
     "--skip-doctor",
     is_flag=True,
     default=False,
-    help="Skip system test before setting up the project",
+    help="Skip system test before setting up the project.",
 )
 @click.pass_obj
 def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
-    """Set up a development environment for a Divio Cloud project"""
+    """Set up a development environment for a Divio project."""
     if not skip_doctor and not check_requirements_human(
         config=obj.client.config, silent=True
     ):
@@ -425,7 +432,7 @@ def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
 
 @project.group(name="pull")
 def project_pull():
-    """Pull db or files from the Divio Cloud"""
+    """Pull db or files from the Divio cloud environment."""
 
 
 @project_pull.command(name="db")
@@ -435,7 +442,7 @@ def project_pull():
 @click.pass_obj
 def pull_db(obj, remote_id, stage, prefix):
     """
-    Pull database from your deployed website.
+    Pull database the Divio cloud environment.
     """
     from .localdev import utils
 
@@ -456,14 +463,14 @@ def pull_db(obj, remote_id, stage, prefix):
 @click.pass_obj
 def pull_media(obj, remote_id, stage):
     """
-    Pull media files from your deployed website.
+    Pull media files from the Divio cloud environment.
     """
     localdev.pull_media(obj.client, stage=stage, remote_id=remote_id)
 
 
 @project.group(name="push")
 def project_push():
-    """Push db or media files to the Divio Cloud"""
+    """Push db or media files to the Divio cloud environment."""
 
 
 @project_push.command(name="db")
@@ -473,17 +480,17 @@ def project_push():
     "--dumpfile",
     default=None,
     type=click.Path(exists=True),
-    help="database dump file to upload directly",
+    help="Specify a dumped database file to upload.",
 )
 @click.option(
-    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
+    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation."
 )
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
 @click.pass_obj
 def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
     """
-    Push database to your deployed website.
+    Push database to the Divio cloud environment..
     """
     from .localdev import utils
 
@@ -518,14 +525,14 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 @project_push.command(name="media")
 @click.argument("stage", default="test")
 @click.option(
-    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
+    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation."
 )
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
 @click.pass_obj
 def push_media(obj, remote_id, prefix, stage, noinput):
     """
-    Push database to your deployed website.
+    Push database to the Divio cloud environment..
     """
 
     if not noinput:
@@ -539,7 +546,7 @@ def push_media(obj, remote_id, prefix, stage, noinput):
 
 @project.group(name="import")
 def project_import():
-    """Import local database dump"""
+    """Import local database dump."""
 
 
 @project_import.command(name="db")
@@ -552,7 +559,7 @@ def project_import():
 @click.pass_obj
 def import_db(obj, dump_path, prefix):
     """
-    Load a database dump into your local database
+    Load a database dump into your local database.
     """
     from .localdev import utils
 
@@ -568,7 +575,7 @@ def import_db(obj, dump_path, prefix):
 
 @project.group(name="export")
 def project_export():
-    """Export local database dump"""
+    """Export local database dump."""
 
 
 @project_export.command(name="db")
@@ -586,7 +593,7 @@ def export_db(prefix):
     "--no-rebuild",
     is_flag=True,
     default=False,
-    help="Do not rebuild docker container automatically",
+    help="Do not rebuild docker container automatically.",
 )
 def project_develop(package, no_rebuild):
     """Add a package 'package' to your local project environment"""
@@ -597,13 +604,13 @@ def project_develop(package, no_rebuild):
 @click.option("-p", "--path", default=".", help="Addon directory")
 @click.pass_obj
 def addon(obj, path):
-    """Validate and upload addon packages to the Divio Cloud"""
+    """Validate and upload addon packages to the Divio cloud environment."""
 
 
 @addon.command(name="validate")
 @click.pass_context
 def addon_validate(ctx):
-    """Validate addon configuration"""
+    """Validate addon configuration."""
     try:
         validate_addon(ctx.parent.params["path"])
     except exceptions.DivioException as exc:
@@ -614,7 +621,7 @@ def addon_validate(ctx):
 @addon.command(name="upload")
 @click.pass_context
 def addon_upload(ctx):
-    """Upload addon to the Divio Cloud"""
+    """Upload addon to the Divio Control Panel."""
     try:
         ret = upload_addon(ctx.obj.client, ctx.parent.params["path"])
     except exceptions.DivioException as exc:
@@ -626,12 +633,12 @@ def addon_upload(ctx):
 @click.argument("verbose_name")
 @click.argument("package_name")
 @click.option(
-    "-o", "--organisation", help="Register for an organisation", type=int
+    "-o", "--organisation", help="Register an addon for an organisation.", type=int
 )
 @click.pass_context
 def addon_register(ctx, package_name, verbose_name, organisation):
-    """Register your addon on the Divio Cloud\n
-    - Verbose Name:        Name of the Addon as it appears in the Marketplace.
+    """Register your addon on the Divio Control Panel\n
+    - Verbose Name:        Name of the Addon as it appears in the Marketplace
     - Package Name:        System wide unique Python package name
     """
     ret = ctx.obj.client.register_addon(
@@ -644,27 +651,27 @@ def addon_register(ctx, package_name, verbose_name, organisation):
 @click.option("-p", "--path", default=".", help="Boilerplate directory")
 @click.pass_obj
 def boilerplate(obj, path):
-    """Validate and upload boilerplate packages to the Divio Cloud"""
+    """Validate and upload boilerplate packages to the Divio Control Panel."""
 
 
 @boilerplate.command(name="validate")
 @click.pass_context
 def boilerplate_validate(ctx):
-    """Validate boilerplate configuration"""
+    """Validate boilerplate configuration."""
     try:
         validate_boilerplate(ctx.parent.params["path"])
     except exceptions.DivioException as exc:
         raise click.ClickException(*exc.args)
-    click.echo("Boilerplate is valid!")
+    click.echo("Boilerplate is valid.")
 
 
 @boilerplate.command(name="upload")
 @click.option(
-    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation"
+    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation."
 )
 @click.pass_context
 def boilerplate_upload(ctx, noinput):
-    """Upload boilerplate to the Divio Cloud"""
+    """Upload boilerplate to the Divio Control Panel."""
     try:
         ret = upload_boilerplate(
             ctx.obj.client, ctx.parent.params["path"], noinput
@@ -676,7 +683,7 @@ def boilerplate_upload(ctx, noinput):
 
 @cli.group()
 def backup():
-    """Manage backups for projects hosted on Divio Cloud"""
+    """Manage backups for projects hosted on Divio."""
 
 
 @cli.command()
@@ -685,7 +692,7 @@ def backup():
     "--skip-check",
     is_flag=True,
     default=False,
-    help="don't check PyPI for newer version",
+    help="Don't check PyPI for newer version.",
 )
 @click.option("-m", "--machine-readable", is_flag=True, default=False)
 @click.pass_obj
@@ -712,11 +719,8 @@ def version(obj, skip_check, machine_readable):
         if not skip_check:
             if update_info["update_available"]:
                 click.secho(
-                    "New version {version} is available! You can upgrade "
-                    "using one of the following:\n\n"
-                    " - Use the Divio App to automatically update to the newest version\n"
-                    "   https://www.divio.com/app/\n\n"
-                    " - Upgrade from PyPI\n"
+                    "New version {version} is available. Upgrade options:\n\n"
+                    " - Using pip\n"
                     "   pip install --upgrade divio-cli\n\n"
                     " - Download the latest release from GitHub\n"
                     "   https://github.com/divio/divio-cli/releases".format(
@@ -732,7 +736,7 @@ def version(obj, skip_check, machine_readable):
                     fg="red",
                 )
             else:
-                click.echo("You have the latest version of divio-cli!")
+                click.echo("You have the latest version of divio-cli.")
 
 
 @cli.command()
@@ -740,8 +744,11 @@ def version(obj, skip_check, machine_readable):
 @click.option("-c", "--checks", default=None)
 @click.pass_obj
 def doctor(obj, machine_readable, checks):
-    """Check if your system meets the requirements
-    for local development of Divio Cloud projects"""
+    """Check that your system meets the requirements
+    for local development.
+
+    To disable checks selectively in case of false positives, see
+    https://docs.divio.com/en/latest/reference/divio-cli/#using-skip-doctor-checks"""
 
     if checks:
         checks = checks.split(",")
@@ -756,7 +763,7 @@ def doctor(obj, machine_readable, checks):
         exitcode = 1 if any(errors.values()) else 0
         click.echo(json.dumps(errors), nl=False)
     else:
-        click.echo("Verifying your system setup")
+        click.echo("Verifying your system setup...")
         exitcode = (
             0 if check_requirements_human(obj.client.config, checks) else 1
         )
