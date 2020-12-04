@@ -244,7 +244,7 @@ def project_ssh(obj, remote_id, stage):
 @project.command(name="configure")
 @click.pass_obj
 def configure(obj):
-    """Associate a local project directory with a Divio cloud project."""
+    """Associate a local project with a Divio cloud project."""
     localdev.configure(client=obj.client)
 
 
@@ -290,7 +290,9 @@ def project_open(obj, remote_id, stage):
 )
 @click.pass_obj
 def project_update(obj, strict):
-    """Update the local project with new code changes from the remote Git repository, then build it. Runs:
+    """Update the local project with new code changes, then build it.
+
+    Runs:
 
     git pull
     docker-compose pull
@@ -596,7 +598,7 @@ def export_db(prefix):
     help="Do not rebuild docker container automatically.",
 )
 def project_develop(package, no_rebuild):
-    """Add a package 'package' to your local project environment"""
+    """Add a package 'package' to your local project environment."""
     localdev.develop_package(package, no_rebuild)
 
 
@@ -604,7 +606,7 @@ def project_develop(package, no_rebuild):
 @click.option("-p", "--path", default=".", help="Addon directory")
 @click.pass_obj
 def addon(obj, path):
-    """Validate and upload addon packages to the Divio cloud environment."""
+    """Validate and upload addons packages to the Divio cloud."""
 
 
 @addon.command(name="validate")
@@ -651,7 +653,7 @@ def addon_register(ctx, package_name, verbose_name, organisation):
 @click.option("-p", "--path", default=".", help="Boilerplate directory")
 @click.pass_obj
 def boilerplate(obj, path):
-    """Validate and upload boilerplate packages to the Divio Control Panel."""
+    """Validate and upload boilerplate packages to the Divio cloud."""
 
 
 @boilerplate.command(name="validate")
@@ -697,7 +699,7 @@ def backup():
 @click.option("-m", "--machine-readable", is_flag=True, default=False)
 @click.pass_obj
 def version(obj, skip_check, machine_readable):
-    """Show version info"""
+    """Show version info."""
     if skip_check:
         from . import __version__
 
@@ -744,8 +746,7 @@ def version(obj, skip_check, machine_readable):
 @click.option("-c", "--checks", default=None)
 @click.pass_obj
 def doctor(obj, machine_readable, checks):
-    """Check that your system meets the requirements
-    for local development.
+    """Check that your system meets the development requirements.
 
     To disable checks selectively in case of false positives, see
     https://docs.divio.com/en/latest/reference/divio-cli/#using-skip-doctor-checks"""
