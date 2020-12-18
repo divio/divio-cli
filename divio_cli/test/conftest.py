@@ -20,7 +20,7 @@ def divio_project(request):
     We try to setup up the first time and will not set it up again if it
     already exists.
     """
-    test_project_name = request.config.option.test_project_name
+    test_project_name = getattr(request.config.option, "test_project_name", None)
     if test_project_name is None:
         pytest.skip(
             "project name for the test is not supplied. Please use `--test_project_name <name>` to specify one ."

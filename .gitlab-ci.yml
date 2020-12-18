@@ -23,5 +23,6 @@ Unit Tests:
     before_script:
         - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     script:
-        - echo "all ok"
+        - pip install pytest==6.1
+        - pytest
     
