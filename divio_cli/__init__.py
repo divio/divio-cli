@@ -1,9 +1,8 @@
 import click
+from importlib_metadata import version, PackageNotFoundError
 
 
 def get_version():
-    from importlib_metadata import version, PackageNotFoundError
-
     try:
         return version("divio-cli")
     except PackageNotFoundError:

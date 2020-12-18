@@ -10,5 +10,3 @@ tzlocal
 python-dateutil
 pytest
 setuptools_scm
-importlib-metadata
-
