@@ -7,8 +7,8 @@ import sys
 import tarfile
 import tempfile
 from contextlib import contextmanager
-from distutils.version import StrictVersion
 from math import log
+from setuptools_scm import get_version
 
 import click
 
@@ -16,8 +16,8 @@ import requests
 from six import PY2
 from six.moves.urllib_parse import urljoin
 from tabulate import tabulate
+from packaging import version
 
-from . import __version__
 
 
 ALDRYN_DEFAULT_BRANCH_NAME = "develop"
@@ -247,7 +247,7 @@ def get_latest_version_from_pypi():
     try:
         response = requests.get("https://pypi.python.org/pypi/divio-cli/json")
         response.raise_for_status()
-        newest_version = StrictVersion(response.json()["info"]["version"])
+        newest_version = version.parse(response.json()["info"]["version"])
         return newest_version, None
     except requests.RequestException as exc:
         return False, exc
@@ -295,10 +295,11 @@ def get_git_checked_branch():
 
 def get_user_agent():
     revision = get_git_commit()
+    version = get_version()
     if revision:
-        client = "divio-cli/{}-{}".format(__version__, revision)
+        client = "divio-cli/{}-{}".format(version, revision)
     else:
-        client = "divio-cli/{}".format(__version__)
+        client = "divio-cli/{}".format(version)
 
     os_identifier = "{}/{}".format(platform.system(), platform.release())
     python = "{}/{}".format(

@@ -2,9 +2,12 @@ import errno
 import json
 import os
 import time
-from distutils.version import StrictVersion
 
-from . import __version__, settings, utils
+from . import settings, utils
+
+from setuptools_scm import get_version
+from packaging import version
+
 
 
 def get_global_config_path():
@@ -57,7 +60,7 @@ class Config(object):
 
         last_checked = self.config.get(timestamp_key, None)
         now = int(time.time())
-        installed_version = StrictVersion(__version__)
+        installed_version = version.parse(get_version())
         pypi_error = None
 
         if force or not last_checked or last_checked < now - (60 * 60 * 24):
@@ -76,12 +79,12 @@ class Config(object):
         newest_version_s = self.config.get(version_key, None)
         newest_version = None
         if newest_version_s:
-            newest_version = StrictVersion(newest_version_s)
+            newest_version = version.parse(newest_version_s)
             if newest_version <= installed_version:
                 self.config.pop(version_key)
                 self.save()
         return dict(
-            current=str(__version__),
+            current=str(get_version()),
             remote=str(newest_version),
             update_available=(
                 newest_version > installed_version if newest_version else False

@@ -3,7 +3,7 @@ import sys
 
 from setuptools import setup, find_packages
 
-from divio_cli import __version__
+from setuptools_scm import get_version
 
 
 with open('requirements.txt') as f:
@@ -44,7 +44,7 @@ Divio CLI reference: https://docs.divio.com/en/latest/reference/divio-cli
 
 setup(
     name='divio-cli',
-    version=__version__,
+    version=get_version(),
     description='The command-line client for the Divio Cloud',
     long_description=long_description,
     author='Divio AG',
