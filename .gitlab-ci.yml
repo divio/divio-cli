@@ -19,10 +19,9 @@ Check linting:
 
 Unit Tests:
     stage: QA
-    before_script:
-        - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     script:
-        - apk add py-pip
+        - apt-get update -qy
+        - apt-get install -y python-dev python-pip
         - pip install --ignore-installed six -r requirements.txt
         - pytest
 
