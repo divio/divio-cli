@@ -24,11 +24,14 @@ Unit Tests:
     script:
         - apk add py-pip
         - pip install pytest==6.1
+        - pip install -r requirements.txt
         - pytest
 
 Release Tag:
     stage: Release to PyPI
     script:
+        - apk add py-pip
+        - pip install twine
         - python setup.py sdist bdist_wheel
-    only:
-        - tags
+#    only:
+#        - tags
