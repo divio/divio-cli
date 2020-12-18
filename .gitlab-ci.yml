@@ -1,4 +1,3 @@
-image: docker:stable
 
 services:
     - docker:dind
@@ -10,6 +9,7 @@ stages:
 
 
 Check linting:
+  image: docker:stable
   stage: QA
   before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
