@@ -13,10 +13,11 @@ import click
 
 import requests
 from packaging import version
-from divio_cli import get_version
 from six import PY2
 from six.moves.urllib_parse import urljoin
 from tabulate import tabulate
+
+from divio_cli import get_version
 
 
 ALDRYN_DEFAULT_BRANCH_NAME = "develop"
