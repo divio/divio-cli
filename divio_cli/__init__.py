@@ -1,5 +1,6 @@
 import click
-from importlib_metadata import version, PackageNotFoundError
+
+from importlib_metadata import PackageNotFoundError, version
 
 
 def get_version():
