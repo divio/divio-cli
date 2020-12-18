@@ -8,16 +8,15 @@ import tarfile
 import tempfile
 from contextlib import contextmanager
 from math import log
-from setuptools_scm import get_version
 
 import click
 
 import requests
+from packaging import version
+from setuptools_scm import get_version
 from six import PY2
 from six.moves.urllib_parse import urljoin
 from tabulate import tabulate
-from packaging import version
-
 
 
 ALDRYN_DEFAULT_BRANCH_NAME = "develop"

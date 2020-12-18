@@ -3,11 +3,10 @@ import json
 import os
 import time
 
-from . import settings, utils
-
-from setuptools_scm import get_version
 from packaging import version
+from setuptools_scm import get_version
 
+from . import settings, utils
 
 
 def get_global_config_path():
