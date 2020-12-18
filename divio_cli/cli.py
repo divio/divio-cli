@@ -4,6 +4,7 @@ import os
 import sys
 
 import click
+
 import six
 from click_aliases import ClickAliasedGroup
 
@@ -38,8 +39,7 @@ except ImportError:
     "--debug/--no-debug",
     default=False,
     help=(
-        "Drop into the debugger if command execution raises "
-        "an exception."
+        "Drop into the debugger if command execution raises " "an exception."
     ),
 )
 @click.pass_context
@@ -334,7 +334,7 @@ def project_update(obj, strict):
     type=click.Tuple([six.text_type, six.text_type]),
     multiple=True,
     help="Set a specific custom environment variable\n\n"
-        "example: divio project env-vars set DEBUG False",
+    "example: divio project env-vars set DEBUG False",
 )
 @click.option(
     "--unset",
@@ -395,7 +395,10 @@ def project_status():
 @project.command(name="setup")
 @click.argument("slug")
 @click.option(
-    "-s", "--stage", default="test", help="Specify environment from which media and content data will be pulled."
+    "-s",
+    "--stage",
+    default="test",
+    help="Specify environment from which media and content data will be pulled.",
 )
 @click.option(
     "-p",
@@ -485,7 +488,10 @@ def project_push():
     help="Specify a dumped database file to upload.",
 )
 @click.option(
-    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation."
+    "--noinput",
+    is_flag=True,
+    default=False,
+    help="Don't ask for confirmation.",
 )
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
@@ -527,7 +533,10 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 @project_push.command(name="media")
 @click.argument("stage", default="test")
 @click.option(
-    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation."
+    "--noinput",
+    is_flag=True,
+    default=False,
+    help="Don't ask for confirmation.",
 )
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
@@ -635,7 +644,10 @@ def addon_upload(ctx):
 @click.argument("verbose_name")
 @click.argument("package_name")
 @click.option(
-    "-o", "--organisation", help="Register an addon for an organisation.", type=int
+    "-o",
+    "--organisation",
+    help="Register an addon for an organisation.",
+    type=int,
 )
 @click.pass_context
 def addon_register(ctx, package_name, verbose_name, organisation):
@@ -669,7 +681,10 @@ def boilerplate_validate(ctx):
 
 @boilerplate.command(name="upload")
 @click.option(
-    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation."
+    "--noinput",
+    is_flag=True,
+    default=False,
+    help="Don't ask for confirmation.",
 )
 @click.pass_context
 def boilerplate_upload(ctx, noinput):

@@ -1,6 +1,7 @@
 import os
 
 import click
+
 import requests
 from six.moves.urllib_parse import urljoin, urlparse
 

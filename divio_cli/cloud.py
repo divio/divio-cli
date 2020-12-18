@@ -6,6 +6,7 @@ from netrc import netrc
 from time import sleep
 
 import click
+
 from dateutil.parser import isoparse
 from six.moves.urllib_parse import urlparse
 from tzlocal import get_localzone

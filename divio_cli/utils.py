@@ -11,6 +11,7 @@ from distutils.version import StrictVersion
 from math import log
 
 import click
+
 import requests
 from six import PY2
 from six.moves.urllib_parse import urljoin

@@ -10,11 +10,11 @@ import tarfile
 from time import sleep, time
 
 import click
+
 import requests
 
 from divio_cli.utils import get_local_git_remotes
 
-from . import utils
 from .. import settings
 from ..cloud import get_divio_host
 from ..utils import (
@@ -26,6 +26,7 @@ from ..utils import (
     is_windows,
     pretty_size,
 )
+from . import utils
 
 
 DEFAULT_GIT_HOST = "git@git.{divio_host}"
