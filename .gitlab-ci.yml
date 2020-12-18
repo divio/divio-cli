@@ -33,6 +33,6 @@ Release Tag:
         - python setup.py develop
         - python setup.py sdist bdist_wheel
         - twine check dist/*
-        - twine upload --repository testpypi -p $PYPI_PASSWORD -u $PYPI_USERNAME dist/*
+        - twine upload --repository testpypi -u $PYPI_USERNAME -p $PYPI_PASSWORD dist/*
     only:
         - tags
