@@ -4,17 +4,28 @@
 #
 #    pip-compile --no-index --output-file requirements.txt requirements.in
 #
-attrs==18.2.0
+attrs==20.3.0
 certifi==2018.11.29       # via requests
 chardet==3.0.4            # via requests
 click-aliases==1.0.1
 click==7.0
 idna==2.7                 # via requests
+importlib-metadata==3.3.0  # via pluggy, pytest
+iniconfig==1.1.1          # via pytest
+packaging==20.8           # via pytest
+pluggy==0.13.1            # via pytest
+py==1.10.0                # via pytest
 pyaml==18.11.0
+pyparsing==2.4.7          # via packaging
+pytest==6.2.1
 python-dateutil==2.8.1
+pytz==2020.4              # via tzlocal
 pyyaml==3.13              # via pyaml
 requests==2.20.1
 six==1.12.0
 tabulate==0.8.3
+toml==0.10.2              # via pytest
+typing-extensions==3.7.4.3  # via importlib-metadata
 tzlocal==2.1
 urllib3==1.24.1           # via requests
+zipp==3.4.0               # via importlib-metadata
