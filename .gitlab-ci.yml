@@ -26,6 +26,7 @@ Release Tag:
     stage: Release to PyPI
     image: divio/base:1.1-py3.6-alpine3.12
     script:
+        - apk add python-dev 
         - pip install twine
         - python setup.py sdist bdist_wheel
 #    only:
