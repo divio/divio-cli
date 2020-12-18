@@ -4,7 +4,7 @@ import os
 import time
 
 from packaging import version
-from setuptools_scm import get_version
+from divio_cli import get_version
 
 from . import settings, utils
 

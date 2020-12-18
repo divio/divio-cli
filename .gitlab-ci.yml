@@ -2,8 +2,6 @@ stages:
     - QA
     - Release to PyPI
 
-
-
 Check linting:
   image: docker:stable
   services:
@@ -30,6 +28,10 @@ Release Tag:
         - apk add python3-dev build-base libffi-dev openssl-dev git
         - pip install twine
         - pip install -r requirements.txt
+        # Install the package in develop mode so setuptools_scm can retrieve 
+        # the new version.
+        - python setup.py develop
         - python setup.py sdist bdist_wheel
+        #- twine upload -p $PYPI_PASSWORD, -u $PYPI_USERNAME dist/*
 #    only:
 #        - tags

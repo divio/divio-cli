@@ -66,4 +66,6 @@ setup(
     divio = divio_cli.cli:cli
     aldryn = divio_cli.cli:cli
     """,
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],
 )

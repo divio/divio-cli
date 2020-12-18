@@ -10,7 +10,7 @@ chardet==3.0.4            # via requests
 click-aliases==1.0.1
 click==7.0
 idna==2.7                 # via requests
-importlib-metadata==3.3.0  # via pluggy, pytest
+importlib-metadata==3.3.0
 iniconfig==1.1.1          # via pytest
 packaging==20.8           # via pytest
 pluggy==0.13.1            # via pytest
