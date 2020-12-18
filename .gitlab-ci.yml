@@ -1,0 +1,34 @@
+# Configure the scanning tool through the environment variables.
+# List of the variables: https://gitlab.com/gitlab-org/security-products/analyzers/license-finder#settings
+# How to set: https://docs.gitlab.com/ee/ci/yaml/#variables
+
+variables:
+    # Setting this variable will affect all Security templates
+    # (SAST, Dependency Scanning, ...)
+    SECURE_ANALYZERS_PREFIX: "registry.gitlab.com/gitlab-org/security-products/analyzers"
+  
+    LICENSE_MANAGEMENT_SETUP_CMD: ''  # If needed, specify a command to setup your environment with a custom package manager.
+    LICENSE_MANAGEMENT_VERSION: 3
+  
+  license_scanning:
+    stage: test
+    image:
+      name: "$SECURE_ANALYZERS_PREFIX/license-finder:$LICENSE_MANAGEMENT_VERSION"
+      entrypoint: [""]
+    variables:
+      LM_REPORT_VERSION: '2.1'
+      SETUP_CMD: $LICENSE_MANAGEMENT_SETUP_CMD
+    allow_failure: true
+    needs: []
+    script:
+      - /run.sh analyze .
+    artifacts:
+      reports:
+        license_scanning: gl-license-scanning-report.json
+    dependencies: []
+    rules:
+      - if: $LICENSE_MANAGEMENT_DISABLED
+        when: never
+      - if: $CI_COMMIT_BRANCH &&
+            $GITLAB_FEATURES =~ /\blicense_scanning\b/
+  
