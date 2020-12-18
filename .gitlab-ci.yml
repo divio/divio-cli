@@ -4,14 +4,12 @@ services:
     - docker:dind
 
 stages:
-    - Build and static QA
-    - Dynamic QA
-    - Release
+    - QA
 
 
 
 Check linting:
-  stage: Build and static QA
+  stage: QA
   before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
@@ -19,7 +17,7 @@ Check linting:
     - ARGS="--check" make lint
 
 Unit Tests:
-    stage: Dynamic QA
+    stage: QA
     before_script:
         - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     script:
