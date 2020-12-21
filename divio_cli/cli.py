@@ -37,9 +37,7 @@ except ImportError:
     "-d",
     "--debug/--no-debug",
     default=False,
-    help=(
-        "Drop into the debugger if command execution raises " "an exception."
-    ),
+    help=("Drop into the debugger if command execution raises an exception."),
 )
 @click.pass_context
 def cli(ctx, debug):
@@ -334,8 +332,10 @@ def project_update(obj, strict):
     default=None,
     type=click.Tuple([six.text_type, six.text_type]),
     multiple=True,
-    help="Set a specific custom environment variable\n\n"
-    "example: divio project env-vars set DEBUG False",
+    help=(
+        "Set a specific custom environment variable\n\n"
+        "example: divio project env-vars set DEBUG False"
+    ),
 )
 @click.option(
     "--unset",
