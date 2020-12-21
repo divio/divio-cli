@@ -90,7 +90,9 @@ def login_token_helper(ctx, value):
         url = ctx.obj.client.get_access_token_url()
         click.secho("Your browser has been opened to visit: {}".format(url))
         click.launch(url)
-        value = click.prompt("Please copy the access token and paste it here.")
+        value = click.prompt(
+            "Please copy the access token and paste it here.", hide_input=True
+        )
     return value
 
 
