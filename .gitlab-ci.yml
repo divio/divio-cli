@@ -21,7 +21,6 @@ Check Manifest:
   stage: QA
   image: divio/base:1.1-py3.6-alpine3.12
   script:
-      - apk add git 
       - pip install check-manifest
       - check-manifest
 
@@ -30,7 +29,7 @@ Release Tag:
     image: divio/base:1.1-py3.6-alpine3.12
     script:
         - apk add python3-dev build-base libffi-dev openssl-dev git
-        - pip install twine check-manifest setuptools_scm
+        - pip install twine setuptools_scm
         - pip install -r requirements.txt
         # Install the package in develop mode so setuptools_scm can retrieve 
         # the new version.

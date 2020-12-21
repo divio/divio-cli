@@ -12,11 +12,8 @@ if sys.platform == 'win32':
 
 
 if __name__ == "__main__":
-
     setuptools.setup(
-        name='divio-cli',
         install_requires=requirements,
-        setup_requires=['setuptools_scm'],
         use_scm_version ={
             "write_to":"divio_cli/version.py"
         }
