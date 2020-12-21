@@ -1,6 +1,6 @@
 stages:
     - QA
-    - Release to PyPI
+    - Release
 
 Check linting:
   image: docker:stable
