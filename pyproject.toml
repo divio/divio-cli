@@ -12,7 +12,7 @@ known_project="divio_cli"
 sections="FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,PROJECT,LOCALFOLDER"
 
 [tool.check-manifest]
-ignore = ["tox.ini", "requirements.in", "requirements-windows.in", "Makefile", ".gitlab-ci.yml"]
+ignore = ["tox.ini", "requirements.in", "requirements-windows.in", "Makefile", ".gitlab-ci.yml", "divio_cli/version.py"]
 
 
 [tool.setuptools_scm]
