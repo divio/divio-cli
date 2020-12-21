@@ -6,8 +6,7 @@ Check linting:
   image: divio/lint
   stage: QA
   script:
-    - ls
-    - LINT_FOLDER_PYTHON=divio_cli /bin/lint --check
+    - cd /builds/divio/cloud/cli/ && LINT_FOLDER_PYTHON=divio_cli /bin/lint --check
 
 Unit Tests:
     stage: QA
