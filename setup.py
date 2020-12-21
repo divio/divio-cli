@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 import setuptools
+from divio_cli import __version__
 
 
 with open('requirements.txt') as f:
@@ -10,7 +11,6 @@ if sys.platform == 'win32':
     with open('requirements-windows.txt') as f:
         requirements += f.read().splitlines()
 
-from divio_cli import __version__
 
 if __name__ == "__main__":
     setuptools.setup(
@@ -20,6 +20,4 @@ if __name__ == "__main__":
         use_scm_version ={
             "write_to":"divio_cli/version.py"
         }
-        
-
     )

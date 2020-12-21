@@ -24,9 +24,6 @@ Release Tag:
         - apk add python3-dev build-base libffi-dev openssl-dev git
         - pip install twine check-manifest
         - pip install -r requirements.txt
-        # Install the package in develop mode so setuptools_scm can retrieve 
-        # the new version.
-        - python setup.py develop
         - python setup.py sdist bdist_wheel
         - twine check dist/*
         - check-manifest
