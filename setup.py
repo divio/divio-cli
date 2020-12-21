@@ -17,4 +17,9 @@ if __name__ == "__main__":
         install_requires=requirements,
         setup_requires=['setuptools_scm'],
         version=__version__,
+        use_scm_version ={
+            "write_to":"divio_cli/version.py"
+        }
+        
+
     )
