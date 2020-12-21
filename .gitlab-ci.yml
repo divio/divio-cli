@@ -17,6 +17,14 @@ Unit Tests:
         - pip install -r requirements.txt
         - pytest
 
+Check Manifest:
+  stage: QA
+  image: divio/base:1.1-py3.6-alpine3.12
+  script:
+      - apk add git 
+      - pip install check-manifest
+      - check-manifest
+
 Release Tag:
     stage: Release
     image: divio/base:1.1-py3.6-alpine3.12
@@ -28,7 +36,6 @@ Release Tag:
         # the new version.
         - python setup.py sdist bdist_wheel
         - twine check dist/*
-        - check-manifest
         - twine upload --repository testpypi -u $PYPI_USERNAME -p $PYPI_PASSWORD dist/*
     only:
         - tags
