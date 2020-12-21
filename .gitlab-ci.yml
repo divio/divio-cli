@@ -17,7 +17,7 @@ Unit Tests:
         - pytest
 
 Release Tag:
-    stage: Release to PyPI
+    stage: Release
     image: divio/base:1.1-py3.6-alpine3.12
     script:
         - apk add python3-dev build-base libffi-dev openssl-dev git
