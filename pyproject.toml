@@ -4,3 +4,6 @@ sections="FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,PROJECT,LOCALFOLDER"
 
 [tool.check-manifest]
 ignore = ["tox.ini", "requirements.in", "requirements-windows.in", "Makefile", ".gitlab-ci.yml"]
+
+
+[tool.setuptools_scm]

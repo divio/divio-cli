@@ -5,7 +5,7 @@ import time
 
 from packaging import version
 
-from divio_cli import get_version
+from divio_cli import __version__
 
 from . import settings, utils
 
@@ -60,7 +60,7 @@ class Config(object):
 
         last_checked = self.config.get(timestamp_key, None)
         now = int(time.time())
-        installed_version = version.parse(get_version())
+        installed_version = version.parse(__version__)
         pypi_error = None
 
         if force or not last_checked or last_checked < now - (60 * 60 * 24):
@@ -84,7 +84,7 @@ class Config(object):
                 self.config.pop(version_key)
                 self.save()
         return dict(
-            current=str(get_version()),
+            current=__version__,
             remote=str(newest_version),
             update_available=(
                 newest_version > installed_version if newest_version else False

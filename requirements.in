@@ -8,5 +8,3 @@ pyaml
 click_aliases
 tzlocal
 python-dateutil
-pytest
-setuptools_scm

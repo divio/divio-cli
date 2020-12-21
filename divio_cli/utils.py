@@ -16,7 +16,7 @@ from six import PY2
 from six.moves.urllib_parse import urljoin
 from tabulate import tabulate
 
-from divio_cli import get_version
+from divio_cli import __version__
 
 
 ALDRYN_DEFAULT_BRANCH_NAME = "develop"
@@ -294,11 +294,10 @@ def get_git_checked_branch():
 
 def get_user_agent():
     revision = get_git_commit()
-    version = get_version()
     if revision:
-        client = "divio-cli/{}-{}".format(version, revision)
+        client = "divio-cli/{}-{}".format(__version__, revision)
     else:
-        client = "divio-cli/{}".format(version)
+        client = "divio-cli/{}".format(__version__)
 
     os_identifier = "{}/{}".format(platform.system(), platform.release())
     python = "{}/{}".format(

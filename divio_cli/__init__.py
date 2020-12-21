@@ -1,14 +1,6 @@
-import click
-from importlib_metadata import PackageNotFoundError, version
+try:
+    from divio_cli.version import __version__
+except ModuleNotFoundError:
+    from setuptools_scm import get_version
+    __version__ = get_version(root='..', relative_to=__file__)
 
-
-def get_version():
-    try:
-        return version("divio-cli")
-    except PackageNotFoundError:
-        # This should normally not be reached
-        click.secho(
-            "Can not retrieve the currently installed version of the divio cli. Falling back to `0.0.0`",
-            fg="red",
-        )
-        return "0.0.0"
