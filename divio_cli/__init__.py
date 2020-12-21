@@ -1,5 +1,4 @@
 import click
-
 from importlib_metadata import PackageNotFoundError, version
 
 

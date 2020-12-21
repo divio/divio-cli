@@ -10,7 +10,6 @@ from contextlib import contextmanager
 from math import log
 
 import click
-
 import requests
 from packaging import version
 from six import PY2

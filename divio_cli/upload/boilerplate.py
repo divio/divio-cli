@@ -63,7 +63,7 @@ def upload_boilerplate(client, path=None, noinput=False):
     if not noinput:
         click.secho(
             "The following files will be included in your "
-            "boilerplate and uploaded to the Divio Cloud:".format(len(files)),
+            "boilerplate and uploaded to the Divio Cloud:",
             fg="yellow",
         )
         click.echo(os.linesep.join(files))

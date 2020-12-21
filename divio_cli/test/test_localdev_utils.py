@@ -1,5 +1,4 @@
 import click
-
 import pytest
 
 from divio_cli import settings

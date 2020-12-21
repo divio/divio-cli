@@ -1,8 +1,7 @@
 import os
 
-from click.testing import CliRunner
-
 import pytest
+from click.testing import CliRunner
 
 from divio_cli import cli
 

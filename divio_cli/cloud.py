@@ -6,7 +6,6 @@ from netrc import netrc
 from time import sleep
 
 import click
-
 from dateutil.parser import isoparse
 from six.moves.urllib_parse import urlparse
 from tzlocal import get_localzone
@@ -152,7 +151,7 @@ class CloudClient(object):
 
             except (KeyError, json.decoder.JSONDecodeError):
                 click.secho(
-                    "Error establishing ssh connection.".format(stage),
+                    "Error establishing ssh connection.",
                     fg="red",
                 )
                 sys.exit(1)
@@ -226,7 +225,7 @@ class CloudClient(object):
                 json.decoder.JSONDecodeError,
                 api_requests.APIRequestError,
             ):
-                click.secho("Error retrieving logs.".format(stage), fg="red")
+                click.secho("Error retrieving logs.", fg="red")
                 sys.exit(1)
 
         else:

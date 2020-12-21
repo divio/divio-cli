@@ -6,7 +6,6 @@ import sys
 from time import time
 
 import click
-
 import yaml
 
 from .. import config, exceptions, settings

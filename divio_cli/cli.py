@@ -4,7 +4,6 @@ import os
 import sys
 
 import click
-
 import six
 from click_aliases import ClickAliasedGroup
 
