@@ -18,6 +18,7 @@ TEST_COMMANDS_CLICK = (
     ("project", "list"),
     ("project", "pull"),
     ("project", "push"),
+    ("project", "logs"),
     ("project", "status"),
     "version",
     ("version", "-s"),
