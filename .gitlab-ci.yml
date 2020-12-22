@@ -24,6 +24,8 @@ Integration Tests:
   stage: QA
   image: python:3-alpine
   before_script:
+    - apk --update add openssh-client
+
     - eval $(ssh-agent -s)
     ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
     ## We're using tr to fix line endings which makes ed25519 keys work
