@@ -45,7 +45,7 @@ Integration Tests:
       - pip install pytest
       - pip install -r requirements.txt
       - python setup.py develop
-      - cd workspace && divio project setup ci-test-project-do-not-delete-3069
+      - mkdir workspace && cd workspace && divio project setup ci-test-project-do-not-delete-3069
       - cd .. && pytest
 
 
