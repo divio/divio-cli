@@ -21,7 +21,7 @@ TEST_COMMANDS_CLICK = (
     ("project", "status"),
     "version",
     ("version", "-s"),
-    ("version", "-m"), 
+    ("version", "-m"),
 )
 
 
