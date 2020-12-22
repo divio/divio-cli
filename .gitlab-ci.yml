@@ -48,12 +48,17 @@ Integration Tests:
   script: 
       - python3 -m ensurepip --default-pip
       - pip install -r requirements.txt
-      - pip install docker-compose pytest
+      - pip install docker-compose pytest pytest-cov
       - python3 setup.py develop
       - divio doctor
-      - pytest -m integration
-
-
+      - pytest -m integration --cov=divio_cli --junitxml=junit-testreport-integration.xml
+      - ls
+      - coverage report
+      - coverage xml
+  artifacts:
+    reports:
+      cobertura: coverage.xml
+      junit: junit-testreport-integration.xml
 
 
 Check Manifest:
