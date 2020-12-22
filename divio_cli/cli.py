@@ -37,7 +37,7 @@ except ImportError:
     "-d",
     "--debug/--no-debug",
     default=False,
-    help=("Drop into the debugger if command execution raises an exception."),
+    help="Drop into the debugger if command execution raises an exception.",
 )
 @click.pass_context
 def cli(ctx, debug):
