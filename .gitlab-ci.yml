@@ -85,10 +85,10 @@ Combine Coverage:
       - ls -la artifacts
       - cd artifacts
       - coverage combine
-      - coverage html
-      - coverage report
-      - coverage xml
-      - ls
+      - coverage html -i
+      - coverage report -i
+      - coverage xml -i
+      - ls -la artifacts
   artifacts:
     reports:
       cobertura: coverage.xml
