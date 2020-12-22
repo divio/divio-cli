@@ -19,9 +19,13 @@ Unit Tests:
     stage: QA
     image: themattrix/tox
     script: tox
+    after_script:
+      - mkdir -p ${CI_PROJECT_DIR}/artifacts
+      - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/artifacts/.coverage.unittest
     artifacts:
+      paths:
+        - ${CI_PROJECT_DIR}/artifacts/.coverage.unittest
       reports:
-        cobertura: coverage.xml
         junit: junit-testreport-*.xml
 
 
@@ -54,11 +58,13 @@ Integration Tests:
       - divio doctor
       - pytest -m integration --cov=divio_cli --cov-branch --junitxml=junit-testreport-integration.xml
       - ls
-      - coverage report
-      - coverage xml
+  after_script:
+      - mkdir -p ${CI_PROJECT_DIR}/artifacts
+      - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
   artifacts:
+    paths:
+      - ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
     reports:
-      cobertura: coverage.xml
       junit: junit-testreport-integration.xml
 
 
@@ -76,6 +82,7 @@ Combine Coverage:
   script:
       - pip install pytest-cov
       - ls
+      - ls artifacts
       - coverage combine
       - coverage html
       - coverage report
