@@ -699,11 +699,6 @@ def boilerplate_upload(ctx, noinput):
     click.echo(ret)
 
 
-@cli.group()
-def backup():
-    """Manage backups for projects hosted on Divio."""
-
-
 @cli.command()
 @click.option(
     "-s",
