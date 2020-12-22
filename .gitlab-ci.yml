@@ -71,19 +71,18 @@ Check Manifest:
       - check-manifest
 
 Combine Coverage:
-  image: docker:stable
   stage: Statistics
-  before_script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+  image: python:3-alpine
   script:
-    - >
-      docker run
-      --volume ${CI_PROJECT_DIR}/:/artifacts/
-      ${IMAGE_REGISTRY}:${CI_PIPELINE_IID}
-      /bin/sh -c "pip install pytest-cov; coverage combine; coverage html -i; coverage report -i"
+      - pip install pytest-cov
+      - cd ${CI_PROJECT_DIR}/artifacts
+      - coverage combine
+      - coverage html -i
+      - coverage report -i
+      - ls
   artifacts:
     paths:
-      - ${CI_PROJECT_DIR}/
+      - ${CI_PROJECT_DIR}/artifacts
 
 Release Tag:
     stage: Release
