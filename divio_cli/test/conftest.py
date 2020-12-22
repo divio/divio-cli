@@ -1,6 +1,6 @@
+import errno
 import os
 import subprocess
-import errno    
 
 import pytest
 
@@ -8,9 +8,7 @@ import pytest
 @pytest.fixture(scope="session")
 def divio_project(request):
 
-
-    
-    test_project_name = os.getenv("TEST_PROJECT_NAME", None) 
+    test_project_name = os.getenv("TEST_PROJECT_NAME", None)
     if test_project_name is None:
         pytest.skip(
             "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."

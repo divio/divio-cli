@@ -20,8 +20,8 @@ TEST_COMMANDS_CLICK = (
     ("project", "push"),
     ("project", "status"),
     "version",
-    ("version", "-s"),  # don't check PyPI for newer version
-    ("version", "-m"),  # Show this message and exit.
+    ("version", "-s"),
+    ("version", "-m"), 
 )
 
 
