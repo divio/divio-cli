@@ -20,7 +20,7 @@ Unit Tests:
     artifacts:
       reports:
         cobertura: coverage.xml
-        junit: /artifacts/junit-testreport.xml
+        junit: junit-testreport.xml
 
 Check Manifest:
   stage: QA
