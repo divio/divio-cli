@@ -15,13 +15,10 @@ TEST_COMMANDS_CLICK = (
     ("project", "dashboard"),
     ("project", "deploy-log"),
     ("project", "env-vars"),
-    ("project", "export", "db"),
-    ("project", "import", "db"),
     ("project", "list"),
     ("project", "pull"),
     ("project", "push"),
     ("project", "status"),
-    ("project", "update"),
     "version",
     ("version", "-s"),  # don't check PyPI for newer version
     ("version", "-m"),  # Show this message and exit.
