@@ -46,11 +46,11 @@ Integration Tests:
     # prepare netrc as login
     - echo "$CI_TEST_NETRC" > ~/.netrc
   script: 
-      - pip install pipenv 
-      - pipenv install -r requirements.txt
-      - pipenv run python setup.py develop
-      - pipenv run doctor
-      - pipenv run pytest
+      - python3 -m ensurepip --default-pip
+      - pip install -r requirements.txt
+      - python setup.py develop
+      - doctor
+      - pytest
 
 
 
