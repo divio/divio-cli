@@ -24,7 +24,7 @@ Integration Tests:
   stage: QA
   image: python:3-alpine
   before_script:
-    - apk --update add openssh-client
+    - apk --update add openssh-client git
 
     - eval $(ssh-agent -s)
     ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
