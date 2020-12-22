@@ -3,7 +3,7 @@ import click
 
 try:
     from .version import version as __version__
-except Exception:
+except ImportError:
     try:
         from setuptools_scm import get_version
 
