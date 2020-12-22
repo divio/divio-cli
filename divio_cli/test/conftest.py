@@ -19,7 +19,7 @@ def divio_project(request):
     if not os.path.exists(test_project_dir_full_path):
         try:
             os.makedirs("workspace")
-        except OSError as exc:  # Python ≥ 2.5
+        except OSError as exc:
             if exc.errno == errno.EEXIST and os.path.isdir("workspace"):
                 pass
             else:
