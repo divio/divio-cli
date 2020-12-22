@@ -1,3 +1,7 @@
+services:
+  - docker:dind
+
+
 stages:
     - QA
     - Release
@@ -22,10 +26,10 @@ Unit Tests:
 
 Integration Tests:
   stage: QA
-  image: python:3-alpine
+  image: docker:stable
   before_script:
     - apk --update add openssh-client git
-
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - eval $(ssh-agent -s)
     ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
     ## We're using tr to fix line endings which makes ed25519 keys work
