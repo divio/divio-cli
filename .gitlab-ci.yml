@@ -28,7 +28,7 @@ Integration Tests:
   stage: QA
   image: docker:stable
   before_script:
-    - apk --update add openssh-client git python3
+    - apk --update add openssh-client git python3 docker-compose
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - eval $(ssh-agent -s)
     ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
