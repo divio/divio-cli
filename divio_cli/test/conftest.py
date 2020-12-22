@@ -23,5 +23,5 @@ def divio_project(request):
         )
         stdout, stderr = process.communicate()
         click.echo(stdout)
-        click.echo(stderr)
+        click.echo(stderr, err=True)
         yield os.path.join(tmp_folder, test_project_name)

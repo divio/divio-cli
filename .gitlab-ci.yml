@@ -29,20 +29,12 @@ Integration Tests:
   image: docker:stable
   before_script:
     - apk --update add openssh-client git python3 python3-dev build-base libffi-dev openssl-dev
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - eval $(ssh-agent -s)
     ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
     ## We're using tr to fix line endings which makes ed25519 keys work
     ## without extra base64 encoding.
     ## https://gitlab.com/gitlab-examples/ssh-private-key/issues/1#note_48526556
     - echo "$SSH_CI_TEST_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    ## Create the SSH directory and give it the right permissions
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    ## Allow host keys
-    - ssh-keyscan git.divio.com >> ~/.ssh/known_hosts
-    - chmod 644 ~/.ssh/known_hosts
-
     # prepare netrc as login
     - echo "$CI_TEST_NETRC" > ~/.netrc
   script: 
@@ -51,9 +43,7 @@ Integration Tests:
       - pip install docker-compose pytest
       - python3 setup.py develop
       - divio doctor
-      - pytest
-
-
+      - pytest -m integration
 
 
 Check Manifest:
