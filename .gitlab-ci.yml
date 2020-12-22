@@ -4,6 +4,7 @@ services:
 
 stages:
     - QA
+    - Statistics
     - Release
 
 Check linting:
@@ -68,6 +69,21 @@ Check Manifest:
       - apk add git
       - pip install check-manifest
       - check-manifest
+
+Combine Coverage:
+  image: docker:stable
+  stage: Statistics
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+  script:
+    - >
+      docker run
+      --volume ${CI_PROJECT_DIR}/:/artifacts/
+      ${IMAGE_REGISTRY}:${CI_PIPELINE_IID}
+      /bin/sh -c "pip install pytest-cov; coverage combine; coverage html -i; coverage report -i"
+  artifacts:
+    paths:
+      - ${CI_PROJECT_DIR}/
 
 Release Tag:
     stage: Release
