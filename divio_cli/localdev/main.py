@@ -171,37 +171,25 @@ def setup_website_containers(
         )()
 
         click.secho("syncing and migrating database", fg="green")
-        try:
-            if is_windows():
-                # interactive mode is not yet supported with docker-compose
-                # on windows. that's why we have to call it as daemon
-                # and just wait a sane time
-                check_call(
-                    docker_compose("run", "-d", "web", "start", "migrate"),
-                    catch=False,
-                )
-                sleep(30)
-            else:
-                check_call(
-                    docker_compose(
-                        "run",
-                        "web",
-                        "/bin/bash",
-                        "-c",
-                        "sleep 5; start migrate",
-                    ),
-                    catch=False,
-                )
-        except Exception as e:
-            click.secho(
-                str(e),
-                fg="yellow",
-                err=True,
+        if is_windows():
+            # interactive mode is not yet supported with docker-compose
+            # on windows. that's why we have to call it as daemon
+            # and just wait a sane time
+            check_call(
+                docker_compose("run", "-d", "web", "start", "migrate"),
+                exit_on_failure=False,
             )
-            click.secho(
-                "Warning, problem running migrate command. Might be ok if you are not relying on `start migrate`.",
-                fg="yellow",
-                err=True,
+            sleep(30)
+        else:
+            check_call(
+                docker_compose(
+                    "run",
+                    "web",
+                    "/bin/bash",
+                    "-c",
+                    "sleep 5; start migrate",
+                ),
+                exit_on_failure=False,
             )
 
 
@@ -1099,31 +1087,19 @@ def update_local_project(git_branch, client, strict=False):
         click.secho("Building local docker images", fg="green")
         check_call(docker_compose("build"))
         click.secho("syncing and migrating database", fg="green")
-        try:
-            if is_windows():
-                # interactive mode is not yet supported with docker-compose
-                # on windows. that's why we have to call it as daemon
-                # and just wait a sane time
-                check_call(
-                    docker_compose("run", "-d", "web", "start", "migrate"),
-                    catch=False,
-                )
-                sleep(30)
-            else:
-                check_call(
-                    docker_compose("run", "web", "start", "migrate"),
-                    catch=False,
-                )
-        except Exception as e:
-            click.secho(
-                str(e),
-                fg="yellow",
-                err=True,
+        if is_windows():
+            # interactive mode is not yet supported with docker-compose
+            # on windows. that's why we have to call it as daemon
+            # and just wait a sane time
+            check_call(
+                docker_compose("run", "-d", "web", "start", "migrate"),
+                exit_on_failure=False,
             )
-            click.secho(
-                "Warning, problem running migrate command. Might be ok if you are not relying on `start migrate`.",
-                fg="yellow",
-                err=True,
+            sleep(30)
+        else:
+            check_call(
+                docker_compose("run", "web", "start", "migrate"),
+                exit_on_failure=False,
             )
 
 
