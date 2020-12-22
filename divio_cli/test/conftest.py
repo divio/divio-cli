@@ -1,5 +1,6 @@
 import os
 import subprocess
+import errno    
 
 import pytest
 
@@ -15,13 +16,20 @@ def divio_project(request):
             "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."
         )
 
-    test_project_dir_full_path = os.path.join("/test", test_project_name)
+    test_project_dir_full_path = os.path.join("workspace", test_project_name)
 
     if not os.path.exists(test_project_dir_full_path):
-        os.mkdir("/test")
+        try:
+            os.makedirs("workspace")
+        except OSError as exc:  # Python ≥ 2.5
+            if exc.errno == errno.EEXIST and os.path.isdir("workspace"):
+                pass
+            else:
+                raise
+
         process = subprocess.Popen(
             ["divio", "project", "setup", test_project_name],
-            cwd="/test",
+            cwd="workspace",
         )
         stdout, stderr = process.communicate()
     return test_project_dir_full_path

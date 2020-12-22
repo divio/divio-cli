@@ -15,3 +15,4 @@ venv*
 binary/
 divio_cli/test/data
 divio_cli/version.py
+workspace
