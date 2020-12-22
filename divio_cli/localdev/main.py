@@ -194,7 +194,7 @@ def setup_website_containers(
                 )
         except Exception as e:
             click.secho(
-                e,
+                str(e),
                 fg="yellow",
                 err=True,
             )
@@ -1116,7 +1116,7 @@ def update_local_project(git_branch, client, strict=False):
                 )
         except Exception as e:
             click.secho(
-                e,
+                str(e),
                 fg="yellow",
                 err=True,
             )

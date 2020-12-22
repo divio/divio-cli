@@ -49,4 +49,4 @@ def test_call_click_commands(divio_project, command):
         os.chdir(divio_project)
         runner = CliRunner()
         result = runner.invoke(cli.cli, command)
-    assert result.exit_code == 0
+        assert result.exit_code == 0
