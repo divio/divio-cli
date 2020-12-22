@@ -14,7 +14,7 @@ Unit Tests:
     stage: QA
     image: themattrix/tox
     script:
-        - apk add git python2 python3.7 python3.8
+        - apk add git
         - pip install setuptools_scm pytest tox
         - pip install -r requirements.txt
         - tox
