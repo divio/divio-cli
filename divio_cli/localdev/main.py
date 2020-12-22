@@ -192,7 +192,12 @@ def setup_website_containers(
                     ),
                     catch=False,
                 )
-        except Exception:
+        except Exception as e:
+            click.secho(
+                e,
+                fg="yellow",
+                err=True,
+            )
             click.secho(
                 "Warning, problem running migrate command. Might be ok if you are not relying on `start migrate`.",
                 fg="yellow",
@@ -1109,7 +1114,12 @@ def update_local_project(git_branch, client, strict=False):
                     docker_compose("run", "web", "start", "migrate"),
                     catch=False,
                 )
-        except Exception:
+        except Exception as e:
+            click.secho(
+                e,
+                fg="yellow",
+                err=True,
+            )
             click.secho(
                 "Warning, problem running migrate command. Might be ok if you are not relying on `start migrate`.",
                 fg="yellow",

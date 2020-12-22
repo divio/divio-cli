@@ -1,3 +1,4 @@
+import contextlib
 import os
 
 import pytest
@@ -32,13 +33,20 @@ TEST_COMMANDS_CLICK = (
 )
 
 
+@contextlib.contextmanager
+def remember_cwd():
+    curdir = os.getcwd()
+    try:
+        yield
+    finally:
+        os.chdir(curdir)
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize("command", TEST_COMMANDS_CLICK)
 def test_call_click_commands(divio_project, command):
-    current_dir = os.getcwd()
-    os.chdir(os.path.join(current_dir, divio_project))
-    runner = CliRunner()
-    result = runner.invoke(cli.cli, command)
-    os.chdir(current_dir)
-    print(result.output)
+    with remember_cwd():
+        os.chdir(divio_project)
+        runner = CliRunner()
+        result = runner.invoke(cli.cli, command)
     assert result.exit_code == 0
