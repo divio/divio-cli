@@ -28,7 +28,7 @@ Integration Tests:
   stage: QA
   image: docker:stable
   before_script:
-    - apk --update add openssh-client git
+    - apk --update add openssh-client git py-pip
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - eval $(ssh-agent -s)
     ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
@@ -50,7 +50,6 @@ Integration Tests:
       - pip install -r requirements.txt
       - python setup.py develop
       - divio doctor
-      - mkdir workspace && cd workspace && divio project setup ci-test-project-do-not-delete-3069
       - cd .. && pytest
 
 
