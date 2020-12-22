@@ -43,6 +43,7 @@ Integration Tests:
     - echo "$CI_TEST_NETRC" > ~/.netrc
   script: 
       - pip install pytest
+      - pip install -r requirements.txt
       - pytest
 
 
