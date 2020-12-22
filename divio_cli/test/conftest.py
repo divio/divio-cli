@@ -5,9 +5,9 @@ import pytest
 
 
 def pytest_addoption(parser):
-    parser.addoption("--test-project-name", action="store")
+    parser.addoption("--testprojectname", action="store")
     parser.addoption(
-        "--test-project-directory", action="store", default="test/data"
+        "--testprojectdirectory", action="store", default="test/data"
     )
 
 
@@ -21,11 +21,11 @@ def divio_project(request):
     already exists.
     """
     test_project_name = getattr(
-        request.config.option, "test_project_name", None
+        request.config.option, "testprojectname", None
     )
     if test_project_name is None:
         pytest.skip(
-            "project name for the test is not supplied. Please use `--test_project_name <name>` to specify one ."
+            "project name for the test is not supplied. Please use `--testprojectname <name>` to specify one ."
         )
 
     test_project_directory = request.config.option.test_project_directory
