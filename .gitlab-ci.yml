@@ -19,8 +19,8 @@ Unit Tests:
         - tox
     artifacts:
       reports:
-        cobertura: .coverage.xml
-        junit: .junit-testreport.xml
+        cobertura: coverage.xml
+        junit: /artifacts/junit-testreport.xml
 
 Check Manifest:
   stage: QA
