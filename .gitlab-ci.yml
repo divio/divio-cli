@@ -15,9 +15,9 @@ Unit Tests:
     image: divio/base:1.1-py3.6-alpine3.12
     script:
         - apk add git 
-        - pip install setuptools_scm pytest
+        - pip install setuptools_scm pytest tox
         - pip install -r requirements.txt
-        - pytest
+        - tox
 
 Check Manifest:
   stage: QA
