@@ -19,12 +19,9 @@ Unit Tests:
     stage: QA
     image: themattrix/tox
     script: tox
-    after_script:
-      - mkdir -p ${CI_PROJECT_DIR}/artifacts
-      - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/artifacts/.coverage.unittest
     artifacts:
       paths:
-        - ${CI_PROJECT_DIR}/artifacts/.coverage.unittest
+        - ${CI_PROJECT_DIR}/artifacts/.coverage.*
       reports:
         junit: junit-testreport-*.xml
 
@@ -81,15 +78,14 @@ Combine Coverage:
   image: python:3-alpine
   script:
       - pip install pytest-cov
-      - ls
-      - ls -la artifacts
       - cd artifacts
       - coverage combine
       - coverage html -i
       - coverage report -i
       - coverage xml -i
-      - ls -la
   artifacts:
+    paths:
+      - ${CI_PROJECT_DIR}/artifacts/
     reports:
       cobertura: coverage.xml
 
