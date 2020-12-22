@@ -51,7 +51,7 @@ Integration Tests:
       - pip install docker-compose pytest pytest-cov
       - python3 setup.py develop
       - divio doctor
-      - pytest -m integration --cov=divio_cli --junitxml=junit-testreport-integration.xml
+      - pytest -m integration --cov=divio_cli --cov-branch --junitxml=junit-testreport-integration.xml
       - ls
       - coverage report
       - coverage xml
