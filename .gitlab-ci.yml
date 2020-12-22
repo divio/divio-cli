@@ -13,6 +13,7 @@ Check linting:
 Unit Tests:
     stage: QA
     image: themattrix/tox
+    script: tox
     artifacts:
       reports:
         cobertura: coverage.xml
