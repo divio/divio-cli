@@ -78,7 +78,8 @@ Combine Coverage:
   image: python:3-alpine
   script:
       - pip install pytest-cov
-      - cd artifacts
+      - cd artifacts 
+      - ls -la
       - coverage combine
       - coverage html -i
       - coverage report -i
@@ -87,7 +88,7 @@ Combine Coverage:
     paths:
       - ${CI_PROJECT_DIR}/artifacts/
     reports:
-      cobertura: coverage.xml
+      cobertura: ${CI_PROJECT_DIR}/artifacts/coverage.xml
 
 Release Tag:
     stage: Release
