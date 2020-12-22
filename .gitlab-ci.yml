@@ -13,11 +13,6 @@ Check linting:
 Unit Tests:
     stage: QA
     image: themattrix/tox
-    script:
-        - pip install setuptools_scm pytest tox
-        - pip install -r requirements.txt
-        - tox
-        - ls
     artifacts:
       reports:
         cobertura: coverage.xml
@@ -25,7 +20,7 @@ Unit Tests:
 
 Check Manifest:
   stage: QA
-  image: divio/base:1.1-py3.6-alpine3.12
+  image: python:3-alpine
   script:
       - apk add git
       - pip install check-manifest
@@ -33,11 +28,10 @@ Check Manifest:
 
 Release Tag:
     stage: Release
-    image: divio/base:1.1-py3.6-alpine3.12
+    image: python:3-alpine
     script:
         - apk add python3-dev build-base libffi-dev openssl-dev git
         - pip install twine setuptools_scm
-        - pip install -r requirements.txt
         # Install the package in develop mode so setuptools_scm can retrieve 
         # the new version.
         - python setup.py sdist bdist_wheel
