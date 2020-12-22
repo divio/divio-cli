@@ -17,10 +17,11 @@ Unit Tests:
         - pip install setuptools_scm pytest tox
         - pip install -r requirements.txt
         - tox
+        - ls
     artifacts:
       reports:
         cobertura: coverage.xml
-        junit: junit-testreport.xml
+        junit: junit-testreport-*.xml
 
 Check Manifest:
   stage: QA
