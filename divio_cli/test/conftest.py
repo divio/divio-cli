@@ -1,7 +1,7 @@
-import errno
 import os
 import subprocess
 
+import click
 import pytest
 
 
@@ -14,20 +14,14 @@ def divio_project(request):
             "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."
         )
 
-    test_project_dir_full_path = os.path.join("workspace", test_project_name)
+    from tempfile import TemporaryDirectory
 
-    if not os.path.exists(test_project_dir_full_path):
-        try:
-            os.makedirs("workspace")
-        except OSError as exc:
-            if exc.errno == errno.EEXIST and os.path.isdir("workspace"):
-                pass
-            else:
-                raise
-
+    with TemporaryDirectory() as tmp_folder:
         process = subprocess.Popen(
             ["divio", "project", "setup", test_project_name],
-            cwd="workspace",
+            cwd=tmp_folder,
         )
         stdout, stderr = process.communicate()
-    return test_project_dir_full_path
+        click.echo(stdout)
+        click.echo(stderr)
+        yield os.path.join(tmp_folder, test_project_name)
