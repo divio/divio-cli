@@ -43,7 +43,7 @@ Integration Tests:
     - echo "$CI_TEST_NETRC" > ~/.netrc
   script: 
       - pip install pytest
-      - pytest --testprojectname=$CI_TEST_PROJECT
+      - pytest
 
 
 
