@@ -19,9 +19,9 @@ TEST_COMMANDS_CLICK = (
     ("project", "env-vars"),
     ("project", "list"),
     ("project", "pull", "db"),
-    # ("project", "push", "db", "--noinput"),
+    ("project", "push", "db", "--noinput"),
     ("project", "export", "db"),
-    # ("project", "push", "db", "--noinput", "--dumpfile", "local_db.sql"),
+    ("project", "push", "db", "--noinput", "--dumpfile", "local_db.sql"),
     ("project", "pull", "media"),
     ("project", "push", "media", "--noinput"),
     ("project", "logs", "test"),
@@ -49,4 +49,5 @@ def test_call_click_commands(divio_project, command):
         os.chdir(divio_project)
         runner = CliRunner()
         result = runner.invoke(cli.cli, command)
+        print(result.output)
         assert result.exit_code == 0
