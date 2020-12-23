@@ -5,9 +5,7 @@ import time
 
 from packaging import version
 
-from divio_cli import __version__
-
-from . import settings, utils
+from . import __version__, settings, utils
 
 
 def get_global_config_path():

@@ -1,7 +1,6 @@
 services:
   - docker:dind
 
-
 stages:
     - QA
     - Statistics

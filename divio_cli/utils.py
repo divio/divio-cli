@@ -16,7 +16,7 @@ from six import PY2
 from six.moves.urllib_parse import urljoin
 from tabulate import tabulate
 
-from divio_cli import __version__
+from . import __version__
 
 
 ALDRYN_DEFAULT_BRANCH_NAME = "develop"
