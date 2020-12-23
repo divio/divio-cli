@@ -50,23 +50,6 @@ def silence_stderr():
 
 
 @contextmanager
-def silence_stdout():
-    with dev_null() as devnull:
-        with redirect_stdout(devnull):
-            yield
-
-
-@contextmanager
-def redirect_stdout(new_stream):
-    original_stream = sys.stdout
-    sys.stdout = new_stream
-    try:
-        yield
-    finally:
-        sys.stdout = original_stream
-
-
-@contextmanager
 def redirect_stderr(new_stream):
     original_stream = sys.stderr
     sys.stderr = new_stream
@@ -197,10 +180,6 @@ def is_windows():
     return sys.platform == "win32"
 
 
-def is_linux():
-    return sys.platform.startswith("linux")
-
-
 unit_list = list(
     zip(["bytes", "kB", "MB", "GB", "TB", "PB"], [0, 0, 1, 2, 2, 2])
 )
@@ -319,19 +298,6 @@ def download_file(url, directory=None, filename=None):
                 f.write(chunk)
                 f.flush()
     return dump_path
-
-
-def print_package_renamed_warning():
-    message = (
-        "aldryn-client has been renamed to divio-cli. Please call it using "
-        "`divio` from now on, the shortcut `aldryn` is deprecated and will be "
-        "removed in a later version."
-    )
-
-    hr(char="=", fg="red")
-    click.secho(message, fg="red")
-    hr(char="=", fg="red")
-    click.echo("")
 
 
 def json_dumps_unicode(d, **kwargs):

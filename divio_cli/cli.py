@@ -19,7 +19,6 @@ from .utils import (
     get_git_checked_branch,
     hr,
     open_project_cloud_site,
-    print_package_renamed_warning,
     table,
 )
 from .validators.addon import validate_addon
@@ -41,9 +40,6 @@ except ImportError:
 )
 @click.pass_context
 def cli(ctx, debug):
-    if sys.argv[0].endswith("aldryn"):
-        print_package_renamed_warning()
-
     if debug:
 
         def exception_handler(type, value, traceback):
