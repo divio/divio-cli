@@ -128,7 +128,6 @@ def execute(func, *popenargs, **kwargs):
     if "env" not in kwargs:
         kwargs["env"] = get_subprocess_env()
     catch = kwargs.pop("catch", True)
-    exit_on_failure = kwargs.pop("exit_on_failure", True)
     if kwargs.pop("silent", False):
         if "stdout" not in kwargs:
             kwargs["stdout"] = open(os.devnull, "w")
@@ -155,8 +154,7 @@ def execute(func, *popenargs, **kwargs):
         )
         hr(fg="red")
         click.secho(os.linesep.join(output), fg="red", err=True)
-        if exit_on_failure:
-            sys.exit(1)
+        sys.exit(1)
 
 
 def check_call(*popenargs, **kwargs):
@@ -391,3 +389,11 @@ def get_local_git_remotes():
         name, url, method = split(["\t", " "], line)
         ret.append(url)
     return ret
+
+
+def needs_legacy_migration():
+    try:
+        check_output(("command", "-v", "start"))
+        return True
+    except Exception:
+        return False

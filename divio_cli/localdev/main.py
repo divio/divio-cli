@@ -23,6 +23,7 @@ from ..utils import (
     get_size,
     get_subprocess_env,
     is_windows,
+    needs_legacy_migration,
     pretty_size,
 )
 from . import utils
@@ -170,27 +171,26 @@ def setup_website_containers(
             db_type=db_type,
         )()
 
-        click.secho("syncing and migrating database", fg="green")
-        if is_windows():
-            # interactive mode is not yet supported with docker-compose
-            # on windows. that's why we have to call it as daemon
-            # and just wait a sane time
-            check_call(
-                docker_compose("run", "-d", "web", "start", "migrate"),
-                exit_on_failure=False,
-            )
-            sleep(30)
-        else:
-            check_call(
-                docker_compose(
-                    "run",
-                    "web",
-                    "/bin/bash",
-                    "-c",
-                    "sleep 5; start migrate",
-                ),
-                exit_on_failure=False,
-            )
+        if needs_legacy_migration():
+            click.secho("syncing and migrating database", fg="green")
+            if is_windows():
+                # interactive mode is not yet supported with docker-compose
+                # on windows. that's why we have to call it as daemon
+                # and just wait a sane time
+                check_call(
+                    docker_compose("run", "-d", "web", "start", "migrate"),
+                )
+                sleep(30)
+            else:
+                check_call(
+                    docker_compose(
+                        "run",
+                        "web",
+                        "/bin/bash",
+                        "-c",
+                        "sleep 5; start migrate",
+                    ),
+                )
 
 
 def create_workspace(
@@ -1086,21 +1086,20 @@ def update_local_project(git_branch, client, strict=False):
         check_call(docker_compose("pull"))
         click.secho("Building local docker images", fg="green")
         check_call(docker_compose("build"))
-        click.secho("syncing and migrating database", fg="green")
-        if is_windows():
-            # interactive mode is not yet supported with docker-compose
-            # on windows. that's why we have to call it as daemon
-            # and just wait a sane time
-            check_call(
-                docker_compose("run", "-d", "web", "start", "migrate"),
-                exit_on_failure=False,
-            )
-            sleep(30)
-        else:
-            check_call(
-                docker_compose("run", "web", "start", "migrate"),
-                exit_on_failure=False,
-            )
+        if needs_legacy_migration():
+            click.secho("syncing and migrating database", fg="green")
+            if is_windows():
+                # interactive mode is not yet supported with docker-compose
+                # on windows. that's why we have to call it as daemon
+                # and just wait a sane time
+                check_call(
+                    docker_compose("run", "-d", "web", "start", "migrate"),
+                )
+                sleep(30)
+            else:
+                check_call(
+                    docker_compose("run", "web", "start", "migrate"),
+                )
 
 
 def develop_package(package, no_rebuild=False):
