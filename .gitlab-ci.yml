@@ -1,10 +1,12 @@
 services:
   - docker:dind
 
+
 stages:
     - QA
     - Statistics
     - Release
+
 
 Check linting:
   image: divio/lint
@@ -13,6 +15,7 @@ Check linting:
     LINT_FOLDER_PYTHON: divio_cli 
   script:
     - /bin/lint --check
+
 
 Unit Tests:
     stage: QA
@@ -71,6 +74,7 @@ Check Manifest:
       - pip install check-manifest
       - check-manifest
 
+
 Combine Coverage:
   stage: Statistics
   image: python:3-alpine
@@ -88,6 +92,7 @@ Combine Coverage:
     reports:
       cobertura: ${CI_PROJECT_DIR}/artifacts/coverage.xml
 
+
 Release Tag:
     stage: Release
     image: python:3-alpine
@@ -99,5 +104,8 @@ Release Tag:
         - python setup.py sdist bdist_wheel
         - twine check dist/*
         - twine upload --repository testpypi -u $PYPI_USERNAME -p $PYPI_PASSWORD dist/*
+
     only:
-        - tags
+      - /^(\d+\.)?(\d+\.)?(\d+\.)$/
+    except:
+      - branches
