@@ -24,7 +24,7 @@ def get_divio_host():
     project_specific_host = get_project_settings(get_project_home()).get("host", None)
     if project_specific_host:
         return project_specific_host
-    return os.environ.get("DIVIO_HOST", DEFAULT_HOST)  # FIXME: Rename
+    return os.environ.get("DIVIO_HOST", DEFAULT_HOST) 
 
 
 def get_endpoint(host=None):
