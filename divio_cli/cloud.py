@@ -21,9 +21,14 @@ DEFAULT_HOST = "divio.com"
 
 
 def get_divio_host():
-    project_specific_host = get_project_settings(get_project_home()).get("host", None)
-    if project_specific_host:
-        return project_specific_host
+    try:
+        project_specific_host = get_project_settings(get_project_home()).get("host", None)
+    except click.ClickException:
+        # Happens when there is no configuration file
+        pass
+    else:
+        if project_specific_host:
+            return project_specific_host
     return os.environ.get("DIVIO_HOST", DEFAULT_HOST) 
 
 

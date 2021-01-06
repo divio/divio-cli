@@ -25,6 +25,9 @@ from ..utils import (
     get_subprocess_env,
     is_windows,
     pretty_size,
+)
+
+from .utils import (
     get_project_settings,
     get_project_home
 )
@@ -39,9 +42,14 @@ DEFAULT_SERVICE_PREFIX = "DEFAULT"
 
 
 def get_git_host():
-    git_host = get_project_settings(get_project_home()).get("git_host", None)
+    try:
+        git_host = get_project_settings(get_project_home()).get("git_host", None)
+    except click.ClickException:
+        git_host = None
+
     if not git_host:
         git_host = os.environ.get("DIVIO_GIT_HOST")
+
     if git_host:
         click.secho("Using custom git host {}\n".format(git_host), fg="yellow")
     else:
@@ -76,7 +84,7 @@ def configure_project(website_slug, path, client):
     website_id = client.get_website_id_for_slug(website_slug)
 
     # create configuration file
-    website_data = {"id": website_id, "slug": website_slug}
+    website_data = {"id": website_id, "slug": website_slug, "host": get_divio_host()}
     if os.path.exists(os.path.join(path, settings.ALDRYN_DOT_FILE)):
         path = os.path.join(path, settings.ALDRYN_DOT_FILE)
     else:
