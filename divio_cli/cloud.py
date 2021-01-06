@@ -13,6 +13,7 @@ from tzlocal import get_localzone
 from . import api_requests, messages, settings
 from .config import Config
 from .utils import json_dumps_unicode
+from .localdev.utils import get_project_settings, get_project_home
 
 
 ENDPOINT = "https://control.{host}"
@@ -20,6 +21,9 @@ DEFAULT_HOST = "divio.com"
 
 
 def get_divio_host():
+    project_specific_host = get_project_settings(get_project_home()).get("host", None)
+    if project_specific_host:
+        return project_specific_host
     return os.environ.get("DIVIO_HOST", DEFAULT_HOST)  # FIXME: Rename
 
 
