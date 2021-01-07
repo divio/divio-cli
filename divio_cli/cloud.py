@@ -150,10 +150,7 @@ class CloudClient(object):
                 os.execvp("ssh", ssh_command)
 
             except (KeyError, json.decoder.JSONDecodeError):
-                click.secho(
-                    "Error establishing ssh connection.",
-                    fg="red",
-                )
+                click.secho("Error establishing ssh connection.", fg="red")
                 sys.exit(1)
 
         else:
