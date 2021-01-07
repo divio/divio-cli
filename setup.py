@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
-import setuptools
 
+import setuptools
 
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
