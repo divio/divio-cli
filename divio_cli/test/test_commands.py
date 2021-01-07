@@ -4,7 +4,7 @@ from click.testing import CliRunner
 from divio_cli import cli
 
 
-TEST_COMMANDS_CLICK = (
+TEST_COMMANDS_CLICK = [
     ["doctor"],
     ["doctor", "-m"],
     ["doctor", "-c", "login"],
@@ -27,7 +27,7 @@ TEST_COMMANDS_CLICK = (
     ["version"],
     ["version", "-s"],
     ["version", "-m"],
-)
+]
 
 
 @pytest.mark.integration
