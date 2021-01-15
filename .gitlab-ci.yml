@@ -106,6 +106,6 @@ Release Tag:
         - twine upload --repository testpypi -u $PYPI_USERNAME -p $PYPI_PASSWORD dist/*
 
     only:
-      - /^(\d+\.)?(\d+\.)?(\d+\.)$/
+      - ^(\d+\.)?(\d+\.)?(\d+\.)$
     except:
       - branches
