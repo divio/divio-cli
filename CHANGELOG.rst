@@ -1,6 +1,12 @@
 Changelog
 =========
 
+3.10.0 (2021-01-15)
+-------------------
+
+* Updated requirements
+* Updated build and distribution pipline
+
 3.9.1 (2020-12-04)
 ------------------
 
