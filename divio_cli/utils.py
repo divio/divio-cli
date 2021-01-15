@@ -7,11 +7,11 @@ import sys
 import tarfile
 import tempfile
 from contextlib import contextmanager
-from distutils.version import StrictVersion
 from math import log
 
 import click
 import requests
+from packaging import version
 from six import PY2
 from six.moves.urllib_parse import urljoin
 from tabulate import tabulate
@@ -47,23 +47,6 @@ def silence_stderr():
     with dev_null() as devnull:
         with redirect_stderr(devnull):
             yield
-
-
-@contextmanager
-def silence_stdout():
-    with dev_null() as devnull:
-        with redirect_stdout(devnull):
-            yield
-
-
-@contextmanager
-def redirect_stdout(new_stream):
-    original_stream = sys.stdout
-    sys.stdout = new_stream
-    try:
-        yield
-    finally:
-        sys.stdout = original_stream
 
 
 @contextmanager
@@ -153,7 +136,7 @@ def execute(func, *popenargs, **kwargs):
             "  {command}".format(command=" ".join(exc.cmd)),
         )
         hr(fg="red")
-        click.secho(os.linesep.join(output), fg="red")
+        click.secho(os.linesep.join(output), fg="red", err=True)
         sys.exit(1)
 
 
@@ -195,10 +178,6 @@ def get_cp_url(client, project_id, section="dashboard"):
 
 def is_windows():
     return sys.platform == "win32"
-
-
-def is_linux():
-    return sys.platform.startswith("linux")
 
 
 unit_list = list(
@@ -246,7 +225,7 @@ def get_latest_version_from_pypi():
     try:
         response = requests.get("https://pypi.python.org/pypi/divio-cli/json")
         response.raise_for_status()
-        newest_version = StrictVersion(response.json()["info"]["version"])
+        newest_version = version.parse(response.json()["info"]["version"])
         return newest_version, None
     except requests.RequestException as exc:
         return False, exc
@@ -321,19 +300,6 @@ def download_file(url, directory=None, filename=None):
     return dump_path
 
 
-def print_package_renamed_warning():
-    message = (
-        "aldryn-client has been renamed to divio-cli. Please call it using "
-        "`divio` from now on, the shortcut `aldryn` is deprecated and will be "
-        "removed in a later version."
-    )
-
-    hr(char="=", fg="red")
-    click.secho(message, fg="red")
-    hr(char="=", fg="red")
-    click.echo("")
-
-
 def json_dumps_unicode(d, **kwargs):
     return json.dumps(d, ensure_ascii=False, **kwargs).encode("utf-8")
 
@@ -382,10 +348,18 @@ def split(delimiters, string, maxsplit=0):
 
 
 def get_local_git_remotes():
-    a = check_output(("git", "remote", "-v"))
+    a = check_output(["git", "remote", "-v"])
 
     ret = []
     for line in a.splitlines():
         name, url, method = split(["\t", " "], line)
         ret.append(url)
     return ret
+
+
+def needs_legacy_migration():
+    try:
+        check_output(["command", "-v", "start"])
+        return True
+    except Exception:
+        return False

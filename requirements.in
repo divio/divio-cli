@@ -8,3 +8,5 @@ pyaml
 click_aliases
 tzlocal
 python-dateutil
+colorama; sys_platform == 'win32'
+packaging
