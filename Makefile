@@ -1,16 +1,2 @@
-# can also be used as `make ARGS=--check black` for example
-black:
-	find divio_cli -name '*.py' | xargs black --line-length=79 --safe $(ARGS)
-
-isort:
-	isort -rc divio_cli
-
-autoflake:
-	find divio_cli -name '*.py' | xargs autoflake --in-place --remove-unused-variables
-
-flake8:
-	flake8 divio_cli
-
-
-# isort must come first as black reformats the imports again
-lint: autoflake isort black flake8
+lint:
+	docker run --rm -eLINT_FOLDER_PYTHON=divio_cli -v $(CURDIR):/app divio/lint /bin/lint ${ARGS}

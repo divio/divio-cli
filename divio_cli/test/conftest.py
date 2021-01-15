@@ -1,41 +1,38 @@
+import contextlib
 import os
 import subprocess
 
 import pytest
 
 
-def pytest_addoption(parser):
-    parser.addoption("--test-project-name", action="store")
-    parser.addoption(
-        "--test-project-directory", action="store", default="test/data"
-    )
-
-
 @pytest.fixture(scope="session")
-def divio_project(request):
-    """
-    This fixture requires the `--test_project_name` command line parameter to
-    checkout an actual project for the integration test.
+def _divio_project(request, tmpdir_factory):
 
-    We try to setup up the first time and will not set it up again if it
-    already exists.
-    """
-    test_project_name = request.config.option.test_project_name
+    test_project_name = os.getenv("TEST_PROJECT_NAME", None)
     if test_project_name is None:
         pytest.skip(
-            "project name for the test is not supplied. Please use `--test_project_name <name>` to specify one ."
+            "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."
         )
 
-    test_project_directory = request.config.option.test_project_directory
-
-    test_project_dir_full_path = os.path.join(
-        test_project_directory, test_project_name
+    tmp_folder = tmpdir_factory.mktemp("data")
+    subprocess.call(
+        ["divio", "project", "setup", test_project_name],
+        cwd=str(tmp_folder),
     )
+    return os.path.join(tmp_folder, test_project_name)
 
-    if not os.path.exists(test_project_dir_full_path):
-        process = subprocess.Popen(
-            ["divio", "project", "setup", test_project_name],
-            cwd=test_project_directory,
-        )
-        stdout, stderr = process.communicate()
-    return test_project_dir_full_path
+
+@contextlib.contextmanager
+def remember_cwd(targetdir):
+    curdir = os.getcwd()
+    try:
+        os.chdir(targetdir)
+        yield
+    finally:
+        os.chdir(curdir)
+
+
+@pytest.fixture
+def divio_project(_divio_project):
+    with remember_cwd(_divio_project):
+        yield _divio_project
