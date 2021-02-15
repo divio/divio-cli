@@ -306,7 +306,7 @@ def project_update(obj, strict):
     "--stage",
     default="test",
     type=six.text_type,
-    help="Manage the cloud project's envrinment variables.",
+    help="Manage the cloud project's environment variables.",
 )
 @click.option(
     "--all/--custom",

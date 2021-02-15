@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Unreleased changes (2021-02-15)
+-------------------------------
+
+* Corrected spelling error in help text
+
+
 3.10.0 (2021-01-15)
 -------------------
 
@@ -27,7 +33,7 @@ Changelog
 ------------------
 
 * renamed `.aldryn` file in a project to `.divio/conifg.json`
-* renamed global configuration file as well. 
+* renamed global configuration file as well.
 * made `docker-compose.yml` files optional
 * added command to recreated `.divio/config.json`
 * renamed interal environment variable from `ALDRYN_HOST` to `DIVIO_HOST`
