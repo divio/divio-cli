@@ -359,7 +359,7 @@ def get_local_git_remotes():
 
 def needs_legacy_migration():
     try:
-        check_output(["command", "-v", "start"])
+        check_output(["command", "-v", "start"], catch=False)
         return True
     except Exception:
         return False
