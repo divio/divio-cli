@@ -52,7 +52,7 @@ Integration Tests:
   script: 
       - python3 -m ensurepip --default-pip
       - pip install -r requirements.txt
-      - pip install docker-compose pytest pytest-cov
+      - pip install docker-compose pytest pytest-cov cryptography<3.4
       - python3 setup.py develop
       - divio doctor
       - pytest -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
