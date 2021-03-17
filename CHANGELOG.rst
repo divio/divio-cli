@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Unreleased changes (2021-03-17)
+3.11.0 (2021-03-17)
 -------------------------------
 
 * Corrected spelling error in help text
