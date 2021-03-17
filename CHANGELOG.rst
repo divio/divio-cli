@@ -1,10 +1,11 @@
 Changelog
 =========
 
-Unreleased changes (2021-02-15)
+Unreleased changes (2021-03-17)
 -------------------------------
 
 * Corrected spelling error in help text
+* Fix issue database issue during project setup
 
 
 3.10.0 (2021-01-15)
