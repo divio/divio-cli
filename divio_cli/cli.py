@@ -19,7 +19,6 @@ from .utils import (
     get_git_checked_branch,
     hr,
     open_project_cloud_site,
-    print_package_renamed_warning,
     table,
 )
 from .validators.addon import validate_addon
@@ -37,16 +36,10 @@ except ImportError:
     "-d",
     "--debug/--no-debug",
     default=False,
-    help=(
-        "Drop into the debugger if command execution raises "
-        "an exception."
-    ),
+    help="Drop into the debugger if command execution raises an exception.",
 )
 @click.pass_context
 def cli(ctx, debug):
-    if sys.argv[0].endswith("aldryn"):
-        print_package_renamed_warning()
-
     if debug:
 
         def exception_handler(type, value, traceback):
@@ -90,7 +83,10 @@ def login_token_helper(ctx, value):
         url = ctx.obj.client.get_access_token_url()
         click.secho("Your browser has been opened to visit: {}".format(url))
         click.launch(url)
-        value = click.prompt("Please copy the access token and paste it here.")
+        value = click.prompt(
+            "Please copy the access token and paste it here. (your input is not displayed)",
+            hide_input=True,
+        )
     return value
 
 
@@ -310,7 +306,7 @@ def project_update(obj, strict):
     "--stage",
     default="test",
     type=six.text_type,
-    help="Manage the cloud project's envrinment variables.",
+    help="Manage the cloud project's environment variables.",
 )
 @click.option(
     "--all/--custom",
@@ -333,8 +329,10 @@ def project_update(obj, strict):
     default=None,
     type=click.Tuple([six.text_type, six.text_type]),
     multiple=True,
-    help="Set a specific custom environment variable\n\n"
-        "example: divio project env-vars set DEBUG False",
+    help=(
+        "Set a specific custom environment variable\n\n"
+        "example: divio project env-vars set DEBUG False"
+    ),
 )
 @click.option(
     "--unset",
@@ -395,7 +393,10 @@ def project_status():
 @project.command(name="setup")
 @click.argument("slug")
 @click.option(
-    "-s", "--stage", default="test", help="Specify environment from which media and content data will be pulled."
+    "-s",
+    "--stage",
+    default="test",
+    help="Specify environment from which media and content data will be pulled.",
 )
 @click.option(
     "-p",
@@ -485,7 +486,10 @@ def project_push():
     help="Specify a dumped database file to upload.",
 )
 @click.option(
-    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation."
+    "--noinput",
+    is_flag=True,
+    default=False,
+    help="Don't ask for confirmation.",
 )
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
@@ -527,7 +531,10 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 @project_push.command(name="media")
 @click.argument("stage", default="test")
 @click.option(
-    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation."
+    "--noinput",
+    is_flag=True,
+    default=False,
+    help="Don't ask for confirmation.",
 )
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
@@ -635,7 +642,10 @@ def addon_upload(ctx):
 @click.argument("verbose_name")
 @click.argument("package_name")
 @click.option(
-    "-o", "--organisation", help="Register an addon for an organisation.", type=int
+    "-o",
+    "--organisation",
+    help="Register an addon for an organisation.",
+    type=int,
 )
 @click.pass_context
 def addon_register(ctx, package_name, verbose_name, organisation):
@@ -669,7 +679,10 @@ def boilerplate_validate(ctx):
 
 @boilerplate.command(name="upload")
 @click.option(
-    "--noinput", is_flag=True, default=False, help="Don't ask for confirmation."
+    "--noinput",
+    is_flag=True,
+    default=False,
+    help="Don't ask for confirmation.",
 )
 @click.pass_context
 def boilerplate_upload(ctx, noinput):
@@ -681,11 +694,6 @@ def boilerplate_upload(ctx, noinput):
     except exceptions.DivioException as exc:
         raise click.ClickException(*exc.args)
     click.echo(ret)
-
-
-@cli.group()
-def backup():
-    """Manage backups for projects hosted on Divio."""
 
 
 @cli.command()

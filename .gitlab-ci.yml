@@ -1,0 +1,111 @@
+services:
+  - docker:dind
+
+
+stages:
+    - QA
+    - Statistics
+    - Release
+
+
+Check linting:
+  image: divio/lint
+  stage: QA
+  variables: 
+    LINT_FOLDER_PYTHON: divio_cli 
+  script:
+    - /bin/lint --check
+
+
+Unit Tests:
+    stage: QA
+    image: themattrix/tox
+    script: tox
+    artifacts:
+      paths:
+        - ${CI_PROJECT_DIR}/artifacts/.coverage.*
+      reports:
+        junit: junit-testreport-*.xml
+
+
+Integration Tests:
+  stage: QA
+  image: docker:stable
+  before_script:
+    - apk --update add openssh-client git python3 python3-dev build-base libffi-dev openssl-dev
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - eval $(ssh-agent -s)
+    ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
+    ## We're using tr to fix line endings which makes ed25519 keys work
+    ## without extra base64 encoding.
+    ## https://gitlab.com/gitlab-examples/ssh-private-key/issues/1#note_48526556
+    - echo "$SSH_CI_TEST_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    ## Create the SSH directory and give it the right permissions
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    ## Allow host keys
+    - ssh-keyscan git.divio.com >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+
+    # prepare netrc as login
+    - echo "$CI_TEST_NETRC" > ~/.netrc
+  script: 
+      - python3 -m ensurepip --default-pip
+      - pip install -r requirements.txt
+      - pip install docker-compose pytest pytest-cov "cryptography<3.4"
+      - python3 setup.py develop
+      - divio doctor
+      - pytest -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
+  after_script:
+      - mkdir -p ${CI_PROJECT_DIR}/artifacts
+      - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
+  artifacts:
+    paths:
+      - ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
+    reports:
+      junit: junit-testreport-integration.xml
+
+
+Check Manifest:
+  stage: QA
+  image: python:3-alpine
+  script:
+      - apk add git
+      - pip install check-manifest
+      - check-manifest
+
+
+Combine Coverage:
+  stage: Statistics
+  image: python:3-alpine
+  script:
+      - pip install pytest-cov
+      - cd artifacts 
+      - ls -la
+      - coverage combine
+      - coverage html -i
+      - coverage report -i
+      - coverage xml -i
+  artifacts:
+    paths:
+      - ${CI_PROJECT_DIR}/artifacts/
+    reports:
+      cobertura: ${CI_PROJECT_DIR}/artifacts/coverage.xml
+
+
+Release Tag:
+    stage: Release
+    image: python:3-alpine
+    script:
+        - apk add python3-dev build-base libffi-dev openssl-dev git
+        - pip install twine setuptools_scm "cryptography<3.4"
+        # Install the package in develop mode so setuptools_scm can retrieve 
+        # the new version.
+        - python setup.py sdist bdist_wheel
+        - twine check dist/*
+        - twine upload -u $PYPI_USERNAME -p $PYPI_PASSWORD dist/*
+
+    only:
+      - /^(\d+\.)?(\d+\.)?(\d+)$/
+    except:
+      - branches

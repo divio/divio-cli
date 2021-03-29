@@ -159,10 +159,7 @@ class CloudClient(object):
                 os.execvp("ssh", ssh_command)
 
             except (KeyError, json.decoder.JSONDecodeError):
-                click.secho(
-                    "Error establishing ssh connection.".format(stage),
-                    fg="red",
-                )
+                click.secho("Error establishing ssh connection.", fg="red")
                 sys.exit(1)
 
         else:
@@ -234,7 +231,7 @@ class CloudClient(object):
                 json.decoder.JSONDecodeError,
                 api_requests.APIRequestError,
             ):
-                click.secho("Error retrieving logs.".format(stage), fg="red")
+                click.secho("Error retrieving logs.", fg="red")
                 sys.exit(1)
 
         else:

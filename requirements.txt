@@ -4,17 +4,21 @@
 #
 #    pip-compile --no-index --output-file requirements.txt requirements.in
 #
-attrs==18.2.0
-certifi==2018.11.29       # via requests
+attrs==20.3.0
+certifi==2020.12.5        # via requests
 chardet==3.0.4            # via requests
 click-aliases==1.0.1
-click==7.0
+click==7.1.2
+colorama==0.4.4 ; sys_platform == "win32"
 idna==2.7                 # via requests
-pyaml==18.11.0
+packaging==20.8
+pyaml==20.4.0
+pyparsing==2.4.7          # via packaging
 python-dateutil==2.8.1
-pyyaml==3.13              # via pyaml
+pytz==2020.5              # via tzlocal
+pyyaml==5.3.1             # via pyaml
 requests==2.20.1
-six==1.12.0
-tabulate==0.8.3
+six==1.15.0
+tabulate==0.8.7
 tzlocal==2.1
-urllib3==1.24.1           # via requests
+urllib3==1.24.3           # via requests

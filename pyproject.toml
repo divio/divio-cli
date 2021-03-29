@@ -1,0 +1,26 @@
+[build-system]
+requires = [
+  # sync with setup.py until we discard non-pep-517/518
+  "setuptools>=42.0",
+  "setuptools-scm[toml]>=3.4",
+  "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.isort]
+known_project="divio_cli"
+sections="FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,PROJECT,LOCALFOLDER"
+
+[tool.check-manifest]
+ignore = [
+  "tox.ini",
+  "requirements.in",
+  "requirements-windows.in",
+  "Makefile",
+  ".gitlab-ci.yml",
+  "divio_cli/version.py"
+]
+
+[tool.setuptools_scm]
+# write_to needs to be duplicated in setup.py for compatibility reasons
+write_to = "divio_cli/version.py"
