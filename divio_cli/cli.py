@@ -38,8 +38,14 @@ except ImportError:
     default=False,
     help="Drop into the debugger if command execution raises an exception.",
 )
+@click.option(
+    "-z",
+    "--zone",
+    default=None,
+    help="Specify the Divio zone. Defaults to divio.com",
+)
 @click.pass_context
-def cli(ctx, debug):
+def cli(ctx, debug, zone):
     if debug:
 
         def exception_handler(type, value, traceback):
@@ -57,7 +63,8 @@ def cli(ctx, debug):
         sys.excepthook = exception_handler
 
     ctx.obj = Map()
-    ctx.obj.client = CloudClient(get_endpoint(), debug)
+    ctx.obj.client = CloudClient(get_endpoint(zone=zone), debug)
+    ctx.obj.zone = zone
 
     try:
         is_version_command = sys.argv[1] == "version"
@@ -241,7 +248,7 @@ def project_ssh(obj, remote_id, stage):
 @click.pass_obj
 def configure(obj):
     """Associate a local project with a Divio cloud project."""
-    localdev.configure(client=obj.client)
+    localdev.configure(client=obj.client, zone=obj.zone)
 
 
 @project.command(name="dashboard")
@@ -430,7 +437,9 @@ def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
         )
         sys.exit(1)
 
-    localdev.create_workspace(obj.client, slug, stage, path, overwrite)
+    localdev.create_workspace(
+        obj.client, slug, stage, path, overwrite, obj.zone
+    )
 
 
 @project.group(name="pull")
