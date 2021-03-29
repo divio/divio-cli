@@ -42,7 +42,7 @@ except ImportError:
     "-z",
     "--zone",
     default=None,
-    help="Specify the Divio zone. Defaults to divio.com",
+    help="Specify the Divio zone. Defaults to divio.com.",
 )
 @click.pass_context
 def cli(ctx, debug, zone):
