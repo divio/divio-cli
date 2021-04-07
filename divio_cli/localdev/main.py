@@ -38,7 +38,7 @@ DEFAULT_DUMP_FILENAME = "local_db.sql"
 DEFAULT_SERVICE_PREFIX = "DEFAULT"
 
 
-def get_git_host():
+def get_git_host(zone=None):
     try:
         git_host = get_project_settings(get_project_home()).get(
             "git_host", None
@@ -52,25 +52,29 @@ def get_git_host():
     if git_host:
         click.secho("Using custom git host {}\n".format(git_host), fg="yellow")
     else:
-        git_host = DEFAULT_GIT_HOST.format(divio_zone=get_divio_zone())
+        if not zone:
+            zone = get_divio_zone()
+        git_host = DEFAULT_GIT_HOST.format(divio_zone=zone)
     return git_host
 
 
-def get_git_clone_url(slug, website_id, client):
+def get_git_clone_url(slug, website_id, client, zone=None):
     remote_dsn = client.get_repository_dsn(website_id)
     # if we could get a remote_dsn, us it! Otherwise, its probably a default git setup
     if remote_dsn:
         return remote_dsn
     # TODO: mirrors should fail here
-    return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
+    return GIT_CLONE_URL.format(
+        git_host=get_git_host(zone=zone), project_slug=slug
+    )
 
 
-def clone_project(website_slug, path, client):
+def clone_project(website_slug, path, client, zone=None):
     click.secho("\ncloning project repository", fg="green")
     website_id = client.get_website_id_for_slug(website_slug)
 
     website_git_url = get_git_clone_url(
-        website_slug, website_id, client=client
+        website_slug, website_id, client=client, zone=zone
     )
     clone_args = ["git", "clone", website_git_url]
     if path:
@@ -115,7 +119,7 @@ def configure_project(website_slug, path, client, zone=None):
     click.secho(
         "Git remote:         {}".format(
             click.style(
-                get_git_clone_url(website_slug, website_id, client),
+                get_git_clone_url(website_slug, website_id, client, zone=zone),
                 fg="bright_green",
             )
         )
@@ -234,7 +238,9 @@ def create_workspace(
             sys.exit(1)
 
     # clone git project
-    clone_project(website_slug=website_slug, path=path, client=client)
+    clone_project(
+        website_slug=website_slug, path=path, client=client, zone=zone
+    )
 
     # check for new baseproject + add configuration file
     configure_project(

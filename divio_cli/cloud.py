@@ -43,7 +43,7 @@ def get_endpoint(zone=None):
         endpoint = ENDPOINT.format(zone=zone)
 
     if zone != DEFAULT_ZONE:
-        click.secho("Using custom endpoint {}\n".format(endpoint), fg="yellow")
+        click.secho("Using zone: {}\n".format(endpoint), fg="green")
     return endpoint
 
 
