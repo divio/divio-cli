@@ -1,6 +1,11 @@
 Changelog
 =========
 
+3.12.0 (xxxx-xx-xx)
+-------------------------------
+
+* Updated dependencies which removes support for python 3.5
+
 3.11.0 (2021-03-17)
 -------------------------------
 
