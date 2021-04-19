@@ -15,7 +15,7 @@ import requests
 from divio_cli.utils import get_local_git_remotes
 
 from .. import settings
-from ..cloud import get_divio_host
+from ..cloud import get_divio_zone
 from ..utils import (
     check_call,
     check_output,
@@ -27,9 +27,10 @@ from ..utils import (
     pretty_size,
 )
 from . import utils
+from .utils import get_project_home, get_project_settings
 
 
-DEFAULT_GIT_HOST = "git@git.{divio_host}"
+DEFAULT_GIT_HOST = "git@git.{divio_zone}"
 GIT_CLONE_URL = "{git_host}:{project_slug}.git"
 
 
@@ -37,30 +38,43 @@ DEFAULT_DUMP_FILENAME = "local_db.sql"
 DEFAULT_SERVICE_PREFIX = "DEFAULT"
 
 
-def get_git_host():
-    git_host = os.environ.get("ALDRYN_GIT_HOST")
+def get_git_host(zone=None):
+    try:
+        git_host = get_project_settings(get_project_home()).get(
+            "git_host", None
+        )
+    except click.ClickException:
+        git_host = None
+
+    if not git_host:
+        git_host = os.environ.get("DIVIO_GIT_HOST")
+
     if git_host:
         click.secho("Using custom git host {}\n".format(git_host), fg="yellow")
     else:
-        git_host = DEFAULT_GIT_HOST.format(divio_host=get_divio_host())
+        if not zone:
+            zone = get_divio_zone()
+        git_host = DEFAULT_GIT_HOST.format(divio_zone=zone)
     return git_host
 
 
-def get_git_clone_url(slug, website_id, client):
+def get_git_clone_url(slug, website_id, client, zone=None):
     remote_dsn = client.get_repository_dsn(website_id)
     # if we could get a remote_dsn, us it! Otherwise, its probably a default git setup
     if remote_dsn:
         return remote_dsn
     # TODO: mirrors should fail here
-    return GIT_CLONE_URL.format(git_host=get_git_host(), project_slug=slug)
+    return GIT_CLONE_URL.format(
+        git_host=get_git_host(zone=zone), project_slug=slug
+    )
 
 
-def clone_project(website_slug, path, client):
+def clone_project(website_slug, path, client, zone=None):
     click.secho("\ncloning project repository", fg="green")
     website_id = client.get_website_id_for_slug(website_slug)
 
     website_git_url = get_git_clone_url(
-        website_slug, website_id, client=client
+        website_slug, website_id, client=client, zone=zone
     )
     clone_args = ["git", "clone", website_git_url]
     if path:
@@ -69,11 +83,14 @@ def clone_project(website_slug, path, client):
     check_call(clone_args)
 
 
-def configure_project(website_slug, path, client):
+def configure_project(website_slug, path, client, zone=None):
     website_id = client.get_website_id_for_slug(website_slug)
 
+    if not zone:
+        zone = get_divio_zone()
+
     # create configuration file
-    website_data = {"id": website_id, "slug": website_slug}
+    website_data = {"id": website_id, "slug": website_slug, "zone": zone}
     if os.path.exists(os.path.join(path, settings.ALDRYN_DOT_FILE)):
         path = os.path.join(path, settings.ALDRYN_DOT_FILE)
     else:
@@ -102,7 +119,7 @@ def configure_project(website_slug, path, client):
     click.secho(
         "Git remote:         {}".format(
             click.style(
-                get_git_clone_url(website_slug, website_id, client),
+                get_git_clone_url(website_slug, website_id, client, zone=zone),
                 fg="bright_green",
             )
         )
@@ -194,7 +211,7 @@ def setup_website_containers(
 
 
 def create_workspace(
-    client, website_slug, stage, path=None, force_overwrite=False
+    client, website_slug, stage, path=None, force_overwrite=False, zone=None
 ):
     click.secho("Creating workspace", fg="green")
 
@@ -221,10 +238,14 @@ def create_workspace(
             sys.exit(1)
 
     # clone git project
-    clone_project(website_slug=website_slug, path=path, client=client)
+    clone_project(
+        website_slug=website_slug, path=path, client=client, zone=zone
+    )
 
     # check for new baseproject + add configuration file
-    configure_project(website_slug=website_slug, path=path, client=client)
+    configure_project(
+        website_slug=website_slug, path=path, client=client, zone=zone
+    )
 
     # setup docker website containers
     setup_website_containers(client=client, stage=stage, path=path)
@@ -1234,7 +1255,7 @@ def open_project(open_browser=True):
     return addr
 
 
-def configure(client):
+def configure(client, zone=None):
     if click.confirm(
         "This action will overwrite the local Divio configuration file for your project or create a new one. Do you want to continue?"
     ):
@@ -1242,7 +1263,10 @@ def configure(client):
             "Please enter the application slug of the local project", type=str
         )
         configure_project(
-            website_slug=website_slug, path=os.getcwd(), client=client
+            website_slug=website_slug,
+            path=os.getcwd(),
+            client=client,
+            zone=zone,
         )
 
 
