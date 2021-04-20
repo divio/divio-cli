@@ -1,13 +1,14 @@
 import json
+from io import StringIO
 
-from ..utils import get_string_io, tar_add_stringio
+from ..utils import tar_add_stringio
 from ..validators.common import get_license, load_config
 
 
 def add_meta_files(tar, path, config_filename):
     # config json file
     config_json = load_config(config_filename, path)
-    config_json_fobj = get_string_io()
+    config_json_fobj = StringIO()
     json.dump(config_json, config_json_fobj)
     tar_add_stringio(tar, config_json_fobj, config_filename)
 

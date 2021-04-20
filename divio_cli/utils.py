@@ -62,19 +62,6 @@ def create_temp_dir():
     return tempfile.mkdtemp(prefix="tmp_divio_cli_")
 
 
-def get_bytes_io(*args, **kwargs):
-    from io import BytesIO
-
-    cls = BytesIO
-    return cls(*args, **kwargs)
-
-
-def get_string_io(*args, **kwargs):
-    from io import StringIO
-
-    return StringIO(*args, **kwargs)
-
-
 def tar_add_stringio(tar, string_io, name):
     bytes_io = io.BytesIO(string_io.getvalue().encode())
     return tar_add_bytesio(tar, bytes_io, name)
