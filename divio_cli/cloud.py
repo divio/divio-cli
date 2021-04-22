@@ -173,6 +173,27 @@ class CloudClient(object):
             )
             sys.exit(1)
 
+    def get_environment(self, website_id, stage):
+        project_data = self.get_project(website_id)
+        try:
+            status = project_data["{}_status".format(stage)]
+        except KeyError:
+            click.secho(
+                "Environment with the name '{}' does not exist.".format(stage),
+                fg="red",
+            )
+            sys.exit(1)
+        try:
+            response = api_requests.EnvironmentRequest(
+                self.session,
+                url_kwargs={"environment_uuid": status["uuid"]},
+            )()
+            return response
+
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho("Error establishing ssh connection.", fg="red")
+            sys.exit(1)
+
     def show_log(self, website_id, stage, tail=False, utc=True):
         def print_log_data(data):
             for entry in data:

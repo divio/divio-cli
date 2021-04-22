@@ -69,14 +69,17 @@ def get_git_clone_url(slug, website_id, client, zone=None):
     )
 
 
-def clone_project(website_slug, path, client, zone=None):
+def clone_project(website_slug, path, client, zone=None, branch=None):
     click.secho("\ncloning project repository", fg="green")
     website_id = client.get_website_id_for_slug(website_slug)
 
     website_git_url = get_git_clone_url(
         website_slug, website_id, client=client, zone=zone
     )
-    clone_args = ["git", "clone", website_git_url]
+    clone_args = ["git", "clone"]
+    if branch:
+        clone_args.append(f"-b{branch}")
+    clone_args.append(website_git_url)
     if path:
         clone_args.append(path)
 
@@ -237,9 +240,16 @@ def create_workspace(
             click.secho("Aborting", fg="red")
             sys.exit(1)
 
+    website_id = client.get_website_id_for_slug(website_slug)
+    env = client.get_environment(website_id, stage)
+
     # clone git project
     clone_project(
-        website_slug=website_slug, path=path, client=client, zone=zone
+        website_slug=website_slug,
+        path=path,
+        client=client,
+        zone=zone,
+        branch=env["branch"],
     )
 
     # check for new baseproject + add configuration file
