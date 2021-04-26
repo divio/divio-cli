@@ -5,6 +5,7 @@ Changelog
 -------------------------------
 
 * Updated dependencies which removes support for python 3.5
+* Added better DB error handling.
 
 3.11.0 (2021-03-17)
 -------------------------------
