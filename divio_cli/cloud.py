@@ -191,7 +191,7 @@ class CloudClient(object):
             return response
 
         except (KeyError, json.decoder.JSONDecodeError):
-            click.secho("Error establishing ssh connection.", fg="red")
+            click.secho("Error establishing connection.", fg="red")
             sys.exit(1)
 
     def show_log(self, website_id, stage, tail=False, utc=True):
