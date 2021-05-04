@@ -1,11 +1,11 @@
 import glob
 import os
 import tarfile
+from io import BytesIO
 
 import click
 
 from .. import settings
-from ..utils import get_bytes_io
 from ..validators.boilerplate import validate_boilerplate
 from ..validators.common import load_config
 from .common import add_meta_files
@@ -80,7 +80,7 @@ def upload_boilerplate(client, path=None, noinput=False):
 
 
 def create_boilerplate_archive(path, files):
-    fobj = get_bytes_io()
+    fobj = BytesIO()
 
     with tarfile.open(mode="w:gz", fileobj=fobj) as tar:
         add_meta_files(tar, path, settings.BOILERPLATE_CONFIG_FILENAME)

@@ -1,7 +1,7 @@
 import os
 import subprocess
 import tarfile
-from io import BytesIO
+from io import BytesIO, StringIO
 
 import click
 
@@ -9,9 +9,7 @@ from .. import settings
 from ..utils import (
     create_temp_dir,
     dev_null,
-    get_bytes_io,
     get_package_version,
-    get_string_io,
     get_subprocess_env,
     tar_add_bytesio,
     tar_add_stringio,
@@ -49,11 +47,11 @@ def add_addon_meta_files(tar, path):
         )
 
     # version
-    tar_add_stringio(tar, get_string_io(get_package_version(path)), "VERSION")
+    tar_add_stringio(tar, StringIO(get_package_version(path)), "VERSION")
 
 
 def create_addon_archive(path):
-    data = get_bytes_io()
+    data = BytesIO()
 
     with tarfile.open(mode="w:gz", fileobj=data) as tar:
         add_meta_files(tar, path, settings.ADDON_CONFIG_FILENAME)
