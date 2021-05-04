@@ -12,7 +12,6 @@ from math import log
 import click
 import requests
 from packaging import version
-from six import PY2
 from six.moves.urllib_parse import urljoin
 from tabulate import tabulate
 
@@ -61,26 +60,6 @@ def redirect_stderr(new_stream):
 
 def create_temp_dir():
     return tempfile.mkdtemp(prefix="tmp_divio_cli_")
-
-
-def get_bytes_io(*args, **kwargs):
-    if PY2:
-        from StringIO import StringIO
-
-        cls = StringIO
-    else:
-        from io import BytesIO
-
-        cls = BytesIO
-    return cls(*args, **kwargs)
-
-
-def get_string_io(*args, **kwargs):
-    if PY2:
-        from StringIO import StringIO
-    else:
-        from io import StringIO
-    return StringIO(*args, **kwargs)
 
 
 def tar_add_stringio(tar, string_io, name):
