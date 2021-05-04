@@ -514,14 +514,14 @@ class DatabaseImportBase(object):
         # TODO: use same dump-type detection like server side on db-api
         try:
             check_call(
-                (
+                [
                     "docker",
                     "exec",
                     db_container_id,
                     "/bin/bash",
                     "-c",
                     restore_command,
-                ),
+                ],
                 env=get_subprocess_env(),
                 catch=False,
             )

@@ -324,8 +324,9 @@ def get_db_type(prefix, path=None):
         if not docker_compose_config.has_service("db"):
             click.secho(
                 "The local database container must be called "
-                "`database_default`, and must mount the project directory from the "
-                "host to the /app directory of the container."
+                "`database_default`, must define the `SERVICE_MANAGER` "
+                "environment variable and must mount the project directory "
+                "from the host to the /app directory of the container."
                 "\n\nSee https://docs.divio.com/en/latest/reference/docker-docker-compose/#database-default",
                 fg="red",
             )
