@@ -133,7 +133,7 @@ def ensure_windows_docker_compose_file_exists(path):
         sys.exit(1)
 
     with open(unix_path, "r") as fh:
-        conf = yaml.load(fh)
+        conf = yaml.load(fh, Loader=yaml.SafeLoader)
 
     for component, sections in conf.items():
         if "volumes" not in sections:
@@ -215,7 +215,9 @@ def start_database_server(docker_compose, prefix):
 class DockerComposeConfig(object):
     def __init__(self, docker_compose):
         super(DockerComposeConfig, self).__init__()
-        self.config = yaml.load(check_output(docker_compose("config")))
+        self.config = yaml.load(
+            check_output(docker_compose("config")), Loader=yaml.SafeLoader
+        )
 
     def get_services(self):
         return self.config.get("services", {})
