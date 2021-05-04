@@ -523,19 +523,28 @@ class DatabaseImportBase(object):
 
         # TODO: use same dump-type detection like server side on db-api
         try:
-            subprocess.call(
-                (
+            check_call(
+                [
                     "docker",
                     "exec",
                     db_container_id,
                     "/bin/bash",
                     "-c",
                     restore_command,
-                ),
+                ],
                 env=get_subprocess_env(),
+                catch=False,
             )
-        except subprocess.CalledProcessError:
-            pass
+        except subprocess.CalledProcessError as exc:
+            click.secho(
+                "Could not restore the database dump. This is likely a "
+                "configuration issue."
+                "\n\nSee https://docs.divio.com/en/latest/reference/docker-docker-compose/#services-defined-in-docker-compose-yml\n\n"
+                "The executed command was:\n"
+                "  {command}".format(command=" ".join(exc.cmd)),
+                fg="red",
+            )
+            sys.exit(1)
 
     def restore_db_mysql(self, db_container_id):
         restore_command = self.get_db_restore_command(self.db_type)
