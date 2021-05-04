@@ -15,7 +15,7 @@ TEST_COMMANDS_CLICK = [
     ["project", "deploy-log"],
     ["project", "env-vars"],
     ["project", "list"],
-    #["project", "pull", "db"],
+    # ["project", "pull", "db"],
     # ("project", "push", "db", "--noinput"),
     ["project", "export", "db"],
     # ("project", "push", "db", "--noinput", "--dumpfile", "local_db.sql"),
