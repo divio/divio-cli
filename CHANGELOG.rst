@@ -8,6 +8,7 @@ Changelog
 * Added support for Divio zones
 * Add support for branches of environments on project setup
 * Added better DB error handling.
+* Resolved YAML deprecation warning
 
 3.11.0 (2021-03-17)
 -------------------------------
