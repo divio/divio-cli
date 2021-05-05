@@ -1,7 +1,7 @@
 Changelog
 =========
 
-3.12.0 (xxxx-xx-xx)
+3.12.0 (2021-05-05)
 -------------------------------
 
 * Updated dependencies which removes support for python 3.5 and python 2
