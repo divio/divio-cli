@@ -189,6 +189,7 @@ def setup_website_containers(
             path=path,
             prefix=prefix,
             db_type=db_type,
+            dump_path = settings.DIVIO_DUMP_FOLDER
         )()
 
         if needs_legacy_migration():
@@ -305,6 +306,7 @@ class DatabaseImportBase(object):
         self.db_type = kwargs.pop("db_type")
 
         self.path = kwargs.pop("path", None) or utils.get_project_home()
+        self.dump_path = kwargs.pop("dump_path", None) or self.path
         self.website_id = utils.get_project_settings(self.path)["id"]
         self.website_slug = utils.get_project_settings(self.path)["slug"]
         try:
@@ -638,6 +640,8 @@ class ImportRemoteDatabase(DatabaseImportBase):
         super(ImportRemoteDatabase, self).__init__(*args, **kwargs)
         self.stage = kwargs.pop("stage", None)
         self.remote_id = kwargs.pop("remote_id", None) or self.website_id
+        self.keep_tempfile = kwargs.pop("keep_tempfile", None)
+
         remote_project_name = (
             self.website_slug
             if self.remote_id == self.website_id
@@ -673,22 +677,31 @@ class ImportRemoteDatabase(DatabaseImportBase):
         download_url = progress.get("result") or None
         click.echo(" [{}s]".format(int(time() - start_preparation)))
 
-        click.secho(" ---> Downloading database", nl=False)
+        
         start_download = time()
         if download_url:
-            db_dump_path = download_file(download_url, directory=self.path)
+            self.host_db_dump_path = download_file(download_url, directory=self.dump_path)
+            click.secho(f" ---> Writing temp file: {self.host_db_dump_path}")
+            click.secho(" ---> Downloading database", nl=False)
             click.echo(" [{}s]".format(int(time() - start_download)))
             # strip path from dump_path for use in the docker container
-            self.db_dump_path = "/app/{}".format(
-                db_dump_path.replace(self.path, "")
-            )
+            self.db_dump_path = f"/app/{self.host_db_dump_path}".replace(self.path, "")
+            
         else:
-            click.secho(" -> empty")
+            click.secho(" ---> empty database")
             self.db_dump_path = None
 
     def get_db_restore_command(self, db_type):
         cmd = self.restore_commands[db_type]["archived-binary"]
         return cmd.format(self.db_dump_path)
+
+    def finish(self, *args, **kwargs):
+        if self.keep_tempfile:
+            click.secho(f" ---> Keeping temp file: {self.host_db_dump_path}")    
+        else:
+            click.secho(f" ---> Removing temp file: {self.host_db_dump_path}")
+            os.remove(self.host_db_dump_path)
+        super(ImportRemoteDatabase, self).finish(*args, **kwargs)
 
 
 def pull_media(client, stage, remote_id=None, path=None):
