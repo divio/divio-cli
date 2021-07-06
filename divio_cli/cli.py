@@ -473,7 +473,7 @@ def pull_db(obj, remote_id, stage, prefix, keep_tempfile):
         remote_id=remote_id,
         db_type=db_type,
         dump_path=settings.DIVIO_DUMP_FOLDER,
-        keep_tempfile = keep_tempfile
+        keep_tempfile=keep_tempfile,
     )()
 
 

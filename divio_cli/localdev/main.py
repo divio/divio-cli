@@ -189,7 +189,7 @@ def setup_website_containers(
             path=path,
             prefix=prefix,
             db_type=db_type,
-            dump_path = settings.DIVIO_DUMP_FOLDER
+            dump_path=settings.DIVIO_DUMP_FOLDER,
         )()
 
         if needs_legacy_migration():
@@ -677,16 +677,19 @@ class ImportRemoteDatabase(DatabaseImportBase):
         download_url = progress.get("result") or None
         click.echo(" [{}s]".format(int(time() - start_preparation)))
 
-        
         start_download = time()
         if download_url:
-            self.host_db_dump_path = download_file(download_url, directory=self.dump_path)
+            self.host_db_dump_path = download_file(
+                download_url, directory=self.dump_path
+            )
             click.secho(f" ---> Writing temp file: {self.host_db_dump_path}")
             click.secho(" ---> Downloading database", nl=False)
             click.echo(" [{}s]".format(int(time() - start_download)))
             # strip path from dump_path for use in the docker container
-            self.db_dump_path = f"/app/{self.host_db_dump_path}".replace(self.path, "")
-            
+            self.db_dump_path = f"/app/{self.host_db_dump_path}".replace(
+                self.path, ""
+            )
+
         else:
             click.secho(" ---> empty database")
             self.db_dump_path = None
@@ -697,7 +700,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
 
     def finish(self, *args, **kwargs):
         if self.keep_tempfile:
-            click.secho(f" ---> Keeping temp file: {self.host_db_dump_path}")    
+            click.secho(f" ---> Keeping temp file: {self.host_db_dump_path}")
         else:
             click.secho(f" ---> Removing temp file: {self.host_db_dump_path}")
             os.remove(self.host_db_dump_path)
