@@ -44,8 +44,19 @@ except ImportError:
     default=None,
     help="Specify the Divio zone. Defaults to divio.com.",
 )
+@click.option(
+    "-s",
+    "--sudo",
+    default=False,
+    is_flag=True,
+    help="Run as sudo?",
+    hidden=True,
+)
 @click.pass_context
-def cli(ctx, debug, zone):
+def cli(ctx, debug, zone, sudo):
+    if sudo:
+        click.secho("Running as sudo", fg="red")
+
     if debug:
 
         def exception_handler(type, value, traceback):
@@ -65,6 +76,7 @@ def cli(ctx, debug, zone):
     ctx.obj = Map()
     ctx.obj.client = CloudClient(get_endpoint(zone=zone), debug)
     ctx.obj.zone = zone
+    ctx.obj.sudo = sudo
 
     try:
         is_version_command = sys.argv[1] == "version"
