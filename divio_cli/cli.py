@@ -74,7 +74,9 @@ def cli(ctx, debug, zone, sudo):
         sys.excepthook = exception_handler
 
     ctx.obj = Map()
-    ctx.obj.client = CloudClient(get_endpoint(zone=zone), debug=debug, sudo=sudo)
+    ctx.obj.client = CloudClient(
+        get_endpoint(zone=zone), debug=debug, sudo=sudo
+    )
     ctx.obj.zone = zone
 
     try:
