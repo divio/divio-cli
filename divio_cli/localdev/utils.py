@@ -88,7 +88,12 @@ def get_docker_compose_cmd(path):
             "Warning: Could not find a 'docker-compose.yml' file."
         )
 
-    docker_compose_base = ["docker-compose", "-f", docker_compose_filename]
+    conf = config.Config()
+    cmd = conf.config.get("docker-compose", None)
+    if cmd:
+        docker_compose_base = cmd + ["-f", docker_compose_filename]
+    else:
+        docker_compose_base = ["docker-compose", "-f", docker_compose_filename]
 
     def docker_compose(*commands):
         return docker_compose_base + [cmd for cmd in commands]
@@ -174,24 +179,36 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
         raise exceptions.DivioException(
             "docker-compose.yml not found. Unable to find database container"
         )
+    should_check_oldstyle = False
+    output = None
+
     try:
         output = check_output(
             docker_compose("ps", "-q", "database_{}".format(prefix).lower()),
             catch=False,
             stderr=open(os.devnull, "w"),
         ).rstrip(os.linesep)
-        if not output and raise_on_missing:
-            raise exceptions.DivioException(
-                "Unable to find database container"
-            )
+        if not output:
+            # This is new behavior in docker-compose v2, the output can be
+            # empty if the container does not exist.
+            should_check_oldstyle = True
     except subprocess.CalledProcessError:
-        output = check_output(docker_compose("ps", "-q", "db")).rstrip(
-            os.linesep
-        )
-        if not output and raise_on_missing:
-            raise exceptions.DivioException(
-                "Unable to find database container"
+        # This is the old behavior in docker-compose v1, a not existing service
+        # will result in an actual error.
+        should_check_oldstyle = True
+
+    if should_check_oldstyle:
+        try:
+            output = check_output(docker_compose("ps", "-q", "db")).rstrip(
+                os.linesep
             )
+        except subprocess.CalledProcessError:
+            # This is the old behavior in docker-compose v1, a not existing service
+            # will result in an actual error.
+            pass
+
+    if not output and raise_on_missing:
+        raise exceptions.DivioException("Unable to find database container")
     return output
 
 
