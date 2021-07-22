@@ -109,3 +109,8 @@ Release Tag:
       - /^(\d+\.)?(\d+\.)?(\d+)$/
     except:
       - branches
+
+
+include:
+  template: Jobs/SAST.gitlab-ci.yml
+
