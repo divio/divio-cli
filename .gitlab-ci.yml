@@ -3,7 +3,7 @@ services:
 
 
 stages:
-    - sast job    
+    - test    
     - QA
     - Statistics
     - Release
