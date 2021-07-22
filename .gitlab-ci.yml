@@ -112,5 +112,4 @@ Release Tag:
 
 
 include:
-  template: Jobs/SAST.gitlab-ci.yml
-
+  - template: Jobs/SAST.gitlab-ci.yml
