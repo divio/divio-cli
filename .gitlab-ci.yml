@@ -1,17 +1,11 @@
 include:
   - project: divio/infra/gitlab-pipelines
-    ref: add-default-pipeline
+    ref: master
     file: default/.gitlab-ci.yml
 
 
-
-Check linting:
-  image: divio/lint
-  stage: qa
-  variables: 
-    LINT_FOLDER_PYTHON: divio_cli 
-  script:
-    - /bin/lint --check
+variables:
+  LINT_FOLDER_PYTHON: divio_cli
 
 
 Unit Tests:
