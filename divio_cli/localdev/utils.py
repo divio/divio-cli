@@ -89,11 +89,8 @@ def get_docker_compose_cmd(path):
         )
 
     conf = config.Config()
-    cmd = conf.config.get("docker-compose", None)
-    if cmd:
-        docker_compose_base = cmd + ["-f", docker_compose_filename]
-    else:
-        docker_compose_base = ["docker-compose", "-f", docker_compose_filename]
+    cmd = conf.config.get("docker-compose", "docker-compose")
+    docker_compose_base = cmd + ["-f", docker_compose_filename]
 
     def docker_compose(*commands):
         return docker_compose_base + [cmd for cmd in commands]
@@ -189,8 +186,9 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
             stderr=open(os.devnull, "w"),
         ).rstrip(os.linesep)
         if not output:
-            # This is new behavior in docker-compose v2, the output can be
-            # empty if the container does not exist.
+            # This behavior was briefly used in docker-compose v2.
+            # The output can be empty if the container does not exist.
+            # For information: https://github.com/docker/compose-cli/issues/1893
             should_check_oldstyle = True
     except subprocess.CalledProcessError:
         # This is the old behavior in docker-compose v1, a not existing service
