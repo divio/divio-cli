@@ -1,8 +1,12 @@
 Changelog
 =========
+3.13.0 (xxxx-xx-xx)
+-------------------
+
+* Improved handling of database files during pull
 
 3.12.0 (2021-05-05)
--------------------------------
+-------------------
 
 * Updated dependencies which removes support for python 3.5 and python 2
 * Added support for Divio zones
@@ -11,7 +15,7 @@ Changelog
 * Resolved YAML deprecation warning
 
 3.11.0 (2021-03-17)
--------------------------------
+-------------------
 
 * Corrected spelling error in help text
 * Fix issue database issue during project setup

@@ -7,7 +7,7 @@ import click
 import six
 from click_aliases import ClickAliasedGroup
 
-from . import exceptions, localdev, messages
+from . import exceptions, localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
 from .localdev.utils import allow_remote_id_override
@@ -461,11 +461,17 @@ def project_pull():
 
 
 @project_pull.command(name="db")
+@click.option(
+    "--keep-tempfile",
+    is_flag=True,
+    default=False,
+    help="Keep the temporary file with the data.",
+)
 @click.argument("stage", default="test")
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
 @click.pass_obj
-def pull_db(obj, remote_id, stage, prefix):
+def pull_db(obj, remote_id, stage, prefix, keep_tempfile):
     """
     Pull database the Divio cloud environment.
     """
@@ -479,6 +485,8 @@ def pull_db(obj, remote_id, stage, prefix):
         prefix=prefix,
         remote_id=remote_id,
         db_type=db_type,
+        dump_path=settings.DIVIO_DUMP_FOLDER,
+        keep_tempfile=keep_tempfile,
     )()
 
 
