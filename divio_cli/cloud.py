@@ -61,8 +61,9 @@ def get_service_color(service):
 
 
 class CloudClient(object):
-    def __init__(self, endpoint, debug=False):
+    def __init__(self, endpoint, debug=False, sudo=False):
         self.debug = debug
+        self.sudo = sudo
         self.config = Config()
         self.endpoint = endpoint
         self.netrc = WritableNetRC()
@@ -72,9 +73,12 @@ class CloudClient(object):
     def get_auth_header(self):
         host = urlparse(self.endpoint).hostname
         data = self.netrc.hosts.get(host)
+        headers = {}
         if data:
-            return {"Authorization": "Token {}".format(data[2])}
-        return {}
+            headers["Authorization"] = "Token {}".format(data[2])
+        if self.sudo:
+            headers["X-Sudo"] = "make me a sandwich"
+        return headers
 
     def get_access_token_url(self):
         return "{}/{}".format(
