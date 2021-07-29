@@ -1,9 +1,10 @@
 Changelog
 =========
-3.13.0 (xxxx-xx-xx)
+3.13.0 (2021-07-29)
 -------------------
 
 * Improved handling of database files during pull
+* Added support for docker-compose v2
 
 3.12.0 (2021-05-05)
 -------------------
