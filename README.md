@@ -39,4 +39,3 @@ You might get asked to provide authentication information during the test, depen
 ```bash
 tox --  -m "integration" --test_project_name <NAME_OF_A_PROJECT_FOR_TESTING>
 ```
-
