@@ -100,4 +100,3 @@ Release Tag:
       - /^(\d+\.)?(\d+\.)?(\d+)$/
     except:
       - branches
-
