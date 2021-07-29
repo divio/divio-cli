@@ -191,8 +191,7 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
             # For information: https://github.com/docker/compose-cli/issues/1893
             should_check_oldstyle = True
     except subprocess.CalledProcessError:
-        # This is the old behavior in docker-compose v1, a not existing service
-        # will result in an actual error.
+        # A not existing service will result in an error.
         should_check_oldstyle = True
 
     if should_check_oldstyle:
@@ -201,8 +200,7 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
                 os.linesep
             )
         except subprocess.CalledProcessError:
-            # This is the old behavior in docker-compose v1, a not existing service
-            # will result in an actual error.
+            # A not existing service will result in an error.
             pass
 
     if not output and raise_on_missing:

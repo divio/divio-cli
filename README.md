@@ -19,7 +19,7 @@ See [Divio Support: How to use the Divio command-line interface](http://support.
 
 # Support for docker-compose 1 and 2
 
-The CLI supports version 1 (`docker-compose`) and version 2 (`docker compose`) of the command invokation. At the time of this writing, the CLI will use v1 command invokation by default because v2 is still in beta. This will likely change in the future.
+The CLI supports version 1 (`docker-compose`) and version 2 (`docker compose`) of the command invocation. At the time of this writing, the CLI will use v1 command invocation by default because v2 is still in beta. This will likely change in the future.
 
 You can opt-in to use the new command by updating your CLI global settings in `~/.aldryn` and add a new setting called `docker-compose` with the value `["docker", "compose"]`.
 
