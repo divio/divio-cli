@@ -27,7 +27,7 @@ from ..utils import (
     pretty_size,
 )
 from . import utils
-from .utils import get_project_home, get_project_settings
+from .utils import get_application_home, get_project_settings
 
 
 DEFAULT_GIT_HOST = "git@git.{divio_zone}"
@@ -40,7 +40,7 @@ DEFAULT_SERVICE_PREFIX = "DEFAULT"
 
 def get_git_host(zone=None):
     try:
-        git_host = get_project_settings(get_project_home()).get(
+        git_host = get_project_settings(get_application_home()).get(
             "git_host", None
         )
     except click.ClickException:
@@ -272,7 +272,7 @@ def create_workspace(
         "",
         "For Terminal:",
         " - change directory to '{}'".format(path),
-        " - run 'divio project up'",
+        " - run 'divio app up'",
     )
 
     click.secho("\n\n{}".format(os.linesep.join(instructions)), fg="green")
@@ -305,7 +305,7 @@ class DatabaseImportBase(object):
         self.prefix = kwargs.pop("prefix")
         self.db_type = kwargs.pop("db_type")
 
-        self.path = kwargs.pop("path", None) or utils.get_project_home()
+        self.path = kwargs.pop("path", None) or utils.get_application_home()
         self.dump_path = kwargs.pop("dump_path", None) or self.path
         self.website_id = utils.get_project_settings(self.path)["id"]
         self.website_slug = utils.get_project_settings(self.path)["slug"]
@@ -708,7 +708,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
 
 
 def pull_media(client, stage, remote_id=None, path=None):
-    project_home = utils.get_project_home(path)
+    project_home = utils.get_application_home(path)
     website_id = utils.get_project_settings(project_home)["id"]
     website_slug = utils.get_project_settings(project_home)["slug"]
     remote_id = remote_id or website_id
@@ -805,7 +805,7 @@ def pull_media(client, stage, remote_id=None, path=None):
 
 
 def dump_database(dump_filename, db_type, prefix, archive_filename=None):
-    project_home = utils.get_project_home()
+    project_home = utils.get_application_home()
     try:
         docker_compose = utils.get_docker_compose_cmd(project_home)
     except RuntimeError:
@@ -920,7 +920,7 @@ def export_db(prefix):
     )
     start_time = time()
 
-    project_home = utils.get_project_home()
+    project_home = utils.get_application_home()
     db_type = utils.get_db_type(prefix=prefix, path=project_home)
     dump_database(dump_filename=dump_filename, db_type=db_type, prefix=prefix)
 
@@ -929,7 +929,7 @@ def export_db(prefix):
 
 
 def push_db(client, stage, remote_id, prefix, db_type):
-    project_home = utils.get_project_home()
+    project_home = utils.get_application_home()
     website_id = utils.get_project_settings(project_home)["id"]
     dump_filename = DEFAULT_DUMP_FILENAME
     archive_filename = dump_filename.replace(".sql", ".tar.gz")
@@ -1032,7 +1032,7 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
 
 
 def push_media(client, stage, remote_id, prefix):
-    project_home = utils.get_project_home()
+    project_home = utils.get_application_home()
     website_id = utils.get_project_settings(project_home)["id"]
     archive_path = os.path.join(project_home, "local_media.tar.gz")
     website_slug = utils.get_project_settings(project_home)["slug"]
@@ -1109,11 +1109,11 @@ def push_media(client, stage, remote_id, prefix):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def update_local_project(git_branch, client, strict=False):
+def update_local_application(git_branch, client, strict=False):
     """
     Makes all updates of the local project.
     """
-    project_home = utils.get_project_home()
+    project_home = utils.get_application_home()
     try:
         docker_compose = utils.get_docker_compose_cmd(project_home)
     except RuntimeError:
@@ -1123,7 +1123,7 @@ def update_local_project(git_branch, client, strict=False):
     # We also check for remote repository configurations on a project update
     # to warn the user just in case something changed
     remote_dsn = client.get_repository_dsn(
-        utils.get_project_settings(utils.get_project_home())["id"]
+        utils.get_project_settings(utils.get_application_home())["id"]
     )
 
     if remote_dsn and remote_dsn not in get_local_git_remotes():
@@ -1164,7 +1164,7 @@ def develop_package(package, no_rebuild=False):
     :param no_rebuild: skip the rebuild of the container
     """
 
-    project_home = utils.get_project_home()
+    project_home = utils.get_application_home()
     addons_dev_dir = os.path.join(project_home, "addons-dev")
 
     if not os.path.isdir(os.path.join(addons_dev_dir, package)):
@@ -1222,9 +1222,11 @@ def develop_package(package, no_rebuild=False):
     )
 
 
-def open_project(open_browser=True):
+def open_application(open_browser=True):
     try:
-        docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+        docker_compose = utils.get_docker_compose_cmd(
+            utils.get_application_home()
+        )
     except RuntimeError:
         # Docker-compose does not exist
         click.secho(
@@ -1242,7 +1244,7 @@ def open_project(open_browser=True):
         if click.prompt(
             "Your project is not running. Do you want to start " "it now?"
         ):
-            return start_project()
+            return start_application()
         return
     try:
         host, port = addr.rstrip(os.linesep).split(":")
@@ -1305,9 +1307,11 @@ def configure(client, zone=None):
         )
 
 
-def start_project():
+def start_application():
     try:
-        docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+        docker_compose = utils.get_docker_compose_cmd(
+            utils.get_application_home()
+        )
     except RuntimeError:
         # Docker-compose does not exist
         click.secho(
@@ -1330,12 +1334,14 @@ def start_project():
             )
         raise click.ClickException(output)
 
-    return open_project(open_browser=True)
+    return open_application(open_browser=True)
 
 
-def show_project_status():
+def show_application_status():
     try:
-        docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+        docker_compose = utils.get_docker_compose_cmd(
+            utils.get_application_home()
+        )
         check_call(docker_compose("ps"))
     except RuntimeError:
         # Docker-compose does not exist
@@ -1346,9 +1352,11 @@ def show_project_status():
         return
 
 
-def stop_project():
+def stop_application():
     try:
-        docker_compose = utils.get_docker_compose_cmd(utils.get_project_home())
+        docker_compose = utils.get_docker_compose_cmd(
+            utils.get_application_home()
+        )
         check_call(docker_compose("stop"))
     except RuntimeError:
         # Docker-compose does not exist

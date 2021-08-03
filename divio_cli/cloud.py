@@ -12,7 +12,7 @@ from tzlocal import get_localzone
 
 from . import api_requests, messages, settings
 from .config import Config
-from .localdev.utils import get_project_home, get_project_settings
+from .localdev.utils import get_application_home, get_project_settings
 from .utils import json_dumps_unicode
 
 
@@ -22,15 +22,15 @@ DEFAULT_ZONE = "divio.com"
 
 def get_divio_zone():
     try:
-        project_specific_zone = get_project_settings(get_project_home()).get(
-            "zone", None
-        )
+        application_specific_zone = get_project_settings(
+            get_application_home()
+        ).get("zone", None)
     except click.ClickException:
         # Happens when there is no configuration file
         pass
     else:
-        if project_specific_zone:
-            return project_specific_zone
+        if application_specific_zone:
+            return application_specific_zone
     return os.environ.get("DIVIO_ZONE", DEFAULT_ZONE)
 
 
@@ -132,7 +132,7 @@ class CloudClient(object):
         else:
             return False, messages.LOGIN_CHECK_ERROR
 
-    def get_projects(self):
+    def get_applications(self):
         request = api_requests.ProjectListRequest(self.session)
         return request()
 
@@ -296,7 +296,7 @@ class CloudClient(object):
                 fg="yellow",
             )
 
-    def deploy_project_or_get_progress(self, website_id, stage):
+    def deploy_application_or_get_progress(self, website_id, stage):
         def fmt_progress(data):
             if not data:
                 return "Connecting to remote"
@@ -348,7 +348,7 @@ class CloudClient(object):
                     bar.update(progress_percent)
 
                     raise click.ClickException(
-                        "\nDeployment failed. Please run 'divio project deploy-log {}' "
+                        "\nDeployment failed. Please run 'divio app deploy-log {}' "
                         "to get more information".format(stage)
                     )
                 else:

@@ -127,8 +127,8 @@ def check_output(*popenargs, **kwargs):
     return execute(subprocess.check_output, *popenargs, **kwargs).decode()
 
 
-def open_project_cloud_site(client, project_id, stage):
-    project_data = client.get_project(project_id)
+def open_application_cloud_site(client, application_id, stage):
+    project_data = client.get_project(application_id)
     try:
         url = project_data["{}_status".format(stage)]["site_url"]
     except KeyError:
@@ -145,8 +145,8 @@ def open_project_cloud_site(client, project_id, stage):
         )
 
 
-def get_cp_url(client, project_id, section="dashboard"):
-    project_data = client.get_project(project_id)
+def get_cp_url(client, application_id, section="dashboard"):
+    project_data = client.get_project(application_id)
     url = project_data["dashboard_url"]
 
     if section != "dashboard":
