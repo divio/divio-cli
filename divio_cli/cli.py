@@ -18,7 +18,7 @@ from .utils import (
     get_cp_url,
     get_git_checked_branch,
     hr,
-    open_project_cloud_site,
+    open_application_cloud_site,
     table,
 )
 from .validators.addon import validate_addon
@@ -31,7 +31,7 @@ except ImportError:
     import pdb
 
 
-@click.group()
+@click.group(cls=ClickAliasedGroup)
 @click.option(
     "-d",
     "--debug/--no-debug",
@@ -132,12 +132,12 @@ def login(ctx, token, check):
     sys.exit(0 if success else 1)
 
 
-@cli.group(cls=ClickAliasedGroup)
-def project():
-    """Manage your projects."""
+@cli.group(cls=ClickAliasedGroup, aliases=["project"])
+def app():
+    """Manage your application"""
 
 
-@project.command(name="list")
+@app.command(name="list")
 @click.option(
     "-g",
     "--grouped",
@@ -147,9 +147,9 @@ def project():
 )
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
-def project_list(obj, grouped, as_json):
-    """List all your projects."""
-    api_response = obj.client.get_projects()
+def application_list(obj, grouped, as_json):
+    """List all your applications."""
+    api_response = obj.client.get_applications()
 
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
@@ -160,12 +160,12 @@ def project_list(obj, grouped, as_json):
     # get all users + organisations
     groups = {
         "users": {
-            account["id"]: {"name": "Personal", "projects": []}
+            account["id"]: {"name": "Personal", "applications": []}
             for account in api_response["accounts"]
             if account["type"] == "user"
         },
         "organisations": {
-            account["id"]: {"name": account["name"], "projects": []}
+            account["id"]: {"name": account["name"], "applications": []}
             for account in api_response["accounts"]
             if account["type"] == "organisation"
         },
@@ -178,7 +178,7 @@ def project_list(obj, grouped, as_json):
             owner = groups["organisations"][website["organisation_id"]]
         else:
             owner = groups["users"][website["owner_id"]]
-        owner["projects"].append(
+        owner["applications"].append(
             (six.text_type(website["id"]), website["domain"], website["name"])
         )
 
@@ -186,54 +186,56 @@ def project_list(obj, grouped, as_json):
         groups["users"].items(), groups["organisations"].items()
     )
 
-    def sort_projects(items):
+    def sort_applications(items):
         return sorted(items, key=lambda x: x[0].lower())
 
     # print via pager
     if grouped:
         output_items = []
         for group, data in accounts:
-            projects = data["projects"]
-            if projects:
+            applications = data["applications"]
+            if applications:
                 output_items.append(
                     u"{title}\n{line}\n\n{table}\n\n".format(
                         title=data["name"],
                         line="=" * len(data["name"]),
-                        table=table(sort_projects(projects), header[:3]),
+                        table=table(
+                            sort_applications(applications), header[:3]
+                        ),
                     )
                 )
         output = os.linesep.join(output_items).rstrip(os.linesep)
     else:
-        # add account name to all projects
-        projects = [
+        # add account name to all applications
+        applications = [
             each + (data["name"],)
             for group, data in accounts
-            for each in data["projects"]
+            for each in data["applications"]
         ]
-        output = table(sort_projects(projects), header)
+        output = table(sort_applications(applications), header)
 
     click.echo_via_pager(output)
 
 
-@project.command(name="deploy")
+@app.command(name="deploy")
 @click.argument("stage", default="test")
 @allow_remote_id_override
 @click.pass_obj
-def project_deploy(obj, remote_id, stage):
-    """Deploy project."""
-    obj.client.deploy_project_or_get_progress(remote_id, stage)
+def application_deploy(obj, remote_id, stage):
+    """Deploy application."""
+    obj.client.deploy_application_or_get_progress(remote_id, stage)
 
 
-@project.command(name="deploy-log")
+@app.command(name="deploy-log")
 @click.argument("stage", default="test")
 @allow_remote_id_override
 @click.pass_obj
-def project_deploy_log(obj, remote_id, stage):
+def application_deploy_log(obj, remote_id, stage):
     """View last deployment log."""
     obj.client.show_deploy_log(remote_id, stage)
 
 
-@project.command(name="logs")
+@app.command(name="logs")
 @click.argument("stage", default="test")
 @click.option(
     "--tail", "tail", default=False, is_flag=True, help="Tail the output."
@@ -243,60 +245,62 @@ def project_deploy_log(obj, remote_id, stage):
 )
 @allow_remote_id_override
 @click.pass_obj
-def project_logs(obj, remote_id, stage, tail, utc):
+def application_logs(obj, remote_id, stage, tail, utc):
     """View logs."""
     obj.client.show_log(remote_id, stage, tail, utc)
 
 
-@project.command(name="ssh")
+@app.command(name="ssh")
 @click.argument("stage", default="test")
 @allow_remote_id_override
 @click.pass_obj
-def project_ssh(obj, remote_id, stage):
+def application__ssh(obj, remote_id, stage):
     """Establish SSH connection."""
     obj.client.ssh(remote_id, stage)
 
 
-@project.command(name="configure")
+@app.command(name="configure")
 @click.pass_obj
 def configure(obj):
-    """Associate a local project with a Divio cloud project."""
+    """Associate a local application with a Divio cloud applications."""
     localdev.configure(client=obj.client, zone=obj.zone)
 
 
-@project.command(name="dashboard")
+@app.command(name="dashboard")
 @allow_remote_id_override
 @click.pass_obj
-def project_dashboard(obj, remote_id):
-    """Open the project dashboard on the Divio Control Panel."""
-    click.launch(get_cp_url(client=obj.client, project_id=remote_id))
+def application_dashboard(obj, remote_id):
+    """Open the application dashboard on the Divio Control Panel."""
+    click.launch(get_cp_url(client=obj.client, application_id=remote_id))
 
 
-@project.command(name="up", aliases=["start"])
-def project_up():
-    """Start the local project (equivalent to: docker-compose up)."""
-    localdev.start_project()
+@app.command(name="up", aliases=["start"])
+def application_up():
+    """Start the local application (equivalent to: docker-compose up)."""
+    localdev.start_application()
 
 
-@project.command(name="stop", aliases=["down"])
-def project_stop():
-    """Stop the local project."""
-    localdev.stop_project()
+@app.command(name="stop", aliases=["down"])
+def application_stop():
+    """Stop the local application."""
+    localdev.stop_application()
 
 
-@project.command(name="open")
+@app.command(name="open")
 @click.argument("stage", default="")
 @allow_remote_id_override
 @click.pass_obj
-def project_open(obj, remote_id, stage):
-    """Open local or cloud projects in a browser."""
+def application_open(obj, remote_id, stage):
+    """Open local or cloud applications in a browser."""
     if stage:
-        open_project_cloud_site(obj.client, project_id=remote_id, stage=stage)
+        open_application_cloud_site(
+            obj.client, application_id=remote_id, stage=stage
+        )
     else:
-        localdev.open_project()
+        localdev.open_application()
 
 
-@project.command(name="update")
+@app.command(name="update")
 @click.option(
     "--strict",
     "strict",
@@ -305,8 +309,8 @@ def project_open(obj, remote_id, stage):
     help="A strict update will fail on a warning.",
 )
 @click.pass_obj
-def project_update(obj, strict):
-    """Update the local project with new code changes, then build it.
+def application_update(obj, strict):
+    """Update the local application with new code changes, then build it.
 
     Runs:
 
@@ -315,18 +319,18 @@ def project_update(obj, strict):
     docker-compose build
     docker-compose run web start migrate"""
 
-    localdev.update_local_project(
+    localdev.update_local_application(
         get_git_checked_branch(), client=obj.client, strict=strict
     )
 
 
-@project.command(name="env-vars")
+@app.command(name="env-vars")
 @click.option(
     "-s",
     "--stage",
     default="test",
     type=six.text_type,
-    help="Manage the cloud project's environment variables.",
+    help="Manage the cloud application's environment variables.",
 )
 @click.option(
     "--all/--custom",
@@ -351,7 +355,7 @@ def project_update(obj, strict):
     multiple=True,
     help=(
         "Set a specific custom environment variable\n\n"
-        "example: divio project env-vars set DEBUG False"
+        "example: divio app env-vars set DEBUG False"
     ),
 )
 @click.option(
@@ -404,13 +408,13 @@ def environment_variables(
         click.echo_via_pager(output)
 
 
-@project.command(name="status")
-def project_status():
-    """Show local project status."""
-    localdev.show_project_status()
+@app.command(name="status")
+def app_status():
+    """Show local application status."""
+    localdev.show_application_status()
 
 
-@project.command(name="setup")
+@app.command(name="setup")
 @click.argument("slug")
 @click.option(
     "-s",
@@ -422,24 +426,24 @@ def project_status():
     "-p",
     "--path",
     default=".",
-    help="Install project in path.",
+    help="Install application in path.",
     type=click.Path(writable=True, readable=True),
 )
 @click.option(
     "--overwrite",
     is_flag=True,
     default=False,
-    help="Overwrite the project directory if it already exists.",
+    help="Overwrite the application directory if it already exists.",
 )
 @click.option(
     "--skip-doctor",
     is_flag=True,
     default=False,
-    help="Skip system test before setting up the project.",
+    help="Skip system test before setting up the application.",
 )
 @click.pass_obj
-def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
-    """Set up a development environment for a Divio project."""
+def application_setup(obj, slug, stage, path, overwrite, skip_doctor):
+    """Set up a development environment for a Divio application."""
     if not skip_doctor and not check_requirements_human(
         config=obj.client.config, silent=True
     ):
@@ -455,12 +459,12 @@ def project_setup(obj, slug, stage, path, overwrite, skip_doctor):
     )
 
 
-@project.group(name="pull")
-def project_pull():
+@app.group(name="pull")
+def application_pull():
     """Pull db or files from the Divio cloud environment."""
 
 
-@project_pull.command(name="db")
+@application_pull.command(name="db")
 @click.option(
     "--keep-tempfile",
     is_flag=True,
@@ -477,8 +481,8 @@ def pull_db(obj, remote_id, stage, prefix, keep_tempfile):
     """
     from .localdev import utils
 
-    project_home = utils.get_project_home()
-    db_type = utils.get_db_type(prefix, path=project_home)
+    application_home = utils.get_application_home()
+    db_type = utils.get_db_type(prefix, path=application_home)
     localdev.ImportRemoteDatabase(
         client=obj.client,
         stage=stage,
@@ -490,7 +494,7 @@ def pull_db(obj, remote_id, stage, prefix, keep_tempfile):
     )()
 
 
-@project_pull.command(name="media")
+@application_pull.command(name="media")
 @click.argument("stage", default="test")
 @allow_remote_id_override
 @click.pass_obj
@@ -501,12 +505,12 @@ def pull_media(obj, remote_id, stage):
     localdev.pull_media(obj.client, stage=stage, remote_id=remote_id)
 
 
-@project.group(name="push")
-def project_push():
+@app.group(name="push")
+def application_push():
     """Push db or media files to the Divio cloud environment."""
 
 
-@project_push.command(name="db")
+@application_push.command(name="db")
 @click.argument("stage", default="test")
 @click.option(
     "-d",
@@ -530,8 +534,8 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
     """
     from .localdev import utils
 
-    project_home = utils.get_project_home()
-    db_type = utils.get_db_type(prefix, path=project_home)
+    application_home = utils.get_application_home()
+    db_type = utils.get_db_type(prefix, path=application_home)
     if not dumpfile:
         if not noinput:
             click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg="red")
@@ -558,7 +562,7 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
         )
 
 
-@project_push.command(name="media")
+@application_push.command(name="media")
 @click.argument("stage", default="test")
 @click.option(
     "--noinput",
@@ -583,12 +587,12 @@ def push_media(obj, remote_id, prefix, stage, noinput):
     )
 
 
-@project.group(name="import")
-def project_import():
+@app.group(name="import")
+def application_import():
     """Import local database dump."""
 
 
-@project_import.command(name="db")
+@application_import.command(name="db")
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @click.argument(
     "dump-path",
@@ -602,8 +606,8 @@ def import_db(obj, dump_path, prefix):
     """
     from .localdev import utils
 
-    project_home = utils.get_project_home()
-    db_type = utils.get_db_type(prefix, path=project_home)
+    application_home = utils.get_application_home()
+    db_type = utils.get_db_type(prefix, path=application_home)
     localdev.ImportLocalDatabase(
         client=obj.client,
         custom_dump_path=dump_path,
@@ -612,12 +616,12 @@ def import_db(obj, dump_path, prefix):
     )()
 
 
-@project.group(name="export")
-def project_export():
+@app.group(name="export")
+def application_export():
     """Export local database dump."""
 
 
-@project_export.command(name="db")
+@application_export.command(name="db")
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 def export_db(prefix):
     """
@@ -626,7 +630,7 @@ def export_db(prefix):
     localdev.export_db(prefix=prefix)
 
 
-@project.command(name="develop")
+@app.command(name="develop")
 @click.argument("package")
 @click.option(
     "--no-rebuild",
@@ -634,8 +638,8 @@ def export_db(prefix):
     default=False,
     help="Do not rebuild docker container automatically.",
 )
-def project_develop(package, no_rebuild):
-    """Add a package 'package' to your local project environment."""
+def application_develop(package, no_rebuild):
+    """Add a package 'package' to your local application environment."""
     localdev.develop_package(package, no_rebuild)
 
 

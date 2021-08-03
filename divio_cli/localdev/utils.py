@@ -24,7 +24,7 @@ DOT_ALDRYN_FILE_NOT_FOUND = (
 
 
 def get_project_settings(path=None, silent=False):
-    project_home = get_project_home(path, silent=silent)
+    project_home = get_application_home(path, silent=silent)
     try:
         if os.path.exists(
             os.path.join(project_home, settings.ALDRYN_DOT_FILE)
@@ -41,7 +41,7 @@ def get_project_settings(path=None, silent=False):
         sys.exit(1)
 
 
-def get_project_home(path=None, silent=False):
+def get_application_home(path=None, silent=False):
     """
     find project root by traversing up the tree looking for
     the configuration file
@@ -293,7 +293,7 @@ def get_service_type(identifier, path=None):
     Retrieves the service type based on the `SERVICE_MANAGER` environment
     variable of a services from the docker-compose file.
     """
-    project_home = get_project_home(path)
+    project_home = get_application_home(path)
     try:
         docker_compose = get_docker_compose_cmd(project_home)
     except RuntimeError:
