@@ -272,7 +272,7 @@ def create_workspace(
         "",
         "For Terminal:",
         " - change directory to '{}'".format(path),
-        " - run 'divio project up'",
+        " - run 'divio app up'",
     )
 
     click.secho("\n\n{}".format(os.linesep.join(instructions)), fg="green")

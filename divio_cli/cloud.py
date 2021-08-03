@@ -348,7 +348,7 @@ class CloudClient(object):
                     bar.update(progress_percent)
 
                     raise click.ClickException(
-                        "\nDeployment failed. Please run 'divio project deploy-log {}' "
+                        "\nDeployment failed. Please run 'divio app deploy-log {}' "
                         "to get more information".format(stage)
                     )
                 else:

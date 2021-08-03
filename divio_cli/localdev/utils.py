@@ -17,7 +17,7 @@ DOT_ALDRYN_FILE_NOT_FOUND = (
     "Please make sure you're in a Divio Cloud project folder and the "
     "file exists.\n\n"
     "You can create a new configuration file for an existing project "
-    "with the `divio project configure` command.".format(
+    "with the `divio app configure` command.".format(
         settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
     )
 )
