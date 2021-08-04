@@ -679,6 +679,11 @@ class ImportRemoteDatabase(DatabaseImportBase):
 
         start_download = time()
         if download_url:
+
+            # Create the dump target directory if it does not exist yet
+            if not os.path.exists(self.dump_path):
+                os.makedirs(self.dump_path)
+
             self.host_db_dump_path = download_file(
                 download_url, directory=self.dump_path
             )
