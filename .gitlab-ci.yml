@@ -1,7 +1,7 @@
 include:
   - project: divio/infra/gitlab-pipelines
     ref: master
-    file: base/.gitlab-ci.yml
+    file: python-cli/.gitlab-ci.yml
 
 
 variables:
