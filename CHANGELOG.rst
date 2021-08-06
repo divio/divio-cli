@@ -1,5 +1,14 @@
 Changelog
 =========
+
+
+3.13.1 (2021-08-60)
+-------------------
+
+* Renamed "project" command group to "app" - with alias for backwards compatiblity.
+* Improve pipelines
+* Fixed bug when pulling a database on projects with an old configuration file. 
+
 3.13.0 (2021-07-29)
 -------------------
 
