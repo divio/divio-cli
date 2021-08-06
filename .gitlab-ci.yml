@@ -1,24 +1,15 @@
-services:
-  - docker:dind
+include:
+  - project: divio/infra/gitlab-pipelines
+    ref: master
+    file: python-cli/.gitlab-ci.yml
 
 
-stages:
-    - QA
-    - Statistics
-    - Release
-
-
-Check linting:
-  image: divio/lint
-  stage: QA
-  variables: 
-    LINT_FOLDER_PYTHON: divio_cli 
-  script:
-    - /bin/lint --check
+variables:
+  LINT_FOLDER_PYTHON: divio_cli
 
 
 Unit Tests:
-    stage: QA
+    stage: qa
     image: themattrix/tox
     script: tox
     artifacts:
@@ -29,7 +20,7 @@ Unit Tests:
 
 
 Integration Tests:
-  stage: QA
+  stage: qa
   image: docker:stable
   before_script:
     - apk --update add openssh-client git python3 python3-dev build-base libffi-dev openssl-dev
@@ -67,7 +58,7 @@ Integration Tests:
 
 
 Check Manifest:
-  stage: QA
+  stage: qa
   image: python:3-alpine
   script:
       - apk add git
@@ -76,7 +67,7 @@ Check Manifest:
 
 
 Combine Coverage:
-  stage: Statistics
+  stage: statistic
   image: python:3-alpine
   script:
       - pip install pytest-cov
@@ -94,7 +85,7 @@ Combine Coverage:
 
 
 Release Tag:
-    stage: Release
+    stage: release
     image: python:3-alpine
     script:
         - apk add python3-dev build-base libffi-dev openssl-dev git
