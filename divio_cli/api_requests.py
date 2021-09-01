@@ -19,11 +19,13 @@ class SingleHostSession(requests.Session):
         try:
             default_proxies["http"] = os.environ["HTTP_PROXY"]
         except KeyError:
+            # Its optional, error can be ignored.
             pass
 
         try:
             default_proxies["https"] = os.environ["HTTPS_PROXY"]
         except KeyError:
+            # Its optional, error can be ignored.
             pass
 
         if default_proxies:
@@ -346,6 +348,7 @@ class UploadDBRequest(JsonResponse, APIRequest):
             try:
                 db_log = response.json()["message"].encode("utf-8")
             except (TypeError, IndexError):
+                # Can not get message during a failure.
                 pass
             else:
                 logfile = os.path.join(os.getcwd(), "db_upload.log")

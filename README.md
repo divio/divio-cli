@@ -6,7 +6,6 @@ Divio CLI - Command-line interface to the Divio Cloud
 ![Wheel Support](https://img.shields.io/pypi/wheel/divio-cli.svg)
 [![License](https://img.shields.io/pypi/l/divio-cli.svg)](https://github.com/divio/divio-cli/blob/master/LICENSE.txt)
 
-
 # Installing
 
 ```bash
