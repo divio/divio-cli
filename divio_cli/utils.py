@@ -82,7 +82,6 @@ def get_subprocess_env():
         # https://github.com/pyinstaller/pyinstaller/blob/master/doc/runtime-information.rst#ld_library_path--libpath-considerations
         env["LD_LIBRARY_PATH"] = env.pop("LD_LIBRARY_PATH_ORIG")
     except KeyError:
-        # Its save to fail
         pass
     return env
 
