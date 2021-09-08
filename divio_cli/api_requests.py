@@ -91,7 +91,7 @@ class APIRequest(object):
         return self.url.format(**self.url_kwargs)
 
     def get_login(self):
-        """ Tries to get the login name for the current request """
+        """Tries to get the login name for the current request"""
         # import done here to prevent circular import
         from . import cloud
 
@@ -335,24 +335,6 @@ class DownloadMediaProgressRequest(JsonResponse, APIRequest):
 class UploadDBRequest(JsonResponse, APIRequest):
     url = "/api/v1/website/{website_id}/upload/db/"
     method = "POST"
-
-    def get_error_code_map(self, login=None):
-        error_codes = super(UploadDBRequest, self).get_error_code_map()
-        error_codes[requests.codes.bad_request] = messages.INVALID_DB_SUBMITTED
-        return error_codes
-
-    def verify(self, response):
-        if response.status_code == requests.codes.bad_request:
-            try:
-                db_log = response.json()["message"].encode("utf-8")
-            except (TypeError, IndexError):
-                pass
-            else:
-                logfile = os.path.join(os.getcwd(), "db_upload.log")
-                with open(logfile, "w+") as fh:
-                    fh.write(db_log)
-
-        return super(UploadDBRequest, self).verify(response)
 
 
 class UploadDBProgressRequest(JsonResponse, APIRequest):
