@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock
-import re
+
 import pytest
 
 from divio_cli import api_requests, messages
