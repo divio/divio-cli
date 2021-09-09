@@ -60,6 +60,7 @@ class APIRequest(object):
         requests.codes.forbidden: messages.AUTH_INVALID_TOKEN,
         requests.codes.unauthorized: messages.AUTH_INVALID_TOKEN,
         requests.codes.not_found: messages.RESOURCE_NOT_FOUND_ANONYMOUS,
+        requests.codes.bad_request: messages.BAD_REQUEST,
     }
 
     method = "GET"
@@ -91,7 +92,7 @@ class APIRequest(object):
         return self.url.format(**self.url_kwargs)
 
     def get_login(self):
-        """ Tries to get the login name for the current request """
+        """Tries to get the login name for the current request"""
         # import done here to prevent circular import
         from . import cloud
 
@@ -138,15 +139,13 @@ class APIRequest(object):
     def verify(self, response):
         if not response.ok:
             error_msg = self.get_error_code_map(self.get_login()).get(
-                response.status_code
+                response.status_code, self.default_error_message
             )
-            if not error_msg:
-                response_content = response.text
-                if not self.session.debug:
-                    response_content = response_content[:300]
-                error_msg = "{}\n\n{}".format(
-                    self.default_error_message, response_content
-                )
+            response_content = response.text
+            if not self.session.debug:
+                response_content = response_content[:300]
+            if response_content:
+                error_msg = "{}\n\n{}".format(error_msg, response_content)
             raise APIRequestError(error_msg)
         return self.process(response)
 
@@ -335,24 +334,6 @@ class DownloadMediaProgressRequest(JsonResponse, APIRequest):
 class UploadDBRequest(JsonResponse, APIRequest):
     url = "/api/v1/website/{website_id}/upload/db/"
     method = "POST"
-
-    def get_error_code_map(self, login=None):
-        error_codes = super(UploadDBRequest, self).get_error_code_map()
-        error_codes[requests.codes.bad_request] = messages.INVALID_DB_SUBMITTED
-        return error_codes
-
-    def verify(self, response):
-        if response.status_code == requests.codes.bad_request:
-            try:
-                db_log = response.json()["message"].encode("utf-8")
-            except (TypeError, IndexError):
-                pass
-            else:
-                logfile = os.path.join(os.getcwd(), "db_upload.log")
-                with open(logfile, "w+") as fh:
-                    fh.write(db_log)
-
-        return super(UploadDBRequest, self).verify(response)
 
 
 class UploadDBProgressRequest(JsonResponse, APIRequest):

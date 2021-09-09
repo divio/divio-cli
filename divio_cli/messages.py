@@ -18,10 +18,7 @@ LOGIN_SUCCESSFUL = (
 )
 CONFIG_FILE_NOT_FOUND = u"Config file could not be not found at location: {}"
 FILE_NOT_FOUND = u"File could not be found: {}"
-INVALID_DB_SUBMITTED = (
-    "The database dump you have uploaded contains an error. "
-    "Please check the file 'db_upload.log' for errors and try again"
-)
+BAD_REQUEST = "Request could not be processed"
 LOGIN_CHECK_SUCCESSFUL = (
     "Authentication with server successful. You are logged in."
 )

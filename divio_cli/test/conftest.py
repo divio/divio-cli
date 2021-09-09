@@ -3,6 +3,7 @@ import os
 import subprocess
 
 import pytest
+import requests
 
 
 @pytest.fixture(scope="session")
@@ -20,6 +21,24 @@ def _divio_project(request, tmpdir_factory):
         cwd=str(tmp_folder),
     )
     return os.path.join(tmp_folder, test_project_name)
+
+
+@pytest.fixture(scope="session")
+def base_session():
+    session = requests.Session()
+    session.debug = False
+    yield session
+
+
+@pytest.fixture
+def bad_request_response():
+    class HttpBadResponse(object):
+        ok = False
+        status_code = 400
+        content = "Bad response"
+        text = "Bad response"
+
+    yield HttpBadResponse()
 
 
 @contextlib.contextmanager
