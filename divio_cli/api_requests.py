@@ -60,6 +60,7 @@ class APIRequest(object):
         requests.codes.forbidden: messages.AUTH_INVALID_TOKEN,
         requests.codes.unauthorized: messages.AUTH_INVALID_TOKEN,
         requests.codes.not_found: messages.RESOURCE_NOT_FOUND_ANONYMOUS,
+        requests.codes.bad_request: messages.BAD_REQUEST,
     }
 
     method = "GET"
@@ -138,15 +139,13 @@ class APIRequest(object):
     def verify(self, response):
         if not response.ok:
             error_msg = self.get_error_code_map(self.get_login()).get(
-                response.status_code
+                response.status_code, self.default_error_message
             )
-            if not error_msg:
-                response_content = response.text
-                if not self.session.debug:
-                    response_content = response_content[:300]
-                error_msg = "{}\n\n{}".format(
-                    self.default_error_message, response_content
-                )
+            response_content = response.text
+            if not self.session.debug:
+                response_content = response_content[:300]
+            if response_content:
+                error_msg = "{}\n\n{}".format(error_msg, response_content)
             raise APIRequestError(error_msg)
         return self.process(response)
 
