@@ -1,12 +1,11 @@
-requests==2.20.1  # due to docker-compose requirements
-
-click
-tabulate
-six
 attrs
-pyaml
+click
 click_aliases
-tzlocal
-python-dateutil
 colorama; sys_platform == 'win32'
 packaging
+pyaml
+python-dateutil
+requests
+six
+tabulate
+tzlocal

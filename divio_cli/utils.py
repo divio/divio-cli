@@ -232,8 +232,8 @@ def get_git_commit():
                 .strip()
                 .decode("utf-8")
             )
-        except:
-            pass
+        except Exception:
+            return None
 
 
 def get_git_checked_branch():
