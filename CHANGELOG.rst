@@ -1,8 +1,12 @@
 Changelog
 =========
 
+3.14.0 (XXXX-XX-XX)
+-------------------
 
-3.13.1 (2021-08-60)
+* Catch error when DB restore requested when DB service not available.
+
+3.13.1 (2021-08-06)
 -------------------
 
 * Renamed "project" command group to "app" - with alias for backwards compatiblity.
