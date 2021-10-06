@@ -483,13 +483,15 @@ def pull_db(obj, remote_id, stage, prefix, keep_tempfile):
 
     application_home = utils.get_application_home()
     db_type = utils.get_db_type(prefix, path=application_home)
+    dump_path = os.path.join(application_home, settings.DIVIO_DUMP_FOLDER)
+
     localdev.ImportRemoteDatabase(
         client=obj.client,
         stage=stage,
         prefix=prefix,
         remote_id=remote_id,
         db_type=db_type,
-        dump_path=settings.DIVIO_DUMP_FOLDER,
+        dump_path=dump_path,
         keep_tempfile=keep_tempfile,
     )()
 
