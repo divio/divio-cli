@@ -183,13 +183,16 @@ def setup_website_containers(
 
         db_type = utils.get_db_type(prefix, path=path)
 
+        application_home = utils.get_application_home(path)
+        dump_path = os.path.join(application_home, settings.DIVIO_DUMP_FOLDER)
+
         ImportRemoteDatabase(
             client=client,
             stage=stage,
             path=path,
             prefix=prefix,
             db_type=db_type,
-            dump_path=settings.DIVIO_DUMP_FOLDER,
+            dump_path=dump_path,
         )()
 
         if needs_legacy_migration():
