@@ -83,14 +83,14 @@ class DockerComposeCheck(Check):
 
     def run_check(self):
         """
-        Modified run_check method to check for both old and new docker 
+        Modified run_check method to check for both old and new docker
         compose versions.
         """
         errors = []
         try:
             try:
                 utils.check_call(self.command, catch=False, silent=True)
-            except OSError:
+            except (OSError, subprocess.CalledProcessError):
                 # Check for the old version
                 utils.check_call(
                     ("docker-compose", "--version"), catch=False, silent=True
@@ -98,16 +98,15 @@ class DockerComposeCheck(Check):
         except OSError as exc:
             if exc.errno == errno.ENOENT:
                 errors.append(
-                    "Neither `docker-compose` nor `docker-compose` found."
+                    "Neither `docker compose` nor `docker-compose` found."
                 )
-            else:
-                msg = "Command '{}' returned non-zero exit status {}".format(
-                    self.fmt_command(), exc.errno
-                )
-                if hasattr(exc, "strerror"):
-                    msg += ": {}".format(exc.strerror)
+            msg = "Command '{}' returned non-zero exit status {}".format(
+                self.fmt_command(), exc.errno
+            )
+            if hasattr(exc, "strerror"):
+                msg += ": {}".format(exc.strerror)
 
-                errors.append(msg)
+            errors.append(msg)
         except subprocess.CalledProcessError as exc:
             errors += self.fmt_exception(exc)
         return errors
