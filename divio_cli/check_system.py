@@ -27,10 +27,10 @@ class Check(object):
         except OSError as exc:
             if exc.errno == errno.ENOENT:
                 errors.append(
-                    "executable {} not found".format(self.command[0])
+                    "Executable {} not found.".format(self.command[0])
                 )
             else:
-                msg = "Command '{}' returned non-zero exit status {}".format(
+                msg = "Command '{}' returned non-zero exit status {}.".format(
                     self.fmt_command(), exc.errno
                 )
                 if hasattr(exc, "strerror"):
@@ -50,7 +50,7 @@ class Check(object):
         if command_output:
             message = command_output
         else:
-            message = "Command '{}' returned non-zero exit status {}".format(
+            message = "Command '{}' returned non-zero exit status {}.".format(
                 self.fmt_command(), exc.returncode
             )
 
@@ -100,7 +100,7 @@ class DockerComposeCheck(Check):
                 errors.append(
                     "Neither `docker compose` nor `docker-compose` found."
                 )
-            msg = "Command '{}' returned non-zero exit status {}".format(
+            msg = "Command '{}' returned non-zero exit status {}.".format(
                 self.fmt_command(), exc.errno
             )
             if hasattr(exc, "strerror"):
