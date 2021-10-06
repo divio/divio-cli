@@ -36,7 +36,7 @@ class Check(object):
                 if hasattr(exc, "strerror"):
                     msg += ": {}".format(exc.strerror)
 
-                if not msg[-1] == ".":
+                if msg.endswith("."):
                     msg += "."
                 errors.append(msg)
         except subprocess.CalledProcessError as exc:
@@ -108,7 +108,7 @@ class DockerComposeCheck(Check):
             if hasattr(exc, "strerror"):
                 msg += ": {}".format(exc.strerror)
 
-            if not msg[-1] == ".":
+            if msg.endswith("."):
                 msg += "."
             errors.append(msg)
         except subprocess.CalledProcessError as exc:
