@@ -26,12 +26,23 @@ DOT_ALDRYN_FILE_NOT_FOUND = (
 def get_project_settings(path=None, silent=False):
     project_home = get_application_home(path, silent=silent)
     try:
+        old_file_found = False
         if os.path.exists(
             os.path.join(project_home, settings.ALDRYN_DOT_FILE)
         ):
             path = os.path.join(project_home, settings.ALDRYN_DOT_FILE)
-        else:
+            old_file_found = True
+
+        if os.path.exists(os.path.join(project_home, settings.DIVIO_DOT_FILE)):
             path = os.path.join(project_home, settings.DIVIO_DOT_FILE)
+            if old_file_found:
+                click.secho(
+                    "Warning: Old ({}) and new ({}) divio configuration files found at the same time. The new one will be used.".format(
+                        settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
+                    ),
+                    fg="yellow",
+                )
+
         with open(path) as fh:
             return json.load(fh)
     except (TypeError, OSError):

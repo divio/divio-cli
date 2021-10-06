@@ -5,6 +5,7 @@ Changelog
 -------------------
 
 * Catch error when DB restore requested when DB service not available.
+* Added sanity check to warn users if new and old configuration files are used at the same time. 
 
 3.13.1 (2021-08-06)
 -------------------
