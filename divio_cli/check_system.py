@@ -78,7 +78,6 @@ class DockerClientCheck(Check):
 
 
 class DockerComposeCheck(Check):
-
     name = "Docker Compose"
     command = ("docker", "compose", "version")
 
