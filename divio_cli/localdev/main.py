@@ -1068,6 +1068,8 @@ def push_media(client, stage, remote_id, prefix):
     start_compression = time()
     with tarfile.open(archive_path, mode="w:gz") as tar:
         media_dir = os.path.join(project_home, "data", "media")
+        print(media_dir)
+        print( os.listdir(media_dir))
         if os.path.isdir(media_dir):
             items = os.listdir(media_dir)
         else:
