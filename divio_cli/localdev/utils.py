@@ -262,8 +262,14 @@ class DockerComposeConfig(object):
             return False
 
         for mount in service_config.get("volumes", []):
-            bits = mount.strip().split(":")
-            if len(bits) > 2 and bits[-2] == remote_path:
+            # docker compose < 2
+            if not isinstance(mount, dict):
+                bits = mount.strip().split(":")
+                if len(bits) > 2 and bits[-2] == remote_path:
+                    return True
+                return
+
+            if mount["target"] == remote_path:
                 return True
 
 

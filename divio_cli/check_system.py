@@ -27,7 +27,7 @@ class Check(object):
         except OSError as exc:
             if exc.errno == errno.ENOENT:
                 errors.append(
-                    "executable {} not found".format(self.command[0])
+                    "Executable {} not found".format(self.command[0])
                 )
             else:
                 msg = "Command '{}' returned non-zero exit status {}".format(
@@ -36,6 +36,8 @@ class Check(object):
                 if hasattr(exc, "strerror"):
                     msg += ": {}".format(exc.strerror)
 
+                if msg.endswith("."):
+                    msg += "."
                 errors.append(msg)
         except subprocess.CalledProcessError as exc:
             errors += self.fmt_exception(exc)
@@ -79,7 +81,39 @@ class DockerClientCheck(Check):
 
 class DockerComposeCheck(Check):
     name = "Docker Compose"
-    command = ("docker-compose", "--version")
+    command = ("docker", "compose", "version")
+
+    def run_check(self):
+        """
+        Modified run_check method to check for both old and new docker
+        compose versions.
+        """
+        errors = []
+        try:
+            try:
+                utils.check_call(self.command, catch=False, silent=True)
+            except (OSError, subprocess.CalledProcessError):
+                # Check for the old version
+                utils.check_call(
+                    ("docker-compose", "--version"), catch=False, silent=True
+                )
+        except OSError as exc:
+            if exc.errno == errno.ENOENT:
+                errors.append(
+                    "Neither `docker compose` nor `docker-compose` found."
+                )
+            msg = "Command '{}' returned non-zero exit status {}".format(
+                self.fmt_command(), exc.errno
+            )
+            if hasattr(exc, "strerror"):
+                msg += ": {}".format(exc.strerror)
+
+            if msg.endswith("."):
+                msg += "."
+            errors.append(msg)
+        except subprocess.CalledProcessError as exc:
+            errors += self.fmt_exception(exc)
+        return errors
 
 
 def get_engine_down_error():
