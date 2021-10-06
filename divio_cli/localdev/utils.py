@@ -251,9 +251,15 @@ class DockerComposeConfig(object):
             return False
 
         for mount in service_config.get("volumes", []):
-            bits = mount.strip().split(":")
-            if len(bits) > 2 and bits[-2] == remote_path:
-                return True
+            # docker compose >= 2
+            if isinstance(mount, dict):
+                if mount["target"] == remote_path:
+                    return True
+            # docker compose < 2
+            else:
+                bits = mount.strip().split(":")
+                if len(bits) > 2 and bits[-2] == remote_path:
+                    return True
 
 
 def allow_remote_id_override(func):
