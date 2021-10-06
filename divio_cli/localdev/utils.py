@@ -33,12 +33,15 @@ def get_project_settings(path=None, silent=False):
             path = os.path.join(project_home, settings.ALDRYN_DOT_FILE)
             old_file_found = True
 
-        if os.path.exists(
-            os.path.join(project_home, settings.DIVIO_DOT_FILE)
-        ):
+        if os.path.exists(os.path.join(project_home, settings.DIVIO_DOT_FILE)):
             path = os.path.join(project_home, settings.DIVIO_DOT_FILE)
             if old_file_found:
-                click.secho("Warning: Old ({}) and new ({}) divio configuration files found at the same time. The new one will be used.".format(settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE), fg="yellow")
+                click.secho(
+                    "Warning: Old ({}) and new ({}) divio configuration files found at the same time. The new one will be used.".format(
+                        settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
+                    ),
+                    fg="yellow",
+                )
 
         with open(path) as fh:
             return json.load(fh)
