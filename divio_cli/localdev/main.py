@@ -183,8 +183,8 @@ def setup_website_containers(
 
         db_type = utils.get_db_type(prefix, path=path)
 
-        project_home = utils.get_application_home(path)
-        dump_path = os.path.join(project_home, settings.DIVIO_DUMP_FOLDER)
+        application_home = utils.get_application_home(path)
+        dump_path = os.path.join(application_home, settings.DIVIO_DUMP_FOLDER)
 
         ImportRemoteDatabase(
             client=client,
