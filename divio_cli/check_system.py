@@ -77,6 +77,43 @@ class DockerClientCheck(Check):
     command = ("docker", "--version")
 
 
+class DockerComposeCheck(Check):
+
+    name = "Docker Compose"
+    command = ("docker", "compose", "version")
+
+    def run_check(self):
+        """
+        Modified run_check method to check for both old and new docker 
+        compose versions.
+        """
+        errors = []
+        try:
+            try:
+                utils.check_call(self.command, catch=False, silent=True)
+            except OSError:
+                # Check for the old version
+                utils.check_call(
+                    ("docker-compose", "--version"), catch=False, silent=True
+                )
+        except OSError as exc:
+            if exc.errno == errno.ENOENT:
+                errors.append(
+                    "Neither `docker-compose` nor `docker-compose` found."
+                )
+            else:
+                msg = "Command '{}' returned non-zero exit status {}".format(
+                    self.fmt_command(), exc.errno
+                )
+                if hasattr(exc, "strerror"):
+                    msg += ": {}".format(exc.strerror)
+
+                errors.append(msg)
+        except subprocess.CalledProcessError as exc:
+            errors += self.fmt_exception(exc)
+        return errors
+
+
 def get_engine_down_error():
     return (
         "Couldn't connect to Docker daemon. Please start the docker service."
@@ -184,6 +221,7 @@ ALL_CHECKS = OrderedDict(
         ("login", LoginCheck),
         ("git", GitCheck),
         ("docker-client", DockerClientCheck),
+        ("docker-compose", DockerComposeCheck),
         ("docker-server", DockerEngineCheck),
         ("docker-server-ping", DockerEnginePingCheck),
         ("docker-server-dns", DockerEngineDNSCheck),
