@@ -787,16 +787,26 @@ def pull_media(client, stage, remote_id=None, path=None):
         # created from within the container will be owned by root. As a
         # workaround, make the folder permissions more permissive, to
         # allow the invoking user to create files inside it.
-        check_call(
-            docker_compose(
-                "run",
-                "--rm",
-                "web",
-                "chown",
-                str(os.getuid()),
-                remote_data_folder,
+        try:
+            check_call(
+                docker_compose(
+                    "run",
+                    "--rm",
+                    "web",
+                    "chown",
+                    str(os.getuid()),
+                    remote_data_folder,
+                ),
+                catch=False,
             )
-        )
+        except subprocess.CalledProcessError as exc:
+            # This can happen due to a race condition in docker compose >= 2
+            click.secho(
+                "Failed to set user ownership of media files.  {}\n".format(
+                    exc
+                ),
+                fg="yellow",
+            )
 
     click.secho(" ---> Extracting files to {}".format(media_path), nl=False)
     start_extract = time()
