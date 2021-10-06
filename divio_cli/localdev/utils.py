@@ -267,10 +267,9 @@ class DockerComposeConfig(object):
                 bits = mount.strip().split(":")
                 if len(bits) > 2 and bits[-2] == remote_path:
                     return True
-                return
-
-            if mount["target"] == remote_path:
-                return True
+            else:
+                if mount["target"] == remote_path:
+                    return True
 
 
 def allow_remote_id_override(func):

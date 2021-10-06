@@ -20,6 +20,7 @@ def _divio_project(request, tmpdir_factory):
         ["divio", "project", "setup", test_project_name],
         cwd=str(tmp_folder),
     )
+
     return os.path.join(tmp_folder, test_project_name)
 
 
