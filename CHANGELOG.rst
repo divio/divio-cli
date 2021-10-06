@@ -1,6 +1,11 @@
 Changelog
 =========
 
+3.14.1 (2021-10-06)
+-------------------
+
+* Fixed issue when trying to import a database during project setup.
+
 3.14.0 (2021-10-06)
 -------------------
 
