@@ -694,8 +694,9 @@ class ImportRemoteDatabase(DatabaseImportBase):
             click.secho(" ---> Downloading database", nl=False)
             click.echo(" [{}s]".format(int(time() - start_download)))
             # strip path from dump_path for use in the docker container
-            self.db_dump_path = f"/app/{self.host_db_dump_path}".replace(
-                self.path, ""
+            self.db_dump_path = os.path.join(
+                "/app",
+                self.host_db_dump_path.replace(self.path, "").lstrip("/"),
             )
 
         else:
