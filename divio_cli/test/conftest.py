@@ -16,7 +16,7 @@ def _divio_project(request, tmpdir_factory):
         )
 
     tmp_folder = tmpdir_factory.mktemp("data")
-    subprocess.call(
+    subprocess.check_call(
         ["divio", "project", "setup", test_project_name],
         cwd=str(tmp_folder),
     )
