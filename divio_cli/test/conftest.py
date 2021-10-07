@@ -16,10 +16,15 @@ def _divio_project(request, tmpdir_factory):
         )
 
     tmp_folder = tmpdir_factory.mktemp("data")
-    subprocess.check_call(
-        ["divio", "project", "setup", test_project_name],
-        cwd=str(tmp_folder),
-    )
+    try:
+        subprocess.check_call(
+            ["divio", "project", "setup", test_project_name],
+            cwd=str(tmp_folder),
+        )
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        raise
+
 
     return os.path.join(tmp_folder, test_project_name)
 
