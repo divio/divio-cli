@@ -23,6 +23,9 @@ def _divio_project(request, tmpdir_factory):
         )
     except subprocess.CalledProcessError as e:
         print(e.output)
+        import pathlib
+        p = pathlib.Path(tmp_folder)
+        print(list(p.glob("*")))
         raise
 
 
