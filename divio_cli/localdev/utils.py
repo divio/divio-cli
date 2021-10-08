@@ -101,7 +101,7 @@ def get_docker_compose_cmd(path):
 
     conf = config.Config()
     cmd = conf.config.get("docker-compose", ["docker-compose"])
-    docker_compose_base = cmd + ["-f", docker_compose_filename, " --log-level", "DEBUG"]
+    docker_compose_base = cmd + ["-f", docker_compose_filename, "--log-level", "DEBUG"]
 
     def docker_compose(*commands):
         return docker_compose_base + [cmd for cmd in commands]
