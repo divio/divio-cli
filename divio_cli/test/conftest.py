@@ -37,6 +37,9 @@ def _divio_project(request, tmpdir_factory):
         r = subprocess.run(["docker-compose", "run", "db", "mount"],cwd=os.path.join(str(tmp_folder), test_project_name))
         print(r.stdout)
         print(r.stderr)
+        r = subprocess.run(["docker-compose", "run", "web", "mount"],cwd=os.path.join(str(tmp_folder), test_project_name))
+        print(r.stdout)
+        print(r.stderr)
         raise
 
     return os.path.join(tmp_folder, test_project_name)
