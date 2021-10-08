@@ -27,6 +27,10 @@ def _divio_project(request, tmpdir_factory):
 
         p = pathlib.Path(tmp_folder)
         print(list(p.rglob("*")))
+        print("*"*100)
+        r = subprocess.run(["docker-comppse", "run", "db", "ls", "-la", "/app"])
+        print(r.stdout)
+        print(r.stderr)
         raise
 
     return os.path.join(tmp_folder, test_project_name)
