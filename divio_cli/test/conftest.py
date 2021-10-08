@@ -21,6 +21,11 @@ def _divio_project(request, tmpdir_factory):
             ["divio", "project", "setup", test_project_name],
             cwd=str(tmp_folder),
         )
+
+# this temp folder should get injected into the docker-compose file OR we make the docker compose call allow for a dynamic mount 
+# the tmp dir must be in the project dir, otherwise the mounts will not work
+
+
     except subprocess.CalledProcessError as e:
         print(e.output)
         import pathlib
