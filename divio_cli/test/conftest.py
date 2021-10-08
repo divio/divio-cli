@@ -30,6 +30,7 @@ def _divio_project(request, tmpdir_factory):
 # the tmp dir must be in the project dir, otherwise the mounts will not work
 
 
+
     except subprocess.CalledProcessError as e:
         print(e.output)
 
