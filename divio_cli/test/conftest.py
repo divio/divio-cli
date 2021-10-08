@@ -5,6 +5,8 @@ import subprocess
 import pytest
 import requests
 
+import pathlib
+
 
 @pytest.fixture(scope="session")
 def _divio_project(request, tmpdir_factory):
@@ -15,11 +17,13 @@ def _divio_project(request, tmpdir_factory):
             "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."
         )
 
-    tmp_folder = tmpdir_factory.mktemp("data")
+    #tmp_folder = tmpdir_factory.mktemp("data")
+    tmp_folder = pathlib.Path("test_data")
+
     try:
         subprocess.check_call(
             ["divio", "project", "setup", test_project_name],
-            cwd=str(tmp_folder),
+            cwd=str(tmp_folder.resolve()),
         )
 
 # this temp folder should get injected into the docker-compose file OR we make the docker compose call allow for a dynamic mount 
