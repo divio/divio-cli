@@ -28,7 +28,7 @@ def _divio_project(request, tmpdir_factory):
         p = pathlib.Path(tmp_folder)
         print(list(p.rglob("*")))
         print("*"*100)
-        r = subprocess.run(["docker-compose", "run", "db", "ls", "-la", "/app"],cwd=str(tmp_folder))
+        r = subprocess.run(["docker-compose", "run", "db", "ls", "-la", "/app"],cwd=os.path.join(str(tmp_folder), test_project_name))
         print(r.stdout)
         print(r.stderr)
         raise
