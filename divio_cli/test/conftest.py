@@ -26,7 +26,7 @@ def _divio_project(request, tmpdir_factory):
         import pathlib
 
         p = pathlib.Path(tmp_folder)
-        print(list(p.glob("*")))
+        print(list(p.rglob("*")))
         raise
 
     return os.path.join(tmp_folder, test_project_name)
