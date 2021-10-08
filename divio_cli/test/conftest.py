@@ -25,6 +25,7 @@ def _divio_project(request, tmpdir_factory):
         print(e.output)
         import pathlib
 
+
         p = pathlib.Path(tmp_folder)
         print(list(p.rglob("*")))
         print("*"*100)
