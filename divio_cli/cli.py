@@ -4,7 +4,6 @@ import os
 import sys
 
 import click
-import six
 from click_aliases import ClickAliasedGroup
 
 from . import exceptions, localdev, messages, settings
@@ -179,7 +178,7 @@ def application_list(obj, grouped, as_json):
         else:
             owner = groups["users"][website["owner_id"]]
         owner["applications"].append(
-            (six.text_type(website["id"]), website["domain"], website["name"])
+            (str(website["id"]), website["domain"], website["name"])
         )
 
     accounts = itertools.chain(
@@ -329,7 +328,7 @@ def application_update(obj, strict):
     "-s",
     "--stage",
     default="test",
-    type=six.text_type,
+    type=str,
     help="Manage the cloud application's environment variables.",
 )
 @click.option(
@@ -343,7 +342,7 @@ def application_update(obj, strict):
     "--get",
     "get_vars",
     default=None,
-    type=six.text_type,
+    type=str,
     multiple=True,
     help="Get a specific environment variable.",
 )
@@ -351,7 +350,7 @@ def application_update(obj, strict):
     "--set",
     "set_vars",
     default=None,
-    type=click.Tuple([six.text_type, six.text_type]),
+    type=click.Tuple([str, str]),
     multiple=True,
     help=(
         "Set a specific custom environment variable\n\n"
@@ -362,7 +361,7 @@ def application_update(obj, strict):
     "--unset",
     "unset_vars",
     default=None,
-    type=six.text_type,
+    type=str,
     multiple=True,
     help="Remove an environment variable.",
 )

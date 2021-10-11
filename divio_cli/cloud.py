@@ -4,11 +4,10 @@ import re
 import sys
 from netrc import netrc
 from time import sleep
+from urllib.parse import urlparse
 
 import click
 from dateutil.parser import isoparse
-from six.moves.urllib_parse import urlparse
-from tzlocal import get_localzone
 
 from . import api_requests, messages, settings
 from .config import Config
@@ -203,7 +202,7 @@ class CloudClient(object):
             for entry in data:
                 dt = isoparse(entry["timestamp"])
                 if not utc:
-                    dt = dt.astimezone(get_localzone())
+                    dt = dt.astimezone()
                 click.secho(
                     "{} \u2502 {:^16} \u2502 {}".format(
                         str(dt),

@@ -8,11 +8,11 @@ import tarfile
 import tempfile
 from contextlib import contextmanager
 from math import log
+from urllib.parse import urljoin
 
 import click
 import requests
 from packaging import version
-from six.moves.urllib_parse import urljoin
 from tabulate import tabulate
 
 from . import __version__
