@@ -81,7 +81,7 @@ def cli(ctx, debug, zone, sudo):
         sys.excepthook = exception_handler
     else:
 
-        # Make an emptry except hook because we are introducing our own in
+        # Make an empty except hook because we are introducing our own in
         # combination with sentry later and this one will be called by sentry
         # and we are already handling everything in the other excepthooks.
         def basic_excepthook(*exc_info):
