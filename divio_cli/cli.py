@@ -106,7 +106,7 @@ def cli(ctx, debug, zone, sudo):
         sys.excepthook = _make_confirmation_excepthook(sys.excepthook)
 
 
-    ctx.obj = Mapdfs()
+    ctx.obj = Map()
     ctx.obj.client = CloudClient(
         get_endpoint(zone=zone), debug=debug, sudo=sudo
     )
