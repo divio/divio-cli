@@ -22,15 +22,11 @@ def _divio_project(request, tmpdir_factory):
     # work with the right volume mounts and correct paths.
     tmp_folder = pathlib.Path("test_data")
 
-    try:
-        subprocess.check_call(
-            ["divio", "project", "setup", test_project_name],
-            cwd=str(tmp_folder.resolve()),
-        )
+    subprocess.check_call(
+        ["divio", "project", "setup", test_project_name],
+        cwd=str(tmp_folder.resolve()),
+    )
 
-    except subprocess.CalledProcessError as e:
-        print(e.output)
-        raise
     return os.path.join(tmp_folder, test_project_name)
 
 

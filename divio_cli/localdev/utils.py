@@ -104,8 +104,6 @@ def get_docker_compose_cmd(path):
     docker_compose_base = cmd + [
         "-f",
         docker_compose_filename,
-        "--log-level",
-        "DEBUG",
     ]
 
     def docker_compose(*commands):
