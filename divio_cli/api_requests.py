@@ -1,8 +1,8 @@
 import os
+from urllib.parse import urljoin, urlparse
 
 import click
 import requests
-from six.moves.urllib_parse import urljoin, urlparse
 
 from . import messages
 from .utils import create_temp_dir, get_user_agent
