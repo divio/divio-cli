@@ -4,6 +4,7 @@ import os
 import sys
 
 import click
+import sentry_sdk
 from click_aliases import ClickAliasedGroup
 
 from . import exceptions, localdev, messages, settings
@@ -22,12 +23,27 @@ from .utils import (
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
+import divio_cli
 
 
 try:
     import ipdb as pdb
 except ImportError:
     import pdb
+
+
+def basic_excepthook(*exc_info):
+    # Make an emptry except hook because we are introducing our own in
+    # combination with sentry later  and this one will be called by sentry.
+    pass
+sys.excepthook = basic_excepthook
+
+sentry_sdk.init(
+    "https://c81d7d22230841d7ae752bac26c84dcf@o1163.ingest.sentry.io/6001539",
+    traces_sample_rate=1.0,
+    release=divio_cli.__version__,
+    server_name="client",
+)
 
 
 @click.group(cls=ClickAliasedGroup)
@@ -71,8 +87,26 @@ def cli(ctx, debug, zone, sudo):
             pdb.post_mortem(traceback)
 
         sys.excepthook = exception_handler
+    else:
+        def _make_confirmation_excepthook(sentry_excepthook):
+            def sentry_confirmation_excepthook(*exc_info):
+                # Print stacktrace
+                import traceback
+                text = "".join(traceback.format_exception(*exc_info))
+                click.secho(text)
 
-    ctx.obj = Map()
+                #
+                click.secho("We would like to gather information about this error via sentry to improve our product and to resolve this issue in the future.")
+                if click.confirm('Do you want to send information about this error to Divio for debugging purposes and to make the product better?'):
+                    sentry_excepthook(*exc_info)
+                    click.secho("Thank you")
+                else:
+                    click.secho("Ok, not sending information :(")
+            return sentry_confirmation_excepthook
+        sys.excepthook = _make_confirmation_excepthook(sys.excepthook)
+
+
+    ctx.obj = Mapdfs()
     ctx.obj.client = CloudClient(
         get_endpoint(zone=zone), debug=debug, sudo=sudo
     )
