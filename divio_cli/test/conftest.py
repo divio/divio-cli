@@ -1,11 +1,10 @@
 import contextlib
 import os
+import pathlib
 import subprocess
 
 import pytest
 import requests
-
-import pathlib
 
 
 @pytest.fixture(scope="session")
@@ -17,7 +16,10 @@ def _divio_project(request, tmpdir_factory):
             "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."
         )
 
-    #tmp_folder = tmpdir_factory.mktemp("data")
+    # We can not use a fully randomized name as it normally would be a best
+    # practice. This path needs to be well known and static as we have to
+    # reference it in our test project to make docker-in-docker on Gitlab
+    # work with the right volume mounts and correct paths.
     tmp_folder = pathlib.Path("test_data")
 
     try:
@@ -26,31 +28,9 @@ def _divio_project(request, tmpdir_factory):
             cwd=str(tmp_folder.resolve()),
         )
 
-# this temp folder should get injected into the docker-compose file OR we make the docker compose call allow for a dynamic mount 
-# the tmp dir must be in the project dir, otherwise the mounts will not work
-
-
-
     except subprocess.CalledProcessError as e:
         print(e.output)
-
-        p = pathlib.Path(tmp_folder)
-        print(list(p.rglob("*")))
-        print("*"*100)
-        r = subprocess.run(["docker-compose", "--log-level", "DEBUG", "run", "db", "ls", "-la", "/app"],cwd=os.path.join(str(tmp_folder), test_project_name))
-        print(r.stdout)
-        print(r.stderr)
-        r = subprocess.run(["docker-compose", "run", "db", "pwd"],cwd=os.path.join(str(tmp_folder), test_project_name))
-        print(r.stdout)
-        print(r.stderr)
-        r = subprocess.run(["docker-compose", "run", "db", "mount"],cwd=os.path.join(str(tmp_folder), test_project_name))
-        print(r.stdout)
-        print(r.stderr)
-        r = subprocess.run(["docker-compose", "run", "web", "mount"],cwd=os.path.join(str(tmp_folder), test_project_name))
-        print(r.stdout)
-        print(r.stderr)
         raise
-
     return os.path.join(tmp_folder, test_project_name)
 
 
