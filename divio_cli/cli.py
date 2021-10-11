@@ -2,6 +2,7 @@ import itertools
 import json
 import os
 import sys
+import traceback
 
 import click
 import sentry_sdk
@@ -31,22 +32,6 @@ try:
     import ipdb as pdb
 except ImportError:
     import pdb
-
-
-def basic_excepthook(*exc_info):
-    # Make an emptry except hook because we are introducing our own in
-    # combination with sentry later  and this one will be called by sentry.
-    pass
-
-
-sys.excepthook = basic_excepthook
-
-sentry_sdk.init(
-    "https://c81d7d22230841d7ae752bac26c84dcf@o1163.ingest.sentry.io/6001539",
-    traces_sample_rate=1.0,
-    release=divio_cli.__version__,
-    server_name="client",
-)
 
 
 @click.group(cls=ClickAliasedGroup)
@@ -92,20 +77,34 @@ def cli(ctx, debug, zone, sudo):
         sys.excepthook = exception_handler
     else:
 
+        # Make an emptry except hook because we are introducing our own in
+        # combination with sentry later and this one will be called by sentry.
+        def basic_excepthook(*exc_info):
+            pass
+
+        sys.excepthook = basic_excepthook
+
+        sentry_sdk.init(
+            "https://c81d7d22230841d7ae752bac26c84dcf@o1163.ingest.sentry.io/6001539",
+            traces_sample_rate=1.0,
+            release=divio_cli.__version__,
+            server_name="client",
+        )
+
         def _make_confirmation_excepthook(sentry_excepthook):
             def sentry_confirmation_excepthook(*exc_info):
-                # Print stacktrace
-                import traceback
-
+                # Print normal stacktrace
                 text = "".join(traceback.format_exception(*exc_info))
                 click.secho(text)
 
-                #
                 click.secho(
-                    "We would like to gather information about this error via sentry to improve our product and to resolve this issue in the future."
+                    "We would like to gather information about this error via "
+                    "sentry to improve our product and to resolve this issue "
+                    "in the future."
                 )
                 if click.confirm(
-                    "Do you want to send information about this error to Divio for debugging purposes and to make the product better?"
+                    "Do you want to send information about this error to Divio "
+                    "for debugging purposes and to make the product better?"
                 ):
                     sentry_excepthook(*exc_info)
                     click.secho("Thank you")
@@ -114,6 +113,7 @@ def cli(ctx, debug, zone, sudo):
 
             return sentry_confirmation_excepthook
 
+        # Wrap the new sentry except hook into our own check
         sys.excepthook = _make_confirmation_excepthook(sys.excepthook)
 
     ctx.obj = Map()
