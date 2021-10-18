@@ -1,5 +1,6 @@
 import contextlib
 import os
+import pathlib
 import subprocess
 
 import pytest
@@ -15,10 +16,15 @@ def _divio_project(request, tmpdir_factory):
             "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."
         )
 
-    tmp_folder = tmpdir_factory.mktemp("data")
-    subprocess.call(
+    # We can not use a fully randomized name as it normally would be a best
+    # practice. This path needs to be well known and static as we have to
+    # reference it in our test project to make docker-in-docker on Gitlab
+    # work with the right volume mounts and correct paths.
+    tmp_folder = pathlib.Path("test_data")
+
+    subprocess.check_call(
         ["divio", "project", "setup", test_project_name],
-        cwd=str(tmp_folder),
+        cwd=str(tmp_folder.resolve()),
     )
 
     return os.path.join(tmp_folder, test_project_name)

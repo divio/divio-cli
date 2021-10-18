@@ -143,19 +143,6 @@ def setup_website_containers(
         return
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
-    if docker_compose_config.has_service(
-        "db"
-    ) or docker_compose_config.has_service(
-        "database_{}".format(prefix).lower()
-    ):
-        has_db_service = True
-        existing_db_container_id = utils.get_db_container_id(
-            path=path, raise_on_missing=False
-        )
-    else:
-        has_db_service = False
-        existing_db_container_id = None
-
     # stop all running containers for project
     check_call(docker_compose("stop"))
 
@@ -167,7 +154,11 @@ def setup_website_containers(
     click.secho("building local docker images", fg="green")
     check_call(docker_compose("build"))
 
-    if existing_db_container_id:
+    if docker_compose_config.has_service(
+        "db"
+    ) or docker_compose_config.has_service(
+        "database_{}".format(prefix).lower()
+    ):
         click.secho("removing old database container", fg="green")
         if docker_compose_config.has_service("database_default"):
             check_call(docker_compose("stop", "database_default"), catch=False)
@@ -177,8 +168,6 @@ def setup_website_containers(
         else:
             check_call(docker_compose("stop", "db"))
             check_call(docker_compose("rm", "-f", "db"))
-
-    if has_db_service:
         click.secho("creating new database container", fg="green")
 
         db_type = utils.get_db_type(prefix, path=path)
@@ -694,8 +683,9 @@ class ImportRemoteDatabase(DatabaseImportBase):
             click.secho(" ---> Downloading database", nl=False)
             click.echo(" [{}s]".format(int(time() - start_download)))
             # strip path from dump_path for use in the docker container
-            self.db_dump_path = f"/app/{self.host_db_dump_path}".replace(
-                self.path, ""
+            self.db_dump_path = os.path.join(
+                "/app",
+                self.host_db_dump_path.replace(self.path, "").lstrip("/"),
             )
 
         else:
