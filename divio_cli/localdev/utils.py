@@ -100,7 +100,7 @@ def get_docker_compose_cmd(path):
         )
 
     conf = config.Config()
-    cmd = conf.config.get("docker-compose", ["docker-compose"])
+    cmd = conf.get_docker_compose_cmd()
     docker_compose_base = cmd + ["-f", docker_compose_filename]
 
     def docker_compose(*commands):

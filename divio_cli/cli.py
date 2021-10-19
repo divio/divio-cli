@@ -33,10 +33,6 @@ try:
 except ImportError:
     import pdb
 
-SENTRY_DSN = (
-    "https://c81d7d22230841d7ae752bac26c84dcf@o1163.ingest.sentry.io/6001539"
-)
-
 
 @click.group(cls=ClickAliasedGroup)
 @click.option(
@@ -90,7 +86,7 @@ def cli(ctx, debug, zone, sudo):
         sys.excepthook = basic_excepthook
 
         sentry_sdk.init(
-            SENTRY_DSN,
+            ctx.obj.client.config.get_sentry_dsn(),
             traces_sample_rate=1.0,
             release=divio_cli.__version__,
             server_name="client",
