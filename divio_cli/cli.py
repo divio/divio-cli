@@ -7,6 +7,7 @@ import traceback
 import click
 import sentry_sdk
 from click_aliases import ClickAliasedGroup
+from sentry_sdk import last_event_id
 
 import divio_cli
 
@@ -60,6 +61,12 @@ def cli(ctx, debug, zone, sudo):
     if sudo:
         click.secho("Running as sudo", fg="red")
 
+    ctx.obj = Map()
+    ctx.obj.client = CloudClient(
+        get_endpoint(zone=zone), debug=debug, sudo=sudo
+    )
+    ctx.obj.zone = zone
+
     if debug:
 
         def exception_handler(type, value, traceback):
@@ -108,7 +115,9 @@ def cli(ctx, debug, zone, sudo):
                     "for debugging purposes and to make the product better?"
                 ):
                     sentry_excepthook(*exc_info)
-                    click.secho("Thank you")
+                    click.secho(
+                        f"Thank you! The sentry ID for this event is: {last_event_id()}"
+                    )
                 else:
                     click.secho("Ok, not sending information :(")
 
@@ -116,12 +125,6 @@ def cli(ctx, debug, zone, sudo):
 
         # Wrap the new sentry except hook into our own check
         sys.excepthook = _make_confirmation_excepthook(sys.excepthook)
-
-    ctx.obj = Map()
-    ctx.obj.client = CloudClient(
-        get_endpoint(zone=zone), debug=debug, sudo=sudo
-    )
-    ctx.obj.zone = zone
 
     try:
         is_version_command = sys.argv[1] == "version"
@@ -240,7 +243,7 @@ def application_list(obj, grouped, as_json):
             applications = data["applications"]
             if applications:
                 output_items.append(
-                    u"{title}\n{line}\n\n{table}\n\n".format(
+                    "{title}\n{line}\n\n{table}\n\n".format(
                         title=data["name"],
                         line="=" * len(data["name"]),
                         table=table(
