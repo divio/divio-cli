@@ -2,18 +2,17 @@ import itertools
 import json
 import os
 import sys
-import traceback
 
 import click
 import sentry_sdk
 from click_aliases import ClickAliasedGroup
-from sentry_sdk import last_event_id
 
 import divio_cli
 
 from . import exceptions, localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
+from .excepthook import DivioExcepthookIntegration
 from .localdev.utils import allow_remote_id_override
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
@@ -83,48 +82,13 @@ def cli(ctx, debug, zone, sudo):
 
         sys.excepthook = exception_handler
     else:
-
-        # Make an empty except hook because we are introducing our own in
-        # combination with sentry later and this one will be called by sentry
-        # and we are already handling everything in the other excepthooks.
-        def basic_excepthook(*exc_info):
-            pass
-
-        sys.excepthook = basic_excepthook
-
         sentry_sdk.init(
             ctx.obj.client.config.get_sentry_dsn(),
             traces_sample_rate=1.0,
             release=divio_cli.__version__,
             server_name="client",
+            integrations=[DivioExcepthookIntegration()],
         )
-
-        def _make_confirmation_excepthook(sentry_excepthook):
-            def sentry_confirmation_excepthook(*exc_info):
-                # Print normal stacktrace
-                text = "".join(traceback.format_exception(*exc_info))
-                click.secho(text)
-
-                click.secho(
-                    "We would like to gather information about this error via "
-                    "sentry to improve our product and to resolve this issue "
-                    "in the future."
-                )
-                if click.confirm(
-                    "Do you want to send information about this error to Divio "
-                    "for debugging purposes and to make the product better?"
-                ):
-                    sentry_excepthook(*exc_info)
-                    click.secho(
-                        f"Thank you! The sentry ID for this event is: {last_event_id()}"
-                    )
-                else:
-                    click.secho("Ok, not sending information :(")
-
-            return sentry_confirmation_excepthook
-
-        # Wrap the new sentry except hook into our own check
-        sys.excepthook = _make_confirmation_excepthook(sys.excepthook)
 
     try:
         is_version_command = sys.argv[1] == "version"
