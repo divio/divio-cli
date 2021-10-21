@@ -6,13 +6,14 @@ import sys
 import click
 import sentry_sdk
 from click_aliases import ClickAliasedGroup
+from sentry_sdk.integrations.atexit import AtexitIntegration
 
 import divio_cli
 
 from . import exceptions, localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
-from .excepthook import DivioExcepthookIntegration
+from .excepthook import DivioExcepthookIntegration, divio_shutdown
 from .localdev.utils import allow_remote_id_override
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
@@ -87,7 +88,10 @@ def cli(ctx, debug, zone, sudo):
             traces_sample_rate=1.0,
             release=divio_cli.__version__,
             server_name="client",
-            integrations=[DivioExcepthookIntegration()],
+            integrations=[
+                DivioExcepthookIntegration(),
+                AtexitIntegration(callback=divio_shutdown),
+            ],
         )
 
     try:
