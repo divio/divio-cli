@@ -85,7 +85,7 @@ def cli(ctx, debug, zone, sudo):
     else:
         sentry_sdk.init(
             ctx.obj.client.config.get_sentry_dsn(),
-            traces_sample_rate=1.0,
+            traces_sample_rate=0,
             release=divio_cli.__version__,
             server_name="client",
             integrations=[
