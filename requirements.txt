@@ -6,4 +6,5 @@ packaging
 pyaml
 python-dateutil
 requests
+sentry-sdk
 tabulate

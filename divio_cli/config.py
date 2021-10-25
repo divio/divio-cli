@@ -98,3 +98,11 @@ class Config(object):
         if not checks or not isinstance(checks, list):
             return []
         return checks
+
+    def get_docker_compose_cmd(self):
+        return self.config.get(
+            "docker-compose", settings.DEFAULT_DOCKER_COMPOSE_CMD
+        )
+
+    def get_sentry_dsn(self):
+        return self.config.get("sentry-dsn", settings.DEFAULT_SENTRY_DSN)
