@@ -58,6 +58,20 @@ def redirect_stderr(new_stream):
         sys.stderr = original_stream
 
 
+def is_wsl():
+    return "microsoft-standard" in platform.uname().release
+
+
+def launch_url(url, wait=False):
+    """
+    Use this instead of `click.launch()` so that it sets `wait` correctly
+    for WSL.
+    """
+    if is_wsl():
+        wait = True
+    click.launch(url, wait)
+
+
 def create_temp_dir():
     return tempfile.mkdtemp(prefix="tmp_divio_cli_")
 
@@ -138,7 +152,7 @@ def open_application_cloud_site(client, application_id, stage):
         )
         sys.exit(1)
     if url:
-        click.launch(url)
+        launch_url(url)
     else:
         click.secho(
             "No {} environment deployed yet.".format(stage), fg="yellow"

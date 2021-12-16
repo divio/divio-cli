@@ -22,6 +22,7 @@ from .utils import (
     get_cp_url,
     get_git_checked_branch,
     hr,
+    launch_url,
     open_application_cloud_site,
     table,
 )
@@ -117,7 +118,7 @@ def login_token_helper(ctx, value):
     if not value:
         url = ctx.obj.client.get_access_token_url()
         click.secho("Your browser has been opened to visit: {}".format(url))
-        click.launch(url)
+        launch_url(url)
         value = click.prompt(
             "Please copy the access token and paste it here. (your input is not displayed)",
             hide_input=True,
@@ -286,7 +287,7 @@ def configure(obj):
 @click.pass_obj
 def application_dashboard(obj, remote_id):
     """Open the application dashboard on the Divio Control Panel."""
-    click.launch(get_cp_url(client=obj.client, application_id=remote_id))
+    launch_url(get_cp_url(client=obj.client, application_id=remote_id))
 
 
 @app.command(name="up", aliases=["start"])
