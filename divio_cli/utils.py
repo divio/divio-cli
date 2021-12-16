@@ -66,6 +66,7 @@ def launch_url(url, wait=False):
     """
     Use this instead of `click.launch()` so that it sets `wait` correctly
     for WSL.
+    See also: https://github.com/pallets/click/issues/2154
     """
     if is_wsl():
         wait = True
