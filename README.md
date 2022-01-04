@@ -38,7 +38,7 @@ tox -- -m "not integration"
 
 ## Integration tests
 
-These to require a more involved setup and will trigger actions on a real project. You have to provide the project name and your user must be logged in into divio cloud.
+These do require a more involved setup and will trigger actions on a real project. You have to provide the project name and your user must be logged in into divio cloud.
 
 You might get asked to provide authentication information during the test, depending on your setup.
 
