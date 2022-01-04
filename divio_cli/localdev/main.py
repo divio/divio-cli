@@ -23,6 +23,7 @@ from ..utils import (
     get_size,
     get_subprocess_env,
     is_windows,
+    launch_url,
     needs_legacy_migration,
     pretty_size,
 )
@@ -1296,7 +1297,7 @@ def open_application(open_browser=True):
         )
 
     if open_browser:
-        click.launch(addr)
+        launch_url(addr)
     return addr
 
 

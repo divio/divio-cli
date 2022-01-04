@@ -1,13 +1,17 @@
 Changelog
 =========
 
-3.15.0(2021-10-25)
-------------------
+3.15.1 (2021-12-17)
+-------------------
+
+* Fixed issue with zombie processes in WSL after launching a web page.
+
+3.15.0 (2021-10-25)
+-------------------
 
 * Simplified dependencies and removed strict pinning. We now allow more flexibility of dependencies when the CLI gets installed into an existing environment. 
 * Added optional error reporting.
 * Fixed issue when trying to detect a docker-compose database
-
 
 3.14.1 (2021-10-06)
 -------------------
