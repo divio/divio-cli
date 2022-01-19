@@ -7,6 +7,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+from pathlib import PurePosixPath
 from time import sleep, time
 
 import click
@@ -462,8 +463,6 @@ class DatabaseImportBase(object):
         raise NotImplementedError
 
     def restore_db_postgres(self, db_container_id):
-        import pdb
-        
         restore_command = self.get_db_restore_command(self.db_type)
         # Create db
         check_call(
@@ -492,7 +491,7 @@ class DatabaseImportBase(object):
                     "SELECT name FROM pg_catalog.pg_available_extensions",
                 ]
             )
-        
+
             # TODO: solve extensions in a generic way in
             # harmony with server side db-api
             click.echo("")
@@ -517,7 +516,7 @@ class DatabaseImportBase(object):
                         ],
                         silent=True,
                     )
-        
+
         # TODO: use same dump-type detection like server side on db-api
         try:
             check_call(
@@ -533,7 +532,6 @@ class DatabaseImportBase(object):
                 catch=False,
             )
         except subprocess.CalledProcessError as exc:
-            # pdb.set_trace()
             click.secho(
                 "Could not restore the database dump. This is likely a "
                 "configuration issue."
@@ -686,27 +684,12 @@ class ImportRemoteDatabase(DatabaseImportBase):
             click.secho(f" ---> Writing temp file: {self.host_db_dump_path}")
             click.secho(" ---> Downloading database", nl=False)
             click.echo(" [{}s]".format(int(time() - start_download)))
-            # strip path from dump_path for use in the docker container and ensure 
+            # strip path from dump_path for use in the docker container and ensure
             # posix path, even when running on Windows
-            from pathlib import PurePosixPath
-            host_dump_path =  re.findall(
-                "([^\/|^\\\\]+)", 
-                self.host_db_dump_path.replace(self.path, "")
+            host_dump_path = re.findall(
+                "([^\/|^\\\\]+)", self.host_db_dump_path.replace(self.path, "")
             )
             self.db_dump_path = PurePosixPath("/app", *host_dump_path)
-            import pdb
-            pdb.set_trace()
-               
-            # self.db_dump_path = os.path.join(
-            #     "/app",
-            #     # self.host_db_dump_path.replace(self.path, "").lstrip("/"),
-            #     host_dump_path.lstrip("/"),
-            # )
-            # from pathlib import PurePosixPath
-            # self.db_dump_path = PurePosixPath("/app", host_dump_path)
-            # import pdb
-            # pdb.set_trace()
-
         else:
             click.secho(" ---> empty database")
             self.db_dump_path = None
