@@ -7,6 +7,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+from pathlib import PurePosixPath
 from time import sleep, time
 
 import click
@@ -683,12 +684,13 @@ class ImportRemoteDatabase(DatabaseImportBase):
             click.secho(f" ---> Writing temp file: {self.host_db_dump_path}")
             click.secho(" ---> Downloading database", nl=False)
             click.echo(" [{}s]".format(int(time() - start_download)))
-            # strip path from dump_path for use in the docker container
-            self.db_dump_path = os.path.join(
-                "/app",
-                self.host_db_dump_path.replace(self.path, "").lstrip("/"),
+            # strip path from dump_path for use in the docker container and ensure
+            # posix path, even when running on Windows
+            host_dump_path = re.findall(
+                r"([^\/|^\\\\]+)",
+                self.host_db_dump_path.replace(self.path, ""),
             )
-
+            self.db_dump_path = PurePosixPath("/app", *host_dump_path)
         else:
             click.secho(" ---> empty database")
             self.db_dump_path = None

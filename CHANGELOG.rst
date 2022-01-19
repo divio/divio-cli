@@ -1,6 +1,11 @@
 Changelog
 =========
 
+3.15.2 (2022-01-20)
+-------------------
+
+* Fixed issue where DB pull was not working on native Windows.
+
 3.15.1 (2021-12-17)
 -------------------
 
