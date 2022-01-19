@@ -687,7 +687,8 @@ class ImportRemoteDatabase(DatabaseImportBase):
             # strip path from dump_path for use in the docker container and ensure
             # posix path, even when running on Windows
             host_dump_path = re.findall(
-                "([^\/|^\\\\]+)", self.host_db_dump_path.replace(self.path, "")
+                r"([^\/|^\\\\]+)",
+                self.host_db_dump_path.replace(self.path, ""),
             )
             self.db_dump_path = PurePosixPath("/app", *host_dump_path)
         else:
