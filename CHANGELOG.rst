@@ -1,6 +1,11 @@
 Changelog
 =========
 
+3.15.3 (xxxx-xx-xx)
+-------------------
+
+* Removed requirement of a LICENSE file in a boilerplate.
+
 3.15.2 (2022-01-20)
 -------------------
 

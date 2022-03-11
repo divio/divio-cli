@@ -33,13 +33,6 @@ def load_config(fname, path=None):
 def validate_package_config(config, required_keys, path):
     errors = []
 
-    if not get_license(path):
-        errors.append(
-            "Required LICENSE file not found. Valid names are {}.".format(
-                ", ".join(VALID_LICENSE_FILENAMES)
-            )
-        )
-
     for key in required_keys:
         if key not in config:
             errors.append(
