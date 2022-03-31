@@ -22,8 +22,6 @@ Unit Tests:
 Integration Tests:
   stage: qa
   image: docker:stable
-  variables:
-    TEST_PROJECT_NAME: ci-test-project-do-not-delete-3069
   before_script:
     - apk --update add openssh-client git python3 python3-dev build-base libffi-dev openssl-dev
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
@@ -49,7 +47,7 @@ Integration Tests:
       - python3 setup.py develop
       - divio doctor
       - mkdir -p ${CI_PROJECT_DIR}/test_data
-      - pytest -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
+      - TEST_PROJECT_NAME="ci-test-project-do-not-delete-306" pytest -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
   after_script:
       - mkdir -p ${CI_PROJECT_DIR}/artifacts
       - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
