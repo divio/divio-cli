@@ -22,6 +22,8 @@ Unit Tests:
 Integration Tests:
   stage: qa
   image: docker:stable
+  variables:
+    TEST_PROJECT_NAME: ci-test-project-do-not-delete-3069
   before_script:
     - apk --update add openssh-client git python3 python3-dev build-base libffi-dev openssl-dev
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
