@@ -1,6 +1,11 @@
 Changelog
 =========
 
+x.x.x (xxxx-xx-xx)
+-------------------
+
+* Changed CLI standard usage to up/down as primary commands for consistency.
+
 3.15.2 (2022-01-20)
 -------------------
 

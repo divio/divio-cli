@@ -296,7 +296,7 @@ def application_up():
     localdev.start_application()
 
 
-@app.command(name="stop", aliases=["down"])
+@app.command(name="down", aliases=["stop"])
 def application_stop():
     """Stop the local application."""
     localdev.stop_application()
