@@ -1,7 +1,7 @@
 Changelog
 =========
 
-x.x.x (x-x-x)
+3.15.3 (2022-04-01)
 -------------------
 
 * Pin `click` dependency to >= 7.0
