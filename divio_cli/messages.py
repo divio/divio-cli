@@ -14,10 +14,10 @@ AUTH_INVALID_TOKEN = "Login failed. Invalid token specified"
 RESOURCE_NOT_FOUND_ANONYMOUS = "Resource not found"
 RESOURCE_NOT_FOUND = "Resource not found. You are logged in as '{login}', please check if you have permissions to access the resource"
 LOGIN_SUCCESSFUL = (
-    u"Welcome to Divio Cloud. You are now logged in as {greeting}"
+    "Welcome to Divio Cloud. You are now logged in as {greeting}"
 )
-CONFIG_FILE_NOT_FOUND = u"Config file could not be not found at location: {}"
-FILE_NOT_FOUND = u"File could not be found: {}"
+CONFIG_FILE_NOT_FOUND = "Config file could not be not found at location: {}"
+FILE_NOT_FOUND = "File could not be found: {}"
 BAD_REQUEST = "Request could not be processed"
 LOGIN_CHECK_SUCCESSFUL = (
     "Authentication with server successful. You are logged in."

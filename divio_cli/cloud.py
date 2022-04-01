@@ -109,9 +109,9 @@ class CloudClient(object):
         email = user_data.get("email")
 
         if first_name and last_name:
-            greeting = u"{} {} ({})".format(first_name, last_name, email)
+            greeting = "{} {} ({})".format(first_name, last_name, email)
         elif first_name:
-            greeting = u"{} ({})".format(first_name, email)
+            greeting = "{} ({})".format(first_name, email)
         else:
             greeting = email
 
