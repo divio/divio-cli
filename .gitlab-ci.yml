@@ -26,6 +26,7 @@ Integration Tests:
     - apk --update add openssh-client git python3 python3-dev build-base libffi-dev openssl-dev
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - eval $(ssh-agent -s)
+    - echo "TEST_PROJECT_NAME = ${TEST_PROJECT_NAME}"
     ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
     ## We're using tr to fix line endings which makes ed25519 keys work
     ## without extra base64 encoding.
@@ -47,7 +48,7 @@ Integration Tests:
       - python3 setup.py develop
       - divio doctor
       - mkdir -p ${CI_PROJECT_DIR}/test_data
-      - TEST_PROJECT_NAME="ci-test-project-do-not-delete-3069" pytest -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
+      - pytest -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
   after_script:
       - mkdir -p ${CI_PROJECT_DIR}/artifacts
       - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
