@@ -184,7 +184,7 @@ def pretty_size(num):
     # http://stackoverflow.com/a/10171475
     if num > 1:
         exponent = min(int(log(num, 1024)), len(unit_list) - 1)
-        quotient = float(num) / 1024 ** exponent
+        quotient = float(num) / 1024**exponent
         unit, num_decimals = unit_list[exponent]
         format_string = "{:.%sf} {}" % num_decimals
         return format_string.format(quotient, unit)
