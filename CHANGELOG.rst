@@ -5,6 +5,7 @@ x.x.x (x-x-x)
 -------------------
 
 * Pin `click` dependency to >= 7.0
+* Changed CLI standard usage to up/down as primary commands for consistency.
 
 3.15.2 (2022-01-20)
 -------------------
