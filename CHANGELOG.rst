@@ -1,13 +1,18 @@
 Changelog
 =========
 
+x.x.x (x-x-x)
+-------------------
+
+* Prettify API error responses
+
 3.15.3 (2022-04-01)
 -------------------
 
 * Pin `click` dependency to >= 7.0
 * Changed CLI standard usage to up/down as primary commands for consistency.
 
-3.15.2 (2022-01-20)
+3.15.2 (2022-01-19)
 -------------------
 
 * Fixed issue where DB pull was not working on native Windows.
