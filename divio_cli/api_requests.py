@@ -1,5 +1,5 @@
 import os
-from json.decoder import JSONDecodeError
+from simplejson.errors import JSONDecodeError
 from urllib.parse import urljoin, urlparse
 
 import click
