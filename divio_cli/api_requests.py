@@ -1,9 +1,9 @@
 import os
-from simplejson.errors import JSONDecodeError
 from urllib.parse import urljoin, urlparse
 
 import click
 import requests
+from simplejson.errors import JSONDecodeError as SimpleJSONDecodeError
 
 from . import messages
 from .utils import create_temp_dir, get_user_agent
@@ -156,7 +156,7 @@ class APIRequest(object):
                         ]
                     )
                     error_msg = "{}\n\n{}".format(error_msg, non_field_errors)
-                except (KeyError, AttributeError, JSONDecodeError):
+                except (KeyError, AttributeError, SimpleJSONDecodeError):
                     error_msg = "{}\n\n{}".format(error_msg, response_content)
             raise APIRequestError(error_msg)
         return self.process(response)
