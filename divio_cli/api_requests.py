@@ -1,4 +1,5 @@
 import os
+from json.decoder import JSONDecodeError
 from urllib.parse import urljoin, urlparse
 
 import click
@@ -156,7 +157,13 @@ class APIRequest(object):
                         ]
                     )
                     error_msg = "{}\n\n{}".format(error_msg, non_field_errors)
-                except (KeyError, AttributeError, SimpleJSONDecodeError):
+                except (
+                    KeyError,
+                    AttributeError,
+                    ValueError,
+                    SimpleJSONDecodeError,
+                    JSONDecodeError,
+                ):
                     error_msg = "{}\n\n{}".format(error_msg, response_content)
             raise APIRequestError(error_msg)
         return self.process(response)
