@@ -12,6 +12,8 @@ Divio CLI - Command-line interface to the Divio Cloud
 pip install divio-cli
 ```
 
+⚠️ **For Windows users**: Make sure you have added Python to PATH during installation, otherwise you must add it manually for the divio-cli commands to function properly.
+
 # Using the CLI
 
 See [Divio developer handbook: How to use the Divio command-line interface](https://docs.divio.com/en/latest/how-to/local-cli/)
