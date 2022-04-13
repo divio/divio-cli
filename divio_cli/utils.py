@@ -2,6 +2,7 @@ import io
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -23,7 +24,7 @@ ALDRYN_DEFAULT_BRANCH_NAME = "develop"
 
 def hr(char="-", width=None, **kwargs):
     if width is None:
-        width = click.get_terminal_size()[0]
+        width = shutil.get_terminal_size()[0]
     click.secho(char * width, **kwargs)
 
 
