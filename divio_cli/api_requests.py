@@ -76,7 +76,7 @@ class APIRequest(object):
         data=None,
         files=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         self.session = session
         if url:
@@ -126,7 +126,7 @@ class APIRequest(object):
                 files=self.files,
                 headers=self.get_headers(),
                 *args,
-                **kwargs
+                **kwargs,
             )
         except (
             requests.exceptions.ConnectionError,
@@ -145,7 +145,19 @@ class APIRequest(object):
             if not self.session.debug:
                 response_content = response_content[:300]
             if response_content:
-                error_msg = "{}\n\n{}".format(error_msg, response_content)
+                # Try to extract all errors separately and build a prettified error message.
+                # non_field_errors is the default key our APIs are using for returning such errors.
+                try:
+                    non_field_errors = "\n".join(
+                        [
+                            error
+                            for error in response.json()["non_field_errors"]
+                        ]
+                    )
+                    error_msg = "{}\n\n{}".format(error_msg, non_field_errors)
+                # Must keep this generic due to compatibility issues of requests library for json decode exceptions.
+                except Exception:
+                    error_msg = "{}\n\n{}".format(error_msg, response_content)
             raise APIRequestError(error_msg)
         return self.process(response)
 
