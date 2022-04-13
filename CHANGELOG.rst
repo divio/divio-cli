@@ -1,6 +1,11 @@
 Changelog
 =========
 
+3.15.4 (2022-04-13)
+-------------------
+
+* Changed usage of deprecated click function `get_terminal_size` to be compatible with click 8.1.
+
 3.15.3 (2022-04-01)
 -------------------
 
