@@ -1,7 +1,7 @@
 Changelog
 =========
 
-x.x.x (x-x-x)
+3.15.5 (2022-04-20)
 -------------------
 
 * Prettify API error responses
