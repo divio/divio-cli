@@ -123,6 +123,12 @@ def login_token_helper(ctx, value):
             "Please copy the access token and paste it here. (your input is not displayed)",
             hide_input=True,
         )
+        # Detect copying/pasting shortcut malfunction (Windows users)
+        if "^V" in value and len(value) < 10:
+            click.secho(
+                "\nThe access token provided indicates that your terminal might not have copying/pasting shortcuts such as Ctrl+C/Ctrl+V enabled by default. Make sure that you can use those shortcuts before you provide your access token as the input will be hidden for security reasons.",
+                fg="yellow",
+            )
     return value
 
 
