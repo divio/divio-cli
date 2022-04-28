@@ -1,6 +1,10 @@
 Changelog
 =========
 
+x.x.x (x-x-x)
+-------------------
+Detect pasting shortcut malfunction for access token in login (Windows users)
+
 3.15.5 (2022-04-20)
 -------------------
 
