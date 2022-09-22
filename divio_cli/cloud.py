@@ -179,7 +179,7 @@ class CloudClient(object):
     def get_environment(self, website_id, stage):
         project_data = self.get_project(website_id)
         try:
-            status = project_data["{}_status".format(stage)]
+            _ = project_data["{}_status".format(stage)]
         except KeyError:
             click.secho(
                 "Environment with the name '{}' does not exist.".format(stage),
