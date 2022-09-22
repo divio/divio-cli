@@ -42,8 +42,7 @@ Integration Tests:
     # prepare netrc as login
     - echo "$CI_TEST_NETRC" > ~/.netrc
   script: 
-      - python3 -m ensurepip --default-pip
-      - python3 -m pip install --upgrade pip
+      - python3 -m ensurepip --default-pip --upgrade
       - pip install -r requirements.txt
       - pip install docker-compose pytest pytest-cov "cryptography<3.4"
       - python3 setup.py develop
@@ -52,8 +51,6 @@ Integration Tests:
       - pytest -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
   after_script:
       - mkdir -p ${CI_PROJECT_DIR}/artifacts
-      - ls -la ${CI_PROJECT_DIR}
-      - find ${CI_PROJECT_DIR} -name \*coverage\*
       - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
   artifacts:
     paths:
@@ -89,7 +86,7 @@ Combine Coverage:
       # cobertura: ${CI_PROJECT_DIR}/artifacts/coverage.xml
       coverage_report:
         coverage_format: cobertura
-        path: artifacts/merged/cobertura-coverage.xml
+        path: artifacts/cobertura-coverage.xml
 
 
 
