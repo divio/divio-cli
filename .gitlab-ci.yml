@@ -50,7 +50,8 @@ Integration Tests:
       - pytest -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
   after_script:
       - mkdir -p ${CI_PROJECT_DIR}/artifacts
-      - ls -la ${CI_PROJECT_DIR} 
+      - ls -la ${CI_PROJECT_DIR}
+      - find ${CI_PROJECT_DIR} -name \*coverage\*
       - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
   artifacts:
     paths:
