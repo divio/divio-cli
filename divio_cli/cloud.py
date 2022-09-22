@@ -507,11 +507,20 @@ class CloudClient(object):
         return request()
 
     def get_environment_variables(self, website_id, stage, custom_only=True):
+        project_data = self.get_project(website_id)
+        try:
+            status = project_data["{}_status".format(stage)]
+        except KeyError:
+            click.secho(
+                "Environment with the name '{}' does not exist.".format(stage),
+                fg="red",
+            )
+            sys.exit(1)
+
         if custom_only:
             Request = api_requests.GetCustomEnvironmentVariablesRequest
         else:
             Request = api_requests.GetEnvironmentVariablesRequest
-
         request = Request(
             self.session, url_kwargs={"website_id": website_id, "stage": stage}
         )

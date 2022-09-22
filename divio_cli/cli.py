@@ -408,6 +408,7 @@ def environment_variables(
 
     WARNING: This command is experimental and may change in a future release.
     """
+    stage = stage.lower()
     if set_vars or unset_vars:
         set_vars = dict(set_vars)
         data = obj.client.set_custom_environment_variables(
