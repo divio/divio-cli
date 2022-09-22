@@ -82,7 +82,11 @@ Combine Coverage:
     paths:
       - ${CI_PROJECT_DIR}/artifacts/
     reports:
-      cobertura: ${CI_PROJECT_DIR}/artifacts/coverage.xml
+      # cobertura: ${CI_PROJECT_DIR}/artifacts/coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: artifacts/merged/cobertura-coverage.xml
+
 
 
 Release Tag:
