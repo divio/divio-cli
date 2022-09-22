@@ -42,6 +42,8 @@ Integration Tests:
     - echo "$CI_TEST_NETRC" > ~/.netrc
   script: 
       - python3 -m ensurepip --default-pip
+      - pip list
+      - pip install setuptools_rust
       - pip install -r requirements.txt
       - pip install docker-compose pytest pytest-cov "cryptography<3.4"
       - python3 setup.py develop
