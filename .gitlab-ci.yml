@@ -6,6 +6,7 @@ include:
 
 variables:
   LINT_FOLDER_PYTHON: divio_cli
+  CRYPTOGRAPHY_DONT_BUILD_RUST: 1
 
 
 Unit Tests:
@@ -42,8 +43,7 @@ Integration Tests:
     - echo "$CI_TEST_NETRC" > ~/.netrc
   script: 
       - python3 -m ensurepip --default-pip
-      - pip list
-      - pip install setuptools_rust
+      - python3 -m pip install --upgrade pip
       - pip install -r requirements.txt
       - pip install docker-compose pytest pytest-cov "cryptography<3.4"
       - python3 setup.py develop
