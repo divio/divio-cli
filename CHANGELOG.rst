@@ -1,6 +1,11 @@
 Changelog
 =========
 
+3.15.7 (2022-09-23)
+-------------------
+
+* Display correct error message for invalid environment with env-vars and make stage parameter case-insensitive.
+
 3.15.6 (2022-04-28)
 -------------------
 
