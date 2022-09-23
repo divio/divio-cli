@@ -6,6 +6,7 @@ include:
 
 variables:
   LINT_FOLDER_PYTHON: divio_cli
+  CRYPTOGRAPHY_DONT_BUILD_RUST: 1
 
 
 Unit Tests:
@@ -42,6 +43,7 @@ Integration Tests:
     - echo "$CI_TEST_NETRC" > ~/.netrc
   script: 
       - python3 -m ensurepip --default-pip
+      - python3 -m pip install --upgrade pip
       - pip install -r requirements.txt
       - pip install docker-compose pytest pytest-cov "cryptography<3.4"
       - python3 setup.py develop
@@ -82,7 +84,10 @@ Combine Coverage:
     paths:
       - ${CI_PROJECT_DIR}/artifacts/
     reports:
-      cobertura: ${CI_PROJECT_DIR}/artifacts/coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: artifacts/coverage.xml
+
 
 
 Release Tag:
