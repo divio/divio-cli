@@ -54,3 +54,5 @@ tox --  -m "integration" --test_project_name <NAME_OF_A_PROJECT_FOR_TESTING>
 2. Update the changelog. 
 3. Merge the branch (after approval).
 4. Tag master with the release number `X.X.X` and `git push origin <tagname>`
+
+The pipeline will then take care of the release.
