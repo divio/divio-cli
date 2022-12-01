@@ -19,6 +19,7 @@ from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
+    echo_large_content,
     get_cp_url,
     get_git_checked_branch,
     hr,
@@ -47,6 +48,13 @@ except ImportError:
     help="Drop into the debugger if command execution raises an exception.",
 )
 @click.option(
+    "-P",
+    "--no-pager",
+    default=False,
+    is_flag=True,
+    help="Will not show content in a pager if set.",
+)
+@click.option(
     "-z",
     "--zone",
     default=None,
@@ -61,7 +69,7 @@ except ImportError:
     hidden=True,
 )
 @click.pass_context
-def cli(ctx, debug, zone, sudo):
+def cli(ctx, debug, no_pager, zone, sudo):
     if sudo:
         click.secho("Running as sudo", fg="red")
 
@@ -70,6 +78,7 @@ def cli(ctx, debug, zone, sudo):
         get_endpoint(zone=zone), debug=debug, sudo=sudo
     )
     ctx.obj.zone = zone
+    ctx.obj.pager = not no_pager
 
     if debug:
 
@@ -242,7 +251,7 @@ def application_list(obj, grouped, as_json):
         ]
         output = table(sort_applications(applications), header)
 
-    click.echo_via_pager(output)
+    echo_large_content(output, ctx=obj)
 
 
 @app.command(name="deploy")
@@ -260,7 +269,14 @@ def application_deploy(obj, remote_id, stage):
 @click.pass_obj
 def application_deploy_log(obj, remote_id, stage):
     """View last deployment log."""
-    obj.client.show_deploy_log(remote_id, stage)
+    deploy_log = obj.client.get_deploy_log(remote_id, stage)
+    if deploy_log:
+        echo_large_content(deploy_log, ctx=obj)
+    else:
+        click.secho(
+            "No {} environment deployed yet, no log available.".format(stage),
+            fg="yellow",
+        )
 
 
 @app.command(name="logs")
@@ -434,7 +450,7 @@ def environment_variables(
         header = ("Key", "Value")
         data = sorted([(key, value) for key, value in data.items()])
         output = table(data, header)
-        click.echo_via_pager(output)
+        echo_large_content(output, obj)
 
 
 @app.command(name="status")
