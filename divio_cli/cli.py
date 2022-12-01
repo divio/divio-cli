@@ -36,7 +36,10 @@ except ImportError:
     import pdb
 
 
-@click.group(cls=ClickAliasedGroup)
+@click.group(
+    cls=ClickAliasedGroup,
+    context_settings={"help_option_names": ["--help", "-h"]},
+)
 @click.option(
     "-d",
     "--debug/--no-debug",
