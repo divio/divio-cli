@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Support ``-h`` as a shorthand for the ``--help`` option.
+
 3.15.7 (2022-09-23)
 -------------------
 
