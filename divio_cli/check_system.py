@@ -15,12 +15,12 @@ ERROR = 1
 WARNING = 0
 
 
-class Check(object):
+class Check:
     name = None
     command = None
     error_level = ERROR
 
-    def run_check(self):
+    def run_check(self, context):
         errors = []
         try:
             utils.check_call(self.command, catch=False, silent=True)
@@ -62,9 +62,8 @@ class Check(object):
 class LoginCheck(Check):
     name = "Login"
 
-    def run_check(self):
-        client = cloud.CloudClient(cloud.get_endpoint())
-        success, msg = client.check_login_status()
+    def run_check(self, context):
+        success, msg = context.client.check_login_status()
         if not success:
             return [msg]
 
@@ -83,7 +82,7 @@ class DockerComposeCheck(Check):
     name = "Docker Compose"
     command = ("docker", "compose", "version")
 
-    def run_check(self):
+    def run_check(self, context):
         """
         Modified run_check method to check for both old and new docker
         compose versions.
@@ -231,11 +230,15 @@ ALL_CHECKS = OrderedDict(
 )
 
 
-def check_requirements(config=None, checks=None):
+def check_requirements(context, checks=None):
     if checks is None:
         checks = ALL_CHECKS.keys()
 
-    skip_doctor_checks = config.get_skip_doctor_checks() if config else []
+    skip_doctor_checks = (
+        context.client.config.get_skip_doctor_checks()
+        if context.client.config
+        else []
+    )
 
     for check_key in checks:
         if check_key in skip_doctor_checks:
@@ -244,7 +247,7 @@ def check_requirements(config=None, checks=None):
         if not check:
             click.secho("Invalid check {}".format(check_key), fg="red")
             sys.exit(1)
-        errors = check().run_check()
+        errors = check().run_check(context)
         yield check_key, check.name, errors
 
 
@@ -259,13 +262,13 @@ def get_prefix(success):
     return symbol, color
 
 
-def check_requirements_human(config, checks=None, silent=False):
+def check_requirements_human(context, checks=None, silent=False):
     errors = []
 
-    if config and config.skip_doctor():
+    if context.client.config and context.client.config.skip_doctor():
         return True
 
-    for check, check_name, error in check_requirements(config, checks):
+    for check, check_name, error in check_requirements(context, checks):
         if error:
             errors.append((check, check_name, error))
         if not silent:

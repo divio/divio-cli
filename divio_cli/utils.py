@@ -102,11 +102,10 @@ def get_subprocess_env():
     return env
 
 
-def execute(func, *popenargs, **kwargs):
+def execute(func, *popenargs, catch=True, silent=False, **kwargs):
     if "env" not in kwargs:
         kwargs["env"] = get_subprocess_env()
-    catch = kwargs.pop("catch", True)
-    if kwargs.pop("silent", False):
+    if silent:
         if "stdout" not in kwargs:
             kwargs["stdout"] = open(os.devnull, "w")
             if not is_windows():
@@ -297,42 +296,6 @@ def download_file(url, directory=None, filename=None):
 
 def json_dumps_unicode(d, **kwargs):
     return json.dumps(d, ensure_ascii=False, **kwargs).encode("utf-8")
-
-
-class Map(dict):
-    """
-    A dictionary which also allows accessing values by dot notation.
-    Example:
-    m = Map({'first_name': 'Eduardo'}, last_name='Pool', age=24, sports=['Soccer'])
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(Map, self).__init__(*args, **kwargs)
-        for arg in args:
-            if isinstance(arg, dict):
-                for k, v in arg.iteritems():
-                    self[k] = v
-
-        if kwargs:
-            for k, v in kwargs.iteritems():
-                self[k] = v
-
-    def __getattr__(self, attr):
-        return self.get(attr)
-
-    def __setattr__(self, key, value):
-        self.__setitem__(key, value)
-
-    def __setitem__(self, key, value):
-        super(Map, self).__setitem__(key, value)
-        self.__dict__.update({key: value})
-
-    def __delattr__(self, item):
-        self.__delitem__(item)
-
-    def __delitem__(self, key):
-        super(Map, self).__delitem__(key)
-        del self.__dict__[key]
 
 
 def split(delimiters, string, maxsplit=0):

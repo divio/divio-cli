@@ -8,42 +8,11 @@ from urllib.parse import urlparse
 
 import click
 from dateutil.parser import isoparse
+from attr import frozen, field
 
 from . import api_requests, messages, settings
 from .config import Config
-from .localdev.utils import get_application_home, get_project_settings
 from .utils import json_dumps_unicode
-
-
-ENDPOINT = "https://control.{zone}"
-DEFAULT_ZONE = "divio.com"
-
-
-def get_divio_zone():
-    try:
-        application_specific_zone = get_project_settings(
-            get_application_home()
-        ).get("zone", None)
-    except click.ClickException:
-        # Happens when there is no configuration file
-        pass
-    else:
-        if application_specific_zone:
-            return application_specific_zone
-    return os.environ.get("DIVIO_ZONE", DEFAULT_ZONE)
-
-
-def get_endpoint(zone=None):
-    if not zone:
-        zone = get_divio_zone()
-    if re.match("^https?://", zone):
-        endpoint = zone
-    else:
-        endpoint = ENDPOINT.format(zone=zone)
-
-    if zone != DEFAULT_ZONE:
-        click.secho("Using zone: {}\n".format(endpoint), fg="green")
-    return endpoint
 
 
 def get_service_color(service):
@@ -59,14 +28,66 @@ def get_service_color(service):
         return "yellow"
 
 
-class CloudClient(object):
-    def __init__(self, endpoint, debug=False, sudo=False):
-        self.debug = debug
-        self.sudo = sudo
-        self.config = Config()
-        self.endpoint = endpoint
-        self.netrc = WritableNetRC()
-        self.session = self.init_session()
+class WritableNetRC(netrc):
+    def __init__(self, *args, **kwargs):
+        netrc_path = self.get_netrc_path()
+        if not os.path.exists(netrc_path):
+            open(netrc_path, "a").close()
+            os.chmod(netrc_path, 0o600)
+        kwargs["file"] = netrc_path
+        try:
+            netrc.__init__(self, *args, **kwargs)
+        except IOError:
+            raise click.ClickException(
+                "Please make sure your netrc config file ('{}') can be read "
+                "and written by the current user.".format(netrc_path)
+            )
+
+    def get_netrc_path(self):
+        """
+        netrc uses os.environ['HOME'] for path detection which is
+        not defined on Windows. Detecting the correct path ourselves
+        """
+        home = os.path.expanduser("~")
+        return os.path.join(home, ".netrc")
+
+    def add(self, host, login, account, password):
+        self.hosts[host] = (login, account, password)
+
+    def remove(self, host):
+        if host in self.hosts:
+            del self.hosts[host]
+
+    def write(self, path=None):
+        if path is None:
+            path = self.get_netrc_path()
+
+        out = []
+        for machine, data in self.hosts.items():
+            login, account, password = data
+            out.append("machine {}".format(machine))
+            if login:
+                out.append("\tlogin {}".format(login))
+            if account:
+                out.append("\taccount {}".format(account))
+            if password:
+                out.append("\tpassword {}".format(password))
+
+        with open(path, "w") as f:
+            f.write(os.linesep.join(out))
+
+
+@frozen
+class CloudClient:
+    endpoint = field()
+    debug: bool = field(default=False)
+    sudo: bool = field(default=False)
+    config: Config = field()
+    netrc: WritableNetRC = field(factory=WritableNetRC)
+    session: api_requests.SingleHostSession = field(init=False)
+
+    def __attrs_post_init__(self):
+        object.__setattr__(self, "session", self.init_session())
 
     # Helpers
     def get_auth_header(self):
@@ -560,52 +581,3 @@ class CloudClient(object):
         raise click.ClickException(
             "Could not get remote repository information."
         )
-
-
-class WritableNetRC(netrc):
-    def __init__(self, *args, **kwargs):
-        netrc_path = self.get_netrc_path()
-        if not os.path.exists(netrc_path):
-            open(netrc_path, "a").close()
-            os.chmod(netrc_path, 0o600)
-        kwargs["file"] = netrc_path
-        try:
-            netrc.__init__(self, *args, **kwargs)
-        except IOError:
-            raise click.ClickException(
-                "Please make sure your netrc config file ('{}') can be read "
-                "and written by the current user.".format(netrc_path)
-            )
-
-    def get_netrc_path(self):
-        """
-        netrc uses os.environ['HOME'] for path detection which is
-        not defined on Windows. Detecting the correct path ourselves
-        """
-        home = os.path.expanduser("~")
-        return os.path.join(home, ".netrc")
-
-    def add(self, host, login, account, password):
-        self.hosts[host] = (login, account, password)
-
-    def remove(self, host):
-        if host in self.hosts:
-            del self.hosts[host]
-
-    def write(self, path=None):
-        if path is None:
-            path = self.get_netrc_path()
-
-        out = []
-        for machine, data in self.hosts.items():
-            login, account, password = data
-            out.append("machine {}".format(machine))
-            if login:
-                out.append("\tlogin {}".format(login))
-            if account:
-                out.append("\taccount {}".format(account))
-            if password:
-                out.append("\tpassword {}".format(password))
-
-        with open(path, "w") as f:
-            f.write(os.linesep.join(out))

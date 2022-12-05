@@ -16,11 +16,11 @@ def get_global_config_path():
         return settings.DIVIO_GLOBAL_CONFIG_FILE
 
 
-class Config(object):
+class Config:
     config = {}
 
     def __init__(self):
-        super(Config, self).__init__()
+        super().__init__()
         self.config_path = get_global_config_path()
         self.read()
 

@@ -48,7 +48,6 @@ Integration Tests:
       - pip install docker-compose pytest pytest-cov "cryptography<3.4"
       - python3 setup.py develop
       - divio doctor
-      - mkdir -p ${CI_PROJECT_DIR}/test_data
       - pytest -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
   after_script:
       - mkdir -p ${CI_PROJECT_DIR}/artifacts

@@ -5,6 +5,7 @@ import subprocess
 import sys
 from time import time
 
+from attr import define, field
 import click
 import yaml
 
@@ -23,8 +24,7 @@ DOT_ALDRYN_FILE_NOT_FOUND = (
 )
 
 
-def get_project_settings(path=None, silent=False):
-    project_home = get_application_home(path, silent=silent)
+def get_project_settings(project_home):
     try:
         old_file_found = False
         if os.path.exists(
@@ -52,13 +52,13 @@ def get_project_settings(path=None, silent=False):
         sys.exit(1)
 
 
-def get_application_home(path=None, silent=False):
+def get_application_home(path):
     """
     find project root by traversing up the tree looking for
     the configuration file
     """
     previous_path = None
-    current_path = path or os.getcwd()
+    current_path = path
     global_config_path = config.get_global_config_path()
 
     # loop until we're at the root of the volume
@@ -76,28 +76,37 @@ def get_application_home(path=None, silent=False):
         # traversing up the tree
         previous_path = current_path
         current_path = os.path.abspath(os.path.join(current_path, os.pardir))
-    if silent:
-        return
+
     raise click.ClickException(DOT_ALDRYN_FILE_NOT_FOUND)
 
 
-UNIX_DOCKER_COMPOSE_FILENAME = "docker-compose.yml"
-WINDOWS_DOCKER_COMPOSE_FILENAME = "docker-compose-windows.yml"
+UNIX_DOCKER_COMPOSE_FILENAMES = [
+    "docker-compose.yml",
+    "docker-compose.yaml",
+]
+WINDOWS_DOCKER_COMPOSE_FILENAMES = [
+    "docker-compose-windows.yml",
+    "docker-compose-windows.yaml",
+]
+
+
+def get_docker_compose_filename(path):
+    if is_windows():
+        docker_compose_filenames = WINDOWS_DOCKER_COMPOSE_FILENAMES
+        get_windows_docker_compose_file(path)
+    else:
+        docker_compose_filenames = UNIX_DOCKER_COMPOSE_FILENAMES
+
+    for filename in docker_compose_filenames:
+        docker_compose_filename = os.path.join(path, filename)
+        if os.path.isfile(docker_compose_filename):
+            return docker_compose_filename
+
+    raise RuntimeError("Warning: Could not find a 'docker-compose.yml' file.")
 
 
 def get_docker_compose_cmd(path):
-    if is_windows():
-        docker_compose_filename = WINDOWS_DOCKER_COMPOSE_FILENAME
-        ensure_windows_docker_compose_file_exists(path)
-    else:
-        docker_compose_filename = UNIX_DOCKER_COMPOSE_FILENAME
-
-    docker_compose_filename = os.path.join(path, docker_compose_filename)
-
-    if not os.path.isfile(docker_compose_filename):
-        raise RuntimeError(
-            "Warning: Could not find a 'docker-compose.yml' file."
-        )
+    docker_compose_filename = get_docker_compose_filename(path)
 
     conf = config.Config()
     cmd = conf.get_docker_compose_cmd()
@@ -109,7 +118,7 @@ def get_docker_compose_cmd(path):
     return docker_compose
 
 
-def ensure_windows_docker_compose_file_exists(path):
+def get_windows_docker_compose_file(path):
     """
     Unfortunately, docker-compose is not yet officially released
      for Windows There's still some rough edges, and volume
@@ -133,17 +142,25 @@ def ensure_windows_docker_compose_file_exists(path):
     Hope that's all. And of course, I'm sorry.
     """
 
-    windows_path = os.path.join(path, WINDOWS_DOCKER_COMPOSE_FILENAME)
-    if os.path.isfile(windows_path):
-        return
+    for filename in WINDOWS_DOCKER_COMPOSE_FILENAMES:
+        windows_path = os.path.join(path, filename)
+        if os.path.isfile(windows_path):
+            return windows_path
 
-    unix_path = os.path.join(path, UNIX_DOCKER_COMPOSE_FILENAME)
-    if not os.path.isfile(unix_path):
-        # TODO: use correct exit from click
-        click.secho(
-            "docker-compose.yml not found at {}".format(unix_path), fg="red"
+    for filename in UNIX_DOCKER_COMPOSE_FILENAMES:
+        unix_path = os.path.join(path, filename)
+        if os.path.isfile(unix_path):
+            windows_filename = WINDOWS_DOCKER_COMPOSE_FILENAMES[0]
+            windows_filename = (
+                os.path.splitext(windows_filename)[0]
+                + os.path.splitext(filename)[1]
+            )
+            windows_path = os.path.join(path, windows_filename)
+            break
+    else:
+        raise RuntimeError(
+            "Warning: Could not find a 'docker-compose.yml' file."
         )
-        sys.exit(1)
 
     with open(unix_path, "r") as fh:
         conf = yaml.load(fh, Loader=yaml.SafeLoader)
@@ -177,23 +194,20 @@ def ensure_windows_docker_compose_file_exists(path):
         yaml.safe_dump(conf, fh)
 
 
-def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
+def get_db_container_id(context, raise_on_missing=True, prefix="DEFAULT"):
     """
     Returns the container id for a running database with a given prefix.
     """
-    try:
-        docker_compose = get_docker_compose_cmd(path)
-    except RuntimeError:
-        raise exceptions.DivioException(
-            "docker-compose.yml not found. Unable to find database container"
-        )
     should_check_oldstyle = False
     output = None
 
     try:
-        output = check_output(
-            docker_compose("ps", "-q", "database_{}".format(prefix).lower()),
+        output = context.docker_compose(
+            "ps",
+            "-q",
+            "database_{}".format(prefix).lower(),
             catch=False,
+            capture=True,
             stderr=open(os.devnull, "w"),
         ).rstrip(os.linesep)
         if not output:
@@ -207,9 +221,9 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
 
     if should_check_oldstyle:
         try:
-            output = check_output(docker_compose("ps", "-q", "db")).rstrip(
-                os.linesep
-            )
+            output = context.docker_compose(
+                "ps", "-q", "db", capture=True
+            ).rstrip(os.linesep)
         except subprocess.CalledProcessError:
             # A not existing service will result in an error.
             pass
@@ -219,29 +233,29 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
     return output
 
 
-def start_database_server(docker_compose, prefix):
+def start_database_server(context, prefix):
     start_db = time()
     click.secho(" ---> Starting local database server")
     click.secho("      ", nl=False)
-    docker_compose_config = DockerComposeConfig(docker_compose)
     if (
         "database_{}".format(prefix).lower()
-        in docker_compose_config.get_services()
+        in context.docker_compose_config.get_services()
     ):
-        check_call(
-            docker_compose("up", "-d", "database_{}".format(prefix).lower())
+        context.docker_compose(
+            "up", "-d", "database_{}".format(prefix).lower()
         )
     else:
-        check_call(docker_compose("up", "-d", "db"))
+        context.docker_compose("up", "-d", "db")
     click.secho("      [{}s]".format(int(time() - start_db)))
 
 
-class DockerComposeConfig(object):
-    def __init__(self, docker_compose):
-        super(DockerComposeConfig, self).__init__()
-        self.config = yaml.load(
-            check_output(docker_compose("config")), Loader=yaml.SafeLoader
-        )
+@define
+class DockerComposeConfig:
+    config = field()
+
+    @classmethod
+    def load_from_yaml(cls, config):
+        return cls(config=yaml.load(config, Loader=yaml.SafeLoader))
 
     def get_services(self):
         return self.config.get("services", {})
@@ -272,55 +286,12 @@ class DockerComposeConfig(object):
                     return True
 
 
-def allow_remote_id_override(func):
-    """Adds an identifier option to the command, and gets the proper id"""
-
-    @functools.wraps(func)
-    def read_remote_id(remote_id, *args, **kwargs):
-        ERROR_MSG = (
-            "This command requires a Divio Cloud Project id. Please "
-            "provide one with the --remote-id option or call the "
-            "command from a project directory."
-        )
-
-        if not remote_id:
-            try:
-                remote_id = get_project_settings(silent=True)["id"]
-            except KeyError:
-                raise click.ClickException(ERROR_MSG)
-            else:
-                if not remote_id:
-                    raise click.ClickException(ERROR_MSG)
-        return func(remote_id, *args, **kwargs)
-
-    return click.option(
-        "--remote-id",
-        "remote_id",
-        default=None,
-        type=int,
-        help="Remote Project ID to use for project commands. "
-        "Defaults to the project in the current directory using the "
-        "configuration file.",
-    )(read_remote_id)
-
-
-def get_service_type(identifier, path=None):
+def get_service_type(context, identifier):
     """
     Retrieves the service type based on the `SERVICE_MANAGER` environment
     variable of a services from the docker-compose file.
     """
-    project_home = get_application_home(path)
-    try:
-        docker_compose = get_docker_compose_cmd(project_home)
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not get the service type without!",
-            fg="red",
-        )
-        sys.exit(1)
-    docker_compose_config = DockerComposeConfig(docker_compose)
-    services = docker_compose_config.get_services()
+    services = context.docker_compose_config.get_services()
     if (
         identifier in services
         and "environment" in services[identifier]
@@ -331,28 +302,17 @@ def get_service_type(identifier, path=None):
     raise RuntimeError("Can not get service type")
 
 
-def get_db_type(prefix, path=None):
+def get_db_type(context, prefix):
     """
     Utility function to wrap `get_service_type` to search for databases so we
     can properly fall back to PostgreSQL in case of old structures.
     """
     try:
         db_type = get_service_type(
-            "database_{}".format(prefix.lower()), path=path
+            context, "database_{}".format(prefix.lower())
         )
     except RuntimeError:
-        # legacy section. we try to look for the db, if it does not exist, fail
-        try:
-            docker_compose = get_docker_compose_cmd(path)
-        except RuntimeError:
-            # Docker-compose does not exist
-            click.secho(
-                "Warning: docker-compose.yml does not exist. Can not get the service type without!",
-                fg="red",
-            )
-            sys.exit(1)
-        docker_compose_config = DockerComposeConfig(docker_compose)
-        if not docker_compose_config.has_service("db"):
+        if not context.docker_compose_config.has_service("db"):
             click.secho(
                 "The local database container must be called "
                 "`database_default`, must define the `SERVICE_MANAGER` "

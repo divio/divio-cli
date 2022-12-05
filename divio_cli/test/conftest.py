@@ -9,9 +9,8 @@ import requests
 
 @pytest.fixture(scope="session")
 def _divio_project(request, tmpdir_factory):
-
     test_project_name = os.getenv("TEST_PROJECT_NAME", None)
-    if test_project_name is None:
+    if not test_project_name:
         pytest.skip(
             "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."
         )
@@ -21,9 +20,10 @@ def _divio_project(request, tmpdir_factory):
     # reference it in our test project to make docker-in-docker on Gitlab
     # work with the right volume mounts and correct paths.
     tmp_folder = pathlib.Path("test_data")
+    tmp_folder.mkdir(exist_ok=True)
 
     subprocess.check_call(
-        ["divio", "project", "setup", test_project_name],
+        ["divio", "project", "setup", "--overwrite", test_project_name],
         cwd=str(tmp_folder.resolve()),
     )
 
@@ -39,7 +39,7 @@ def base_session():
 
 @pytest.fixture
 def bad_request_response():
-    class HttpBadResponse(object):
+    class HttpBadResponse:
         ok = False
         status_code = 400
         content = "Bad response"
@@ -58,7 +58,20 @@ def remember_cwd(targetdir):
         os.chdir(curdir)
 
 
+@pytest.fixture(params=["yml", "yaml"])
+def docker_compose_extension(request):
+    return request.param
+
 @pytest.fixture
-def divio_project(_divio_project):
+def docker_compose_filename(docker_compose_extension):
+    return f"docker-compose.{docker_compose_extension}"
+
+
+@pytest.fixture
+def divio_project(_divio_project, docker_compose_filename):
     with remember_cwd(_divio_project):
-        yield _divio_project
+        os.rename("docker-compose.yml", docker_compose_filename)
+        try:
+            yield _divio_project
+        finally:
+            os.rename(docker_compose_filename, "docker-compose.yml")

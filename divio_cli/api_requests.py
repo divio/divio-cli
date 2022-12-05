@@ -53,7 +53,7 @@ class APIRequestError(click.ClickException):
         )
 
 
-class APIRequest(object):
+class APIRequest:
     network_exception_message = messages.NETWORK_ERROR_MESSAGE
     default_error_message = messages.SERVER_ERROR
     response_code_error_map = {
@@ -165,22 +165,22 @@ class APIRequest(object):
         return response.json()
 
 
-class RawResponse(object):
+class RawResponse:
     def process(self, response):
         return response
 
 
-class TextResponse(object):
+class TextResponse:
     def process(self, response):
         return response.text
 
 
-class JsonResponse(object):
+class JsonResponse:
     def process(self, response):
         return response.json()
 
 
-class DjangoFormMixin(object):
+class DjangoFormMixin:
     success_message = "Request successful"
 
     def verify(self, response):
@@ -200,7 +200,7 @@ class DjangoFormMixin(object):
         return super(DjangoFormMixin, self).verify(response)
 
 
-class FileResponse(object):
+class FileResponse:
     def __init__(self, *args, **kwargs):
         self.filename = kwargs.pop("filename", None)
         self.directory = kwargs.pop("directory", None)
