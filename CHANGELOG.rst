@@ -5,6 +5,7 @@ Unreleased
 ----------
 
 * Support ``-h`` as a shorthand for the ``--help`` option.
+* Changed output of some error or warning messages from stdout to stderr.
 
 3.15.7 (2022-09-23)
 -------------------

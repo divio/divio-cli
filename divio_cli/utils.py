@@ -151,6 +151,7 @@ def open_application_cloud_site(client, application_id, stage):
         click.secho(
             "Environment with the name '{}' does not exist.".format(stage),
             fg="red",
+            err=True,
         )
         sys.exit(1)
     if url:

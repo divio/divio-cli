@@ -78,10 +78,13 @@ def cli(ctx, debug, zone, sudo):
                 "\nAn exception occurred while executing the requested "
                 "command:",
                 fg="red",
+                err=True,
             )
             hr(fg="red")
             sys.__excepthook__(type, value, traceback)
-            click.secho("\nStarting interactive debugging session:", fg="red")
+            click.secho(
+                "\nStarting interactive debugging session:", fg="red", err=True
+            )
             hr(fg="red")
             pdb.post_mortem(traceback)
 
@@ -114,6 +117,7 @@ def cli(ctx, debug, zone, sudo):
                     update_info["remote"]
                 ),
                 fg="yellow",
+                err=True,
             )
 
 
