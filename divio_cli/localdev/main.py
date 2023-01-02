@@ -694,17 +694,19 @@ class ImportRemoteDatabase(DatabaseImportBase):
         else:
             click.secho(" ---> empty database")
             self.db_dump_path = None
+            self.host_db_dump_path = None
 
     def get_db_restore_command(self, db_type):
         cmd = self.restore_commands[db_type]["archived-binary"]
         return cmd.format(self.db_dump_path)
 
     def finish(self, *args, **kwargs):
-        if self.keep_tempfile:
-            click.secho(f" ---> Keeping temp file: {self.host_db_dump_path}")
-        else:
-            click.secho(f" ---> Removing temp file: {self.host_db_dump_path}")
-            os.remove(self.host_db_dump_path)
+        if self.host_db_dump_path:
+            if self.keep_tempfile:
+                click.secho(f" ---> Keeping temp file: {self.host_db_dump_path}")
+            else:
+                click.secho(f" ---> Removing temp file: {self.host_db_dump_path}")
+                os.remove(self.host_db_dump_path)
         super(ImportRemoteDatabase, self).finish(*args, **kwargs)
 
 

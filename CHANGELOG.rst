@@ -5,6 +5,7 @@ Unreleased
 ----------
 
 * Support ``-h`` as a shorthand for the ``--help`` option.
+* Fixed bug when setting up project with empty database.
 
 3.15.7 (2022-09-23)
 -------------------
