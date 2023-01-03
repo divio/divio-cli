@@ -703,9 +703,13 @@ class ImportRemoteDatabase(DatabaseImportBase):
     def finish(self, *args, **kwargs):
         if self.host_db_dump_path:
             if self.keep_tempfile:
-                click.secho(f" ---> Keeping temp file: {self.host_db_dump_path}")
+                click.secho(
+                    f" ---> Keeping temp file: {self.host_db_dump_path}"
+                )
             else:
-                click.secho(f" ---> Removing temp file: {self.host_db_dump_path}")
+                click.secho(
+                    f" ---> Removing temp file: {self.host_db_dump_path}"
+                )
                 os.remove(self.host_db_dump_path)
         super(ImportRemoteDatabase, self).finish(*args, **kwargs)
 
