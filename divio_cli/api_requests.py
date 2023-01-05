@@ -365,7 +365,9 @@ class UploadMediaFilesProgressRequest(JsonResponse, APIRequest):
 
 
 class GetEnvironmentVariablesRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/env/{environment}/environment-variables/"
+    url = (
+        "/api/v1/website/{website_id}/env/{environment}/environment-variables/"
+    )
 
 
 class GetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):

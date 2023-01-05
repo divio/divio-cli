@@ -149,7 +149,9 @@ def open_application_cloud_site(client, application_id, environment):
         url = project_data["{}_status".format(environment)]["site_url"]
     except KeyError:
         click.secho(
-            "Environment with the name '{}' does not exist.".format(environment),
+            "Environment with the name '{}' does not exist.".format(
+                environment
+            ),
             fg="red",
         )
         sys.exit(1)

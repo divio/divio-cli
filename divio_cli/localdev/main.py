@@ -209,7 +209,12 @@ def setup_website_containers(
 
 
 def create_workspace(
-    client, website_slug, environment, path=None, force_overwrite=False, zone=None
+    client,
+    website_slug,
+    environment,
+    path=None,
+    force_overwrite=False,
+    zone=None,
 ):
     click.secho("Creating workspace", fg="green")
 
@@ -968,7 +973,9 @@ def push_db(client, environment, remote_id, prefix, db_type):
 
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
-    response = client.upload_db(remote_id, environment, archive_path, prefix) or {}
+    response = (
+        client.upload_db(remote_id, environment, archive_path, prefix) or {}
+    )
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
     progress_url = response.get("progress_url")
@@ -1015,7 +1022,9 @@ def push_local_db(client, environment, dump_filename, website_id, prefix):
 
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
-    response = client.upload_db(website_id, environment, archive_path, prefix) or {}
+    response = (
+        client.upload_db(website_id, environment, archive_path, prefix) or {}
+    )
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
     progress_url = response.get("progress_url")

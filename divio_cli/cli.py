@@ -422,7 +422,9 @@ def environment_variables(
         )
     else:
         data = obj.client.get_environment_variables(
-            website_id=remote_id, environment=environment, custom_only=not show_all_vars
+            website_id=remote_id,
+            environment=environment,
+            custom_only=not show_all_vars,
         )
         if get_vars:
             data = {
@@ -533,7 +535,9 @@ def pull_media(obj, remote_id, environment):
     """
     Pull media files from the Divio cloud environment.
     """
-    localdev.pull_media(obj.client, environment=environment, remote_id=remote_id)
+    localdev.pull_media(
+        obj.client, environment=environment, remote_id=remote_id
+    )
 
 
 @app.group(name="push")
@@ -569,7 +573,10 @@ def push_db(obj, remote_id, prefix, environment, dumpfile, noinput):
     db_type = utils.get_db_type(prefix, path=application_home)
     if not dumpfile:
         if not noinput:
-            click.secho(messages.PUSH_DB_WARNING.format(environment=environment), fg="red")
+            click.secho(
+                messages.PUSH_DB_WARNING.format(environment=environment),
+                fg="red",
+            )
             if not click.confirm("\nAre you sure you want to continue?"):
                 return
         localdev.push_db(
@@ -581,7 +588,10 @@ def push_db(obj, remote_id, prefix, environment, dumpfile, noinput):
         )
     else:
         if not noinput:
-            click.secho(messages.PUSH_DB_WARNING.format(environment=environment), fg="red")
+            click.secho(
+                messages.PUSH_DB_WARNING.format(environment=environment),
+                fg="red",
+            )
             if not click.confirm("\nAre you sure you want to continue?"):
                 return
         localdev.push_local_db(
@@ -610,7 +620,10 @@ def push_media(obj, remote_id, prefix, environment, noinput):
     """
 
     if not noinput:
-        click.secho(messages.PUSH_MEDIA_WARNING.format(environment=environment), fg="red")
+        click.secho(
+            messages.PUSH_MEDIA_WARNING.format(environment=environment),
+            fg="red",
+        )
         if not click.confirm("\nAre you sure you want to continue?"):
             return
     localdev.push_media(

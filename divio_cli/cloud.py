@@ -141,7 +141,9 @@ class CloudClient(object):
             status = project_data["{}_status".format(environment)]
         except KeyError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(environment),
+                "Environment with the name '{}' does not exist.".format(
+                    environment
+                ),
                 fg="red",
             )
             sys.exit(1)
@@ -182,7 +184,9 @@ class CloudClient(object):
             status = project_data["{}_status".format(environment)]
         except KeyError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(environment),
+                "Environment with the name '{}' does not exist.".format(
+                    environment
+                ),
                 fg="red",
             )
             sys.exit(1)
@@ -223,7 +227,9 @@ class CloudClient(object):
             status = project_data["{}_status".format(environment)]
         except KeyError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(environment),
+                "Environment with the name '{}' does not exist.".format(
+                    environment
+                ),
                 fg="red",
             )
             sys.exit(1)
@@ -278,7 +284,9 @@ class CloudClient(object):
             ]["status"]
         except KeyError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(environment),
+                "Environment with the name '{}' does not exist.".format(
+                    environment
+                ),
                 fg="red",
             )
             sys.exit(1)
@@ -314,7 +322,9 @@ class CloudClient(object):
                 fg="yellow",
             )
         else:
-            click.secho("Deploying {} environment".format(environment), fg="green")
+            click.secho(
+                "Deploying {} environment".format(environment), fg="green"
+            )
             self.deploy_project(website_id, environment)
             sleep(1)
             response = self.deploy_project_progress(website_id, environment)
@@ -327,7 +337,9 @@ class CloudClient(object):
             ) as bar:
                 progress_percent = 0
                 while response["is_deploying"]:
-                    response = self.deploy_project_progress(website_id, environment)
+                    response = self.deploy_project_progress(
+                        website_id, environment
+                    )
                     bar.current_item = progress = response["deploy_progress"]
                     if (
                         "main_percent" in progress
@@ -366,7 +378,9 @@ class CloudClient(object):
             return data[environment]
         except KeyError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(environment),
+                "Environment with the name '{}' does not exist.".format(
+                    environment
+                ),
                 fg="red",
             )
             sys.exit(1)
@@ -380,7 +394,8 @@ class CloudClient(object):
 
     def get_deploy_log(self, website_id, environment):
         request = api_requests.DeployLogRequest(
-            self.session, url_kwargs={"website_id": website_id, "environment": environment}
+            self.session,
+            url_kwargs={"website_id": website_id, "environment": environment},
         )
         return request()
 
@@ -491,7 +506,9 @@ class CloudClient(object):
         request = api_requests.UploadDBProgressRequest(self.session, url=url)
         return request()
 
-    def upload_media(self, website_id, environment, archive_path, prefix="DEFAULT"):
+    def upload_media(
+        self, website_id, environment, archive_path, prefix="DEFAULT"
+    ):
         request = api_requests.UploadMediaFilesRequest(
             self.session,
             url_kwargs={"website_id": website_id},
@@ -506,13 +523,17 @@ class CloudClient(object):
         )
         return request()
 
-    def get_environment_variables(self, website_id, environment, custom_only=True):
+    def get_environment_variables(
+        self, website_id, environment, custom_only=True
+    ):
         project_data = self.get_project(website_id)
         try:
             _ = project_data["{}_status".format(environment)]
         except KeyError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(environment),
+                "Environment with the name '{}' does not exist.".format(
+                    environment
+                ),
                 fg="red",
             )
             sys.exit(1)
@@ -522,7 +543,8 @@ class CloudClient(object):
         else:
             Request = api_requests.GetEnvironmentVariablesRequest
         request = Request(
-            self.session, url_kwargs={"website_id": website_id, "environment": environment}
+            self.session,
+            url_kwargs={"website_id": website_id, "environment": environment},
         )
         return request()
 
