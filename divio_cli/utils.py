@@ -143,13 +143,13 @@ def check_output(*popenargs, **kwargs):
     return execute(subprocess.check_output, *popenargs, **kwargs).decode()
 
 
-def open_application_cloud_site(client, application_id, stage):
+def open_application_cloud_site(client, application_id, environment):
     project_data = client.get_project(application_id)
     try:
-        url = project_data["{}_status".format(stage)]["site_url"]
+        url = project_data["{}_status".format(environment)]["site_url"]
     except KeyError:
         click.secho(
-            "Environment with the name '{}' does not exist.".format(stage),
+            "Environment with the name '{}' does not exist.".format(environment),
             fg="red",
         )
         sys.exit(1)
@@ -157,7 +157,7 @@ def open_application_cloud_site(client, application_id, stage):
         launch_url(url)
     else:
         click.secho(
-            "No {} environment deployed yet.".format(stage), fg="yellow"
+            "No {} environment deployed yet.".format(environment), fg="yellow"
         )
 
 
