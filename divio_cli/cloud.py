@@ -386,7 +386,7 @@ class CloudClient(object):
             sys.exit(1)
 
     def deploy_project(self, website_id, environment):
-        data = {"environment": environment}
+        data = {"stage": environment}
         request = api_requests.DeployProjectRequest(
             self.session, url_kwargs={"website_id": website_id}, data=data
         )
@@ -471,7 +471,7 @@ class CloudClient(object):
         request = api_requests.DownloadDBRequestRequest(
             self.session,
             url_kwargs={"website_id": website_id},
-            data={"environment": environment, "prefix": prefix},
+            data={"stage": environment, "prefix": prefix},
         )
         return request()
 
@@ -483,7 +483,7 @@ class CloudClient(object):
         request = api_requests.DownloadMediaRequestRequest(
             self.session,
             url_kwargs={"website_id": website_id},
-            data={"environment": environment},
+            data={"stage": environment},
         )
         return request()
 
@@ -497,7 +497,7 @@ class CloudClient(object):
         request = api_requests.UploadDBRequest(
             self.session,
             url_kwargs={"website_id": website_id},
-            data={"environment": environment, "prefix": prefix},
+            data={"stage": environment, "prefix": prefix},
             files={"db_dump": open(archive_path, "rb")},
         )
         return request()
@@ -512,7 +512,7 @@ class CloudClient(object):
         request = api_requests.UploadMediaFilesRequest(
             self.session,
             url_kwargs={"website_id": website_id},
-            data={"environment": environment, "prefix": prefix},
+            data={"stage": environment, "prefix": prefix},
             files={"media_files": open(archive_path, "rb")},
         )
         return request()
