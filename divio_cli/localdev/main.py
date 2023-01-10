@@ -366,6 +366,7 @@ class DatabaseImportBase(object):
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         click.echo(" [{}s]".format(int(time() - start_wait)))
