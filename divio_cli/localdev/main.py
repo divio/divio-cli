@@ -461,7 +461,7 @@ class DatabaseImportBase(object):
         elif self.db_type == "fsm-mysql":
             self.prepare_db_server_mysql(db_container_id, start_wait)
         else:
-            click.secho("db type not known")
+            click.secho("db type not known", fg="red", err=True)
             sys.exit(1)
 
     def get_db_restore_command(self, db_type):
@@ -587,7 +587,7 @@ class DatabaseImportBase(object):
         elif self.db_type == "fsm-mysql":
             self.restore_db_mysql(db_container_id)
         else:
-            click.secho("db type not known")
+            click.secho("db type not known", fg="red", err=True)
             sys.exit(1)
         click.echo("\n      [{}s]".format(int(time() - start_import)))
 
@@ -876,7 +876,7 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
             )
 
     else:
-        click.secho("db type not known")
+        click.secho("db type not known", fg="red", err=True)
         sys.exit(1)
 
     click.echo(" [{}s]".format(int(time() - start_dump)))
