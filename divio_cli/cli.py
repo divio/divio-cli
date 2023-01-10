@@ -19,6 +19,7 @@ from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
+    echo_large_content,
     get_cp_url,
     get_git_checked_branch,
     hr,
@@ -47,6 +48,13 @@ except ImportError:
     help="Drop into the debugger if command execution raises an exception.",
 )
 @click.option(
+    "-P",
+    "--no-pager",
+    default=False,
+    is_flag=True,
+    help="Will not show content in a pager if set.",
+)
+@click.option(
     "-z",
     "--zone",
     default=None,
@@ -61,15 +69,16 @@ except ImportError:
     hidden=True,
 )
 @click.pass_context
-def cli(ctx, debug, zone, sudo):
+def cli(ctx, debug, no_pager, zone, sudo):
     if sudo:
-        click.secho("Running as sudo", fg="red")
+        click.secho("Running as sudo", fg="yellow")
 
     ctx.obj = Map()
     ctx.obj.client = CloudClient(
         get_endpoint(zone=zone), debug=debug, sudo=sudo
     )
     ctx.obj.zone = zone
+    ctx.obj.pager = not no_pager
 
     if debug:
 
@@ -78,11 +87,20 @@ def cli(ctx, debug, zone, sudo):
                 "\nAn exception occurred while executing the requested "
                 "command:",
                 fg="red",
+                err=True,
             )
-            hr(fg="red")
+            hr(
+                fg="red",
+                err=True,
+            )
             sys.__excepthook__(type, value, traceback)
-            click.secho("\nStarting interactive debugging session:", fg="red")
-            hr(fg="red")
+            click.secho(
+                "\nStarting interactive debugging session:", fg="red", err=True
+            )
+            hr(
+                fg="red",
+                err=True,
+            )
             pdb.post_mortem(traceback)
 
         sys.excepthook = exception_handler
@@ -114,6 +132,7 @@ def cli(ctx, debug, zone, sudo):
                     update_info["remote"]
                 ),
                 fg="yellow",
+                err=True,
             )
 
 
@@ -242,7 +261,7 @@ def application_list(obj, grouped, as_json):
         ]
         output = table(sort_applications(applications), header)
 
-    click.echo_via_pager(output)
+    echo_large_content(output, ctx=obj)
 
 
 @app.command(name="deploy")
@@ -260,7 +279,16 @@ def application_deploy(obj, remote_id, environment):
 @click.pass_obj
 def application_deploy_log(obj, remote_id, environment):
     """View last deployment log."""
-    obj.client.show_deploy_log(remote_id, environment)
+    deploy_log = obj.client.get_deploy_log(remote_id, environment)
+    if deploy_log:
+        echo_large_content(deploy_log, ctx=obj)
+    else:
+        click.secho(
+            "Environment with the name '{}' does not exist, no log available.".format(
+                environment
+            ),
+            fg="yellow",
+        )
 
 
 @app.command(name="logs")
@@ -436,7 +464,7 @@ def environment_variables(
         header = ("Key", "Value")
         data = sorted([(key, value) for key, value in data.items()])
         output = table(data, header)
-        click.echo_via_pager(output)
+        echo_large_content(output, obj)
 
 
 @app.command(name="status")
@@ -482,6 +510,7 @@ def application_setup(obj, slug, environment, path, overwrite, skip_doctor):
             "There was a problem while checking your system. Please run "
             "'divio doctor'.",
             fg="red",
+            err=True,
         )
         sys.exit(1)
 
@@ -822,6 +851,7 @@ def version(obj, skip_check, machine_readable):
                     "version on pypi.python.org:\n"
                     "{}".format(update_info["pypi_error"]),
                     fg="red",
+                    err=True,
                 )
             else:
                 click.echo("You have the latest version of divio-cli.")

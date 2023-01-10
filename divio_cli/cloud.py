@@ -145,6 +145,7 @@ class CloudClient(object):
                     environment
                 ),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         if status["deployed_before"]:
@@ -166,7 +167,9 @@ class CloudClient(object):
                 os.execvp("ssh", ssh_command)
 
             except (KeyError, json.decoder.JSONDecodeError):
-                click.secho("Error establishing ssh connection.", fg="red")
+                click.secho(
+                    "Error establishing ssh connection.", fg="red", err=True
+                )
                 sys.exit(1)
 
         else:
@@ -175,6 +178,7 @@ class CloudClient(object):
                     environment
                 ),
                 fg="yellow",
+                err=True,
             )
             sys.exit(1)
 
@@ -188,6 +192,7 @@ class CloudClient(object):
                     environment
                 ),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         try:
@@ -198,7 +203,11 @@ class CloudClient(object):
             return response
 
         except (KeyError, json.decoder.JSONDecodeError):
-            click.secho("Error establishing connection.", fg="red")
+            click.secho(
+                "Error establishing connection.",
+                fg="red",
+                err=True,
+            )
             sys.exit(1)
 
     def show_log(self, website_id, environment, tail=False, utc=True):
@@ -231,6 +240,7 @@ class CloudClient(object):
                     environment
                 ),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         if status["deployed_before"]:
@@ -263,7 +273,7 @@ class CloudClient(object):
                 json.decoder.JSONDecodeError,
                 api_requests.APIRequestError,
             ):
-                click.secho("Error retrieving logs.", fg="red")
+                click.secho("Error retrieving logs.", fg="red", err=True)
                 sys.exit(1)
 
         else:
@@ -272,10 +282,11 @@ class CloudClient(object):
                     environment
                 ),
                 fg="yellow",
+                err=True,
             )
             sys.exit(1)
 
-    def show_deploy_log(self, website_id, environment):
+    def get_deploy_log(self, website_id, environment):
         project_data = self.get_project(website_id)
         # If we have tried to deploy before, there will be a log
         try:
@@ -288,10 +299,15 @@ class CloudClient(object):
                     environment
                 ),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         if status:
-            deploy_log = self.get_deploy_log(website_id, environment)
+            deploy_log = api_requests.DeployLogRequest(
+                self.session,
+                url_kwargs={"website_id": website_id, "environment": environment},
+            )()
+
             task_id = "Deploy Log {}".format(deploy_log["task_id"])
             output = task_id + "\n" + deploy_log["output"]
             click.echo_via_pager(output)
@@ -382,6 +398,7 @@ class CloudClient(object):
                     environment
                 ),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
 
@@ -394,8 +411,7 @@ class CloudClient(object):
 
     def get_deploy_log(self, website_id, environment):
         request = api_requests.DeployLogRequest(
-            self.session,
-            url_kwargs={"website_id": website_id, "environment": environment},
+            self.session, url_kwargs={"website_id": website_id, "environment": environment}
         )
         return request()
 
@@ -535,6 +551,7 @@ class CloudClient(object):
                     environment
                 ),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
 

@@ -130,7 +130,10 @@ def execute(func, *popenargs, **kwargs):
             "The command was:",
             "  {command}".format(command=" ".join(exc.cmd)),
         )
-        hr(fg="red")
+        hr(
+            fg="red",
+            err=True,
+        )
         click.secho(os.linesep.join(output), fg="red", err=True)
         sys.exit(1)
 
@@ -153,6 +156,7 @@ def open_application_cloud_site(client, application_id, environment):
                 environment
             ),
             fg="red",
+            err=True,
         )
         sys.exit(1)
     if url:
@@ -360,3 +364,10 @@ def needs_legacy_migration():
         return True
     except Exception:
         return False
+
+
+def echo_large_content(content, ctx):
+    if ctx.pager:
+        click.echo_via_pager(content)
+    else:
+        click.echo(content)

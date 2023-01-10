@@ -41,6 +41,7 @@ def validate_aldryn_config_py(path):
                     "An error occurred during validating 'aldryn_config.py'. "
                     "Please check the exception below:\n",
                     fg="red",
+                    err=True,
                 )
                 raise click.ClickException(traceback.format_exc())
         finally:
