@@ -71,7 +71,7 @@ except ImportError:
 @click.pass_context
 def cli(ctx, debug, no_pager, zone, sudo):
     if sudo:
-        click.secho("Running as sudo", fg="red")
+        click.secho("Running as sudo", fg="yellow")
 
     ctx.obj = Map()
     ctx.obj.client = CloudClient(

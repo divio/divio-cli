@@ -140,7 +140,7 @@ def setup_website_containers(
         # Docker-compose does not exist
         click.secho(
             "Warning: docker-compose.yml does not exist. Will continue without...",
-            fg="red",
+            fg="yellow",
         )
         return
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
@@ -1151,7 +1151,7 @@ def update_local_application(git_branch, client, strict=False):
         click.secho(
             "Warning: The project has a git repository configured in the divio"
             " cloud which is not present in your local git configuration.",
-            fg="red",
+            fg="yellow",
             err=True,
         )
         if strict:
