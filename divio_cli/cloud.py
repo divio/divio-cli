@@ -269,7 +269,7 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-    def show_deploy_log(self, website_id, stage):
+    def get_deploy_log(self, website_id, stage):
         project_data = self.get_project(website_id)
         # If we have tried to deploy before, there will be a log
         try:
@@ -283,17 +283,15 @@ class CloudClient(object):
             )
             sys.exit(1)
         if status:
-            deploy_log = self.get_deploy_log(website_id, stage)
+            deploy_log = api_requests.DeployLogRequest(
+                self.session,
+                url_kwargs={"website_id": website_id, "stage": stage},
+            )()
+
             task_id = "Deploy Log {}".format(deploy_log["task_id"])
             output = task_id + "\n" + deploy_log["output"]
-            click.echo_via_pager(output)
-        else:
-            click.secho(
-                "No {} environment deployed yet, no log available.".format(
-                    stage
-                ),
-                fg="yellow",
-            )
+            return output
+        return None
 
     def deploy_application_or_get_progress(self, website_id, stage):
         def fmt_progress(data):
@@ -375,12 +373,6 @@ class CloudClient(object):
         data = {"stage": stage}
         request = api_requests.DeployProjectRequest(
             self.session, url_kwargs={"website_id": website_id}, data=data
-        )
-        return request()
-
-    def get_deploy_log(self, website_id, stage):
-        request = api_requests.DeployLogRequest(
-            self.session, url_kwargs={"website_id": website_id, "stage": stage}
         )
         return request()
 
