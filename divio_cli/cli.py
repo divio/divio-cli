@@ -71,7 +71,7 @@ except ImportError:
 @click.pass_context
 def cli(ctx, debug, no_pager, zone, sudo):
     if sudo:
-        click.secho("Running as sudo", fg="red")
+        click.secho("Running as sudo", fg="yellow")
 
     ctx.obj = Map()
     ctx.obj.client = CloudClient(
@@ -87,11 +87,20 @@ def cli(ctx, debug, no_pager, zone, sudo):
                 "\nAn exception occurred while executing the requested "
                 "command:",
                 fg="red",
+                err=True,
             )
-            hr(fg="red")
+            hr(
+                fg="red",
+                err=True,
+            )
             sys.__excepthook__(type, value, traceback)
-            click.secho("\nStarting interactive debugging session:", fg="red")
-            hr(fg="red")
+            click.secho(
+                "\nStarting interactive debugging session:", fg="red", err=True
+            )
+            hr(
+                fg="red",
+                err=True,
+            )
             pdb.post_mortem(traceback)
 
         sys.excepthook = exception_handler
@@ -123,6 +132,7 @@ def cli(ctx, debug, no_pager, zone, sudo):
                     update_info["remote"]
                 ),
                 fg="yellow",
+                err=True,
             )
 
 
@@ -498,6 +508,7 @@ def application_setup(obj, slug, stage, path, overwrite, skip_doctor):
             "There was a problem while checking your system. Please run "
             "'divio doctor'.",
             fg="red",
+            err=True,
         )
         sys.exit(1)
 
@@ -827,6 +838,7 @@ def version(obj, skip_check, machine_readable):
                     "version on pypi.python.org:\n"
                     "{}".format(update_info["pypi_error"]),
                     fg="red",
+                    err=True,
                 )
             else:
                 click.echo("You have the latest version of divio-cli.")

@@ -143,6 +143,7 @@ class CloudClient(object):
             click.secho(
                 "Environment with the name '{}' does not exist.".format(stage),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         if status["deployed_before"]:
@@ -164,7 +165,9 @@ class CloudClient(object):
                 os.execvp("ssh", ssh_command)
 
             except (KeyError, json.decoder.JSONDecodeError):
-                click.secho("Error establishing ssh connection.", fg="red")
+                click.secho(
+                    "Error establishing ssh connection.", fg="red", err=True
+                )
                 sys.exit(1)
 
         else:
@@ -173,6 +176,7 @@ class CloudClient(object):
                     stage
                 ),
                 fg="yellow",
+                err=True,
             )
             sys.exit(1)
 
@@ -184,6 +188,7 @@ class CloudClient(object):
             click.secho(
                 "Environment with the name '{}' does not exist.".format(stage),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         try:
@@ -194,7 +199,11 @@ class CloudClient(object):
             return response
 
         except (KeyError, json.decoder.JSONDecodeError):
-            click.secho("Error establishing connection.", fg="red")
+            click.secho(
+                "Error establishing connection.",
+                fg="red",
+                err=True,
+            )
             sys.exit(1)
 
     def show_log(self, website_id, stage, tail=False, utc=True):
@@ -225,6 +234,7 @@ class CloudClient(object):
             click.secho(
                 "Environment with the name '{}' does not exist.".format(stage),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         if status["deployed_before"]:
@@ -257,7 +267,7 @@ class CloudClient(object):
                 json.decoder.JSONDecodeError,
                 api_requests.APIRequestError,
             ):
-                click.secho("Error retrieving logs.", fg="red")
+                click.secho("Error retrieving logs.", fg="red", err=True)
                 sys.exit(1)
 
         else:
@@ -266,6 +276,7 @@ class CloudClient(object):
                     stage
                 ),
                 fg="yellow",
+                err=True,
             )
             sys.exit(1)
 
@@ -280,6 +291,7 @@ class CloudClient(object):
             click.secho(
                 "Environment with the name '{}' does not exist.".format(stage),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         if status:
@@ -366,6 +378,7 @@ class CloudClient(object):
             click.secho(
                 "Environment with the name '{}' does not exist.".format(stage),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
 
@@ -506,6 +519,7 @@ class CloudClient(object):
             click.secho(
                 "Environment with the name '{}' does not exist.".format(stage),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
 

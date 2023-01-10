@@ -48,7 +48,11 @@ def get_project_settings(path=None, silent=False):
     except (TypeError, OSError):
         raise click.ClickException(DOT_ALDRYN_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError:
-        click.secho("Error: Unexpected value in {}".format(path), fg="red")
+        click.secho(
+            "Error: Unexpected value in {}".format(path),
+            fg="red",
+            err=True,
+        )
         sys.exit(1)
 
 
@@ -141,7 +145,9 @@ def ensure_windows_docker_compose_file_exists(path):
     if not os.path.isfile(unix_path):
         # TODO: use correct exit from click
         click.secho(
-            "docker-compose.yml not found at {}".format(unix_path), fg="red"
+            "docker-compose.yml not found at {}".format(unix_path),
+            fg="red",
+            err=True,
         )
         sys.exit(1)
 
@@ -317,6 +323,7 @@ def get_service_type(identifier, path=None):
         click.secho(
             "Warning: docker-compose.yml does not exist. Can not get the service type without!",
             fg="red",
+            err=True,
         )
         sys.exit(1)
     docker_compose_config = DockerComposeConfig(docker_compose)
@@ -349,6 +356,7 @@ def get_db_type(prefix, path=None):
             click.secho(
                 "Warning: docker-compose.yml does not exist. Can not get the service type without!",
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         docker_compose_config = DockerComposeConfig(docker_compose)
@@ -360,6 +368,7 @@ def get_db_type(prefix, path=None):
                 "from the host to the /app directory of the container."
                 "\n\nSee https://docs.divio.com/en/latest/reference/docker-docker-compose/#database-default",
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         else:

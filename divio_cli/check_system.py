@@ -242,7 +242,9 @@ def check_requirements(config=None, checks=None):
             continue
         check = ALL_CHECKS.get(check_key)
         if not check:
-            click.secho("Invalid check {}".format(check_key), fg="red")
+            click.secho(
+                "Invalid check {}".format(check_key), fg="red", err=True
+            )
             sys.exit(1)
         errors = check().run_check()
         yield check_key, check.name, errors
@@ -277,7 +279,7 @@ def check_requirements_human(config, checks=None, silent=False):
         return True
 
     if not silent:
-        click.secho("\nThe following errors occurred:", fg="red")
+        click.secho("\nThe following errors occurred:", fg="red", err=True)
         for check, check_name, msgs in errors:
             click.secho("\n {}:".format(check_name))
             for msg in msgs:

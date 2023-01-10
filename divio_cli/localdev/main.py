@@ -140,7 +140,7 @@ def setup_website_containers(
         # Docker-compose does not exist
         click.secho(
             "Warning: docker-compose.yml does not exist. Will continue without...",
-            fg="red",
+            fg="yellow",
         )
         return
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
@@ -232,7 +232,10 @@ def create_workspace(
             else:
                 os.remove(path)
         else:
-            click.secho("Aborting", fg="red")
+            click.secho(
+                "Aborting",
+                err=True,
+            )
             sys.exit(1)
 
     website_id = client.get_website_id_for_slug(website_slug)
@@ -363,6 +366,7 @@ class DatabaseImportBase(object):
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         click.echo(" [{}s]".format(int(time() - start_wait)))
@@ -430,6 +434,7 @@ class DatabaseImportBase(object):
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         click.echo(" [{}s]".format(int(time() - start_wait)))
@@ -456,7 +461,7 @@ class DatabaseImportBase(object):
         elif self.db_type == "fsm-mysql":
             self.prepare_db_server_mysql(db_container_id, start_wait)
         else:
-            click.secho("db type not known")
+            click.secho("db type not known", fg="red", err=True)
             sys.exit(1)
 
     def get_db_restore_command(self, db_type):
@@ -539,6 +544,7 @@ class DatabaseImportBase(object):
                 "The executed command was:\n"
                 "  {command}".format(command=" ".join(exc.cmd)),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
 
@@ -581,7 +587,7 @@ class DatabaseImportBase(object):
         elif self.db_type == "fsm-mysql":
             self.restore_db_mysql(db_container_id)
         else:
-            click.secho("db type not known")
+            click.secho("db type not known", fg="red", err=True)
             sys.exit(1)
         click.echo("\n      [{}s]".format(int(time() - start_import)))
 
@@ -870,7 +876,7 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
             )
 
     else:
-        click.secho("db type not known")
+        click.secho("db type not known", fg="red", err=True)
         sys.exit(1)
 
     click.echo(" [{}s]".format(int(time() - start_dump)))
@@ -1070,7 +1076,11 @@ def push_media(client, stage, remote_id, prefix):
             items = []
 
         if not items:
-            click.secho("\nError: Local media directory is empty", fg="red")
+            click.secho(
+                "\nError: Local media directory is empty",
+                fg="red",
+                err=True,
+            )
             sys.exit(1)
 
         for item in items:
@@ -1141,7 +1151,8 @@ def update_local_application(git_branch, client, strict=False):
         click.secho(
             "Warning: The project has a git repository configured in the divio"
             " cloud which is not present in your local git configuration.",
-            fg="red",
+            fg="yellow",
+            err=True,
         )
         if strict:
             sys.exit(1)
@@ -1224,7 +1235,11 @@ def develop_package(package, no_rebuild=False):
             check_call(docker_compose("build", "web"))
         except RuntimeError:
             # Docker-compose does not exist
-            click.echo("Can not rebuild without docker-compose.yml", fg="red")
+            click.echo(
+                "Can not rebuild without docker-compose.yml",
+                fg="red",
+                err=True,
+            )
 
     click.secho(
         "The package {} has been added to your local development project!".format(
@@ -1243,6 +1258,7 @@ def open_application(open_browser=True):
         click.secho(
             "Warning: docker-compose.yml does not exist. Can not open project without!",
             fg="red",
+            err=True,
         )
         return
 
@@ -1265,6 +1281,7 @@ def open_application(open_browser=True):
                 CHECKING_PORT
             ),
             fg="red",
+            err=True,
         )
         sys.exit(1)
 
@@ -1328,6 +1345,7 @@ def start_application():
         click.secho(
             "Warning: docker-compose.yml does not exist. Can not start project without!",
             fg="red",
+            err=True,
         )
         return
     try:
@@ -1342,6 +1360,7 @@ def start_application():
                 "port. Please either stop the other program or change the "
                 "port in the 'docker-compose.yml' file and try again.\n",
                 fg="red",
+                err=True,
             )
         raise click.ClickException(output)
 
@@ -1359,6 +1378,7 @@ def show_application_status():
         click.secho(
             "Warning: docker-compose.yml does not exist. Can not show status without!",
             fg="red",
+            err=True,
         )
         return
 
@@ -1374,5 +1394,6 @@ def stop_application():
         click.secho(
             "Warning: docker-compose.yml does not exist. Can not stop project without!",
             fg="red",
+            err=True,
         )
         return
