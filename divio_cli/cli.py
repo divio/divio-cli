@@ -274,7 +274,7 @@ def application_deploy_log(obj, remote_id, stage):
         echo_large_content(deploy_log, ctx=obj)
     else:
         click.secho(
-            "No {} environment deployed yet, no log available.".format(stage),
+            "Environment with the name '{}' does not exist, no log available.".format(stage),
             fg="yellow",
         )
 
