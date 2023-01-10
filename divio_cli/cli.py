@@ -80,12 +80,18 @@ def cli(ctx, debug, zone, sudo):
                 fg="red",
                 err=True,
             )
-            hr(fg="red")
+            hr(
+                fg="red",
+                err=True,
+            )
             sys.__excepthook__(type, value, traceback)
             click.secho(
                 "\nStarting interactive debugging session:", fg="red", err=True
             )
-            hr(fg="red")
+            hr(
+                fg="red",
+                err=True,
+            )
             pdb.post_mortem(traceback)
 
         sys.excepthook = exception_handler
@@ -484,6 +490,7 @@ def application_setup(obj, slug, stage, path, overwrite, skip_doctor):
             "There was a problem while checking your system. Please run "
             "'divio doctor'.",
             fg="red",
+            err=True,
         )
         sys.exit(1)
 
@@ -813,6 +820,7 @@ def version(obj, skip_check, machine_readable):
                     "version on pypi.python.org:\n"
                     "{}".format(update_info["pypi_error"]),
                     fg="red",
+                    err=True,
                 )
             else:
                 click.echo("You have the latest version of divio-cli.")

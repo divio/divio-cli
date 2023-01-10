@@ -130,7 +130,10 @@ def execute(func, *popenargs, **kwargs):
             "The command was:",
             "  {command}".format(command=" ".join(exc.cmd)),
         )
-        hr(fg="red")
+        hr(
+            fg="red",
+            err=True,
+        )
         click.secho(os.linesep.join(output), fg="red", err=True)
         sys.exit(1)
 

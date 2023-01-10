@@ -199,7 +199,11 @@ class CloudClient(object):
             return response
 
         except (KeyError, json.decoder.JSONDecodeError):
-            click.secho("Error establishing connection.", fg="red")
+            click.secho(
+                "Error establishing connection.",
+                fg="red",
+                err=True,
+            )
             sys.exit(1)
 
     def show_log(self, website_id, stage, tail=False, utc=True):
@@ -376,6 +380,7 @@ class CloudClient(object):
             click.secho(
                 "Environment with the name '{}' does not exist.".format(stage),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
 
