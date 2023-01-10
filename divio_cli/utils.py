@@ -362,3 +362,10 @@ def needs_legacy_migration():
         return True
     except Exception:
         return False
+
+
+def echo_large_content(content, ctx):
+    if ctx.pager:
+        click.echo_via_pager(content)
+    else:
+        click.echo(content)
