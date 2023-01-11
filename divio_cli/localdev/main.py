@@ -132,7 +132,7 @@ def configure_project(website_slug, path, client, zone=None):
 
 
 def setup_website_containers(
-    client, stage, path, prefix=DEFAULT_SERVICE_PREFIX
+    client, environment, path, prefix=DEFAULT_SERVICE_PREFIX
 ):
     try:
         docker_compose = utils.get_docker_compose_cmd(path)
@@ -179,7 +179,7 @@ def setup_website_containers(
 
         ImportRemoteDatabase(
             client=client,
-            stage=stage,
+            environment=environment,
             path=path,
             prefix=prefix,
             db_type=db_type,
@@ -209,7 +209,12 @@ def setup_website_containers(
 
 
 def create_workspace(
-    client, website_slug, stage, path=None, force_overwrite=False, zone=None
+    client,
+    website_slug,
+    environment,
+    path=None,
+    force_overwrite=False,
+    zone=None,
 ):
     click.secho("Creating workspace", fg="green")
 
@@ -239,7 +244,7 @@ def create_workspace(
             sys.exit(1)
 
     website_id = client.get_website_id_for_slug(website_slug)
-    env = client.get_environment(website_id, stage)
+    env = client.get_environment(website_id, environment)
 
     # clone git project
     clone_project(
@@ -256,10 +261,10 @@ def create_workspace(
     )
 
     # setup docker website containers
-    setup_website_containers(client=client, stage=stage, path=path)
+    setup_website_containers(client=client, environment=environment, path=path)
 
     # download media files
-    pull_media(client=client, stage=stage, path=path)
+    pull_media(client=client, environment=environment, path=path)
 
     instructions = (
         "Your workspace is setup and ready to start.",
@@ -638,7 +643,7 @@ class ImportLocalDatabase(DatabaseImportBase):
 class ImportRemoteDatabase(DatabaseImportBase):
     def __init__(self, *args, **kwargs):
         super(ImportRemoteDatabase, self).__init__(*args, **kwargs)
-        self.stage = kwargs.pop("stage", None)
+        self.environment = kwargs.pop("environment", None)
         self.remote_id = kwargs.pop("remote_id", None) or self.website_id
         self.keep_tempfile = kwargs.pop("keep_tempfile", None)
 
@@ -649,7 +654,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         )
         click.secho(
             " ===> Pulling database from {} {} environment".format(
-                remote_project_name, self.stage
+                remote_project_name, self.environment
             )
         )
 
@@ -658,7 +663,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         start_preparation = time()
         response = (
             self.client.download_db_request(
-                self.remote_id, self.stage, self.prefix
+                self.remote_id, self.environment, self.prefix
             )
             or {}
         )
@@ -714,7 +719,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         super(ImportRemoteDatabase, self).finish(*args, **kwargs)
 
 
-def pull_media(client, stage, remote_id=None, path=None):
+def pull_media(client, environment, remote_id=None, path=None):
     project_home = utils.get_application_home(path)
     website_id = utils.get_project_settings(project_home)["id"]
     website_slug = utils.get_project_settings(project_home)["slug"]
@@ -745,13 +750,13 @@ def pull_media(client, stage, remote_id=None, path=None):
 
     click.secho(
         " ===> Pulling media files from {} {} environment".format(
-            remote_project_name, stage
+            remote_project_name, environment
         )
     )
     start_time = time()
     click.secho(" ---> Preparing download ", nl=False)
     start_preparation = time()
-    response = client.download_media_request(remote_id, stage) or {}
+    response = client.download_media_request(remote_id, environment) or {}
     progress_url = response.get("progress_url")
     if not progress_url:
         click.secho(" error!", fg="red")
@@ -945,7 +950,7 @@ def export_db(prefix):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_db(client, stage, remote_id, prefix, db_type):
+def push_db(client, environment, remote_id, prefix, db_type):
     project_home = utils.get_application_home()
     website_id = utils.get_project_settings(project_home)["id"]
     dump_filename = DEFAULT_DUMP_FILENAME
@@ -960,7 +965,7 @@ def push_db(client, stage, remote_id, prefix, db_type):
 
     click.secho(
         " ===> Pushing local database to {} {} environment".format(
-            remote_project_name, stage
+            remote_project_name, environment
         )
     )
     start_time = time()
@@ -974,7 +979,9 @@ def push_db(client, stage, remote_id, prefix, db_type):
 
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
-    response = client.upload_db(remote_id, stage, archive_path, prefix) or {}
+    response = (
+        client.upload_db(remote_id, environment, archive_path, prefix) or {}
+    )
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
     progress_url = response.get("progress_url")
@@ -1001,14 +1008,14 @@ def push_db(client, stage, remote_id, prefix, db_type):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_local_db(client, stage, dump_filename, website_id, prefix):
+def push_local_db(client, environment, dump_filename, website_id, prefix):
     archive_wd = os.path.dirname(os.path.realpath(dump_filename))
     archive_filename = dump_filename.replace(".sql", ".tar.gz")
     archive_path = os.path.join(archive_wd, archive_filename)
 
     click.secho(
         " ===> Pushing local database to {} {} environment".format(
-            website_id, stage
+            website_id, environment
         )
     )
     start_time = time()
@@ -1021,7 +1028,9 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
 
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
-    response = client.upload_db(website_id, stage, archive_path, prefix) or {}
+    response = (
+        client.upload_db(website_id, environment, archive_path, prefix) or {}
+    )
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
     progress_url = response.get("progress_url")
@@ -1048,7 +1057,7 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_media(client, stage, remote_id, prefix):
+def push_media(client, environment, remote_id, prefix):
     project_home = utils.get_application_home()
     website_id = utils.get_project_settings(project_home)["id"]
     archive_path = os.path.join(project_home, "local_media.tar.gz")
@@ -1061,7 +1070,7 @@ def push_media(client, stage, remote_id, prefix):
 
     click.secho(
         " ---> Pushing local media to {} {} environment".format(
-            remote_project_name, stage
+            remote_project_name, environment
         )
     )
     start_time = time()
@@ -1104,7 +1113,7 @@ def push_media(client, stage, remote_id, prefix):
     click.secho("Uploading", nl=False)
     start_upload = time()
     response = (
-        client.upload_media(remote_id, stage, archive_path, prefix) or {}
+        client.upload_media(remote_id, environment, archive_path, prefix) or {}
     )
     click.echo(" [{}s]".format(int(time() - start_upload)))
     progress_url = response.get("progress_url")
