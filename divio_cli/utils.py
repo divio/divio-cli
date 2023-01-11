@@ -130,7 +130,10 @@ def execute(func, *popenargs, **kwargs):
             "The command was:",
             "  {command}".format(command=" ".join(exc.cmd)),
         )
-        hr(fg="red")
+        hr(
+            fg="red",
+            err=True,
+        )
         click.secho(os.linesep.join(output), fg="red", err=True)
         sys.exit(1)
 
@@ -143,21 +146,24 @@ def check_output(*popenargs, **kwargs):
     return execute(subprocess.check_output, *popenargs, **kwargs).decode()
 
 
-def open_application_cloud_site(client, application_id, stage):
+def open_application_cloud_site(client, application_id, environment):
     project_data = client.get_project(application_id)
     try:
-        url = project_data["{}_status".format(stage)]["site_url"]
+        url = project_data["{}_status".format(environment)]["site_url"]
     except KeyError:
         click.secho(
-            "Environment with the name '{}' does not exist.".format(stage),
+            "Environment with the name '{}' does not exist.".format(
+                environment
+            ),
             fg="red",
+            err=True,
         )
         sys.exit(1)
     if url:
         launch_url(url)
     else:
         click.secho(
-            "No {} environment deployed yet.".format(stage), fg="yellow"
+            "No {} environment deployed yet.".format(environment), fg="yellow"
         )
 
 
@@ -358,3 +364,10 @@ def needs_legacy_migration():
         return True
     except Exception:
         return False
+
+
+def echo_large_content(content, ctx):
+    if ctx.pager:
+        click.echo_via_pager(content)
+    else:
+        click.echo(content)

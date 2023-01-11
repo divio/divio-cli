@@ -132,7 +132,7 @@ def configure_project(website_slug, path, client, zone=None):
 
 
 def setup_website_containers(
-    client, stage, path, prefix=DEFAULT_SERVICE_PREFIX
+    client, environment, path, prefix=DEFAULT_SERVICE_PREFIX
 ):
     try:
         docker_compose = utils.get_docker_compose_cmd(path)
@@ -140,7 +140,7 @@ def setup_website_containers(
         # Docker-compose does not exist
         click.secho(
             "Warning: docker-compose.yml does not exist. Will continue without...",
-            fg="red",
+            fg="yellow",
         )
         return
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
@@ -179,7 +179,7 @@ def setup_website_containers(
 
         ImportRemoteDatabase(
             client=client,
-            stage=stage,
+            environment=environment,
             path=path,
             prefix=prefix,
             db_type=db_type,
@@ -209,7 +209,12 @@ def setup_website_containers(
 
 
 def create_workspace(
-    client, website_slug, stage, path=None, force_overwrite=False, zone=None
+    client,
+    website_slug,
+    environment,
+    path=None,
+    force_overwrite=False,
+    zone=None,
 ):
     click.secho("Creating workspace", fg="green")
 
@@ -232,11 +237,14 @@ def create_workspace(
             else:
                 os.remove(path)
         else:
-            click.secho("Aborting", fg="red")
+            click.secho(
+                "Aborting",
+                err=True,
+            )
             sys.exit(1)
 
     website_id = client.get_website_id_for_slug(website_slug)
-    env = client.get_environment(website_id, stage)
+    env = client.get_environment(website_id, environment)
 
     # clone git project
     clone_project(
@@ -253,10 +261,10 @@ def create_workspace(
     )
 
     # setup docker website containers
-    setup_website_containers(client=client, stage=stage, path=path)
+    setup_website_containers(client=client, environment=environment, path=path)
 
     # download media files
-    pull_media(client=client, stage=stage, path=path)
+    pull_media(client=client, environment=environment, path=path)
 
     instructions = (
         "Your workspace is setup and ready to start.",
@@ -363,6 +371,7 @@ class DatabaseImportBase(object):
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         click.echo(" [{}s]".format(int(time() - start_wait)))
@@ -430,6 +439,7 @@ class DatabaseImportBase(object):
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
                 fg="red",
+                err=True,
             )
             sys.exit(1)
         click.echo(" [{}s]".format(int(time() - start_wait)))
@@ -456,7 +466,7 @@ class DatabaseImportBase(object):
         elif self.db_type == "fsm-mysql":
             self.prepare_db_server_mysql(db_container_id, start_wait)
         else:
-            click.secho("db type not known")
+            click.secho("db type not known", fg="red", err=True)
             sys.exit(1)
 
     def get_db_restore_command(self, db_type):
@@ -539,6 +549,7 @@ class DatabaseImportBase(object):
                 "The executed command was:\n"
                 "  {command}".format(command=" ".join(exc.cmd)),
                 fg="red",
+                err=True,
             )
             sys.exit(1)
 
@@ -581,7 +592,7 @@ class DatabaseImportBase(object):
         elif self.db_type == "fsm-mysql":
             self.restore_db_mysql(db_container_id)
         else:
-            click.secho("db type not known")
+            click.secho("db type not known", fg="red", err=True)
             sys.exit(1)
         click.echo("\n      [{}s]".format(int(time() - start_import)))
 
@@ -632,7 +643,7 @@ class ImportLocalDatabase(DatabaseImportBase):
 class ImportRemoteDatabase(DatabaseImportBase):
     def __init__(self, *args, **kwargs):
         super(ImportRemoteDatabase, self).__init__(*args, **kwargs)
-        self.stage = kwargs.pop("stage", None)
+        self.environment = kwargs.pop("environment", None)
         self.remote_id = kwargs.pop("remote_id", None) or self.website_id
         self.keep_tempfile = kwargs.pop("keep_tempfile", None)
 
@@ -643,7 +654,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         )
         click.secho(
             " ===> Pulling database from {} {} environment".format(
-                remote_project_name, self.stage
+                remote_project_name, self.environment
             )
         )
 
@@ -652,7 +663,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         start_preparation = time()
         response = (
             self.client.download_db_request(
-                self.remote_id, self.stage, self.prefix
+                self.remote_id, self.environment, self.prefix
             )
             or {}
         )
@@ -714,7 +725,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         super(ImportRemoteDatabase, self).finish(*args, **kwargs)
 
 
-def pull_media(client, stage, remote_id=None, path=None):
+def pull_media(client, environment, remote_id=None, path=None):
     project_home = utils.get_application_home(path)
     website_id = utils.get_project_settings(project_home)["id"]
     website_slug = utils.get_project_settings(project_home)["slug"]
@@ -745,13 +756,13 @@ def pull_media(client, stage, remote_id=None, path=None):
 
     click.secho(
         " ===> Pulling media files from {} {} environment".format(
-            remote_project_name, stage
+            remote_project_name, environment
         )
     )
     start_time = time()
     click.secho(" ---> Preparing download ", nl=False)
     start_preparation = time()
-    response = client.download_media_request(remote_id, stage) or {}
+    response = client.download_media_request(remote_id, environment) or {}
     progress_url = response.get("progress_url")
     if not progress_url:
         click.secho(" error!", fg="red")
@@ -876,7 +887,7 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
             )
 
     else:
-        click.secho("db type not known")
+        click.secho("db type not known", fg="red", err=True)
         sys.exit(1)
 
     click.echo(" [{}s]".format(int(time() - start_dump)))
@@ -945,7 +956,7 @@ def export_db(prefix):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_db(client, stage, remote_id, prefix, db_type):
+def push_db(client, environment, remote_id, prefix, db_type):
     project_home = utils.get_application_home()
     website_id = utils.get_project_settings(project_home)["id"]
     dump_filename = DEFAULT_DUMP_FILENAME
@@ -960,7 +971,7 @@ def push_db(client, stage, remote_id, prefix, db_type):
 
     click.secho(
         " ===> Pushing local database to {} {} environment".format(
-            remote_project_name, stage
+            remote_project_name, environment
         )
     )
     start_time = time()
@@ -974,7 +985,9 @@ def push_db(client, stage, remote_id, prefix, db_type):
 
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
-    response = client.upload_db(remote_id, stage, archive_path, prefix) or {}
+    response = (
+        client.upload_db(remote_id, environment, archive_path, prefix) or {}
+    )
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
     progress_url = response.get("progress_url")
@@ -1001,14 +1014,14 @@ def push_db(client, stage, remote_id, prefix, db_type):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_local_db(client, stage, dump_filename, website_id, prefix):
+def push_local_db(client, environment, dump_filename, website_id, prefix):
     archive_wd = os.path.dirname(os.path.realpath(dump_filename))
     archive_filename = dump_filename.replace(".sql", ".tar.gz")
     archive_path = os.path.join(archive_wd, archive_filename)
 
     click.secho(
         " ===> Pushing local database to {} {} environment".format(
-            website_id, stage
+            website_id, environment
         )
     )
     start_time = time()
@@ -1021,7 +1034,9 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
 
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
-    response = client.upload_db(website_id, stage, archive_path, prefix) or {}
+    response = (
+        client.upload_db(website_id, environment, archive_path, prefix) or {}
+    )
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
     progress_url = response.get("progress_url")
@@ -1048,7 +1063,7 @@ def push_local_db(client, stage, dump_filename, website_id, prefix):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_media(client, stage, remote_id, prefix):
+def push_media(client, environment, remote_id, prefix):
     project_home = utils.get_application_home()
     website_id = utils.get_project_settings(project_home)["id"]
     archive_path = os.path.join(project_home, "local_media.tar.gz")
@@ -1061,7 +1076,7 @@ def push_media(client, stage, remote_id, prefix):
 
     click.secho(
         " ---> Pushing local media to {} {} environment".format(
-            remote_project_name, stage
+            remote_project_name, environment
         )
     )
     start_time = time()
@@ -1076,7 +1091,11 @@ def push_media(client, stage, remote_id, prefix):
             items = []
 
         if not items:
-            click.secho("\nError: Local media directory is empty", fg="red")
+            click.secho(
+                "\nError: Local media directory is empty",
+                fg="red",
+                err=True,
+            )
             sys.exit(1)
 
         for item in items:
@@ -1100,7 +1119,7 @@ def push_media(client, stage, remote_id, prefix):
     click.secho("Uploading", nl=False)
     start_upload = time()
     response = (
-        client.upload_media(remote_id, stage, archive_path, prefix) or {}
+        client.upload_media(remote_id, environment, archive_path, prefix) or {}
     )
     click.echo(" [{}s]".format(int(time() - start_upload)))
     progress_url = response.get("progress_url")
@@ -1147,7 +1166,8 @@ def update_local_application(git_branch, client, strict=False):
         click.secho(
             "Warning: The project has a git repository configured in the divio"
             " cloud which is not present in your local git configuration.",
-            fg="red",
+            fg="yellow",
+            err=True,
         )
         if strict:
             sys.exit(1)
@@ -1230,7 +1250,11 @@ def develop_package(package, no_rebuild=False):
             check_call(docker_compose("build", "web"))
         except RuntimeError:
             # Docker-compose does not exist
-            click.echo("Can not rebuild without docker-compose.yml", fg="red")
+            click.echo(
+                "Can not rebuild without docker-compose.yml",
+                fg="red",
+                err=True,
+            )
 
     click.secho(
         "The package {} has been added to your local development project!".format(
@@ -1249,6 +1273,7 @@ def open_application(open_browser=True):
         click.secho(
             "Warning: docker-compose.yml does not exist. Can not open project without!",
             fg="red",
+            err=True,
         )
         return
 
@@ -1271,6 +1296,7 @@ def open_application(open_browser=True):
                 CHECKING_PORT
             ),
             fg="red",
+            err=True,
         )
         sys.exit(1)
 
@@ -1334,6 +1360,7 @@ def start_application():
         click.secho(
             "Warning: docker-compose.yml does not exist. Can not start project without!",
             fg="red",
+            err=True,
         )
         return
     try:
@@ -1348,6 +1375,7 @@ def start_application():
                 "port. Please either stop the other program or change the "
                 "port in the 'docker-compose.yml' file and try again.\n",
                 fg="red",
+                err=True,
             )
         raise click.ClickException(output)
 
@@ -1365,6 +1393,7 @@ def show_application_status():
         click.secho(
             "Warning: docker-compose.yml does not exist. Can not show status without!",
             fg="red",
+            err=True,
         )
         return
 
@@ -1380,5 +1409,6 @@ def stop_application():
         click.secho(
             "Warning: docker-compose.yml does not exist. Can not stop project without!",
             fg="red",
+            err=True,
         )
         return

@@ -19,6 +19,7 @@ from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
+    echo_large_content,
     get_cp_url,
     get_git_checked_branch,
     hr,
@@ -47,6 +48,13 @@ except ImportError:
     help="Drop into the debugger if command execution raises an exception.",
 )
 @click.option(
+    "-P",
+    "--no-pager",
+    default=False,
+    is_flag=True,
+    help="Will not show content in a pager if set.",
+)
+@click.option(
     "-z",
     "--zone",
     default=None,
@@ -61,15 +69,16 @@ except ImportError:
     hidden=True,
 )
 @click.pass_context
-def cli(ctx, debug, zone, sudo):
+def cli(ctx, debug, no_pager, zone, sudo):
     if sudo:
-        click.secho("Running as sudo", fg="red")
+        click.secho("Running as sudo", fg="yellow")
 
     ctx.obj = Map()
     ctx.obj.client = CloudClient(
         get_endpoint(zone=zone), debug=debug, sudo=sudo
     )
     ctx.obj.zone = zone
+    ctx.obj.pager = not no_pager
 
     if debug:
 
@@ -78,11 +87,20 @@ def cli(ctx, debug, zone, sudo):
                 "\nAn exception occurred while executing the requested "
                 "command:",
                 fg="red",
+                err=True,
             )
-            hr(fg="red")
+            hr(
+                fg="red",
+                err=True,
+            )
             sys.__excepthook__(type, value, traceback)
-            click.secho("\nStarting interactive debugging session:", fg="red")
-            hr(fg="red")
+            click.secho(
+                "\nStarting interactive debugging session:", fg="red", err=True
+            )
+            hr(
+                fg="red",
+                err=True,
+            )
             pdb.post_mortem(traceback)
 
         sys.excepthook = exception_handler
@@ -114,6 +132,7 @@ def cli(ctx, debug, zone, sudo):
                     update_info["remote"]
                 ),
                 fg="yellow",
+                err=True,
             )
 
 
@@ -242,29 +261,38 @@ def application_list(obj, grouped, as_json):
         ]
         output = table(sort_applications(applications), header)
 
-    click.echo_via_pager(output)
+    echo_large_content(output, ctx=obj)
 
 
 @app.command(name="deploy")
-@click.argument("stage", default="test")
+@click.argument("environment", default="test")
 @allow_remote_id_override
 @click.pass_obj
-def application_deploy(obj, remote_id, stage):
+def application_deploy(obj, remote_id, environment):
     """Deploy application."""
-    obj.client.deploy_application_or_get_progress(remote_id, stage)
+    obj.client.deploy_application_or_get_progress(remote_id, environment)
 
 
 @app.command(name="deploy-log")
-@click.argument("stage", default="test")
+@click.argument("environment", default="test")
 @allow_remote_id_override
 @click.pass_obj
-def application_deploy_log(obj, remote_id, stage):
+def application_deploy_log(obj, remote_id, environment):
     """View last deployment log."""
-    obj.client.show_deploy_log(remote_id, stage)
+    deploy_log = obj.client.get_deploy_log(remote_id, environment)
+    if deploy_log:
+        echo_large_content(deploy_log, ctx=obj)
+    else:
+        click.secho(
+            "Environment with the name '{}' does not exist, no log available.".format(
+                environment
+            ),
+            fg="yellow",
+        )
 
 
 @app.command(name="logs")
-@click.argument("stage", default="test")
+@click.argument("environment", default="test")
 @click.option(
     "--tail", "tail", default=False, is_flag=True, help="Tail the output."
 )
@@ -273,18 +301,18 @@ def application_deploy_log(obj, remote_id, stage):
 )
 @allow_remote_id_override
 @click.pass_obj
-def application_logs(obj, remote_id, stage, tail, utc):
+def application_logs(obj, remote_id, environment, tail, utc):
     """View logs."""
-    obj.client.show_log(remote_id, stage, tail, utc)
+    obj.client.show_log(remote_id, environment, tail, utc)
 
 
 @app.command(name="ssh")
-@click.argument("stage", default="test")
+@click.argument("environment", default="test")
 @allow_remote_id_override
 @click.pass_obj
-def application__ssh(obj, remote_id, stage):
+def application__ssh(obj, remote_id, environment):
     """Establish SSH connection."""
-    obj.client.ssh(remote_id, stage)
+    obj.client.ssh(remote_id, environment)
 
 
 @app.command(name="configure")
@@ -315,14 +343,14 @@ def application_down():
 
 
 @app.command(name="open")
-@click.argument("stage", default="")
+@click.argument("environment", default="")
 @allow_remote_id_override
 @click.pass_obj
-def application_open(obj, remote_id, stage):
+def application_open(obj, remote_id, environment):
     """Open local or cloud applications in a browser."""
-    if stage:
+    if environment:
         open_application_cloud_site(
-            obj.client, application_id=remote_id, stage=stage
+            obj.client, application_id=remote_id, environment=environment
         )
     else:
         localdev.open_application()
@@ -355,7 +383,7 @@ def application_update(obj, strict):
 @app.command(name="env-vars")
 @click.option(
     "-s",
-    "--stage",
+    "--environment",
     default="test",
     type=str,
     help="Manage the cloud application's environment variables.",
@@ -399,7 +427,7 @@ def application_update(obj, strict):
 def environment_variables(
     obj,
     remote_id,
-    stage,
+    environment,
     show_all_vars,
     as_json,
     get_vars,
@@ -411,18 +439,20 @@ def environment_variables(
 
     WARNING: This command is experimental and may change in a future release.
     """
-    stage = stage.lower()
+    environment = environment.lower()
     if set_vars or unset_vars:
         set_vars = dict(set_vars)
         data = obj.client.set_custom_environment_variables(
             website_id=remote_id,
-            stage=stage,
+            environment=environment,
             set_vars=set_vars,
             unset_vars=unset_vars,
         )
     else:
         data = obj.client.get_environment_variables(
-            website_id=remote_id, stage=stage, custom_only=not show_all_vars
+            website_id=remote_id,
+            environment=environment,
+            custom_only=not show_all_vars,
         )
         if get_vars:
             data = {
@@ -434,7 +464,7 @@ def environment_variables(
         header = ("Key", "Value")
         data = sorted([(key, value) for key, value in data.items()])
         output = table(data, header)
-        click.echo_via_pager(output)
+        echo_large_content(output, obj)
 
 
 @app.command(name="status")
@@ -447,7 +477,7 @@ def app_status():
 @click.argument("slug")
 @click.option(
     "-s",
-    "--stage",
+    "--environment",
     default="test",
     help="Specify environment from which media and content data will be pulled.",
 )
@@ -471,7 +501,7 @@ def app_status():
     help="Skip system test before setting up the application.",
 )
 @click.pass_obj
-def application_setup(obj, slug, stage, path, overwrite, skip_doctor):
+def application_setup(obj, slug, environment, path, overwrite, skip_doctor):
     """Set up a development environment for a Divio application."""
     if not skip_doctor and not check_requirements_human(
         config=obj.client.config, silent=True
@@ -480,11 +510,12 @@ def application_setup(obj, slug, stage, path, overwrite, skip_doctor):
             "There was a problem while checking your system. Please run "
             "'divio doctor'.",
             fg="red",
+            err=True,
         )
         sys.exit(1)
 
     localdev.create_workspace(
-        obj.client, slug, stage, path, overwrite, obj.zone
+        obj.client, slug, environment, path, overwrite, obj.zone
     )
 
 
@@ -500,11 +531,11 @@ def application_pull():
     default=False,
     help="Keep the temporary file with the data.",
 )
-@click.argument("stage", default="test")
+@click.argument("environment", default="test")
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
 @click.pass_obj
-def pull_db(obj, remote_id, stage, prefix, keep_tempfile):
+def pull_db(obj, remote_id, environment, prefix, keep_tempfile):
     """
     Pull database the Divio cloud environment.
     """
@@ -516,7 +547,7 @@ def pull_db(obj, remote_id, stage, prefix, keep_tempfile):
 
     localdev.ImportRemoteDatabase(
         client=obj.client,
-        stage=stage,
+        environment=environment,
         prefix=prefix,
         remote_id=remote_id,
         db_type=db_type,
@@ -526,14 +557,16 @@ def pull_db(obj, remote_id, stage, prefix, keep_tempfile):
 
 
 @application_pull.command(name="media")
-@click.argument("stage", default="test")
+@click.argument("environment", default="test")
 @allow_remote_id_override
 @click.pass_obj
-def pull_media(obj, remote_id, stage):
+def pull_media(obj, remote_id, environment):
     """
     Pull media files from the Divio cloud environment.
     """
-    localdev.pull_media(obj.client, stage=stage, remote_id=remote_id)
+    localdev.pull_media(
+        obj.client, environment=environment, remote_id=remote_id
+    )
 
 
 @app.group(name="push")
@@ -542,7 +575,7 @@ def application_push():
 
 
 @application_push.command(name="db")
-@click.argument("stage", default="test")
+@click.argument("environment", default="test")
 @click.option(
     "-d",
     "--dumpfile",
@@ -559,7 +592,7 @@ def application_push():
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
 @click.pass_obj
-def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
+def push_db(obj, remote_id, prefix, environment, dumpfile, noinput):
     """
     Push database to the Divio cloud environment..
     """
@@ -569,24 +602,30 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
     db_type = utils.get_db_type(prefix, path=application_home)
     if not dumpfile:
         if not noinput:
-            click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg="red")
+            click.secho(
+                messages.PUSH_DB_WARNING.format(environment=environment),
+                fg="red",
+            )
             if not click.confirm("\nAre you sure you want to continue?"):
                 return
         localdev.push_db(
             client=obj.client,
-            stage=stage,
+            environment=environment,
             remote_id=remote_id,
             prefix=prefix,
             db_type=db_type,
         )
     else:
         if not noinput:
-            click.secho(messages.PUSH_DB_WARNING.format(stage=stage), fg="red")
+            click.secho(
+                messages.PUSH_DB_WARNING.format(environment=environment),
+                fg="red",
+            )
             if not click.confirm("\nAre you sure you want to continue?"):
                 return
         localdev.push_local_db(
             obj.client,
-            stage=stage,
+            environment=environment,
             dump_filename=dumpfile,
             website_id=remote_id,
             prefix=prefix,
@@ -594,7 +633,7 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 
 
 @application_push.command(name="media")
-@click.argument("stage", default="test")
+@click.argument("environment", default="test")
 @click.option(
     "--noinput",
     is_flag=True,
@@ -604,17 +643,20 @@ def push_db(obj, remote_id, prefix, stage, dumpfile, noinput):
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
 @allow_remote_id_override
 @click.pass_obj
-def push_media(obj, remote_id, prefix, stage, noinput):
+def push_media(obj, remote_id, prefix, environment, noinput):
     """
     Push database to the Divio cloud environment..
     """
 
     if not noinput:
-        click.secho(messages.PUSH_MEDIA_WARNING.format(stage=stage), fg="red")
+        click.secho(
+            messages.PUSH_MEDIA_WARNING.format(environment=environment),
+            fg="red",
+        )
         if not click.confirm("\nAre you sure you want to continue?"):
             return
     localdev.push_media(
-        obj.client, stage=stage, remote_id=remote_id, prefix=prefix
+        obj.client, environment=environment, remote_id=remote_id, prefix=prefix
     )
 
 
@@ -809,6 +851,7 @@ def version(obj, skip_check, machine_readable):
                     "version on pypi.python.org:\n"
                     "{}".format(update_info["pypi_error"]),
                     fg="red",
+                    err=True,
                 )
             else:
                 click.echo("You have the latest version of divio-cli.")

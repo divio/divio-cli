@@ -248,7 +248,7 @@ class DeployProjectProgressRequest(JsonResponse, APIRequest):
 
 
 class DeployLogRequest(JsonResponse, APIRequest):
-    url = "api/v1/website/{website_id}/deploy-log/{stage}/"
+    url = "api/v1/website/{website_id}/deploy-log/{environment}/"
     method = "GET"
 
 
@@ -365,16 +365,18 @@ class UploadMediaFilesProgressRequest(JsonResponse, APIRequest):
 
 
 class GetEnvironmentVariablesRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/env/{stage}/environment-variables/"
+    url = (
+        "/api/v1/website/{website_id}/env/{environment}/environment-variables/"
+    )
 
 
 class GetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/env/{stage}/environment-variables/custom/"
+    url = "/api/v1/website/{website_id}/env/{environment}/environment-variables/custom/"
 
 
 class SetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
     method = "POST"
-    url = "/api/v1/website/{website_id}/env/{stage}/environment-variables/custom/"
+    url = "/api/v1/website/{website_id}/env/{environment}/environment-variables/custom/"
 
 
 # Repository
