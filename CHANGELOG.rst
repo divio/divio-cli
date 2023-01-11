@@ -5,6 +5,7 @@ Unreleased
 ----------
 
 * Support ``-h`` as a shorthand for the ``--help`` option.
+* Fixed bug when setting up project with empty database.
 * Support ``-P`` to deactivate pagers when viewing potentially larger amount of data.
 * Changed output of some error or warning messages from stdout to stderr.
 * Renamed the STAGE param into ENVIRONMENT in CLI commands
