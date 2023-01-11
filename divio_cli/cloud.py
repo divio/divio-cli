@@ -305,19 +305,16 @@ class CloudClient(object):
         if status:
             deploy_log = api_requests.DeployLogRequest(
                 self.session,
-                url_kwargs={"website_id": website_id, "environment": environment},
+                url_kwargs={
+                    "website_id": website_id,
+                    "environment": environment,
+                },
             )()
 
             task_id = "Deploy Log {}".format(deploy_log["task_id"])
             output = task_id + "\n" + deploy_log["output"]
-            click.echo_via_pager(output)
-        else:
-            click.secho(
-                "No {} environment deployed yet, no log available.".format(
-                    environment
-                ),
-                fg="yellow",
-            )
+            return output
+        return None
 
     def deploy_application_or_get_progress(self, website_id, environment):
         def fmt_progress(data):
@@ -406,12 +403,6 @@ class CloudClient(object):
         data = {"stage": environment}
         request = api_requests.DeployProjectRequest(
             self.session, url_kwargs={"website_id": website_id}, data=data
-        )
-        return request()
-
-    def get_deploy_log(self, website_id, environment):
-        request = api_requests.DeployLogRequest(
-            self.session, url_kwargs={"website_id": website_id, "environment": environment}
         )
         return request()
 
