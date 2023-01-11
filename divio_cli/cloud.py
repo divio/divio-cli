@@ -412,24 +412,6 @@ class CloudClient(object):
         )
         return request()
 
-    def is_project_locked(self, website_id):
-        request = api_requests.ProjectLockQueryRequest(
-            self.session, url_kwargs={"website_id": website_id}
-        )
-        return request()
-
-    def lock_project(self, website_id):
-        request = api_requests.ProjectLockRequest(
-            self.session, url_kwargs={"website_id": website_id}
-        )
-        return request()
-
-    def unlock_project(self, website_id):
-        request = api_requests.ProjectUnlockRequest(
-            self.session, url_kwargs={"website_id": website_id}
-        )
-        return request()
-
     def register_addon(self, package_name, verbose_name, organisation_id=None):
         request = api_requests.RegisterAddonRequest(
             self.session,
@@ -456,12 +438,6 @@ class CloudClient(object):
     def get_website_id_for_slug(self, slug):
         request = api_requests.SlugToIDRequest(
             self.session, url_kwargs={"website_slug": slug}
-        )
-        return request()
-
-    def get_website_slug_for_id(self, website_id):
-        request = api_requests.IDToSlugRequest(
-            self.session, url_kwargs={"website_id": website_id}
         )
         return request()
 
