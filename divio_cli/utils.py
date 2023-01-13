@@ -28,8 +28,8 @@ def hr(char="-", width=None, **kwargs):
     click.secho(char * width, **kwargs)
 
 
-def table(data, headers):
-    return tabulate(data, headers)
+def table(data, headers, **kwargs):
+    return tabulate(data, headers, **kwargs)
 
 
 def get_package_version(path):

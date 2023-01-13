@@ -48,11 +48,10 @@ except ImportError:
     help="Drop into the debugger if command execution raises an exception.",
 )
 @click.option(
-    "-P",
-    "--no-pager",
+    "--pager",
     default=False,
     is_flag=True,
-    help="Will not show content in a pager if set.",
+    help="Will display content in a pager if set.",
 )
 @click.option(
     "-z",
@@ -69,7 +68,7 @@ except ImportError:
     hidden=True,
 )
 @click.pass_context
-def cli(ctx, debug, no_pager, zone, sudo):
+def cli(ctx, debug, pager, zone, sudo):
     if sudo:
         click.secho("Running as sudo", fg="yellow")
 
@@ -78,7 +77,7 @@ def cli(ctx, debug, no_pager, zone, sudo):
         get_endpoint(zone=zone), debug=debug, sudo=sudo
     )
     ctx.obj.zone = zone
-    ctx.obj.pager = not no_pager
+    ctx.obj.pager = pager
 
     if debug:
 
@@ -192,10 +191,17 @@ def app():
     default=False,
     help="Group by organisation.",
 )
+@click.option(
+    "--pager",
+    default=False,
+    is_flag=True,
+    help="Will display content in a pager if set.",
+)
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
-def application_list(obj, grouped, as_json):
+def application_list(obj, grouped, pager, as_json):
     """List all your applications."""
+    obj.pager = pager
     api_response = obj.client.get_applications()
 
     if as_json:
@@ -236,7 +242,6 @@ def application_list(obj, grouped, as_json):
     def sort_applications(items):
         return sorted(items, key=lambda x: x[0].lower())
 
-    # print via pager
     if grouped:
         output_items = []
         for group, data in accounts:
@@ -380,91 +385,117 @@ def application_update(obj, strict):
     )
 
 
-@app.command(name="env-vars")
+@app.command(name="environment-variables", aliases=["env-vars"])
 @click.option(
-    "-s",
     "--environment",
     default="test",
     type=str,
-    help="Manage the cloud application's environment variables.",
+    help="Select an environment from which to collect the environment variables.",
 )
 @click.option(
-    "--all/--custom",
-    "show_all_vars",
+    "--pager",
     default=False,
-    help="--all shows automatically applied environment variables as well as user-specified variables.",
+    is_flag=True,
+    help="Will display content in a pager if set.",
+)
+@click.option(
+    "--get-var",
+    type=str,
+    help="Retrieve a specific environment variable by providing it's name.",
+)
+@click.option(
+    "--all-environments",
+    default=False,
+    is_flag=True,
+    help="Retrieve environment variables across all environments of the current application.",
 )
 @click.option("--json", "as_json", is_flag=True, default=False)
-@click.option(
-    "--get",
-    "get_vars",
-    default=None,
-    type=str,
-    multiple=True,
-    help="Get a specific environment variable.",
-)
-@click.option(
-    "--set",
-    "set_vars",
-    default=None,
-    type=click.Tuple([str, str]),
-    multiple=True,
-    help=(
-        "Set a specific custom environment variable\n\n"
-        "example: divio app env-vars set DEBUG False"
-    ),
-)
-@click.option(
-    "--unset",
-    "unset_vars",
-    default=None,
-    type=str,
-    multiple=True,
-    help="Remove an environment variable.",
-)
 @allow_remote_id_override
 @click.pass_obj
 def environment_variables(
     obj,
     remote_id,
     environment,
-    show_all_vars,
+    pager,
+    get_var,
+    all_environments,
     as_json,
-    get_vars,
-    set_vars,
-    unset_vars,
 ):
-    """
-    Get and set environment vars.
-
-    WARNING: This command is experimental and may change in a future release.
-    """
     environment = environment.lower()
-    if set_vars or unset_vars:
-        set_vars = dict(set_vars)
-        data = obj.client.set_custom_environment_variables(
-            website_id=remote_id,
-            environment=environment,
-            set_vars=set_vars,
-            unset_vars=unset_vars,
+    obj.pager = pager
+
+    results = obj.client.get_environment_variables(
+        website_id=remote_id,
+        environment=environment,
+        all_environments=all_environments,
+    )
+
+    if not all_environments and get_var:
+        for environment_variable in results[0]["environment_variables"]:
+            if environment_variable["name"] == get_var:
+                is_sensitive = environment_variable["is_sensitive"]
+                value = None if is_sensitive else environment_variable["value"]
+
+                if as_json:
+                    json_content = json.dumps(environment_variable, indent=2)
+                    echo_large_content(json_content, ctx=obj)
+                else:
+                    echo_large_content(
+                        table(
+                            [[get_var, value, is_sensitive]],
+                            ["name", "value", "is_sensitive"],
+                            tablefmt="grid",
+                        ),
+                        ctx=obj,
+                    )
+                sys.exit(1)
+
+        click.secho(
+            (
+                f"No environment variable named {get_var} found for this environment. "
+                f"Returning all environment variables of {environment} environment instead.\n"
+            ),
+            fg="yellow",
         )
-    else:
-        data = obj.client.get_environment_variables(
-            website_id=remote_id,
-            environment=environment,
-            custom_only=not show_all_vars,
+
+    if all_environments and get_var:
+        click.secho(
+            (
+                "Cannot retrieve a specific environment variable while parsing all environments. "
+                "Try with a specific environment instead."
+            ),
+            fg="yellow",
         )
-        if get_vars:
-            data = {
-                key: value for key, value in data.items() if key in get_vars
-            }
+
     if as_json:
-        click.echo(json.dumps(data, indent=2, sort_keys=True))
+        json_content = json.dumps(results, indent=2)
+        echo_large_content(json_content, ctx=obj)
     else:
-        header = ("Key", "Value")
-        data = sorted([(key, value) for key, value in data.items()])
-        output = table(data, header)
-        echo_large_content(output, obj)
+        content_tables = ""
+        for result in results:
+            environment_slug = result["environment"]
+            environment_uuid = result["environment_uuid"]
+            content_table_title = (
+                f"Environment: {environment_slug} ({environment_uuid})"
+            )
+            columns = ["name", "value", "is_sensitive"]
+
+            # None is necessary for sensitive environment variables where the value
+            # is not included in the response.
+            rows = [
+                [row[key] if key in row.keys() else None for key in columns]
+                for row in result["environment_variables"]
+            ]
+
+            content_table = (
+                content_table_title
+                + "\n"
+                + table(rows, columns, tablefmt="grid")
+                + "\n\n"
+            )
+            content_tables += content_table
+
+        echo_large_content(content_tables.strip("\n"), ctx=obj)
 
 
 @app.command(name="status")
@@ -476,7 +507,6 @@ def app_status():
 @app.command(name="setup")
 @click.argument("slug")
 @click.option(
-    "-s",
     "--environment",
     default="test",
     help="Specify environment from which media and content data will be pulled.",

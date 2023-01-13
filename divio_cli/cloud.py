@@ -12,7 +12,6 @@ from dateutil.parser import isoparse
 from . import api_requests, messages, settings
 from .config import Config
 from .localdev.utils import get_application_home, get_project_settings
-from .utils import json_dumps_unicode
 
 
 ENDPOINT = "https://control.{zone}"
@@ -531,11 +530,15 @@ class CloudClient(object):
         return request()
 
     def get_environment_variables(
-        self, website_id, environment, custom_only=True
+        self,
+        website_id,
+        environment,
+        all_environments,
     ):
         project_data = self.get_project(website_id)
+
         try:
-            _ = project_data["{}_status".format(environment)]
+            environment_data = project_data["{}_status".format(environment)]
         except KeyError:
             click.secho(
                 "Environment with the name '{}' does not exist.".format(
@@ -546,31 +549,56 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-        if custom_only:
-            Request = api_requests.GetCustomEnvironmentVariablesRequest
-        else:
-            Request = api_requests.GetEnvironmentVariablesRequest
-        request = Request(
-            self.session,
-            url_kwargs={"website_id": website_id, "environment": environment},
-        )
-        return request()
+        try:
+            if all_environments:
+                url = "/apps/v3/environment-variables/?application={}".format(
+                    project_data["uuid"]
+                )
+            else:
+                url = "/apps/v3/environment-variables/?environment={}".format(
+                    environment_data["uuid"]
+                )
+            response = api_requests.GetEnvironmentVariablesRequest(
+                self.session,
+                url=url,
+            )()
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho("Error establishing connection.", fg="red", err=True)
+            sys.exit(1)
 
-    def set_custom_environment_variables(
-        self, website_id, environment, set_vars, unset_vars
-    ):
-        current_vars = self.get_environment_variables(
-            website_id, environment, custom_only=True
-        )
-        current_vars.update(set_vars)
-        for var in unset_vars:
-            current_vars.pop(var, None)
-        request = api_requests.SetCustomEnvironmentVariablesRequest(
-            self.session,
-            url_kwargs={"website_id": website_id, "environment": environment},
-            data={"vars": json_dumps_unicode(current_vars)},
-        )
-        return request()
+        results = response.get("results")
+        if results:
+            environments_uuids = set([e["environment"] for e in results])
+            environment_variables = {
+                e_uuid: [] for e_uuid in environments_uuids
+            }
+
+            for ev in results:
+                e_uuid = ev.pop("environment")
+                environment_variables[e_uuid].append(ev)
+
+            results_reformed = []
+            for e_uuid in environments_uuids:
+                environment_slug = api_requests.EnvironmentRequest(
+                    self.session, url_kwargs={"environment_uuid": e_uuid}
+                )()["slug"]
+
+                results_reformed.append(
+                    {
+                        "environment": environment_slug,
+                        "environment_uuid": e_uuid,
+                        "environment_variables": environment_variables[e_uuid],
+                    }
+                )
+        else:
+            click.echo(
+                "No environment variables found for this application."
+                if all_environments
+                else f"No environment variables found for {environment} environment."
+            )
+            sys.exit(1)
+
+        return sorted(results_reformed, key=lambda d: d["environment"])
 
     def get_repository_dsn(self, website_id):
         """
