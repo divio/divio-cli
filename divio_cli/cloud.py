@@ -536,12 +536,9 @@ class CloudClient(object):
     ):
         project_data = self.get_project(website_id)
 
-
         # Retrieve the keys representing environments
         # from the V1 project detail endpoint.
-        environments = [
-            key for key in project_data.keys() if "_status" in key
-        ]
+        environments = [key for key in project_data.keys() if "_status" in key]
         # Map environment uuids and corresponding slugs.
         environments_uuid_slug_mapping = {
             project_data[key]["uuid"]: project_data[key]["stage"]
@@ -578,7 +575,6 @@ class CloudClient(object):
 
         results = response.get("results")
         if results:
-            
 
             # Get all unique environment uuids from the results.
             environments_uuids = set([e["environment"] for e in results])

@@ -456,8 +456,8 @@ def environment_variables(
                 echo_large_content(json_content, ctx=obj)
             else:
                 click.secho(
-                    f"Could not find any environment variable named {get_var}.", 
-                    fg="yellow"
+                    f"Could not find any environment variable named {get_var}.",
+                    fg="yellow",
                 )
         else:
             json_content = json.dumps(results, indent=2)
@@ -498,10 +498,10 @@ def environment_variables(
                 echo_large_content(content_tables.strip("\n"), ctx=obj)
             else:
                 click.secho(
-                    f"Could not find any environment variable named {get_var}.", 
-                    fg="yellow"
+                    f"Could not find any environment variable named {get_var}.",
+                    fg="yellow",
                 )
-        # Display results as tables and no specific 
+        # Display results as tables and no specific
         # environment variable was requested (by name).
         else:
             content_tables = ""
@@ -515,7 +515,10 @@ def environment_variables(
                 # None is necessary for sensitive environment variables where the value
                 # is not included in the response.
                 rows = [
-                    [row[key] if key in row.keys() else None for key in columns]
+                    [
+                        row[key] if key in row.keys() else None
+                        for key in columns
+                    ]
                     for row in result["environment_variables"]
                 ]
                 content_table = (
