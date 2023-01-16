@@ -569,13 +569,21 @@ class CloudClient(object):
                 self.session,
                 params=params,
             )()
+            results = []
+            while True:
+                results += response["results"]
+                next_page = response.get("next")
+                if not next_page:
+                    break
+                response = api_requests.GetEnvironmentVariablesRequest(
+                    self.session,
+                    url=next_page,
+                )()
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho("Error establishing connection.", fg="red", err=True)
             sys.exit(1)
 
-        results = response.get("results")
         if results:
-
             # Get all unique environment uuids from the results.
             environments_uuids = set([e["environment"] for e in results])
             # Group environment variables by environment
@@ -605,7 +613,7 @@ class CloudClient(object):
                 if environment == "--all"
                 else f"No environment variables found for environment named {environment}."
             )
-            sys.exit(1)
+            sys.exit(0)
 
         return sorted(results_reformed, key=lambda d: d["environment"])
 
