@@ -48,10 +48,11 @@ except ImportError:
     help="Drop into the debugger if command execution raises an exception.",
 )
 @click.option(
-    "--pager",
+    "-p/-P",
+    "--pager/--no-pager",
     default=False,
     is_flag=True,
-    help="Will display content in a pager if set.",
+    help="Choose whether to display content via pager or not. Leave blank for no pager.",
 )
 @click.option(
     "-z",
@@ -192,10 +193,11 @@ def app():
     help="Group by organisation.",
 )
 @click.option(
-    "--pager",
+    "-p/-P",
+    "--pager/--no-pager",
     default=False,
     is_flag=True,
-    help="Will display content in a pager if set.",
+    help="Choose whether to display content via pager or not. Leave blank for no pager.",
 )
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
@@ -387,27 +389,32 @@ def application_update(obj, strict):
 
 @app.command(name="environment-variables", aliases=["env-vars"])
 @click.option(
+    "-s",
+    "--stage",
+    "--e",
     "--environment",
-    default="test",
+    "environment",
+    # This should never conflict with an actual environment slug
+    # as it is not permitted to add hyphens at the beggining of it.
+    default="--all",
     type=str,
-    help="Select an environment from which to collect the environment variables.",
+    help=(
+        "Choose a specific environment (by name) from which the environment variables "
+        "will be collected or leave blank for all environments."
+    ),
 )
 @click.option(
-    "--pager",
+    "-p/-P",
+    "--pager/--no-pager",
     default=False,
     is_flag=True,
-    help="Will display content in a pager if set.",
+    help="Choose whether to display content via pager or not. Leave blank for no pager.",
 )
 @click.option(
+    "-g",
     "--get-var",
     type=str,
     help="Retrieve a specific environment variable by providing it's name.",
-)
-@click.option(
-    "--all-environments",
-    default=False,
-    is_flag=True,
-    help="Retrieve environment variables across all environments of the current application.",
 )
 @click.option("--json", "as_json", is_flag=True, default=False)
 @allow_remote_id_override
@@ -418,7 +425,6 @@ def environment_variables(
     environment,
     pager,
     get_var,
-    all_environments,
     as_json,
 ):
     environment = environment.lower()
@@ -427,75 +433,99 @@ def environment_variables(
     results = obj.client.get_environment_variables(
         website_id=remote_id,
         environment=environment,
-        all_environments=all_environments,
     )
 
-    if not all_environments and get_var:
-        for environment_variable in results[0]["environment_variables"]:
-            if environment_variable["name"] == get_var:
-                is_sensitive = environment_variable["is_sensitive"]
-                value = None if is_sensitive else environment_variable["value"]
-
-                if as_json:
-                    json_content = json.dumps(environment_variable, indent=2)
-                    echo_large_content(json_content, ctx=obj)
-                else:
-                    echo_large_content(
-                        table(
-                            [[get_var, value, is_sensitive]],
-                            ["name", "value", "is_sensitive"],
-                            tablefmt="grid",
-                        ),
-                        ctx=obj,
-                    )
-                sys.exit(1)
-
-        click.secho(
-            (
-                f"No environment variable named {get_var} found for this environment. "
-                f"Returning all environment variables of {environment} environment instead.\n"
-            ),
-            fg="yellow",
-        )
-
-    if all_environments and get_var:
-        click.secho(
-            (
-                "Cannot retrieve a specific environment variable while parsing all environments. "
-                "Try with a specific environment instead."
-            ),
-            fg="yellow",
-        )
-
     if as_json:
-        json_content = json.dumps(results, indent=2)
-        echo_large_content(json_content, ctx=obj)
+        if get_var:
+            content = []
+            for block in results:
+                for environment_variable in block["environment_variables"]:
+                    if environment_variable["name"] == get_var:
+                        content.append(
+                            {
+                                "environment": block["environment"],
+                                "environment_uuid": block["environment_uuid"],
+                                "environment_variables": [
+                                    environment_variable
+                                ],
+                            }
+                        )
+                        break
+            json_content = json.dumps(content, indent=2)
+            if content:
+                echo_large_content(json_content, ctx=obj)
+            else:
+                click.secho(
+                    f"Could not find any environment variable named {get_var}.", 
+                    fg="yellow"
+                )
+        else:
+            json_content = json.dumps(results, indent=2)
+            echo_large_content(json_content, ctx=obj)
+
+    # Display results as tables
     else:
-        content_tables = ""
-        for result in results:
-            environment_slug = result["environment"]
-            environment_uuid = result["environment_uuid"]
-            content_table_title = (
-                f"Environment: {environment_slug} ({environment_uuid})"
-            )
-            columns = ["name", "value", "is_sensitive"]
+        if get_var:
+            content_tables = ""
+            for block in results:
+                for environment_variable in block["environment_variables"]:
+                    if environment_variable["name"] == get_var:
+                        content_table_title = "Environment: {} ({})".format(
+                            block["environment"], block["environment_uuid"]
+                        )
+                        value = (
+                            # None is necessary for sensitive environment variables where the value
+                            # is not included in the response.
+                            None
+                            if "value" not in environment_variable.keys()
+                            else environment_variable["value"]
+                        )
+                        is_sensitive = environment_variable["is_sensitive"]
+                        content_table = (
+                            content_table_title
+                            + "\n"
+                            + table(
+                                [[get_var, value, is_sensitive]],
+                                ["name", "value", "is_sensitive"],
+                                tablefmt="grid",
+                            )
+                            + "\n\n"
+                        )
+                        content_tables += content_table
+                        break
 
-            # None is necessary for sensitive environment variables where the value
-            # is not included in the response.
-            rows = [
-                [row[key] if key in row.keys() else None for key in columns]
-                for row in result["environment_variables"]
-            ]
-
-            content_table = (
-                content_table_title
-                + "\n"
-                + table(rows, columns, tablefmt="grid")
-                + "\n\n"
-            )
-            content_tables += content_table
-
-        echo_large_content(content_tables.strip("\n"), ctx=obj)
+            if content_tables:
+                echo_large_content(content_tables.strip("\n"), ctx=obj)
+            else:
+                click.secho(
+                    f"Could not find any environment variable named {get_var}.", 
+                    fg="yellow"
+                )
+        # Display results as tables and no specific 
+        # environment variable was requested (by name).
+        else:
+            content_tables = ""
+            for result in results:
+                environment_slug = result["environment"]
+                environment_uuid = result["environment_uuid"]
+                content_table_title = (
+                    f"Environment: {environment_slug} ({environment_uuid})"
+                )
+                columns = ["name", "value", "is_sensitive"]
+                # None is necessary for sensitive environment variables where the value
+                # is not included in the response.
+                rows = [
+                    [row[key] if key in row.keys() else None for key in columns]
+                    for row in result["environment_variables"]
+                ]
+                content_table = (
+                    content_table_title
+                    + "\n"
+                    + table(rows, columns, tablefmt="grid")
+                    + "\n\n"
+                )
+                content_tables += content_table
+            echo_large_content(content_tables.strip("\n"), ctx=obj)
 
 
 @app.command(name="status")
@@ -507,7 +537,11 @@ def app_status():
 @app.command(name="setup")
 @click.argument("slug")
 @click.option(
+    "-s",
+    "--stage",
+    "--e",
     "--environment",
+    "environment",
     default="test",
     help="Specify environment from which media and content data will be pulled.",
 )

@@ -533,34 +533,44 @@ class CloudClient(object):
         self,
         website_id,
         environment,
-        all_environments,
     ):
         project_data = self.get_project(website_id)
 
-        try:
-            environment_data = project_data["{}_status".format(environment)]
-        except KeyError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+
+        # Retrieve the keys representing environments
+        # from the V1 project detail endpoint.
+        environments = [
+            key for key in project_data.keys() if "_status" in key
+        ]
+        # Map environment uuids and corresponding slugs.
+        environments_uuid_slug_mapping = {
+            project_data[key]["uuid"]: project_data[key]["stage"]
+            for key in environments
+        }
+
+        # The environment variables V3 endpoint requires either
+        # an application or an environment or both to be present
+        # as query parameters. Multiple environments can be provided as well.
+        if environment == "--all":
+            params = {"environment": environments_uuid_slug_mapping.keys()}
+        else:
+            environment_key = f"{environment}_status"
+            if environment_key in project_data.keys():
+                params = {"environment": project_data[environment_key]["uuid"]}
+            else:
+                click.secho(
+                    "Environment with the name '{}' does not exist.".format(
+                        environment
+                    ),
+                    fg="red",
+                    err=True,
+                )
+                sys.exit(1)
 
         try:
-            if all_environments:
-                url = "/apps/v3/environment-variables/?application={}".format(
-                    project_data["uuid"]
-                )
-            else:
-                url = "/apps/v3/environment-variables/?environment={}".format(
-                    environment_data["uuid"]
-                )
             response = api_requests.GetEnvironmentVariablesRequest(
                 self.session,
-                url=url,
+                params=params,
             )()
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho("Error establishing connection.", fg="red", err=True)
@@ -568,21 +578,24 @@ class CloudClient(object):
 
         results = response.get("results")
         if results:
+            
+
+            # Get all unique environment uuids from the results.
             environments_uuids = set([e["environment"] for e in results])
+            # Group environment variables by environment
             environment_variables = {
                 e_uuid: [] for e_uuid in environments_uuids
             }
-
             for ev in results:
+                # Remove the environment uuid for each variable as it will be
+                # presented as a seperate key in json format or as label on top
+                # of tables and group environment variables by environment.
                 e_uuid = ev.pop("environment")
                 environment_variables[e_uuid].append(ev)
 
             results_reformed = []
             for e_uuid in environments_uuids:
-                environment_slug = api_requests.EnvironmentRequest(
-                    self.session, url_kwargs={"environment_uuid": e_uuid}
-                )()["slug"]
-
+                environment_slug = environments_uuid_slug_mapping[e_uuid]
                 results_reformed.append(
                     {
                         "environment": environment_slug,
@@ -593,8 +606,8 @@ class CloudClient(object):
         else:
             click.echo(
                 "No environment variables found for this application."
-                if all_environments
-                else f"No environment variables found for {environment} environment."
+                if environment == "--all"
+                else f"No environment variables found for environment named {environment}."
             )
             sys.exit(1)
 

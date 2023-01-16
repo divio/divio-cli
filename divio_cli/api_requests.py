@@ -73,6 +73,7 @@ class APIRequest(object):
         session,
         url=None,
         url_kwargs=None,
+        params=None,
         data=None,
         files=None,
         *args,
@@ -82,6 +83,7 @@ class APIRequest(object):
         if url:
             self.url = url
         self.url_kwargs = url_kwargs or {}
+        self.params = params or {}
         self.data = data or {}
         self.files = files or {}
 
@@ -125,6 +127,7 @@ class APIRequest(object):
                 data=self.data,
                 files=self.files,
                 headers=self.get_headers(),
+                params=self.params,
                 *args,
                 **kwargs,
             )
@@ -373,6 +376,7 @@ class UploadMediaFilesProgressRequest(JsonResponse, APIRequest):
 
 class GetEnvironmentVariablesRequest(JsonResponse, APIV3Request):
     method = "GET"
+    url = "/apps/v3/environment-variables/"
 
 
 # Repository
