@@ -391,12 +391,12 @@ def application_update(obj, strict):
 @click.option(
     "-s",
     "--stage",
-    "--e",
+    "-e",
     "--environment",
     "environment",
     # This should never conflict with an actual environment slug
-    # as it is not permitted to add hyphens at the beggining of it.
-    default="--all",
+    # as it is not permitted to be blank in the first place.
+    default="",
     type=str,
     help=(
         "Choose a specific environment (by name) from which the environment variables "
@@ -427,6 +427,7 @@ def environment_variables(
     get_var,
     as_json,
 ):
+    """Retrieve environment variables."""
     environment = environment.lower()
     obj.pager = pager
 
@@ -542,7 +543,7 @@ def app_status():
 @click.option(
     "-s",
     "--stage",
-    "--e",
+    "-e",
     "--environment",
     "environment",
     default="test",

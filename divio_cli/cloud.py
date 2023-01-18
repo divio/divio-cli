@@ -548,7 +548,7 @@ class CloudClient(object):
         # The environment variables V3 endpoint requires either
         # an application or an environment or both to be present
         # as query parameters. Multiple environments can be provided as well.
-        if environment == "--all":
+        if not environment:
             params = {"environment": environments_uuid_slug_mapping.keys()}
         else:
             environment_key = f"{environment}_status"
@@ -610,7 +610,7 @@ class CloudClient(object):
         else:
             click.echo(
                 "No environment variables found for this application."
-                if environment == "--all"
+                if not environment
                 else f"No environment variables found for environment named {environment}."
             )
             sys.exit(0)
