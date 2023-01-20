@@ -286,35 +286,39 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-    def get_deploy_log(self, website_id, environment):
-        project_data = self.get_project(website_id)
-        # If we have tried to deploy before, there will be a log
-        try:
-            status = project_data["{}_status".format(environment)][
-                "last_deployment"
-            ]["status"]
-        except KeyError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
-        if status:
-            deploy_log = api_requests.DeployLogRequest(
-                self.session,
-                url_kwargs={
-                    "website_id": website_id,
-                    "environment": environment,
-                },
-            )()
+    def get_deploy_log(self, website_id, env_name):
+        environment = self.get_environment(website_id, env_name)
+        if environment:
+            last_deployment_uuid = None
+            try:
+                last_deployment_uuid = environment["last_finished_deployment"]["uuid"]
+            except (TypeError, KeyError):
+                click.secho(
+                    f"No finished deployment found in environemnt '{env_name}'.",
+                    fg="yellow"
+                )
 
-            task_id = "Deploy Log {}".format(deploy_log["task_id"])
-            output = task_id + "\n" + deploy_log["output"]
-            return output
-        return None
+            if last_deployment_uuid:
+                try:
+                    deploy_log = api_requests.DeployLogRequest(
+                        self.session,
+                        url_kwargs={"deployment_uuid": last_deployment_uuid},
+                    )()
+                    output = f"Deployment ID: {deploy_log['uuid']}\n\n{deploy_log['logs']}"
+                    return output
+
+                except json.decoder.JSONDecodeError:
+                    click.secho(
+                        "Error in fetching deployment logs.",
+                        fg="red",
+                        err=True,
+                    )
+                    sys.exit(1)
+        else:
+            click.secho(
+                f"Environment with name {env_name} does not exist.",
+                fg="yellow"
+            )
 
     def deploy_application_or_get_progress(self, website_id, environment):
         def fmt_progress(data):
