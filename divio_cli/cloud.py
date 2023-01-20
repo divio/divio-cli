@@ -291,11 +291,13 @@ class CloudClient(object):
         if environment:
             last_deployment_uuid = None
             try:
-                last_deployment_uuid = environment["last_finished_deployment"]["uuid"]
+                last_deployment_uuid = environment["last_finished_deployment"][
+                    "uuid"
+                ]
             except (TypeError, KeyError):
                 click.secho(
                     f"No finished deployment found in environemnt '{env_name}'.",
-                    fg="yellow"
+                    fg="yellow",
                 )
 
             if last_deployment_uuid:
@@ -317,7 +319,7 @@ class CloudClient(object):
         else:
             click.secho(
                 f"Environment with name {env_name} does not exist.",
-                fg="yellow"
+                fg="yellow",
             )
 
     def deploy_application_or_get_progress(self, website_id, environment):

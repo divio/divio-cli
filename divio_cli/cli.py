@@ -284,9 +284,7 @@ def application_deploy_log(obj, remote_id, environment):
         echo_large_content(deploy_log, ctx=obj)
     else:
         click.secho(
-            "No logs available.".format(
-                environment
-            ),
+            "No logs available.",
             fg="yellow",
         )
 
