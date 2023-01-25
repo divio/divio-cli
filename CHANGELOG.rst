@@ -10,6 +10,7 @@ Unreleased
 * Changed output of some error or warning messages from stdout to stderr.
 * Renamed the STAGE param into ENVIRONMENT in CLI commands
 * Removed unused code.
+* Moved deploy-log command to consume v3 APIs.
 
 3.15.7 (2022-09-23)
 -------------------

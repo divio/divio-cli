@@ -247,11 +247,6 @@ class DeployProjectProgressRequest(JsonResponse, APIRequest):
     method = "GET"
 
 
-class DeployLogRequest(JsonResponse, APIRequest):
-    url = "api/v1/website/{website_id}/deploy-log/{environment}/"
-    method = "GET"
-
-
 class DeployProjectRequest(JsonResponse, APIRequest):
     url = "/api/v1/website/{website_id}/deploy/"
     method = "POST"
@@ -375,4 +370,9 @@ class LogRequest(JsonResponse, APIV3Request):
 
 class EnvironmentRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/environments/{environment_uuid}/"
+    method = "GET"
+
+
+class DeployLogRequest(JsonResponse, APIV3Request):
+    url = "apps/v3/deployments/{deployment_uuid}/logs"
     method = "GET"
