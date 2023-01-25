@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Unreleased
-----------
+3.16.0 (2022-01-25)
+-------------------
 
 * Support ``-h`` as a shorthand for the ``--help`` option.
 * Fixed bug when setting up project with empty database.
