@@ -1,14 +1,16 @@
 Changelog
 =========
 
-Unreleased
-----------
+3.16.0 (2022-01-25)
+-------------------
 
 * Support ``-h`` as a shorthand for the ``--help`` option.
 * Fixed bug when setting up project with empty database.
 * Support ``-P`` to deactivate pagers when viewing potentially larger amount of data.
 * Changed output of some error or warning messages from stdout to stderr.
 * Renamed the STAGE param into ENVIRONMENT in CLI commands
+* Removed unused code.
+* Moved deploy-log command to consume v3 APIs.
 
 3.15.7 (2022-09-23)
 -------------------

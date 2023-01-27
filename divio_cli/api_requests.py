@@ -257,11 +257,6 @@ class DeployProjectProgressRequest(JsonResponse, APIRequest):
     method = "GET"
 
 
-class DeployLogRequest(JsonResponse, APIRequest):
-    url = "api/v1/website/{website_id}/deploy-log/{environment}/"
-    method = "GET"
-
-
 class DeployProjectRequest(JsonResponse, APIRequest):
     url = "/api/v1/website/{website_id}/deploy/"
     method = "POST"
@@ -283,36 +278,11 @@ class UploadBoilerplateRequest(TextResponse, APIRequest):
     method = "POST"
 
 
-class ProjectLockQueryRequest(APIRequest):
-    url = "/api/v1/website/{website_id}/lock/"
-    method = "GET"
-
-    def process(self, response):
-        return response.json("is_locked")
-
-
-class ProjectLockRequest(TextResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/lock/"
-    method = "PUT"
-
-
-class ProjectUnlockRequest(TextResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/lock/"
-    method = "DELETE"
-
-
 class SlugToIDRequest(APIRequest):
     url = "/api/v1/slug-to-id/{website_slug}/"
 
     def process(self, response):
         return response.json().get("id")
-
-
-class IDToSlugRequest(APIRequest):
-    url = "/api/v1/id-to-slug/{website_id}/"
-
-    def process(self, response):
-        return response.json().get("slug")
 
 
 class DownloadBackupRequest(FileResponse, APIRequest):
@@ -393,4 +363,9 @@ class LogRequest(JsonResponse, APIV3Request):
 
 class EnvironmentRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/environments/{environment_uuid}/"
+    method = "GET"
+
+
+class DeployLogRequest(JsonResponse, APIV3Request):
+    url = "apps/v3/deployments/{deployment_uuid}/logs"
     method = "GET"
