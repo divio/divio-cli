@@ -281,8 +281,6 @@ class DockerComposeConfig(object):
 def allow_remote_id_override(func):
     """Adds an identifier option to the command, and gets the proper id"""
 
-    # import pdb; pdb.set_trace()
-
     @functools.wraps(func)
     def read_remote_id(remote_id, *args, **kwargs):
         ERROR_MSG = (
