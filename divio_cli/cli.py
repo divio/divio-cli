@@ -308,7 +308,7 @@ def application_logs(obj, remote_id, environment, tail, utc):
 @click.argument("environment", default="test")
 @allow_remote_id_override
 @click.pass_obj
-def application__ssh(obj, remote_id, environment):
+def application_ssh(obj, remote_id, environment):
     """Establish SSH connection."""
     obj.client.ssh(remote_id, environment)
 
