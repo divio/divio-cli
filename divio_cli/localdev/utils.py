@@ -316,7 +316,7 @@ def allow_remote_id_override(func):
             else:
                 if not remote_id:
                     raise click.ClickException(ERROR_MSG)
-        return func(*args, obj=obj, remote_id=int(remote_id), **kwargs)
+        return func(obj, int(remote_id), *args, **kwargs)
 
     return click.option(
         "--remote-id",
