@@ -1,8 +1,8 @@
 Changelog
 =========
 
-unrelease
----------
+unreleased
+----------
 
 * Add support for ID and UUID as a remote-id parameter. 
 

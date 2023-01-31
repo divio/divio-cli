@@ -282,7 +282,8 @@ def allow_remote_id_override(func):
     """Adds an identifier option to the command, and gets the proper id"""
 
     @functools.wraps(func)
-    def read_remote_id(remote_id, *args, **kwargs):
+    def read_remote_id(obj, remote_id, *args, **kwargs):
+
         ERROR_MSG = (
             "This command requires a Divio Cloud Project id. Please "
             "provide one with the --remote-id option or call the "
@@ -297,19 +298,11 @@ def allow_remote_id_override(func):
             # * get the slug in v3
             # * use the slug to get the ID in v1.
 
-            # FIXME: we have to instantiate a CloudClient here as well which is
-            # not ideal. This will not support things like "sudo" or "zone"
-            # options. This code needs to get fully removed with the full move
-            # to V3.
-            from divio_cli.cloud import CloudClient, get_endpoint
-
-            client = CloudClient(get_endpoint())
-
             try:
-                slug = client.get_application(application_uuid=remote_id)[
+                slug = obj.client.get_application(application_uuid=remote_id)[
                     "slug"
                 ]
-                remote_id = client.get_website_id_for_slug(slug=slug)
+                remote_id = obj.client.get_website_id_for_slug(slug=slug)
             except Exception:
                 raise click.ClickException(
                     "Unable to retrieve application via UUID."
@@ -323,7 +316,7 @@ def allow_remote_id_override(func):
             else:
                 if not remote_id:
                     raise click.ClickException(ERROR_MSG)
-        return func(int(remote_id), *args, **kwargs)
+        return func(*args, obj=obj, remote_id=int(remote_id), **kwargs)
 
     return click.option(
         "--remote-id",
