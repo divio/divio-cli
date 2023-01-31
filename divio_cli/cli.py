@@ -385,6 +385,144 @@ def application_update(obj, strict):
     )
 
 
+@app.command(name="deployments")
+@click.option(
+    "-s",
+    "--stage",
+    "-e",
+    "--environment",
+    "environment",
+    # This should never conflict with an actual environment slug
+    # as it is not permitted to be blank in the first place.
+    default="",
+    type=str,
+    help=(
+        "Choose a specific environment (by name) from which deployments "
+        "will be collected or leave blank for all environments."
+    ),
+)
+@click.option(
+    "-d",
+    "--deployment",
+    default="",
+    type=str,
+    help="Retrieve the details of a specific deployment by providing it's uuid.",
+)
+@click.option(
+    "-g",
+    "--get-var",
+    type=str,
+    help=(
+        "Retrieve a specific environment variable by providing it's name. "
+        "A deployment must be provided as well."
+    ),
+)
+@click.option(
+    "-p/-P",
+    "--pager/--no-pager",
+    default=False,
+    is_flag=True,
+    help="Choose whether to display content via pager or not. Leave blank for no pager.",
+)
+@click.option("--json", "as_json", is_flag=True, default=False)
+@allow_remote_id_override
+@click.pass_obj
+def deployments(
+    obj,
+    remote_id,
+    environment,
+    deployment,
+    get_var,
+    pager,
+    as_json,
+):
+    """Retrieve deployments."""
+    environment = environment.lower()
+    obj.pager = pager
+
+    results = obj.client.get_deployments(
+        website_id=remote_id,
+        environment=environment,
+        deployment=deployment,
+        get_var=get_var,
+    )
+
+    if as_json:
+        json_content = json.dumps(results, indent=2)
+        echo_large_content(json_content, ctx=obj)
+    else:
+        if get_var:
+            # All necessary checks have been made in cloud.py. By now a single
+            # environment variable is returned or not and exited properly.
+            var = results[0]
+            content_table_title = f"Environment: {var['environment']} ({var['environment_uuid']})"
+            echo_large_content(
+                content_table_title
+                + "\n"
+                + table(
+                    [[var["name"], var["value"]]],
+                    [
+                        "name",
+                        "value",
+                    ],
+                    tablefmt="grid",
+                ),
+                ctx=obj,
+            )
+        # Displaying a single or multiple deployments as tables.
+        else:
+            content_tables = ""
+            # Deployments in table format display less content that in
+            # json format. Here are the desired columns to be displayed.
+            columns = [
+                "uuid",
+                "author",
+                "status",
+                "is_usable",
+                "success",
+            ]
+            # Single deployment.
+            if deployment:
+                # All necessary checks have been made in cloud.py. By now a single
+                # deployment is returned or not.
+                dep = results[0]
+                environment_slug = dep["environment"]
+                environment_uuid = dep["environment_uuid"]
+                content_table_title = (
+                    f"Environment: {environment_slug} ({environment_uuid})"
+                )
+                content_tables = (
+                    content_table_title
+                    + "\n"
+                    + table(
+                        [[dep[key] for key in columns]],
+                        columns,
+                        tablefmt="grid",
+                    )
+                )
+            # Listing deployments.
+            else:
+                for result in results:
+                    environment_slug = result["environment"]
+                    environment_uuid = result["environment_uuid"]
+                    content_table_title = (
+                        f"Environment: {environment_slug} ({environment_uuid})"
+                    )
+
+                    rows = [
+                        [row[key] for key in columns]
+                        for row in result["deployments"]
+                    ]
+                    content_table = (
+                        content_table_title
+                        + "\n"
+                        + table(rows, columns, tablefmt="grid")
+                        + "\n" * 3
+                    )
+                    content_tables += content_table
+            echo_large_content(content_tables.strip("\n"), ctx=obj)
+
+
 @app.command(name="environment-variables", aliases=["env-vars"])
 @click.option(
     "-s",
@@ -488,7 +626,7 @@ def environment_variables(
                                 ["name", "value", "is_sensitive"],
                                 tablefmt="grid",
                             )
-                            + "\n\n"
+                            + "\n" * 3
                         )
                         content_tables += content_table
                         break
@@ -524,7 +662,7 @@ def environment_variables(
                     content_table_title
                     + "\n"
                     + table(rows, columns, tablefmt="grid")
-                    + "\n\n"
+                    + "\n" * 3
                 )
                 content_tables += content_table
             echo_large_content(content_tables.strip("\n"), ctx=obj)

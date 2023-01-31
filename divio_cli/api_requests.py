@@ -369,3 +369,18 @@ class EnvironmentRequest(JsonResponse, APIV3Request):
 class DeployLogRequest(JsonResponse, APIV3Request):
     url = "apps/v3/deployments/{deployment_uuid}/logs"
     method = "GET"
+
+
+class DeploymentsRequest(JsonResponse, APIV3Request):
+    url = "apps/v3/deployments/"
+    method = "GET"
+
+
+class DeploymentRequest(JsonResponse, APIV3Request):
+    url = "apps/v3/deployments/{deployment_uuid}/"
+    method = "GET"
+
+
+class DeploymentEnvironmentVariablesRequest(JsonResponse, APIV3Request):
+    url = "apps/v3/deployments/{deployment_uuid}/deployment-environment-variables"
+    method = "GET"
