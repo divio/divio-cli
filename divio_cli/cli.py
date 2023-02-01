@@ -266,8 +266,8 @@ def application_list(obj, grouped, as_json):
 
 @app.command(name="deploy")
 @click.argument("environment", default="test")
-@allow_remote_id_override
 @click.pass_obj
+@allow_remote_id_override
 def application_deploy(obj, remote_id, environment):
     """Deploy application."""
     obj.client.deploy_application_or_get_progress(remote_id, environment)
@@ -275,8 +275,8 @@ def application_deploy(obj, remote_id, environment):
 
 @app.command(name="deploy-log")
 @click.argument("environment", default="test")
-@allow_remote_id_override
 @click.pass_obj
+@allow_remote_id_override
 def application_deploy_log(obj, remote_id, environment):
     """View last deployment log."""
     deploy_log = obj.client.get_deploy_log(remote_id, environment)
@@ -297,8 +297,8 @@ def application_deploy_log(obj, remote_id, environment):
 @click.option(
     "--utc", "utc", default=False, is_flag=True, help="Show times in UTC/"
 )
-@allow_remote_id_override
 @click.pass_obj
+@allow_remote_id_override
 def application_logs(obj, remote_id, environment, tail, utc):
     """View logs."""
     obj.client.show_log(remote_id, environment, tail, utc)
@@ -306,9 +306,9 @@ def application_logs(obj, remote_id, environment, tail, utc):
 
 @app.command(name="ssh")
 @click.argument("environment", default="test")
-@allow_remote_id_override
 @click.pass_obj
-def application__ssh(obj, remote_id, environment):
+@allow_remote_id_override
+def application_ssh(obj, remote_id, environment):
     """Establish SSH connection."""
     obj.client.ssh(remote_id, environment)
 
@@ -321,8 +321,8 @@ def configure(obj):
 
 
 @app.command(name="dashboard")
-@allow_remote_id_override
 @click.pass_obj
+@allow_remote_id_override
 def application_dashboard(obj, remote_id):
     """Open the application dashboard on the Divio Control Panel."""
     launch_url(get_cp_url(client=obj.client, application_id=remote_id))
@@ -342,8 +342,8 @@ def application_down():
 
 @app.command(name="open")
 @click.argument("environment", default="")
-@allow_remote_id_override
 @click.pass_obj
+@allow_remote_id_override
 def application_open(obj, remote_id, environment):
     """Open local or cloud applications in a browser."""
     if environment:
@@ -420,8 +420,8 @@ def application_update(obj, strict):
     multiple=True,
     help="Remove an environment variable.",
 )
-@allow_remote_id_override
 @click.pass_obj
+@allow_remote_id_override
 def environment_variables(
     obj,
     remote_id,
@@ -531,8 +531,8 @@ def application_pull():
 )
 @click.argument("environment", default="test")
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
-@allow_remote_id_override
 @click.pass_obj
+@allow_remote_id_override
 def pull_db(obj, remote_id, environment, prefix, keep_tempfile):
     """
     Pull database the Divio cloud environment.
@@ -556,8 +556,8 @@ def pull_db(obj, remote_id, environment, prefix, keep_tempfile):
 
 @application_pull.command(name="media")
 @click.argument("environment", default="test")
-@allow_remote_id_override
 @click.pass_obj
+@allow_remote_id_override
 def pull_media(obj, remote_id, environment):
     """
     Pull media files from the Divio cloud environment.
@@ -588,8 +588,8 @@ def application_push():
     help="Don't ask for confirmation.",
 )
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
-@allow_remote_id_override
 @click.pass_obj
+@allow_remote_id_override
 def push_db(obj, remote_id, prefix, environment, dumpfile, noinput):
     """
     Push database to the Divio cloud environment..
@@ -639,8 +639,8 @@ def push_db(obj, remote_id, prefix, environment, dumpfile, noinput):
     help="Don't ask for confirmation.",
 )
 @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
-@allow_remote_id_override
 @click.pass_obj
+@allow_remote_id_override
 def push_media(obj, remote_id, prefix, environment, noinput):
     """
     Push database to the Divio cloud environment..

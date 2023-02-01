@@ -210,6 +210,22 @@ class CloudClient(object):
             )
             sys.exit(1)
 
+    def get_application(self, application_uuid):
+        try:
+            response = api_requests.ApplicationRequest(
+                self.session,
+                url_kwargs={"application_uuid": application_uuid},
+            )()
+            return response
+
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
     def show_log(self, website_id, environment, tail=False, utc=True):
         def print_log_data(data):
             for entry in data:
