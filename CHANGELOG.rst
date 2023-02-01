@@ -1,8 +1,8 @@
 Changelog
 =========
 
-unreleased
-----------
+3.16.1 (2022-02-01)
+-------------------
 
 * Add support for ID and UUID as a remote-id parameter. 
 
