@@ -60,14 +60,28 @@ def get_service_color(service):
         return "yellow"
 
 
-def json_response_request_paginate(request, session, params={}, url_kwargs={}):
+def json_response_request_paginate(
+    request, session, limit_results, params={}, url_kwargs={}
+):
+    params.update({"page_size": limit_results})
     try:
         response = request(session, params=params, url_kwargs=url_kwargs)()
+        count_total_results = response["count"]
         results = []
         while True:
             results += response["results"]
             next_page = response.get("next")
-            if not next_page:
+            if not next_page or len(results) >= limit_results:
+                if limit_results < count_total_results:
+                    click.secho(
+                        (
+                            "There are more available results but the "
+                            f"limit is currently set to {limit_results}. "
+                            "Adjust the --limit option for more.\n"
+                        ),
+                        fg="yellow",
+                        err=True,
+                    )
                 break
             response = request(
                 session,
@@ -537,8 +551,10 @@ class CloudClient(object):
         self,
         website_id,
         environment,
+        all_environments,
         deployment,
         get_var,
+        limit_results,
     ):
         # Retrieve application data.
         project_data = self.get_project(website_id)
@@ -555,7 +571,7 @@ class CloudClient(object):
         params = {"application": project_data["uuid"]}
 
         # Retrieve environment data if environment is provided.
-        if environment:
+        if not all_environments:
             try:
                 env = project_data[f"{environment}_status"]
                 params.update({"environment": env["uuid"]})
@@ -614,7 +630,7 @@ class CloudClient(object):
                         )
                         sys.exit(0)
 
-                # Either it is a full deployment or a specific envoronment
+                # Either it is a full deployment or a specific environment
                 # variable returned, inlcude the enviroment's slug and uuid.
                 response.update(
                     {
@@ -629,7 +645,10 @@ class CloudClient(object):
             # From this point on we are sure that no specific deployment
             # or environment variable was requested. Proceed with listing.
             results = json_response_request_paginate(
-                api_requests.DeploymentsRequest, self.session, params=params
+                api_requests.DeploymentsRequest,
+                self.session,
+                params=params,
+                limit_results=limit_results,
             )
 
             if results:
@@ -671,6 +690,8 @@ class CloudClient(object):
         self,
         website_id,
         environment,
+        all_environments,
+        limit_results,
     ):
         project_data = self.get_project(website_id)
 
@@ -686,7 +707,7 @@ class CloudClient(object):
         # The environment variables V3 endpoint requires either
         # an application or an environment or both to be present
         # as query parameters. Multiple environments can be provided as well.
-        if not environment:
+        if all_environments:
             params = {"environment": environments_uuid_slug_mapping.keys()}
         else:
             environment_key = f"{environment}_status"
@@ -706,6 +727,7 @@ class CloudClient(object):
             api_requests.GetEnvironmentVariablesRequest,
             self.session,
             params=params,
+            limit_results=limit_results,
         )
 
         if results:

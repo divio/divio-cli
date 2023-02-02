@@ -244,6 +244,7 @@ def application_list(obj, grouped, pager, as_json):
     def sort_applications(items):
         return sorted(items, key=lambda x: x[0].lower())
 
+    # print via pager
     if grouped:
         output_items = []
         for group, data in accounts:
@@ -394,12 +395,20 @@ def application_update(obj, strict):
     "environment",
     # This should never conflict with an actual environment slug
     # as it is not permitted to be blank in the first place.
-    default="",
+    default="test",
     type=str,
     help=(
         "Choose a specific environment (by name) from which deployments "
         "will be collected or leave blank for all environments."
     ),
+)
+@click.option(
+    "--all",
+    "--all-environments",
+    "all_environments",
+    default=False,
+    is_flag=True,
+    help="Retrieve deployments from all available environments.",
 )
 @click.option(
     "-d",
@@ -424,6 +433,17 @@ def application_update(obj, strict):
     is_flag=True,
     help="Choose whether to display content via pager or not. Leave blank for no pager.",
 )
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    default=50,
+    help=(
+        "The number of maximum results that can be retrieved. "
+        "Adjust accordingly."
+    ),
+)
 @click.option("--json", "as_json", is_flag=True, default=False)
 @allow_remote_id_override
 @click.pass_obj
@@ -431,20 +451,23 @@ def deployments(
     obj,
     remote_id,
     environment,
+    all_environments,
     deployment,
     get_var,
     pager,
+    limit_results,
     as_json,
 ):
     """Retrieve deployments."""
-    environment = environment.lower()
     obj.pager = pager
 
     results = obj.client.get_deployments(
         website_id=remote_id,
         environment=environment,
+        all_environments=all_environments,
         deployment=deployment,
         get_var=get_var,
+        limit_results=limit_results,
     )
 
     if as_json:
@@ -477,6 +500,8 @@ def deployments(
             columns = [
                 "uuid",
                 "author",
+                "started_at",
+                "ended_at",
                 "status",
                 "is_usable",
                 "success",
@@ -532,12 +557,20 @@ def deployments(
     "environment",
     # This should never conflict with an actual environment slug
     # as it is not permitted to be blank in the first place.
-    default="",
+    default="test",
     type=str,
     help=(
         "Choose a specific environment (by name) from which the environment variables "
         "will be collected or leave blank for all environments."
     ),
+)
+@click.option(
+    "--all",
+    "--all-environments",
+    "all_environments",
+    default=False,
+    is_flag=True,
+    help="Retrieve environment variables from all available environments.",
 )
 @click.option(
     "-p/-P",
@@ -552,6 +585,17 @@ def deployments(
     type=str,
     help="Retrieve a specific environment variable by providing it's name.",
 )
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    default=50,
+    help=(
+        "The number of maximum results that can be retrieved. "
+        "Adjust accordingly."
+    ),
+)
 @click.option("--json", "as_json", is_flag=True, default=False)
 @allow_remote_id_override
 @click.pass_obj
@@ -559,17 +603,20 @@ def environment_variables(
     obj,
     remote_id,
     environment,
+    all_environments,
     pager,
     get_var,
+    limit_results,
     as_json,
 ):
     """Retrieve environment variables."""
-    environment = environment.lower()
     obj.pager = pager
 
     results = obj.client.get_environment_variables(
         website_id=remote_id,
         environment=environment,
+        all_environments=all_environments,
+        limit_results=limit_results,
     )
 
     if as_json:

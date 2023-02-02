@@ -382,5 +382,5 @@ class DeploymentRequest(JsonResponse, APIV3Request):
 
 
 class DeploymentEnvironmentVariablesRequest(JsonResponse, APIV3Request):
-    url = "apps/v3/deployments/{deployment_uuid}/deployment-environment-variables"
+    url = "apps/v3/deployments/{deployment_uuid}/environment-variables"
     method = "GET"
