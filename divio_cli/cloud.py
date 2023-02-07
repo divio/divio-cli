@@ -63,6 +63,17 @@ def get_service_color(service):
 def json_response_request_paginate(
     request, session, limit_results, params={}, url_kwargs={}
 ):
+    if limit_results < 1:
+        click.secho(
+            (
+                "The maximum number of results cannot be lower than 1. "
+                "Please adjust the --limit option accordingly."
+            ),
+            fg="red",
+            err=True,
+        )
+        sys.exit(1)
+
     params.update({"page_size": limit_results})
     try:
         response = request(session, params=params, url_kwargs=url_kwargs)()
@@ -75,12 +86,11 @@ def json_response_request_paginate(
                 if limit_results < count_total_results:
                     click.secho(
                         (
-                            "There are more available results but the "
-                            f"limit is currently set to {limit_results}. "
+                            f"There were {count_total_results} results available, "
+                            f"but the limit is currently set at {limit_results}. "
                             "Adjust the --limit option for more.\n"
                         ),
                         fg="yellow",
-                        err=True,
                     )
                 break
             response = request(
@@ -547,20 +557,17 @@ class CloudClient(object):
         )
         return request()
 
-    def get_deployments(
+    def list_deployments(
         self,
         website_id,
         environment,
         all_environments,
-        deployment,
-        get_var,
         limit_results,
     ):
-        # Retrieve application data.
         project_data = self.get_project(website_id)
 
-        # Map environment uuids and corresponding slugs.
-        environments_uuid_slug_mapping = {
+        # Map environments uuids with their corresponding slugs.
+        envs_uuid_slug_mapping = {
             project_data[key]["uuid"]: project_data[key]["stage"]
             for key in project_data.keys()
             if key.endswith("_status")
@@ -584,66 +591,6 @@ class CloudClient(object):
                 sys.exit(1)
 
         try:
-            # Make sure that a deployment uuid is provided if the user
-            # requested a specific environment variable.
-            if get_var and not deployment:
-                click.secho(
-                    "To retrieve a specific environment variable, you must first provide a deployment.",
-                    fg="red",
-                    err=True,
-                )
-                sys.exit(1)
-
-            if deployment:
-                response = api_requests.DeploymentRequest(
-                    self.session,
-                    url_kwargs={"deployment_uuid": deployment},
-                    params=params,
-                )()
-
-                environment_uuid = response["environment"]
-                environment_slug = environments_uuid_slug_mapping[
-                    response["environment"]
-                ]
-
-                if get_var:
-                    response = (
-                        api_requests.DeploymentEnvironmentVariablesRequest(
-                            self.session,
-                            url_kwargs={"deployment_uuid": deployment},
-                            params=params,
-                        )()
-                    )
-
-                    value = response["deployment_environment_variables"].get(
-                        get_var
-                    )
-                    if value:
-                        response = {
-                            "name": get_var,
-                            "value": value,
-                        }
-                    else:
-                        click.secho(
-                            f"There is no environment variable named {get_var!r} for this environment.",
-                            fg="yellow",
-                        )
-                        sys.exit(0)
-
-                # Either it is a full deployment or a specific environment
-                # variable returned, inlcude the enviroment's slug and uuid.
-                response.update(
-                    {
-                        "environment": environment_slug,
-                        "environment_uuid": environment_uuid,
-                    }
-                )
-
-                # For the sake of always returning a list of dictionaries.
-                return [response]
-
-            # From this point on we are sure that no specific deployment
-            # or environment variable was requested. Proceed with listing.
             results = json_response_request_paginate(
                 api_requests.DeploymentsRequest,
                 self.session,
@@ -657,7 +604,7 @@ class CloudClient(object):
                 # Group deployments by environment
                 grouped_by_environment = [
                     {
-                        "environment": environments_uuid_slug_mapping[key],
+                        "environment": envs_uuid_slug_mapping[key],
                         "environment_uuid": key,
                         "deployments": list(value),
                     }
@@ -668,7 +615,7 @@ class CloudClient(object):
             else:
                 no_deployments_found_msg = (
                     "No deployments found this application."
-                    if not environment
+                    if all_environments
                     else f"No deployments found for {environment!r} environment."
                 )
                 click.secho(
@@ -686,29 +633,108 @@ class CloudClient(object):
 
         return grouped_by_environment
 
-    def get_environment_variables(
+    def get_deployment(
+        self,
+        website_id,
+        deployment_uuid,
+    ):
+        project_data = self.get_project(website_id)
+
+        # Map environments uuids with their corresponding slugs.
+        envs_uuid_slug_mapping = {
+            project_data[key]["uuid"]: project_data[key]["stage"]
+            for key in project_data.keys()
+            if key.endswith("_status")
+        }
+
+        try:
+            deployment = api_requests.DeploymentRequest(
+                self.session,
+                url_kwargs={"deployment_uuid": deployment_uuid},
+            )()
+            environment_uuid = deployment["environment"]
+            deployment.pop("environment")
+
+        except Exception:
+            click.secho(
+                "Error in fetching deployment.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+        return {
+            "environment": envs_uuid_slug_mapping[environment_uuid],
+            "environment_uuid": environment_uuid,
+            "deployment": deployment,
+        }
+
+    def get_deployment_environment_variable(
+        self,
+        website_id,
+        deployment_uuid,
+        get_var,
+    ):
+        project_data = self.get_project(website_id)
+
+        # Map environments uuids with their corresponding slugs.
+        envs_uuid_slug_mapping = {
+            project_data[key]["uuid"]: project_data[key]["stage"]
+            for key in project_data.keys()
+            if key.endswith("_status")
+        }
+
+        try:
+            deployment = api_requests.DeploymentEnvironmentVariablesRequest(
+                self.session,
+                url_kwargs={"deployment_uuid": deployment_uuid},
+            )()
+            environment_uuid = deployment["environment"]
+            deployment.pop("environment")
+
+            value = deployment["environment_variables"].get(get_var)
+            if not value:
+                click.secho(
+                    f"There is no environment variable named {get_var!r} for this environment.",
+                    fg="yellow",
+                )
+                sys.exit(0)
+        except json.decoder.JSONDecodeError:
+            click.secho(
+                "Error in fetching deployment.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+        return {
+            "environment": envs_uuid_slug_mapping[environment_uuid],
+            "environment_uuid": environment_uuid,
+            "deployment": deployment,
+        }
+
+    def list_environment_variables(
         self,
         website_id,
         environment,
         all_environments,
         limit_results,
+        get_var=None,
     ):
         project_data = self.get_project(website_id)
 
-        # Retrieve the keys representing environments
-        # from the V1 project detail endpoint.
-        environments = [key for key in project_data.keys() if "_status" in key]
-        # Map environment uuids and corresponding slugs.
-        environments_uuid_slug_mapping = {
+        # Map environments uuids with their corresponding slugs.
+        envs_uuid_slug_mapping = {
             project_data[key]["uuid"]: project_data[key]["stage"]
-            for key in environments
+            for key in project_data.keys()
+            if key.endswith("_status")
         }
 
         # The environment variables V3 endpoint requires either
         # an application or an environment or both to be present
         # as query parameters. Multiple environments can be provided as well.
         if all_environments:
-            params = {"environment": environments_uuid_slug_mapping.keys()}
+            params = {"application": project_data["uuid"]}
         else:
             environment_key = f"{environment}_status"
             if environment_key in project_data.keys():
@@ -723,6 +749,9 @@ class CloudClient(object):
                 )
                 sys.exit(1)
 
+        if get_var:
+            params.update({"name": get_var})
+
         results = json_response_request_paginate(
             api_requests.GetEnvironmentVariablesRequest,
             self.session,
@@ -736,17 +765,28 @@ class CloudClient(object):
             # Group environment variables by environment
             grouped_by_environment = [
                 {
-                    "environment": environments_uuid_slug_mapping[key],
+                    "environment": envs_uuid_slug_mapping[key],
                     "environment_uuid": key,
                     "environment_variables": list(value),
                 }
                 for key, value in groupby(results, itemgetter("environment"))
             ]
         else:
-            click.echo(
-                "No environment variables found for this application."
-                if not environment
-                else f"No environment variables found for {environment!r} environment."
+            if get_var:
+                no_environment_variables_found_msg = (
+                    f"No environment variable named {get_var!r} found for this application."
+                    if all_environments
+                    else f"No environment variable named {get_var!r} found for {environment!r} environment."
+                )
+            else:
+                no_environment_variables_found_msg = (
+                    "No environment variables found for this application."
+                    if all_environments
+                    else f"No environment variables found for {environment!r} environment."
+                )
+            click.secho(
+                no_environment_variables_found_msg,
+                fg="yellow",
             )
             sys.exit(0)
 
