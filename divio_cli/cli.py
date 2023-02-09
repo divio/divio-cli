@@ -414,7 +414,6 @@ def deployments(obj, remote_id, pager, as_json):
         "started_at",
         "ended_at",
         "status",
-        "is_usable",
         "success",
     ]
 
