@@ -282,12 +282,31 @@ def allow_remote_id_override(func):
     """Adds an identifier option to the command, and gets the proper id"""
 
     @functools.wraps(func)
-    def read_remote_id(remote_id, *args, **kwargs):
+    def read_remote_id(obj, remote_id, *args, **kwargs):
+
         ERROR_MSG = (
             "This command requires a Divio Cloud Project id. Please "
             "provide one with the --remote-id option or call the "
             "command from a project directory."
         )
+
+        if remote_id and not remote_id.isdigit():
+            # If it's not a digit, its probably a UUID. Try to retrieve a ID from the UUID.
+
+            # We are not exposing the ID at all in v3. Also not in legacy.
+            # So, we have to
+            # * get the slug in v3
+            # * use the slug to get the ID in v1.
+
+            try:
+                slug = obj.client.get_application(application_uuid=remote_id)[
+                    "slug"
+                ]
+                remote_id = obj.client.get_website_id_for_slug(slug=slug)
+            except Exception:
+                raise click.ClickException(
+                    "Unable to retrieve application via UUID."
+                )
 
         if not remote_id:
             try:
@@ -297,14 +316,14 @@ def allow_remote_id_override(func):
             else:
                 if not remote_id:
                     raise click.ClickException(ERROR_MSG)
-        return func(remote_id, *args, **kwargs)
+        return func(obj, int(remote_id), *args, **kwargs)
 
     return click.option(
         "--remote-id",
         "remote_id",
         default=None,
-        type=int,
-        help="Remote Project ID to use for project commands. "
+        type=str,
+        help="Remote Project ID or UUID to use for project commands. "
         "Defaults to the project in the current directory using the "
         "configuration file.",
     )(read_remote_id)
