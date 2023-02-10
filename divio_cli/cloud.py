@@ -630,7 +630,7 @@ class CloudClient(object):
                 ]
             else:
                 no_deployments_found_msg = (
-                    "No deployments found this application."
+                    "No deployments found for this application."
                     if all_environments
                     else f"No deployments found for {environment!r} environment."
                 )
@@ -685,11 +685,11 @@ class CloudClient(object):
             "deployment": deployment,
         }
 
-    def get_deployment_environment_variable(
+    def get_deployment_with_environment_variables(
         self,
         website_id,
         deployment_uuid,
-        get_var,
+        variable_name,
     ):
         project_data = self.get_project(website_id)
 
@@ -708,10 +708,10 @@ class CloudClient(object):
             environment_uuid = deployment["environment"]
             deployment.pop("environment")
 
-            value = deployment["environment_variables"].get(get_var)
+            value = deployment["environment_variables"].get(variable_name)
             if not value:
                 click.secho(
-                    f"There is no environment variable named {get_var!r} for this environment.",
+                    f"There is no environment variable named {variable_name!r} for this deployment.",
                     fg="yellow",
                 )
                 sys.exit(0)
@@ -735,7 +735,7 @@ class CloudClient(object):
         environment,
         all_environments,
         limit_results,
-        get_var=None,
+        variable_name=None,
     ):
         project_data = self.get_project(website_id)
 
@@ -765,8 +765,8 @@ class CloudClient(object):
                 )
                 sys.exit(1)
 
-        if get_var:
-            params.update({"name": get_var})
+        if variable_name:
+            params.update({"name": variable_name})
 
         results = json_response_request_paginate(
             api_requests.GetEnvironmentVariablesRequest,
@@ -788,11 +788,11 @@ class CloudClient(object):
                 for key, value in groupby(results, itemgetter("environment"))
             ]
         else:
-            if get_var:
+            if variable_name:
                 no_environment_variables_found_msg = (
-                    f"No environment variable named {get_var!r} found for this application."
+                    f"No environment variable named {variable_name!r} found for this application."
                     if all_environments
-                    else f"No environment variable named {get_var!r} found for {environment!r} environment."
+                    else f"No environment variable named {variable_name!r} found for {environment!r} environment."
                 )
             else:
                 no_environment_variables_found_msg = (
