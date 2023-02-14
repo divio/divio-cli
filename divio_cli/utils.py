@@ -371,3 +371,67 @@ def echo_large_content(content, ctx):
         click.echo_via_pager(content)
     else:
         click.echo(content)
+
+
+def json_response_request_paginate(
+    request, session, limit_results, params={}, url_kwargs={}
+):
+    if limit_results < 1:
+        click.secho(
+            (
+                "The maximum number of results cannot be lower than 1. "
+                "Please adjust the --limit option accordingly."
+            ),
+            fg="red",
+            err=True,
+        )
+        sys.exit(1)
+
+    params.update({"page_size": limit_results})
+    try:
+        response = request(session, params=params, url_kwargs=url_kwargs)()
+        count_total_results = response["count"]
+        results = []
+        while True:
+            results += response["results"]
+            next_page = response.get("next")
+            if not next_page or len(results) >= limit_results:
+                if limit_results < count_total_results:
+                    click.secho(
+                        (
+                            f"There were {count_total_results} results available, "
+                            f"but the limit is currently set at {limit_results}. "
+                            "Adjust the --limit option for more.\n"
+                        ),
+                        fg="yellow",
+                    )
+                break
+            response = request(
+                session,
+                url=next_page,
+            )()
+    except (KeyError, json.decoder.JSONDecodeError):
+        click.secho("Error establishing connection.", fg="red", err=True)
+        sys.exit(1)
+
+    return results
+
+
+def clean_table_cell(d: dict, key: str):
+    """
+    Transforming data as needed to resolve tabulate library bugs
+    concering strings to boolean transformation and None values
+    while limiting a column width in which those data exist.
+    """
+
+    # Retrieving as such is necessary to represent
+    # None values as an empty cell in table format.
+    # The empty string fixes a bug with None values and maxcolwidths.
+    v = d.get(key, "")
+    # These strings need to be converted in booleans due to
+    # a bug when specifying maxcolwidths on table format.
+    if v == "True":
+        return True
+    if v == "False":
+        return False
+    return v

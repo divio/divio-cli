@@ -20,6 +20,7 @@ from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
+    clean_table_cell,
     echo_large_content,
     get_cp_url,
     get_git_checked_branch,
@@ -382,7 +383,7 @@ def application_update(obj, strict):
     )
 
 
-# Deployments Group.
+# Deployments group.
 @app.group()
 @click.option(
     "-p/-P",
@@ -464,7 +465,7 @@ def list_deployments(obj, environment, all_environments, limit_results):
         json_content = json.dumps(results, indent=2)
         echo_large_content(json_content, ctx=obj)
     else:
-        content_tables = ""
+        content = ""
         for env in results:
             env_slug = env["environment"]
             env_uuid = env["environment_uuid"]
@@ -473,14 +474,9 @@ def list_deployments(obj, environment, all_environments, limit_results):
             rows = [
                 [row[key] for key in columns] for row in env["deployments"]
             ]
-            content_table = (
-                content_table_title
-                + "\n"
-                + table(rows, columns, tablefmt="grid")
-                + "\n" * 3
-            )
-            content_tables += content_table
-        echo_large_content(content_tables.strip("\n"), ctx=obj)
+            content_table = table(rows, columns, tablefmt="grid")
+            content += f"{content_table_title}\n{content_table}\n\n"
+        echo_large_content(content.strip("\n"), ctx=obj)
 
 
 @deployments.command(name="get")
@@ -498,18 +494,17 @@ def get_deployment(obj, deployment_uuid):
         echo_large_content(json_content, ctx=obj)
     else:
         content_table_title = f"Environment: {response['environment']} ({response['environment_uuid']})"
-        columns = obj.table_format_columns + ["environment_variables"]
-        # Flipped table.
         deployment["environment_variables"] = ", ".join(
             deployment["environment_variables"]
         )
+        # Flipped table.
+        columns = obj.table_format_columns + ["environment_variables"]
         rows = [[key, deployment[key]] for key in columns]
-        content_table = (
-            content_table_title
-            + "\n"
-            + table(rows, headers=(), tablefmt="grid", maxcolwidths=[None, 50])
+        content_table = table(
+            rows, headers=(), tablefmt="grid", maxcolwidths=50
         )
-        echo_large_content(content_table, ctx=obj)
+        content = f"{content_table_title}\n{content_table}"
+        echo_large_content(content, ctx=obj)
 
 
 @deployments.command(name="get-var")
@@ -540,16 +535,15 @@ def get_deployment_environment_variable(obj, deployment_uuid, variable_name):
         content_table_title = f"Environment: {response['environment']} ({response['environment_uuid']})"
         columns = ["name", "value"]
         # Flipped table.
-        rows = [[key, env_var[key]] for key in columns]
-        echo_large_content(
-            content_table_title
-            + "\n"
-            + table(rows, headers=(), tablefmt="grid"),
-            ctx=obj,
+        rows = [[key, clean_table_cell(env_var, key)] for key in columns]
+        content_table = table(
+            rows, headers=(), tablefmt="grid", maxcolwidths=50
         )
+        content = f"{content_table_title}\n{content_table}"
+        echo_large_content(content, ctx=obj)
 
 
-# Environment variables Group.
+# Environment variables group.
 @app.group(aliases=["env-vars"])
 @click.option(
     "-p/-P",
@@ -631,26 +625,22 @@ def list_environment_variables(
         json_content = json.dumps(results, indent=2)
         echo_large_content(json_content, ctx=obj)
     else:
-        content_tables = ""
+        content = ""
         for result in results:
             env_slug = result["environment"]
             env_uuid = result["environment_uuid"]
             content_table_title = f"Environment: {env_slug} ({env_uuid})"
             columns = obj.table_format_columns
-            # Retrieving the values with the get method is necessary for sensitive
-            # environment variables where the value is not included in the response.
             rows = [
-                [row.get(key) for key in columns]
+                [clean_table_cell(row, key) for key in columns]
                 for row in result["environment_variables"]
             ]
-            content_table = (
-                content_table_title
-                + "\n"
-                + table(rows, columns, tablefmt="grid")
-                + "\n" * 3
+            content_table = table(
+                rows, columns, tablefmt="grid", maxcolwidths=50
             )
-            content_tables += content_table
-        echo_large_content(content_tables.strip("\n"), ctx=obj)
+            content += f"{content_table_title}\n{content_table}\n\n"
+
+        echo_large_content(content.strip("\n"), ctx=obj)
 
 
 @environment_variables.command("get")
@@ -702,25 +692,25 @@ def get_environment_variable(
         if obj.as_json:
             echo_large_content(json.dumps(results, indent=2), ctx=obj)
         else:
-            content_tables = ""
+            content = ""
             for env in results:
                 # Each environment will only include one environment variable
                 # because of the name filter applied previously in the request.
                 environment_variable = env["environment_variables"][0]
                 content_table_title = f"Environment: {env['environment']} ({env['environment_uuid']})"
                 columns = obj.table_format_columns
-                # Retrieving the values with the get method is necessary for sensitive
-                # environment variables where the value is not included in the response.
-                row = [[environment_variable.get(key) for key in columns]]
+                row = [
+                    [
+                        clean_table_cell(environment_variable, key)
+                        for key in columns
+                    ]
+                ]
 
-                content_table = (
-                    content_table_title
-                    + "\n"
-                    + table(row, columns, tablefmt="grid")
-                    + "\n" * 3
+                content_table = table(
+                    row, columns, tablefmt="grid", maxcolwidths=50
                 )
-                content_tables += content_table
-            echo_large_content(content_tables.strip("\n"), ctx=obj)
+                content += f"{content_table_title}\n{content_table}\n\n"
+            echo_large_content(content.strip("\n"), ctx=obj)
     else:
         click.secho(
             f"Could not find an environment variable named {variable_name!r} in any of the available environments."

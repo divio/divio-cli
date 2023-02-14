@@ -14,6 +14,7 @@ from dateutil.parser import isoparse
 from . import api_requests, messages, settings
 from .config import Config
 from .localdev.utils import get_application_home, get_project_settings
+from .utils import json_response_request_paginate
 
 
 ENDPOINT = "https://control.{zone}"
@@ -58,50 +59,6 @@ def get_service_color(service):
         return color_mapping[service]
     except KeyError:
         return "yellow"
-
-
-def json_response_request_paginate(
-    request, session, limit_results, params={}, url_kwargs={}
-):
-    if limit_results < 1:
-        click.secho(
-            (
-                "The maximum number of results cannot be lower than 1. "
-                "Please adjust the --limit option accordingly."
-            ),
-            fg="red",
-            err=True,
-        )
-        sys.exit(1)
-
-    params.update({"page_size": limit_results})
-    try:
-        response = request(session, params=params, url_kwargs=url_kwargs)()
-        count_total_results = response["count"]
-        results = []
-        while True:
-            results += response["results"]
-            next_page = response.get("next")
-            if not next_page or len(results) >= limit_results:
-                if limit_results < count_total_results:
-                    click.secho(
-                        (
-                            f"There were {count_total_results} results available, "
-                            f"but the limit is currently set at {limit_results}. "
-                            "Adjust the --limit option for more.\n"
-                        ),
-                        fg="yellow",
-                    )
-                break
-            response = request(
-                session,
-                url=next_page,
-            )()
-    except (KeyError, json.decoder.JSONDecodeError):
-        click.secho("Error establishing connection.", fg="red", err=True)
-        sys.exit(1)
-
-    return results
 
 
 class CloudClient(object):
@@ -669,9 +626,13 @@ class CloudClient(object):
                 url_kwargs={"deployment_uuid": deployment_uuid},
             )()
             environment_uuid = deployment["environment"]
+            # This also provides a sanity check for the deployment_uuid.
+            # E.g. The user asks for a deployment by providing a uuid
+            # which belongs to a deployment of an environment on a
+            # completely different application. Will trigger a KeyError.
+            environment_slug = envs_uuid_slug_mapping[environment_uuid]
             deployment.pop("environment")
-
-        except Exception:
+        except (json.decoder.JSONDecodeError, KeyError):
             click.secho(
                 "Error in fetching deployment.",
                 fg="red",
@@ -680,7 +641,7 @@ class CloudClient(object):
             sys.exit(1)
 
         return {
-            "environment": envs_uuid_slug_mapping[environment_uuid],
+            "environment": environment_slug,
             "environment_uuid": environment_uuid,
             "deployment": deployment,
         }
@@ -706,16 +667,21 @@ class CloudClient(object):
                 url_kwargs={"deployment_uuid": deployment_uuid},
             )()
             environment_uuid = deployment["environment"]
+            # This also provides a sanity check for the deployment_uuid.
+            # E.g. The user asks for a deployment by providing a uuid
+            # which belongs to a deployment of an environment on a
+            # completely different application. Will trigger a KeyError.
+            environment_slug = envs_uuid_slug_mapping[environment_uuid]
             deployment.pop("environment")
 
             value = deployment["environment_variables"].get(variable_name)
-            if not value:
+            if value is None:
                 click.secho(
                     f"There is no environment variable named {variable_name!r} for this deployment.",
                     fg="yellow",
                 )
                 sys.exit(0)
-        except json.decoder.JSONDecodeError:
+        except (json.decoder.JSONDecodeError, KeyError):
             click.secho(
                 "Error in fetching deployment.",
                 fg="red",
@@ -724,7 +690,7 @@ class CloudClient(object):
             sys.exit(1)
 
         return {
-            "environment": envs_uuid_slug_mapping[environment_uuid],
+            "environment": environment_slug,
             "environment_uuid": environment_uuid,
             "deployment": deployment,
         }
