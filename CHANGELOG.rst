@@ -1,12 +1,12 @@
 Changelog
 =========
 
-3.16.1 (2022-02-01)
+3.16.1 (2023-02-01)
 -------------------
 
 * Add support for ID and UUID as a remote-id parameter. 
 
-3.16.0 (2022-01-25)
+3.16.0 (2023-01-25)
 -------------------
 
 * Support ``-h`` as a shorthand for the ``--help`` option.
