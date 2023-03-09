@@ -2,6 +2,7 @@ import itertools
 import json
 import os
 import sys
+from functools import partial
 
 import click
 import sentry_sdk
@@ -19,6 +20,7 @@ from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
+    clean_table_cell,
     echo_large_content,
     get_cp_url,
     get_git_checked_branch,
@@ -36,6 +38,9 @@ try:
 except ImportError:
     import pdb
 
+# Display the default value for options globally.
+click.option = partial(click.option, show_default=True)
+
 
 @click.group(
     cls=ClickAliasedGroup,
@@ -46,13 +51,6 @@ except ImportError:
     "--debug/--no-debug",
     default=False,
     help="Drop into the debugger if command execution raises an exception.",
-)
-@click.option(
-    "-P",
-    "--no-pager",
-    default=False,
-    is_flag=True,
-    help="Will not show content in a pager if set.",
 )
 @click.option(
     "-z",
@@ -69,7 +67,7 @@ except ImportError:
     hidden=True,
 )
 @click.pass_context
-def cli(ctx, debug, no_pager, zone, sudo):
+def cli(ctx, debug, zone, sudo):
     if sudo:
         click.secho("Running as sudo", fg="yellow")
 
@@ -78,7 +76,6 @@ def cli(ctx, debug, no_pager, zone, sudo):
         get_endpoint(zone=zone), debug=debug, sudo=sudo
     )
     ctx.obj.zone = zone
-    ctx.obj.pager = not no_pager
 
     if debug:
 
@@ -192,10 +189,18 @@ def app():
     default=False,
     help="Group by organisation.",
 )
+@click.option(
+    "-p/-P",
+    "--pager/--no-pager",
+    default=False,
+    is_flag=True,
+    help="Choose whether to display content via pager or not.",
+)
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
-def application_list(obj, grouped, as_json):
+def application_list(obj, grouped, pager, as_json):
     """List all your applications."""
+    obj.pager = pager
     api_response = obj.client.get_applications()
 
     if as_json:
@@ -378,91 +383,341 @@ def application_update(obj, strict):
     )
 
 
-@app.command(name="env-vars")
+# Deployments group.
+@app.group()
 @click.option(
-    "-s",
-    "--environment",
-    default="test",
-    type=str,
-    help="Manage the cloud application's environment variables.",
-)
-@click.option(
-    "--all/--custom",
-    "show_all_vars",
+    "-p/-P",
+    "--pager/--no-pager",
     default=False,
-    help="--all shows automatically applied environment variables as well as user-specified variables.",
-)
-@click.option("--json", "as_json", is_flag=True, default=False)
-@click.option(
-    "--get",
-    "get_vars",
-    default=None,
-    type=str,
-    multiple=True,
-    help="Get a specific environment variable.",
+    is_flag=True,
+    help="Choose whether to display content via pager or not.",
 )
 @click.option(
-    "--set",
-    "set_vars",
-    default=None,
-    type=click.Tuple([str, str]),
-    multiple=True,
-    help=(
-        "Set a specific custom environment variable\n\n"
-        "example: divio app env-vars set DEBUG False"
-    ),
-)
-@click.option(
-    "--unset",
-    "unset_vars",
-    default=None,
-    type=str,
-    multiple=True,
-    help="Remove an environment variable.",
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format or not.",
 )
 @click.pass_obj
 @allow_remote_id_override
-def environment_variables(
-    obj,
-    remote_id,
-    environment,
-    show_all_vars,
-    as_json,
-    get_vars,
-    set_vars,
-    unset_vars,
+def deployments(obj, remote_id, pager, as_json):
+    """Retrieve deployments."""
+
+    obj.remote_id = remote_id
+    obj.pager = pager
+    obj.as_json = as_json
+
+    # Deployments in table format display less content than in
+    # json format. Here are the desired columns to be displayed.
+    obj.table_format_columns = [
+        "uuid",
+        "author",
+        "started_at",
+        "ended_at",
+        "status",
+        "success",
+    ]
+
+
+@deployments.command(name="list")
+@click.option(
+    "-s",
+    "--stage",
+    "-e",
+    "--environment",
+    "environment",
+    default="test",
+    type=str,
+    help="Select an environment (by name) from which deployments will be retrieved.",
+)
+@click.option(
+    "--all",
+    "--all-environments",
+    "all_environments",
+    default=False,
+    is_flag=True,
+    help="Retrieve deployments from all available environments.",
+)
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    default=50,
+    help="The maximum number of results that can be retrieved.",
+)
+@click.pass_obj
+def list_deployments(obj, environment, all_environments, limit_results):
+    """
+    Retrieve deployments from an environment or
+    deployments across all environments of an application.
+    """
+
+    results = obj.client.list_deployments(
+        website_id=obj.remote_id,
+        environment=environment,
+        all_environments=all_environments,
+        limit_results=limit_results,
+    )
+
+    if obj.as_json:
+        json_content = json.dumps(results, indent=2)
+        echo_large_content(json_content, ctx=obj)
+    else:
+        content = ""
+        for env in results:
+            env_slug = env["environment"]
+            env_uuid = env["environment_uuid"]
+            content_table_title = f"Environment: {env_slug} ({env_uuid})"
+            columns = obj.table_format_columns
+            rows = [
+                [row[key] for key in columns] for row in env["deployments"]
+            ]
+            content_table = table(rows, columns, tablefmt="grid")
+            content += f"{content_table_title}\n{content_table}\n\n"
+        echo_large_content(content.strip("\n"), ctx=obj)
+
+
+@deployments.command(name="get")
+@click.argument("deployment_uuid")
+@click.pass_obj
+def get_deployment(obj, deployment_uuid):
+    """
+    Retrieve a deployment (by uuid).
+    """
+
+    response = obj.client.get_deployment(obj.remote_id, deployment_uuid)
+    deployment = response["deployment"]
+    if obj.as_json:
+        json_content = json.dumps([response], indent=2)
+        echo_large_content(json_content, ctx=obj)
+    else:
+        content_table_title = f"Environment: {response['environment']} ({response['environment_uuid']})"
+        deployment["environment_variables"] = ", ".join(
+            deployment["environment_variables"]
+        )
+        # Flipped table.
+        columns = obj.table_format_columns + ["environment_variables"]
+        rows = [[key, deployment[key]] for key in columns]
+        content_table = table(
+            rows, headers=(), tablefmt="grid", maxcolwidths=50
+        )
+        content = f"{content_table_title}\n{content_table}"
+        echo_large_content(content, ctx=obj)
+
+
+@deployments.command(name="get-var")
+@click.argument("deployment_uuid")
+@click.argument("variable_name")
+@click.pass_obj
+def get_deployment_environment_variable(obj, deployment_uuid, variable_name):
+    """
+    Retrieve an environment variable (by name) from a deployment (by uuid).
+    """
+
+    response = obj.client.get_deployment_with_environment_variables(
+        obj.remote_id,
+        deployment_uuid,
+        variable_name,
+    )
+    deployment = response["deployment"]
+    env_var = {
+        "name": variable_name,
+        "value": deployment["environment_variables"].get(variable_name),
+        "environment": response["environment"],
+        "environment_uuid": response["environment_uuid"],
+    }
+    if obj.as_json:
+        json_content = json.dumps([env_var], indent=2)
+        echo_large_content(json_content, ctx=obj)
+    else:
+        content_table_title = f"Environment: {response['environment']} ({response['environment_uuid']})"
+        columns = ["name", "value"]
+        # Flipped table.
+        rows = [[key, clean_table_cell(env_var, key)] for key in columns]
+        content_table = table(
+            rows, headers=(), tablefmt="grid", maxcolwidths=50
+        )
+        content = f"{content_table_title}\n{content_table}"
+        echo_large_content(content, ctx=obj)
+
+
+# Environment variables group.
+@app.group(aliases=["env-vars"])
+@click.option(
+    "-p/-P",
+    "--pager/--no-pager",
+    default=False,
+    is_flag=True,
+    help="Choose whether to display content via pager or not.",
+)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format or not.",
+)
+@click.pass_obj
+@allow_remote_id_override
+def environment_variables(obj, remote_id, pager, as_json):
+    """Retrieve environment variables."""
+
+    obj.remote_id = remote_id
+    obj.pager = pager
+    obj.as_json = as_json
+
+    # Environment variables in table format display less content than in
+    # json format. Here are the desired columns to be displayed.
+    obj.table_format_columns = ["name", "value", "is_sensitive"]
+
+
+@environment_variables.command("list")
+@click.option(
+    "-s",
+    "--stage",
+    "-e",
+    "--environment",
+    "environment",
+    default="test",
+    type=str,
+    help="Select an environment (by name) from which environment variables will be retrieved.",
+)
+@click.option(
+    "--all",
+    "--all-environments",
+    "all_environments",
+    default=False,
+    is_flag=True,
+    help="Retrieve environment variables from all available environments.",
+)
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    default=50,
+    help="The maximum number of results that can be retrieved.",
+)
+@click.pass_obj
+def list_environment_variables(
+    obj, environment, all_environments, limit_results
 ):
     """
-    Get and set environment vars.
-
-    WARNING: This command is experimental and may change in a future release.
+    Retrieve environment variables from an environment
+    or environment variables across all environments of an application.
     """
-    environment = environment.lower()
-    if set_vars or unset_vars:
-        set_vars = dict(set_vars)
-        data = obj.client.set_custom_environment_variables(
-            website_id=remote_id,
-            environment=environment,
-            set_vars=set_vars,
-            unset_vars=unset_vars,
-        )
+
+    results = obj.client.list_environment_variables(
+        website_id=obj.remote_id,
+        environment=environment,
+        all_environments=all_environments,
+        limit_results=limit_results,
+    )
+    # No need to include the environment uuid in each variable
+    # as it is provided anyway for both json and table format.
+    for result in results:
+        for env_var in result["environment_variables"]:
+            env_var.pop("environment")
+
+    if obj.as_json:
+        json_content = json.dumps(results, indent=2)
+        echo_large_content(json_content, ctx=obj)
     else:
-        data = obj.client.get_environment_variables(
-            website_id=remote_id,
-            environment=environment,
-            custom_only=not show_all_vars,
-        )
-        if get_vars:
-            data = {
-                key: value for key, value in data.items() if key in get_vars
-            }
-    if as_json:
-        click.echo(json.dumps(data, indent=2, sort_keys=True))
+        content = ""
+        for result in results:
+            env_slug = result["environment"]
+            env_uuid = result["environment_uuid"]
+            content_table_title = f"Environment: {env_slug} ({env_uuid})"
+            columns = obj.table_format_columns
+            rows = [
+                [clean_table_cell(row, key) for key in columns]
+                for row in result["environment_variables"]
+            ]
+            content_table = table(
+                rows, columns, tablefmt="grid", maxcolwidths=50
+            )
+            content += f"{content_table_title}\n{content_table}\n\n"
+
+        echo_large_content(content.strip("\n"), ctx=obj)
+
+
+@environment_variables.command("get")
+@click.option(
+    "-s",
+    "--stage",
+    "-e",
+    "--environment",
+    "environment",
+    default="test",
+    type=str,
+    help="Select an environment (by name) from which the environment variable will be retrieved.",
+)
+@click.option(
+    "--all",
+    "--all-environments",
+    "all_environments",
+    default=False,
+    is_flag=True,
+    help="Retrieve an environment variable across all environments.",
+)
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    default=50,
+    help="The maximum number of results that can be retrieved.",
+)
+@click.argument("variable_name")
+@click.pass_obj
+def get_environment_variable(
+    obj, variable_name, environment, all_environments, limit_results
+):
+    """
+    Retrieve an environment variable (by name) from an environment
+    or any occurrence of it across all environments of an application.
+    """
+
+    results = obj.client.list_environment_variables(
+        website_id=obj.remote_id,
+        environment=environment,
+        all_environments=all_environments,
+        limit_results=limit_results,
+        variable_name=variable_name,
+    )
+
+    if results:
+        if obj.as_json:
+            echo_large_content(json.dumps(results, indent=2), ctx=obj)
+        else:
+            content = ""
+            for env in results:
+                # Each environment will only include one environment variable
+                # because of the name filter applied previously in the request.
+                environment_variable = env["environment_variables"][0]
+                content_table_title = f"Environment: {env['environment']} ({env['environment_uuid']})"
+                columns = obj.table_format_columns
+                row = [
+                    [
+                        clean_table_cell(environment_variable, key)
+                        for key in columns
+                    ]
+                ]
+
+                content_table = table(
+                    row, columns, tablefmt="grid", maxcolwidths=50
+                )
+                content += f"{content_table_title}\n{content_table}\n\n"
+            echo_large_content(content.strip("\n"), ctx=obj)
     else:
-        header = ("Key", "Value")
-        data = sorted([(key, value) for key, value in data.items()])
-        output = table(data, header)
-        echo_large_content(output, obj)
+        click.secho(
+            f"Could not find an environment variable named {variable_name!r} in any of the available environments."
+            if all_environments
+            else f"Could not find an environment variable named {variable_name!r} for {environment!r} environment.",
+            fg="yellow",
+        )
 
 
 @app.command(name="status")
@@ -475,7 +730,10 @@ def app_status():
 @click.argument("slug")
 @click.option(
     "-s",
+    "--stage",
+    "-e",
     "--environment",
+    "environment",
     default="test",
     help="Specify environment from which media and content data will be pulled.",
 )

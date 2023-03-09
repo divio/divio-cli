@@ -2,7 +2,9 @@ import json
 import os
 import re
 import sys
+from itertools import groupby
 from netrc import netrc
+from operator import itemgetter
 from time import sleep
 from urllib.parse import urlparse
 
@@ -12,7 +14,7 @@ from dateutil.parser import isoparse
 from . import api_requests, messages, settings
 from .config import Config
 from .localdev.utils import get_application_home, get_project_settings
-from .utils import json_dumps_unicode
+from .utils import json_response_request_paginate
 
 
 ENDPOINT = "https://control.{zone}"
@@ -528,47 +530,249 @@ class CloudClient(object):
         )
         return request()
 
-    def get_environment_variables(
-        self, website_id, environment, custom_only=True
+    def list_deployments(
+        self,
+        website_id,
+        environment,
+        all_environments,
+        limit_results,
     ):
         project_data = self.get_project(website_id)
+
+        # Map environments uuids with their corresponding slugs.
+        envs_uuid_slug_mapping = {
+            project_data[key]["uuid"]: project_data[key]["stage"]
+            for key in project_data.keys()
+            if key.endswith("_status")
+        }
+
+        # Limit results to application deployments by default
+        # and allow to filter by environment.
+        params = {"application": project_data["uuid"]}
+
+        # Retrieve environment data if environment is provided.
+        if not all_environments:
+            try:
+                env = project_data[f"{environment}_status"]
+                params.update({"environment": env["uuid"]})
+            except KeyError:
+                click.secho(
+                    f"Environment with the name {environment!r} does not exist.",
+                    fg="red",
+                    err=True,
+                )
+                sys.exit(1)
+
         try:
-            _ = project_data["{}_status".format(environment)]
-        except KeyError:
+            results = json_response_request_paginate(
+                api_requests.DeploymentsRequest,
+                self.session,
+                params=params,
+                limit_results=limit_results,
+            )
+
+            if results:
+                # Sort deployments by environment (necessary for groupby to be applied)
+                results = sorted(results, key=itemgetter("environment"))
+                # Group deployments by environment
+                grouped_by_environment = [
+                    {
+                        "environment": envs_uuid_slug_mapping[key],
+                        "environment_uuid": key,
+                        "deployments": list(value),
+                    }
+                    for key, value in groupby(
+                        results, itemgetter("environment")
+                    )
+                ]
+            else:
+                no_deployments_found_msg = (
+                    "No deployments found for this application."
+                    if all_environments
+                    else f"No deployments found for {environment!r} environment."
+                )
+                click.secho(
+                    no_deployments_found_msg,
+                    fg="yellow",
+                )
+                sys.exit(0)
+        except json.decoder.JSONDecodeError:
             click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
+                "Error in fetching deployments.",
                 fg="red",
                 err=True,
             )
             sys.exit(1)
 
-        if custom_only:
-            Request = api_requests.GetCustomEnvironmentVariablesRequest
-        else:
-            Request = api_requests.GetEnvironmentVariablesRequest
-        request = Request(
-            self.session,
-            url_kwargs={"website_id": website_id, "environment": environment},
-        )
-        return request()
+        return grouped_by_environment
 
-    def set_custom_environment_variables(
-        self, website_id, environment, set_vars, unset_vars
+    def get_deployment(
+        self,
+        website_id,
+        deployment_uuid,
     ):
-        current_vars = self.get_environment_variables(
-            website_id, environment, custom_only=True
-        )
-        current_vars.update(set_vars)
-        for var in unset_vars:
-            current_vars.pop(var, None)
-        request = api_requests.SetCustomEnvironmentVariablesRequest(
+        project_data = self.get_project(website_id)
+
+        # Map environments uuids with their corresponding slugs.
+        envs_uuid_slug_mapping = {
+            project_data[key]["uuid"]: project_data[key]["stage"]
+            for key in project_data.keys()
+            if key.endswith("_status")
+        }
+
+        try:
+            deployment = api_requests.DeploymentRequest(
+                self.session,
+                url_kwargs={"deployment_uuid": deployment_uuid},
+            )()
+            environment_uuid = deployment["environment"]
+            # This also provides a sanity check for the deployment_uuid.
+            # E.g. The user asks for a deployment by providing a uuid
+            # which belongs to a deployment of an environment on a
+            # completely different application. Will trigger a KeyError.
+            environment_slug = envs_uuid_slug_mapping[environment_uuid]
+            deployment.pop("environment")
+        except (json.decoder.JSONDecodeError, KeyError):
+            click.secho(
+                "Error in fetching deployment.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+        return {
+            "environment": environment_slug,
+            "environment_uuid": environment_uuid,
+            "deployment": deployment,
+        }
+
+    def get_deployment_with_environment_variables(
+        self,
+        website_id,
+        deployment_uuid,
+        variable_name,
+    ):
+        project_data = self.get_project(website_id)
+
+        # Map environments uuids with their corresponding slugs.
+        envs_uuid_slug_mapping = {
+            project_data[key]["uuid"]: project_data[key]["stage"]
+            for key in project_data.keys()
+            if key.endswith("_status")
+        }
+
+        try:
+            deployment = api_requests.DeploymentEnvironmentVariablesRequest(
+                self.session,
+                url_kwargs={"deployment_uuid": deployment_uuid},
+            )()
+            environment_uuid = deployment["environment"]
+            # This also provides a sanity check for the deployment_uuid.
+            # E.g. The user asks for a deployment by providing a uuid
+            # which belongs to a deployment of an environment on a
+            # completely different application. Will trigger a KeyError.
+            environment_slug = envs_uuid_slug_mapping[environment_uuid]
+            deployment.pop("environment")
+
+            value = deployment["environment_variables"].get(variable_name)
+            if value is None:
+                click.secho(
+                    f"There is no environment variable named {variable_name!r} for this deployment.",
+                    fg="yellow",
+                )
+                sys.exit(0)
+        except (json.decoder.JSONDecodeError, KeyError):
+            click.secho(
+                "Error in fetching deployment.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+        return {
+            "environment": environment_slug,
+            "environment_uuid": environment_uuid,
+            "deployment": deployment,
+        }
+
+    def list_environment_variables(
+        self,
+        website_id,
+        environment,
+        all_environments,
+        limit_results,
+        variable_name=None,
+    ):
+        project_data = self.get_project(website_id)
+
+        # Map environments uuids with their corresponding slugs.
+        envs_uuid_slug_mapping = {
+            project_data[key]["uuid"]: project_data[key]["stage"]
+            for key in project_data.keys()
+            if key.endswith("_status")
+        }
+
+        # The environment variables V3 endpoint requires either
+        # an application or an environment or both to be present
+        # as query parameters. Multiple environments can be provided as well.
+        if all_environments:
+            params = {"application": project_data["uuid"]}
+        else:
+            environment_key = f"{environment}_status"
+            if environment_key in project_data.keys():
+                params = {"environment": project_data[environment_key]["uuid"]}
+            else:
+                click.secho(
+                    "Environment with the name '{}' does not exist.".format(
+                        environment
+                    ),
+                    fg="red",
+                    err=True,
+                )
+                sys.exit(1)
+
+        if variable_name:
+            params.update({"name": variable_name})
+
+        results = json_response_request_paginate(
+            api_requests.GetEnvironmentVariablesRequest,
             self.session,
-            url_kwargs={"website_id": website_id, "environment": environment},
-            data={"vars": json_dumps_unicode(current_vars)},
+            params=params,
+            limit_results=limit_results,
         )
-        return request()
+
+        if results:
+            # Sort environment variables by environment (necessary for groupby to be applied)
+            results = sorted(results, key=itemgetter("environment"))
+            # Group environment variables by environment
+            grouped_by_environment = [
+                {
+                    "environment": envs_uuid_slug_mapping[key],
+                    "environment_uuid": key,
+                    "environment_variables": list(value),
+                }
+                for key, value in groupby(results, itemgetter("environment"))
+            ]
+        else:
+            if variable_name:
+                no_environment_variables_found_msg = (
+                    f"No environment variable named {variable_name!r} found for this application."
+                    if all_environments
+                    else f"No environment variable named {variable_name!r} found for {environment!r} environment."
+                )
+            else:
+                no_environment_variables_found_msg = (
+                    "No environment variables found for this application."
+                    if all_environments
+                    else f"No environment variables found for {environment!r} environment."
+                )
+            click.secho(
+                no_environment_variables_found_msg,
+                fg="yellow",
+            )
+            sys.exit(0)
+
+        return grouped_by_environment
 
     def get_repository_dsn(self, website_id):
         """

@@ -73,6 +73,7 @@ class APIRequest(object):
         session,
         url=None,
         url_kwargs=None,
+        params=None,
         data=None,
         files=None,
         *args,
@@ -82,6 +83,7 @@ class APIRequest(object):
         if url:
             self.url = url
         self.url_kwargs = url_kwargs or {}
+        self.params = params or {}
         self.data = data or {}
         self.files = files or {}
 
@@ -125,6 +127,7 @@ class APIRequest(object):
                 data=self.data,
                 files=self.files,
                 headers=self.get_headers(),
+                params=self.params,
                 *args,
                 **kwargs,
             )
@@ -163,6 +166,13 @@ class APIRequest(object):
 
     def process(self, response):
         return response.json()
+
+
+class APIV3Request(APIRequest):
+    def request(self, *args, **kwargs):
+        return super(APIV3Request, self).request(
+            v3_compatibilty=True, *args, **kwargs
+        )
 
 
 class RawResponse(object):
@@ -334,19 +344,9 @@ class UploadMediaFilesProgressRequest(JsonResponse, APIRequest):
     method = "GET"
 
 
-class GetEnvironmentVariablesRequest(JsonResponse, APIRequest):
-    url = (
-        "/api/v1/website/{website_id}/env/{environment}/environment-variables/"
-    )
-
-
-class GetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/env/{environment}/environment-variables/custom/"
-
-
-class SetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
-    method = "POST"
-    url = "/api/v1/website/{website_id}/env/{environment}/environment-variables/custom/"
+class GetEnvironmentVariablesRequest(JsonResponse, APIV3Request):
+    method = "GET"
+    url = "/apps/v3/environment-variables/"
 
 
 # Repository
@@ -354,13 +354,6 @@ class SetCustomEnvironmentVariablesRequest(JsonResponse, APIRequest):
 
 class RepositoryRequest(JsonResponse, APIRequest):
     url = "/api/v2/repositories/?website={website_id}"
-
-
-class APIV3Request(APIRequest):
-    def request(self, *args, **kwargs):
-        return super(APIV3Request, self).request(
-            v3_compatibilty=True, *args, **kwargs
-        )
 
 
 class LogRequest(JsonResponse, APIV3Request):
@@ -375,6 +368,21 @@ class EnvironmentRequest(JsonResponse, APIV3Request):
 
 class DeployLogRequest(JsonResponse, APIV3Request):
     url = "apps/v3/deployments/{deployment_uuid}/logs"
+    method = "GET"
+
+
+class DeploymentsRequest(JsonResponse, APIV3Request):
+    url = "apps/v3/deployments/"
+    method = "GET"
+
+
+class DeploymentRequest(JsonResponse, APIV3Request):
+    url = "apps/v3/deployments/{deployment_uuid}/"
+    method = "GET"
+
+
+class DeploymentEnvironmentVariablesRequest(JsonResponse, APIV3Request):
+    url = "apps/v3/deployments/{deployment_uuid}/environment-variables"
     method = "GET"
 
 
