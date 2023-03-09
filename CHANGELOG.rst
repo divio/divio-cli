@@ -1,6 +1,12 @@
 Changelog
 =========
 
+3.17.0 (2023-03-09)
+-------------------
+
+* Added new implementation of environment variables
+* Added support for deployments listing for applications
+
 3.16.1 (2023-02-01)
 -------------------
 
