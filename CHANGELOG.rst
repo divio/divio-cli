@@ -4,7 +4,7 @@ Changelog
 3.17.1 (2023-03-09)
 -------------------
 
-* Require at least version 0.9.0 of tabulate to be installed
+* Require at least version 0.8.10 of tabulate to be installed
 
 3.17.0 (2023-03-09)
 -------------------
