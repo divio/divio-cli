@@ -564,7 +564,7 @@ class CloudClient(object):
                 sys.exit(1)
 
         try:
-            results = json_response_request_paginate(
+            results, messages = json_response_request_paginate(
                 api_requests.DeploymentsRequest,
                 self.session,
                 params=params,
@@ -575,7 +575,7 @@ class CloudClient(object):
                 # Sort deployments by environment (necessary for groupby to be applied)
                 results = sorted(results, key=itemgetter("environment"))
                 # Group deployments by environment
-                grouped_by_environment = [
+                results_grouped_by_environment = [
                     {
                         "environment": envs_uuid_slug_mapping[key],
                         "environment_uuid": key,
@@ -604,7 +604,7 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-        return grouped_by_environment
+        return results_grouped_by_environment, messages
 
     def get_deployment(
         self,
@@ -734,7 +734,7 @@ class CloudClient(object):
         if variable_name:
             params.update({"name": variable_name})
 
-        results = json_response_request_paginate(
+        results, messages = json_response_request_paginate(
             api_requests.GetEnvironmentVariablesRequest,
             self.session,
             params=params,
@@ -745,7 +745,7 @@ class CloudClient(object):
             # Sort environment variables by environment (necessary for groupby to be applied)
             results = sorted(results, key=itemgetter("environment"))
             # Group environment variables by environment
-            grouped_by_environment = [
+            results_grouped_by_environment = [
                 {
                     "environment": envs_uuid_slug_mapping[key],
                     "environment_uuid": key,
@@ -772,7 +772,7 @@ class CloudClient(object):
             )
             sys.exit(0)
 
-        return grouped_by_environment
+        return results_grouped_by_environment, messages
 
     def get_repository_dsn(self, website_id):
         """
