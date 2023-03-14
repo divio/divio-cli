@@ -432,7 +432,7 @@ def deployments(obj, remote_id, pager, as_json):
     help="Select an environment (by name) from which deployments will be retrieved.",
 )
 @click.option(
-    "--all",
+    "--all-envs",
     "--all-environments",
     "all_environments",
     default=False,
@@ -444,7 +444,6 @@ def deployments(obj, remote_id, pager, as_json):
     "--limit-results",
     "limit_results",
     type=int,
-    default=50,
     help="The maximum number of results that can be retrieved.",
 )
 @click.pass_obj
@@ -454,7 +453,7 @@ def list_deployments(obj, environment, all_environments, limit_results):
     deployments across all environments of an application.
     """
 
-    results = obj.client.list_deployments(
+    results, messages = obj.client.list_deployments(
         website_id=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
@@ -478,6 +477,11 @@ def list_deployments(obj, environment, all_environments, limit_results):
             content += f"{content_table_title}\n{content_table}\n\n"
         echo_large_content(content.strip("\n"), ctx=obj)
 
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
+
 
 @deployments.command(name="get")
 @click.argument("deployment_uuid")
@@ -499,7 +503,7 @@ def get_deployment(obj, deployment_uuid):
         )
         # Flipped table.
         columns = obj.table_format_columns + ["environment_variables"]
-        rows = [[key, deployment[key]] for key in columns]
+        rows = [[key, deployment[key] or ""] for key in columns]
         content_table = table(
             rows, headers=(), tablefmt="grid", maxcolwidths=50
         )
@@ -585,7 +589,7 @@ def environment_variables(obj, remote_id, pager, as_json):
     help="Select an environment (by name) from which environment variables will be retrieved.",
 )
 @click.option(
-    "--all",
+    "--all-envs",
     "--all-environments",
     "all_environments",
     default=False,
@@ -597,7 +601,6 @@ def environment_variables(obj, remote_id, pager, as_json):
     "--limit-results",
     "limit_results",
     type=int,
-    default=50,
     help="The maximum number of results that can be retrieved.",
 )
 @click.pass_obj
@@ -609,7 +612,7 @@ def list_environment_variables(
     or environment variables across all environments of an application.
     """
 
-    results = obj.client.list_environment_variables(
+    results, messages = obj.client.list_environment_variables(
         website_id=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
@@ -642,6 +645,11 @@ def list_environment_variables(
 
         echo_large_content(content.strip("\n"), ctx=obj)
 
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
+
 
 @environment_variables.command("get")
 @click.option(
@@ -655,7 +663,7 @@ def list_environment_variables(
     help="Select an environment (by name) from which the environment variable will be retrieved.",
 )
 @click.option(
-    "--all",
+    "--all-envs",
     "--all-environments",
     "all_environments",
     default=False,
@@ -667,7 +675,6 @@ def list_environment_variables(
     "--limit-results",
     "limit_results",
     type=int,
-    default=50,
     help="The maximum number of results that can be retrieved.",
 )
 @click.argument("variable_name")
@@ -680,7 +687,7 @@ def get_environment_variable(
     or any occurrence of it across all environments of an application.
     """
 
-    results = obj.client.list_environment_variables(
+    results, messages = obj.client.list_environment_variables(
         website_id=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
@@ -718,6 +725,11 @@ def get_environment_variable(
             else f"Could not find an environment variable named {variable_name!r} for {environment!r} environment.",
             fg="yellow",
         )
+
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
 
 
 @app.command(name="status")

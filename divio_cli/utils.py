@@ -376,7 +376,7 @@ def echo_large_content(content, ctx):
 def json_response_request_paginate(
     request, session, limit_results, params={}, url_kwargs={}
 ):
-    if limit_results < 1:
+    if limit_results is not None and limit_results < 1:
         click.secho(
             (
                 "The maximum number of results cannot be lower than 1. "
@@ -392,18 +392,24 @@ def json_response_request_paginate(
         response = request(session, params=params, url_kwargs=url_kwargs)()
         count_total_results = response["count"]
         results = []
+        messages = []
         while True:
             results += response["results"]
             next_page = response.get("next")
-            if not next_page or len(results) >= limit_results:
+
+            if not limit_results and not next_page:
+                break
+
+            if limit_results and (
+                not next_page or len(results) >= limit_results
+            ):
                 if limit_results < count_total_results:
-                    click.secho(
+                    messages.append(
                         (
                             f"There were {count_total_results} results available, "
                             f"but the limit is currently set at {limit_results}. "
-                            "Adjust the --limit option for more.\n"
-                        ),
-                        fg="yellow",
+                            "Adjust the --limit option for more."
+                        )
                     )
                 break
             response = request(
@@ -414,7 +420,7 @@ def json_response_request_paginate(
         click.secho("Error establishing connection.", fg="red", err=True)
         sys.exit(1)
 
-    return results
+    return results, messages
 
 
 def clean_table_cell(d: dict, key: str):
