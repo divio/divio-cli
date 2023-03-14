@@ -7,6 +7,7 @@ x.x.x (x-x-x)
 * Updated commands for deployments and environment variables to have no limit by default.
 * Changed --all option to --all-envs for deployments and environment variables to avoid confusion.
 * Display warnings related to the --limit option at the bottom of the rendered content for deployments and environment variables.
+* Remove informational section about now deprecated application from the setup command.
 
 3.17.1 (2023-03-09)
 -------------------
