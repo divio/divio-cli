@@ -21,6 +21,7 @@ from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
     clean_table_cell,
+    echo_environment_variables_as_txt,
     echo_large_content,
     get_cp_url,
     get_git_checked_branch,
@@ -194,7 +195,7 @@ def app():
     "--pager/--no-pager",
     default=False,
     is_flag=True,
-    help="Choose whether to display content via pager or not.",
+    help="Choose whether to display content via pager.",
 )
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
@@ -390,14 +391,14 @@ def application_update(obj, strict):
     "--pager/--no-pager",
     default=False,
     is_flag=True,
-    help="Choose whether to display content via pager or not.",
+    help="Choose whether to display content via pager.",
 )
 @click.option(
     "--json",
     "as_json",
     is_flag=True,
     default=False,
-    help="Choose whether to display content in json format or not.",
+    help="Choose whether to display content in json format.",
 )
 @click.pass_obj
 @allow_remote_id_override
@@ -552,21 +553,21 @@ def get_deployment_environment_variable(obj, deployment_uuid, variable_name):
     "--pager/--no-pager",
     default=False,
     is_flag=True,
-    help="Choose whether to display content via pager or not.",
+    help="Choose whether to display content via pager.",
 )
 @click.option(
     "--json",
     "as_json",
     is_flag=True,
     default=False,
-    help="Choose whether to display content in json format or not.",
+    help="Choose whether to display content in json format.",
 )
 @click.option(
     "--txt",
     "as_txt",
     is_flag=True,
     default=False,
-    help="Choose whether to display content in a simple txt-like format (names and values only) or not.",
+    help="Choose whether to display content in a simple txt-like format (names and values only).",
 )
 @click.pass_obj
 @allow_remote_id_override
@@ -634,18 +635,8 @@ def list_environment_variables(
         json_content = json.dumps(results, indent=2)
         echo_large_content(json_content, ctx=obj)
     elif obj.as_txt:
-        content = ""
-        for result in results:
-            content_title = f"Environment: {result['environment']} ({result['environment_uuid']})"
-            content += f"{content_title}\n{'-'*len(content_title)}\n"
-            for row in result["environment_variables"]:
-                if not row["is_sensitive"]:
-                    content += f"{row['name']}={row['value']}\n"
-            content += "\n\n"
-        echo_large_content(content.strip("\n"), ctx=obj)
-        click.secho(
-            "\nSensitive environment variables are not included in this view.",
-            fg="yellow",
+        echo_environment_variables_as_txt(
+            results, obj, all_environments, environment
         )
     else:
         content = ""
@@ -717,19 +708,8 @@ def get_environment_variable(
         if obj.as_json:
             echo_large_content(json.dumps(results, indent=2), ctx=obj)
         elif obj.as_txt:
-            content = ""
-            for result in results:
-                env_var = result["environment_variables"][0]
-                if not env_var["is_sensitive"]:
-                    content_title = f"Environment: {result['environment']} ({result['environment_uuid']})"
-                    content += f"{content_title}\n{'-'*len(content_title)}\n"
-                    content += f"{env_var['name']}={env_var['value']}\n\n\n"
-            if content:
-                echo_large_content(content.strip("\n"), ctx=obj)
-
-            click.secho(
-                "\nSensitive environment variables are not included in this view.",
-                fg="yellow",
+            echo_environment_variables_as_txt(
+                results, obj, all_environments, environment, variable_name
             )
         else:
             content = ""
