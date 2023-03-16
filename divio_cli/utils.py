@@ -441,3 +441,49 @@ def clean_table_cell(d: dict, key: str):
     if v == "False":
         return False
     return v
+
+
+def echo_environment_variables_as_txt(
+    results, ctx, all_environments, environment, variable_name=None
+):
+    content = ""
+    for result in results:
+        result_content = []
+        for row in result["environment_variables"]:
+            if not row["is_sensitive"]:
+                result_content.append(f"{row['name']}={row['value']}\n")
+        if result_content:
+            result_title = f"Environment: {result['environment']} ({result['environment_uuid']})"
+            result_content.insert(
+                0, f"{result_title}\n{'-'*len(result_title)}\n"
+            )
+            result_content.append("\n\n")
+
+        content += "".join(result_content)
+
+    if content:
+        echo_large_content(content.strip("\n"), ctx=ctx)
+    else:
+        if variable_name:
+            click.secho(
+                (
+                    f"No environment variable named {variable_name!r} found for this application."
+                    if all_environments
+                    else f"No environment variable named {variable_name!r} found for {environment!r} environment."
+                ),
+                fg="yellow",
+            )
+        else:
+            click.secho(
+                (
+                    "No environment variables found for this application."
+                    if all_environments
+                    else f"No environment variables found for {environment!r} environment."
+                ),
+                fg="yellow",
+            )
+
+    click.secho(
+        "\nSensitive environment variables are not included in this view.",
+        fg="yellow",
+    )

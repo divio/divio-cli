@@ -21,6 +21,7 @@ from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
     clean_table_cell,
+    echo_environment_variables_as_txt,
     echo_large_content,
     get_cp_url,
     get_git_checked_branch,
@@ -194,7 +195,7 @@ def app():
     "--pager/--no-pager",
     default=False,
     is_flag=True,
-    help="Choose whether to display content via pager or not.",
+    help="Choose whether to display content via pager.",
 )
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
@@ -390,14 +391,14 @@ def application_update(obj, strict):
     "--pager/--no-pager",
     default=False,
     is_flag=True,
-    help="Choose whether to display content via pager or not.",
+    help="Choose whether to display content via pager.",
 )
 @click.option(
     "--json",
     "as_json",
     is_flag=True,
     default=False,
-    help="Choose whether to display content in json format or not.",
+    help="Choose whether to display content in json format.",
 )
 @click.pass_obj
 @allow_remote_id_override
@@ -465,13 +466,11 @@ def list_deployments(obj, environment, all_environments, limit_results):
         echo_large_content(json_content, ctx=obj)
     else:
         content = ""
-        for env in results:
-            env_slug = env["environment"]
-            env_uuid = env["environment_uuid"]
-            content_table_title = f"Environment: {env_slug} ({env_uuid})"
+        for result in results:
+            content_table_title = f"Environment: {result['environment']} ({result['environment_uuid']})"
             columns = obj.table_format_columns
             rows = [
-                [row[key] for key in columns] for row in env["deployments"]
+                [row[key] for key in columns] for row in result["deployments"]
             ]
             content_table = table(rows, columns, tablefmt="grid")
             content += f"{content_table_title}\n{content_table}\n\n"
@@ -554,23 +553,31 @@ def get_deployment_environment_variable(obj, deployment_uuid, variable_name):
     "--pager/--no-pager",
     default=False,
     is_flag=True,
-    help="Choose whether to display content via pager or not.",
+    help="Choose whether to display content via pager.",
 )
 @click.option(
     "--json",
     "as_json",
     is_flag=True,
     default=False,
-    help="Choose whether to display content in json format or not.",
+    help="Choose whether to display content in json format.",
+)
+@click.option(
+    "--txt",
+    "as_txt",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in a simple txt-like format (names and values only).",
 )
 @click.pass_obj
 @allow_remote_id_override
-def environment_variables(obj, remote_id, pager, as_json):
+def environment_variables(obj, remote_id, pager, as_json, as_txt):
     """Retrieve environment variables."""
 
     obj.remote_id = remote_id
     obj.pager = pager
     obj.as_json = as_json
+    obj.as_txt = as_txt
 
     # Environment variables in table format display less content than in
     # json format. Here are the desired columns to be displayed.
@@ -627,12 +634,14 @@ def list_environment_variables(
     if obj.as_json:
         json_content = json.dumps(results, indent=2)
         echo_large_content(json_content, ctx=obj)
+    elif obj.as_txt:
+        echo_environment_variables_as_txt(
+            results, obj, all_environments, environment
+        )
     else:
         content = ""
         for result in results:
-            env_slug = result["environment"]
-            env_uuid = result["environment_uuid"]
-            content_table_title = f"Environment: {env_slug} ({env_uuid})"
+            content_table_title = f"Environment: {result['environment']} ({result['environment_uuid']})"
             columns = obj.table_format_columns
             rows = [
                 [clean_table_cell(row, key) for key in columns]
@@ -698,20 +707,19 @@ def get_environment_variable(
     if results:
         if obj.as_json:
             echo_large_content(json.dumps(results, indent=2), ctx=obj)
+        elif obj.as_txt:
+            echo_environment_variables_as_txt(
+                results, obj, all_environments, environment, variable_name
+            )
         else:
             content = ""
-            for env in results:
+            for result in results:
                 # Each environment will only include one environment variable
                 # because of the name filter applied previously in the request.
-                environment_variable = env["environment_variables"][0]
-                content_table_title = f"Environment: {env['environment']} ({env['environment_uuid']})"
+                env_var = result["environment_variables"][0]
+                content_table_title = f"Environment: {result['environment']} ({result['environment_uuid']})"
                 columns = obj.table_format_columns
-                row = [
-                    [
-                        clean_table_cell(environment_variable, key)
-                        for key in columns
-                    ]
-                ]
+                row = [[clean_table_cell(env_var, key) for key in columns]]
 
                 content_table = table(
                     row, columns, tablefmt="grid", maxcolwidths=50
