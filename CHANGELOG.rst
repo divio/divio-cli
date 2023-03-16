@@ -1,7 +1,7 @@
 Changelog
 =========
 
-x.x.x (x-x-x)
+3.17.2 (2023-03-16)
 -------------------
 
 * Updated commands for deployments and environment variables to have no limit by default.
