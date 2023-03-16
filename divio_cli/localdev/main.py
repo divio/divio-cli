@@ -268,13 +268,7 @@ def create_workspace(
 
     instructions = (
         "Your workspace is setup and ready to start.",
-        "",
-        "For Desktop Application:",
-        " - click on the 'Start' button",
-        "",
-        "For Terminal:",
-        " - change directory to '{}'".format(path),
-        " - run 'divio app up'",
+        f"Change directory to '{path}' and run 'divio app up'",
     )
 
     click.secho("\n\n{}".format(os.linesep.join(instructions)), fg="green")
