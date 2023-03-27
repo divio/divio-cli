@@ -34,5 +34,4 @@ TEST_COMMANDS_CLICK = [
 def test_call_click_commands(divio_project, command):
     runner = CliRunner()
     result = runner.invoke(cli.cli, command)
-    print(result.output)
     assert result.exit_code == 0
