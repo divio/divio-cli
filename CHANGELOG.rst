@@ -1,6 +1,11 @@
 Changelog
 =========
 
+x.x.x (x-x-x)
+-------------------
+
+* Added tests for environment variables and deployments commands.
+
 3.17.2 (2023-03-16)
 -------------------
 
