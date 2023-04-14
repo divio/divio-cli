@@ -1,17 +1,19 @@
+import os
+
 import pytest
 from click.testing import CliRunner
 
 from divio_cli import cli
 
 
-APP_ID = "75584"
-APP_UUID = "iqbd4lzcnjczfc42qbidn6safu"
+TEST_PROJECT_ID = os.getenv("TEST_PROJECT_ID", None)
+TEST_PROJECT_UUID = os.getenv("TEST_PROJECT_UUID", None)
 
 ENVIRONMENT_VARIABLES_COMMANDS = [
     ["app", "environment-variables"],
     ["app", "env-vars", "list"],
-    ["app", "env-vars", "--remote-id", APP_ID, "list"],
-    ["app", "env-vars", "--remote-id", APP_UUID, "list"],
+    ["app", "env-vars", "--remote-id", TEST_PROJECT_ID, "list"],
+    ["app", "env-vars", "--remote-id", TEST_PROJECT_UUID, "list"],
     ["app", "env-vars", "list", "-e", "live"],
     ["app", "env-vars", "list", "--all-envs"],
     ["app", "env-vars", "-p", "list"],
