@@ -8,10 +8,6 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
-[tool.isort]
-known_project="divio_cli"
-sections="FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,PROJECT,LOCALFOLDER"
-
 [tool.check-manifest]
 ignore = [
   "tox.ini",
@@ -25,3 +21,6 @@ ignore = [
 [tool.setuptools_scm]
 # write_to needs to be duplicated in setup.py for compatibility reasons
 write_to = "divio_cli/version.py"
+
+[tool.ruff]
+    extend = "/presets/ruff.toml"
