@@ -8,6 +8,7 @@ import click
 import sentry_sdk
 from click_aliases import ClickAliasedGroup
 from sentry_sdk.integrations.atexit import AtexitIntegration
+from trogon import tui
 
 import divio_cli
 
@@ -43,6 +44,7 @@ except ImportError:
 click.option = partial(click.option, show_default=True)
 
 
+@tui()
 @click.group(
     cls=ClickAliasedGroup,
     context_settings={"help_option_names": ["--help", "-h"]},
