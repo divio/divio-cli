@@ -28,7 +28,7 @@ from ..utils import (
     needs_legacy_migration,
     pretty_size,
 )
-from . import utils
+from . import backups, utils
 from .utils import get_application_home, get_project_settings
 
 
@@ -580,7 +580,6 @@ class DatabaseImportBase(object):
         db_container_id = utils.get_db_container_id(
             self.path, prefix=self.prefix
         )
-
         if self.db_type == "fsm-postgres":
             self.restore_db_postgres(db_container_id)
         elif self.db_type == "fsm-mysql":
@@ -640,6 +639,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         self.environment = kwargs.pop("environment", None)
         self.remote_id = kwargs.pop("remote_id", None) or self.website_id
         self.keep_tempfile = kwargs.pop("keep_tempfile", None)
+        self.backup_si_uuid = kwargs.pop("backup_si_uuid", None)
 
         remote_project_name = (
             self.website_slug
@@ -653,32 +653,33 @@ class ImportRemoteDatabase(DatabaseImportBase):
         )
 
     def setup(self):
+        start_backup = time()
+        if self.backup_si_uuid:
+            click.secho(" ---> Verifying backup instance ", nl=False)
+            backup_uuid = backups.get_backup_uuid_from_service_backup(
+                self.client, self.backup_si_uuid, backups.Type.DB
+            )
+            click.echo(" [{}s]".format(int(time() - start_backup)))
+        else:
+            click.secho(" ---> Creating backup ", nl=False)
+            backup_uuid, self.backup_si_uuid = backups.create_backup(
+                self.client,
+                self.website_id,
+                self.environment,
+                backups.Type.DB,
+                self.prefix,
+            )
+            click.echo(" [{}s]".format(int(time() - start_backup)))
+
         click.secho(" ---> Preparing download ", nl=False)
         start_preparation = time()
-        response = (
-            self.client.download_db_request(
-                self.remote_id, self.environment, self.prefix
-            )
-            or {}
+        download_url = backups.create_backup_download_url(
+            self.client, backup_uuid, self.backup_si_uuid
         )
-        progress_url = response.get("progress_url")
-        if not progress_url:
-            click.secho(" error!", fg="red")
-            sys.exit(1)
-        progress = {"success": None}
-        while progress.get("success") is None:
-            sleep(2)
-            progress = self.client.download_db_progress(url=progress_url)
-        if not progress.get("success"):
-            click.secho(" error!", fg="red")
-            click.secho(progress.get("result") or "")
-            sys.exit(1)
-        download_url = progress.get("result") or None
         click.echo(" [{}s]".format(int(time() - start_preparation)))
 
         start_download = time()
         if download_url:
-
             # Create the dump target directory if it does not exist yet
             if not os.path.exists(self.dump_path):
                 os.makedirs(self.dump_path)
@@ -686,6 +687,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
             self.host_db_dump_path = download_file(
                 download_url, directory=self.dump_path
             )
+            # self.host_db_dump_path = "/Users/lucy.linder/divio/dev_ll-aldryn-django-black/.divio/data.dump"
             click.secho(f" ---> Writing temp file: {self.host_db_dump_path}")
             click.secho(" ---> Downloading database", nl=False)
             click.echo(" [{}s]".format(int(time() - start_download)))
@@ -702,7 +704,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
             self.host_db_dump_path = None
 
     def get_db_restore_command(self, db_type):
-        cmd = self.restore_commands[db_type]["archived-binary"]
+        cmd = self.restore_commands[db_type]["binary"]
         return cmd.format(self.db_dump_path)
 
     def finish(self, *args, **kwargs):
@@ -719,7 +721,15 @@ class ImportRemoteDatabase(DatabaseImportBase):
         super(ImportRemoteDatabase, self).finish(*args, **kwargs)
 
 
-def pull_media(client, environment, remote_id=None, path=None):
+def pull_media(
+    client,
+    environment,
+    prefix=None,
+    remote_id=None,
+    path=None,
+    backup_si_uuid=None,
+    keep_tempfile=False,
+):
     project_home = utils.get_application_home(path)
     website_id = utils.get_project_settings(project_home)["id"]
     website_slug = utils.get_project_settings(project_home)["slug"]
@@ -754,23 +764,25 @@ def pull_media(client, environment, remote_id=None, path=None):
         )
     )
     start_time = time()
+    start_backup = time()
+    if backup_si_uuid:
+        click.secho(" ---> Verifying backup instance ", nl=False)
+        backup_uuid = backups.get_backup_uuid_from_service_backup(
+            client, backup_si_uuid, backups.Type.MEDIA
+        )
+        click.echo(" [{}s]".format(int(time() - start_backup)))
+    else:
+        click.secho(" ---> Creating backup ", nl=False)
+        backup_uuid, backup_si_uuid = backups.create_backup(
+            client, website_id, environment, backups.Type.MEDIA, prefix
+        )
+        click.echo(" [{}s]".format(int(time() - start_backup)))
+
     click.secho(" ---> Preparing download ", nl=False)
     start_preparation = time()
-    response = client.download_media_request(remote_id, environment) or {}
-    progress_url = response.get("progress_url")
-    if not progress_url:
-        click.secho(" error!", fg="red")
-        sys.exit(1)
-
-    progress = {"success": None}
-    while progress.get("success") is None:
-        sleep(2)
-        progress = client.download_media_progress(url=progress_url)
-    if not progress.get("success"):
-        click.secho(" error!", fg="red")
-        click.secho(progress.get("result") or "")
-        sys.exit(1)
-    download_url = progress.get("result") or None
+    download_url = backups.create_backup_download_url(
+        client, backup_uuid, backup_si_uuid
+    )
     click.echo(" [{}s]".format(int(time() - start_preparation)))
 
     click.secho(" ---> Downloading", nl=False)
@@ -820,7 +832,8 @@ def pull_media(client, environment, remote_id=None, path=None):
     with open(backup_path, "rb") as fobj:
         with tarfile.open(fileobj=fobj, mode="r:*") as media_archive:
             media_archive.extractall(path=media_path)
-    os.remove(backup_path)
+    if not keep_tempfile:
+        os.remove(backup_path)
     click.echo(" [{}s]".format(int(time() - start_extract)))
     click.secho("Done", fg="green", nl=False)
     click.echo(" [{}s]".format(int(time() - start_time)))
@@ -911,7 +924,6 @@ def dump_database(dump_filename, db_type, prefix, archive_filename=None):
 
 
 def compress_db(dump_filename, archive_filename=None, archive_wd=None):
-
     if not archive_filename:
         # archive filename not specified
         # return path to uncompressed dump

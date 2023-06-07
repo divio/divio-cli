@@ -296,6 +296,38 @@ class DownloadBackupRequest(FileResponse, APIRequest):
         return super(DownloadBackupRequest, self).verify(response)
 
 
+# Create backup
+
+
+class CreateBackupRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backups/"
+    method = "POST"
+
+
+class GetBackupRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backups/{backup_uuid}/"
+    method = "GET"
+
+
+class GetServiceInstanceBackupRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/service-instance-backups/{backup_si_uuid}/"
+    method = "GET"
+
+
+class CreateBackupDownloadRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backup-downloads/"
+    method = "POST"
+
+
+class ListBackupDownloadServiceInstancesRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backup-download-service-instances/"
+    method = "GET"
+
+
+class GetBackupDownloadServiceInstanceRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backup-download-service-instances/{backup_download_service_instance_uuid}"
+
+
 # Download DB
 
 
@@ -388,4 +420,12 @@ class DeploymentEnvironmentVariablesRequest(JsonResponse, APIV3Request):
 
 class ApplicationRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/{application_uuid}/"
+    method = "GET"
+
+
+## Service instances
+
+
+class ListServiceInstancesRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/service-instances/"
     method = "GET"

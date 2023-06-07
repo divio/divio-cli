@@ -394,3 +394,9 @@ def get_db_type(prefix, path=None):
             # Fall back to database for legacy docker-compose files
             db_type = "fsm-postgres"
     return db_type
+
+
+def exit(message):
+    click.secho(" error!", fg="red", err=True)
+    click.secho(message)
+    sys.exit(1)
