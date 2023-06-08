@@ -1,3 +1,4 @@
+import functools
 import itertools
 import json
 import os
@@ -800,18 +801,36 @@ def application_pull():
     """Pull db or files from the Divio cloud environment."""
 
 
+def common_pull_options(f):
+    @click.option(
+        "--keep-tempfile",
+        is_flag=True,
+        default=False,
+        help="Keep the temporary file with the data.",
+    )
+    @click.option(
+        "--service-instance-backup",
+        "backup_si_uuid",
+        type=str,
+        default=None,
+        help="The UUID of a service instance backup to restore.",
+    )
+    @click.argument("environment", default="test")
+    @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
+    @click.pass_obj
+    @allow_remote_id_override
+    @functools.wraps(f)
+    def wrapper_common_options(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return wrapper_common_options
+
+
 @application_pull.command(name="db")
-@click.option(
-    "--keep-tempfile",
-    is_flag=True,
-    default=False,
-    help="Keep the temporary file with the data.",
-)
-@click.argument("environment", default="test")
-@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
-@click.pass_obj
-@allow_remote_id_override
-def pull_db(obj, remote_id, environment, prefix, keep_tempfile):
+@common_pull_options
+def pull_db(
+    obj, remote_id, environment, prefix, keep_tempfile, backup_si_uuid
+):
     """
     Pull database the Divio cloud environment.
     """
@@ -828,20 +847,26 @@ def pull_db(obj, remote_id, environment, prefix, keep_tempfile):
         remote_id=remote_id,
         db_type=db_type,
         dump_path=dump_path,
+        backup_si_uuid=backup_si_uuid,
         keep_tempfile=keep_tempfile,
     )()
 
 
 @application_pull.command(name="media")
-@click.argument("environment", default="test")
-@click.pass_obj
-@allow_remote_id_override
-def pull_media(obj, remote_id, environment):
+@common_pull_options
+def pull_media(
+    obj, remote_id, environment, prefix, keep_tempfile, backup_si_uuid
+):
     """
     Pull media files from the Divio cloud environment.
     """
     localdev.pull_media(
-        obj.client, environment=environment, remote_id=remote_id
+        obj.client,
+        environment=environment,
+        prefix=prefix,
+        remote_id=remote_id,
+        keep_tempfile=keep_tempfile,
+        backup_si_uuid=backup_si_uuid,
     )
 
 
@@ -1138,10 +1163,12 @@ def version(obj, skip_check, machine_readable):
 @click.option("-c", "--checks", default=None)
 @click.pass_obj
 def doctor(obj, machine_readable, checks):
-    """Check that your system meets the development requirements.
+    """
+    Check that your system meets the development requirements.
 
     To disable checks selectively in case of false positives, see
-    https://docs.divio.com/en/latest/reference/divio-cli/#using-skip-doctor-checks"""
+    https://docs.divio.com/en/latest/reference/divio-cli/#using-skip-doctor-checks
+    """
 
     if checks:
         checks = checks.split(",")

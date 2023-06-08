@@ -4,6 +4,7 @@ from click.testing import CliRunner
 from divio_cli import cli
 
 
+# 10 12 14
 TEST_COMMANDS_CLICK = [
     ["doctor"],
     ["doctor", "-m"],
@@ -34,4 +35,4 @@ TEST_COMMANDS_CLICK = [
 def test_call_click_commands(divio_project, command):
     runner = CliRunner()
     result = runner.invoke(cli.cli, command)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout

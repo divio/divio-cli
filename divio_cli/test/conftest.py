@@ -1,6 +1,7 @@
 import contextlib
 import os
 import pathlib
+import shutil
 import subprocess
 
 import pytest
@@ -9,7 +10,6 @@ import requests
 
 @pytest.fixture(scope="session")
 def _divio_project(request, tmpdir_factory):
-
     test_project_name = os.getenv("TEST_PROJECT_NAME", None)
     if test_project_name is None:
         pytest.skip(
@@ -21,13 +21,22 @@ def _divio_project(request, tmpdir_factory):
     # reference it in our test project to make docker-in-docker on Gitlab
     # work with the right volume mounts and correct paths.
     tmp_folder = pathlib.Path("test_data")
+    tmp_project_path = os.path.join(tmp_folder, test_project_name)
+
+    # Locally, we may run the tests multiple times
+    if os.path.exists(tmp_project_path):
+        if os.getenv("TEST_KEEP_PROJECT", "0") == "1":
+            # Reuse the existing project
+            return tmp_project_path
+        # Cleanup
+        shutil.rmtree(tmp_project_path)
 
     subprocess.check_call(
         ["divio", "project", "setup", test_project_name],
         cwd=str(tmp_folder.resolve()),
     )
 
-    return os.path.join(tmp_folder, test_project_name)
+    return tmp_project_path
 
 
 @pytest.fixture(scope="session")
