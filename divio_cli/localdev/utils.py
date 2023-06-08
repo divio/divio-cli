@@ -283,7 +283,6 @@ def allow_remote_id_override(func):
 
     @functools.wraps(func)
     def read_remote_id(obj, remote_id, *args, **kwargs):
-
         ERROR_MSG = (
             "This command requires a Divio Cloud Project id. Please "
             "provide one with the --remote-id option or call the "
@@ -394,3 +393,39 @@ def get_db_type(prefix, path=None):
             # Fall back to database for legacy docker-compose files
             db_type = "fsm-postgres"
     return db_type
+
+
+class MainStep:
+    def __init__(self, name):
+        click.secho(f" ===> {name} ")
+        self.start = time()
+
+    def done(self):
+        click.secho("Done", fg="green", nl=False)
+        click.echo(" [{}s]".format(int(time() - self.start)))
+
+
+def step(message, **kwargs):
+    click.secho(f" ---> {message} ", **kwargs)
+
+
+class TimedStep:
+    def __init__(self, message):
+        self.start = time()
+        step(message, nl=False)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not exc_type:
+            self.done()
+
+    def done(self):
+        click.echo(" [{}s]".format(int(time() - self.start)))
+
+
+def exit(message):
+    click.secho(" error!", fg="red", err=True)
+    click.secho(message)
+    sys.exit(1)

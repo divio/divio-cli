@@ -2,6 +2,7 @@ import json
 import os
 import re
 import sys
+from datetime import datetime
 from itertools import groupby
 from netrc import netrc
 from operator import itemgetter
@@ -9,6 +10,7 @@ from time import sleep
 from urllib.parse import urlparse
 
 import click
+import requests
 from dateutil.parser import isoparse
 
 from . import api_requests, messages, settings
@@ -530,6 +532,51 @@ class CloudClient(object):
         )
         return request()
 
+    def backup_upload_request(
+        self,
+        environment: str,
+        service_intance_uuids: list[str],
+        notes: str = None,
+        delete_at: datetime = None,
+    ):
+        data = {
+            "environment": environment,
+            "services": service_intance_uuids,
+        }
+
+        if delete_at is not None:
+            data["scheduled_for_deletion_at"] = delete_at.strftime(
+                "%Y-%m-%dT%H:%M:%S"
+            )
+        if notes is not None:
+            data["notes"] = notes
+
+        return api_requests.CreateBackupUploadRequest(
+            self.session, data=data
+        )()
+
+    def finish_backup_upload(self, finish_url):
+        return requests.post(url=finish_url)
+
+    def create_backup_restore(self, backup_uuid: str, si_backup_uuid: str):
+        return api_requests.CreateBackupRestoreRequest(
+            self.session,
+            data={
+                "backup": backup_uuid,
+                "service_instance_restores": [
+                    {"service_instance_backup": si_backup_uuid},
+                ],
+            },
+        )()
+
+    def get_backup_restore(self, backup_restore_uuid: str):
+        return api_requests.GetBackupRestoreRequest(
+            self.session,
+            url_kwargs={
+                "backup_restore_uuid": backup_restore_uuid,
+            },
+        )()
+
     def list_deployments(
         self,
         website_id,
@@ -792,6 +839,147 @@ class CloudClient(object):
         raise click.ClickException(
             "Could not get remote repository information."
         )
+
+    def get_service_instance(
+        self, instance_type, environment_uuid, prefix=None, limit_results=10
+    ):
+        assert instance_type in ["STORAGE", "DATABASE"]
+        prefix = prefix or "DEFAULT"
+        try:
+            results, _ = json_response_request_paginate(
+                api_requests.ListServiceInstancesRequest,
+                self.session,
+                params={"environment": environment_uuid},
+                limit_results=limit_results,
+            )
+
+            matches = [
+                r
+                for r in (results or {})
+                if r["type"] == instance_type and r["prefix"] == prefix
+            ]
+
+            if len(matches) == 0:
+                click.secho(
+                    (
+                        f"No service of type {instance_type} with prefix {prefix} "
+                        f"found for environment {environment_uuid}."
+                    ),
+                    fg="yellow",
+                )
+                sys.exit(0)
+
+            if len(matches) == 1:
+                return matches[0]
+
+            click.secho(
+                f"Multiple services instances found for type {instance_type} (prefix={prefix})",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+        except json.decoder.JSONDecodeError:
+            click.secho(
+                "Could not fetch service instances.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+    def create_backup(
+        self,
+        environment_uuid: str,
+        service_instance_uuid: str,
+        notes: str = None,
+        delete_at: datetime = None,
+    ):
+        data = {
+            "environment": environment_uuid,
+            "services": [service_instance_uuid],
+            "trigger": "MANUAL",  # TODO Use a temporary type
+        }
+
+        if delete_at is not None:
+            data["scheduled_for_deletion_at"] = delete_at.strftime(
+                "%Y-%m-%dT%H:%M:%S"
+            )
+        if notes is not None:
+            data["notes"] = notes
+
+        return api_requests.CreateBackupRequest(self.session, data=data)()
+
+    def get_backup(self, backup_uuid):
+        return api_requests.GetBackupRequest(
+            self.session,
+            url_kwargs={"backup_uuid": backup_uuid},
+        )()
+
+    def get_service_instance_backup(self, backup_si_uuid):
+        return api_requests.GetServiceInstanceBackupRequest(
+            self.session,
+            url_kwargs={"backup_si_uuid": backup_si_uuid},
+        )()
+
+    def create_backup_download(
+        self, backup_uuid, backup_service_instance_uuid
+    ):
+        response = api_requests.CreateBackupDownloadRequest(
+            self.session,
+            data={
+                "backup": backup_uuid,
+                "service_instance_backups": [backup_service_instance_uuid],
+                "trigger": "MANUAL",  # TODO Use a temporary type
+            },
+        )()
+
+        backup_download_uuid = response.get("uuid")
+        if not backup_download_uuid:
+            click.secho(
+                "Could not create backup download.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+        try:
+            results, _ = json_response_request_paginate(
+                api_requests.ListBackupDownloadServiceInstancesRequest,
+                self.session,
+                params={"backup": backup_download_uuid},
+                limit_results=10,
+            )
+            if results:
+                backup_download_service_instance = results[0]
+                return (
+                    backup_download_uuid,
+                    backup_download_service_instance["uuid"],
+                )
+            else:
+                click.secho(
+                    "Could not find service instance backup download "
+                    f"for backup download {backup_download_uuid}.",
+                    fg="red",
+                )
+                sys.exit(1)
+
+        except json.decoder.JSONDecodeError:
+            click.secho(
+                "Error in fetching service instance backups.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+    def get_backup_download_service_instance(
+        self, backup_download_service_instance_uuid
+    ):
+        return api_requests.GetBackupDownloadServiceInstanceRequest(
+            self.session,
+            url_kwargs={
+                "backup_download_service_instance_uuid": backup_download_service_instance_uuid
+            },
+        )()
 
 
 class WritableNetRC(netrc):
