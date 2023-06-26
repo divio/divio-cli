@@ -37,6 +37,7 @@ Integration Tests:
     - chmod 700 ~/.ssh
     ## Allow host keys
     - ssh-keyscan git.divio.com >> ~/.ssh/known_hosts
+    - ssh-keyscan git.dev.aldryn.net >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
 
     # prepare netrc as login
