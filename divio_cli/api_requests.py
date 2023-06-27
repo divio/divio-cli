@@ -38,6 +38,9 @@ class SingleHostSession(requests.Session):
         if v3_compatibilty:
             # V3 compatibility hack
             url = url.replace("control", "api", 1)
+            # All v3 endpoints support JSON, and some use nested data structures
+            # that do not work with url-encoded body
+            kwargs["json"] = kwargs.pop("data", {})
         return super(SingleHostSession, self).request(
             method, url, *args, **kwargs
         )
