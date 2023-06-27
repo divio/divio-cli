@@ -22,9 +22,9 @@ def _divio_project(request, tmpdir_factory):
     # work with the right volume mounts and correct paths.
     tmp_folder = pathlib.Path("test_data")
 
-    setup_command = ["project", "setup", test_project_name]
+    setup_command = ["app", "setup", test_project_name]
 
-    # Check if we have a special zone we want to test again
+    # Check if we have a special zone we want to test against
     test_zone = os.getenv("TEST_ZONE", None)
     if test_zone:
         setup_command = ["-z", test_zone] + setup_command
