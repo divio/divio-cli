@@ -455,7 +455,7 @@ def list_deployments(obj, environment, all_environments, limit_results):
     """
 
     results, messages = obj.client.list_deployments(
-        website_id=obj.remote_id,
+        application_uuid=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
@@ -620,7 +620,7 @@ def list_environment_variables(
     """
 
     results, messages = obj.client.list_environment_variables(
-        website_id=obj.remote_id,
+        application_uuid=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
@@ -697,7 +697,7 @@ def get_environment_variable(
     """
 
     results, messages = obj.client.list_environment_variables(
-        website_id=obj.remote_id,
+        application_uuid=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,

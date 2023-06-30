@@ -291,26 +291,14 @@ def allow_remote_id_override(func):
         )
 
         if remote_id and not remote_id.isdigit():
-            # If it's not a digit, its probably a UUID. Try to retrieve a ID from the UUID.
-
-            # We are not exposing the ID at all in v3. Also not in legacy.
-            # So, we have to
-            # * get the slug in v3
-            # * use the slug to get the ID in v1.
-
-            try:
-                slug = obj.client.get_application(application_uuid=remote_id)[
-                    "slug"
-                ]
-                remote_id = obj.client.get_website_id_for_slug(slug=slug)
-            except Exception:
-                raise click.ClickException(
-                    "Unable to retrieve application via UUID."
-                )
+            # Returning application UUID directly
+            return remote_id
 
         if not remote_id:
             try:
-                remote_id = get_project_settings(silent=True)["id"]
+                remote_id = get_project_settings(silent=True)[
+                    "application_uuid"
+                ]
             except KeyError:
                 raise click.ClickException(ERROR_MSG)
             else:

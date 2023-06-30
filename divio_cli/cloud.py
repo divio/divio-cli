@@ -137,11 +137,12 @@ class CloudClient(object):
         request = api_requests.ProjectListRequest(self.session)
         return request()
 
-    def ssh(self, website_id, environment):
-        project_data = self.get_project(website_id)
+    def ssh(self, application_uuid, environment):
         try:
-            status = project_data["{}_status".format(environment)]
-        except KeyError:
+            env = self.get_environment_by_application(
+                application_uuid, environment
+            )
+        except IndexError:
             click.secho(
                 "Environment with the name '{}' does not exist.".format(
                     environment
@@ -150,11 +151,11 @@ class CloudClient(object):
                 err=True,
             )
             sys.exit(1)
-        if status["deployed_before"]:
+        if env["last_finished_deployment"]:
             try:
                 response = api_requests.EnvironmentRequest(
                     self.session,
-                    url_kwargs={"environment_uuid": status["uuid"]},
+                    url_kwargs={"environment_uuid": env["uuid"]},
                 )()
                 ssh_command = [
                     "ssh",
@@ -184,11 +185,22 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-    def get_environment(self, website_id, environment):
-        project_data = self.get_project(website_id)
+    def get_environment_by_application(self, application_uuid, environment):
+        response = api_requests.EnvironmentListRequest(
+            self.session,
+            url_kwargs={
+                "application_uuid": application_uuid,
+                "slug": environment,
+            },
+        )()
+        return response["results"][0]
+
+    def get_environment(self, application_uuid, environment):
         try:
-            status = project_data["{}_status".format(environment)]
-        except KeyError:
+            env = self.get_environment_by_application(
+                application_uuid, environment
+            )
+        except IndexError:
             click.secho(
                 "Environment with the name '{}' does not exist.".format(
                     environment
@@ -200,7 +212,7 @@ class CloudClient(object):
         try:
             response = api_requests.EnvironmentRequest(
                 self.session,
-                url_kwargs={"environment_uuid": status["uuid"]},
+                url_kwargs={"environment_uuid": env["uuid"]},
             )()
             return response
 
@@ -228,7 +240,7 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-    def show_log(self, website_id, environment, tail=False, utc=True):
+    def show_log(self, application_uuid, environment, tail=False, utc=True):
         def print_log_data(data):
             for entry in data:
                 dt = isoparse(entry["timestamp"])
@@ -249,10 +261,11 @@ class CloudClient(object):
                     )
                 )
 
-        project_data = self.get_project(website_id)
         try:
-            status = project_data["{}_status".format(environment)]
-        except KeyError:
+            env = self.get_environment_by_application(
+                application_uuid, environment
+            )
+        except IndexError:
             click.secho(
                 "Environment with the name '{}' does not exist.".format(
                     environment
@@ -261,12 +274,12 @@ class CloudClient(object):
                 err=True,
             )
             sys.exit(1)
-        if status["deployed_before"]:
+        if env["last_finished_deployment"]:
             try:
                 # Make the initial log request
                 response = api_requests.LogRequest(
                     self.session,
-                    url_kwargs={"environment_uuid": status["uuid"]},
+                    url_kwargs={"environment_uuid": env["uuid"]},
                 )()
 
                 print_log_data(response["results"])
@@ -304,8 +317,8 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-    def get_deploy_log(self, website_id, env_name):
-        environment = self.get_environment(website_id, env_name)
+    def get_deploy_log(self, application_uuid, env_name):
+        environment = self.get_environment(application_uuid, env_name)
         if environment:
             last_deployment_uuid = None
             try:
@@ -430,9 +443,9 @@ class CloudClient(object):
         )
         return request()
 
-    def get_project(self, website_id):
+    def get_project(self, application_uuid):
         request = api_requests.ProjectDetailRequest(
-            self.session, url_kwargs={"website_id": website_id}
+            self.session, url_kwargs={"application_uuid": application_uuid}
         )
         return request()
 
@@ -461,6 +474,12 @@ class CloudClient(object):
 
     def get_website_id_for_slug(self, slug):
         request = api_requests.SlugToIDRequest(
+            self.session, url_kwargs={"website_slug": slug}
+        )
+        return request()
+
+    def get_application_uuid_for_slug(self, slug):
+        request = api_requests.SlugToAppUUIDRequest(
             self.session, url_kwargs={"website_slug": slug}
         )
         return request()
@@ -532,30 +551,35 @@ class CloudClient(object):
 
     def list_deployments(
         self,
-        website_id,
+        application_uuid,
         environment,
         all_environments,
         limit_results,
     ):
-        project_data = self.get_project(website_id)
+        environment_response = api_requests.EnvironmentListRequest(
+            self.session,
+            url_kwargs={"application_uuid": application_uuid},
+        )()["results"]
 
         # Map environments uuids with their corresponding slugs.
         envs_uuid_slug_mapping = {
-            project_data[key]["uuid"]: project_data[key]["stage"]
-            for key in project_data.keys()
-            if key.endswith("_status")
+            env["uuid"]: env["slug"] for env in environment_response
         }
 
         # Limit results to application deployments by default
         # and allow to filter by environment.
-        params = {"application": project_data["uuid"]}
+        params = {"application": application_uuid}
 
         # Retrieve environment data if environment is provided.
         if not all_environments:
-            try:
-                env = project_data[f"{environment}_status"]
-                params.update({"environment": env["uuid"]})
-            except KeyError:
+            env_found = False
+            for retrieved_env in environment_response:
+                if retrieved_env["slug"] == environment:
+                    params.update({"environment": retrieved_env["uuid"]})
+                    env_found = True
+                    break
+
+            if not env_found:
                 click.secho(
                     f"Environment with the name {environment!r} does not exist.",
                     fg="red",
@@ -608,16 +632,17 @@ class CloudClient(object):
 
     def get_deployment(
         self,
-        website_id,
+        application_uuid,
         deployment_uuid,
     ):
-        project_data = self.get_project(website_id)
+        environment_response = api_requests.EnvironmentListRequest(
+            self.session,
+            url_kwargs={"application_uuid": application_uuid},
+        )()["results"]
 
         # Map environments uuids with their corresponding slugs.
         envs_uuid_slug_mapping = {
-            project_data[key]["uuid"]: project_data[key]["stage"]
-            for key in project_data.keys()
-            if key.endswith("_status")
+            env["uuid"]: env["slug"] for env in environment_response
         }
 
         try:
@@ -648,17 +673,18 @@ class CloudClient(object):
 
     def get_deployment_with_environment_variables(
         self,
-        website_id,
+        application_uuid,
         deployment_uuid,
         variable_name,
     ):
-        project_data = self.get_project(website_id)
+        environment_response = api_requests.EnvironmentListRequest(
+            self.session,
+            url_kwargs={"application_uuid": application_uuid},
+        )()["results"]
 
         # Map environments uuids with their corresponding slugs.
         envs_uuid_slug_mapping = {
-            project_data[key]["uuid"]: project_data[key]["stage"]
-            for key in project_data.keys()
-            if key.endswith("_status")
+            env["uuid"]: env["slug"] for env in environment_response
         }
 
         try:
@@ -697,31 +723,36 @@ class CloudClient(object):
 
     def list_environment_variables(
         self,
-        website_id,
+        application_uuid,
         environment,
         all_environments,
         limit_results,
         variable_name=None,
     ):
-        project_data = self.get_project(website_id)
+        environment_response = api_requests.EnvironmentListRequest(
+            self.session,
+            url_kwargs={"application_uuid": application_uuid},
+        )()["results"]
 
         # Map environments uuids with their corresponding slugs.
         envs_uuid_slug_mapping = {
-            project_data[key]["uuid"]: project_data[key]["stage"]
-            for key in project_data.keys()
-            if key.endswith("_status")
+            env["uuid"]: env["slug"] for env in environment_response
         }
 
         # The environment variables V3 endpoint requires either
         # an application or an environment or both to be present
         # as query parameters. Multiple environments can be provided as well.
         if all_environments:
-            params = {"application": project_data["uuid"]}
+            params = {"application": application_uuid}
         else:
-            environment_key = f"{environment}_status"
-            if environment_key in project_data.keys():
-                params = {"environment": project_data[environment_key]["uuid"]}
-            else:
+            params = {}
+            env_found = False
+            for retrieved_env in environment_response:
+                if retrieved_env["slug"] == environment:
+                    params.update({"environment": retrieved_env["uuid"]})
+                    env_found = True
+                    break
+            if not env_found:
                 click.secho(
                     "Environment with the name '{}' does not exist.".format(
                         environment
@@ -774,24 +805,22 @@ class CloudClient(object):
 
         return results_grouped_by_environment, messages
 
-    def get_repository_dsn(self, website_id):
+    def get_repository_dsn(self, application_uuid):
         """
-        Try to return the DSN of a remote repository for a given website_id.
+        Try to return the DSN of a remote repository for a given application_uuid.
         """
-        try:
-            request = api_requests.RepositoryRequest(
-                self.session, url_kwargs={"website_id": website_id}
+        response = self.get_project(application_uuid)
+        repository_uuid = response.get("repository")
+        if not repository_uuid:
+            raise click.ClickException(
+                "Could not get remote repository information."
             )
-            response = request()
-            return response["results"][0]["backend_config"]["repository_dsn"]
 
-        except IndexError:
-            # happens when there is no remote repository configured
-            return None
-
-        raise click.ClickException(
-            "Could not get remote repository information."
+        request = api_requests.RepositoryRequest(
+            self.session, url_kwargs={"repository_uuid": repository_uuid}
         )
+        response = request()
+        return response["dsn"]
 
 
 class WritableNetRC(netrc):

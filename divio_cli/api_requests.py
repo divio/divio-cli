@@ -251,8 +251,8 @@ class ProjectListRequest(APIRequest):
     url = "/api/v1/user-websites/"
 
 
-class ProjectDetailRequest(APIRequest):
-    url = "/api/v1/website/{website_id}/detail/"
+class ProjectDetailRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/{application_uuid}/"
 
 
 class DeployProjectProgressRequest(JsonResponse, APIRequest):
@@ -286,6 +286,13 @@ class SlugToIDRequest(APIRequest):
 
     def process(self, response):
         return response.json().get("id")
+
+
+class SlugToAppUUIDRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/?slug={website_slug}"
+
+    def process(self, response):
+        return response.json()["results"][0].get("uuid")
 
 
 class DownloadBackupRequest(FileResponse, APIRequest):
@@ -355,12 +362,18 @@ class GetEnvironmentVariablesRequest(JsonResponse, APIV3Request):
 # Repository
 
 
-class RepositoryRequest(JsonResponse, APIRequest):
-    url = "/api/v2/repositories/?website={website_id}"
+class RepositoryRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/repositories/{repository_uuid}/"
+    method = "GET"
 
 
 class LogRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/environments/{environment_uuid}/logs/"
+    method = "GET"
+
+
+class EnvironmentListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/environments/?application={application_uuid}&slug={slug}"
     method = "GET"
 
 
