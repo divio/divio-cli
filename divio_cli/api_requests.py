@@ -288,18 +288,7 @@ class SlugToIDRequest(APIRequest):
         return response.json().get("id")
 
 
-class DownloadBackupRequest(FileResponse, APIRequest):
-    url = "/api/v1/workspace/{website_slug}/download/backup/"
-    headers = {"accept": "application/x-tar-gz"}
-
-    def verify(self, response):
-        if response.status_code == requests.codes.not_found:
-            # no backups yet, ignore
-            return None
-        return super(DownloadBackupRequest, self).verify(response)
-
-
-# Create backup
+# Create backup (push)
 
 
 class CreateBackupRequest(JsonResponse, APIV3Request):
@@ -331,7 +320,7 @@ class GetBackupDownloadServiceInstanceRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/backup-download-service-instances/{backup_download_service_instance_uuid}"
 
 
-# Create backup and restore using upload
+# Create backup and restore using upload (pull)
 
 
 class CreateBackupUploadRequest(JsonResponse, APIV3Request):
@@ -358,52 +347,7 @@ class GetBackupRestoreRequest(JsonResponse, APIV3Request):
     method = "GET"
 
 
-# Download DB
-
-
-class DownloadDBRequestRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/download/db/request/"
-    method = "POST"
-
-
-class DownloadDBProgressRequest(JsonResponse, APIRequest):
-    method = "GET"
-
-
-# Download Media
-
-
-class DownloadMediaRequestRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/download/media/request/"
-    method = "POST"
-
-
-class DownloadMediaProgressRequest(JsonResponse, APIRequest):
-    method = "GET"
-
-
-# Upload DB
-
-
-class UploadDBRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/upload/db/"
-    method = "POST"
-
-
-class UploadDBProgressRequest(JsonResponse, APIRequest):
-    method = "GET"
-
-
-# Upload Media
-
-
-class UploadMediaFilesRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/upload/media/"
-    method = "POST"
-
-
-class UploadMediaFilesProgressRequest(JsonResponse, APIRequest):
-    method = "GET"
+# Environment variables
 
 
 class GetEnvironmentVariablesRequest(JsonResponse, APIV3Request):

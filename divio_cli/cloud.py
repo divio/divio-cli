@@ -467,116 +467,6 @@ class CloudClient(object):
         )
         return request()
 
-    def download_backup(self, website_slug, filename=None, directory=None):
-        request = api_requests.DownloadBackupRequest(
-            self.session,
-            url_kwargs={"website_slug": website_slug},
-            filename=filename,
-            directory=directory,
-        )
-        return request()
-
-    def download_db_request(self, website_id, environment, prefix):
-        request = api_requests.DownloadDBRequestRequest(
-            self.session,
-            url_kwargs={"website_id": website_id},
-            data={"stage": environment, "prefix": prefix},
-        )
-        return request()
-
-    def download_db_progress(self, url):
-        request = api_requests.DownloadDBProgressRequest(self.session, url=url)
-        return request()
-
-    def download_media_request(self, website_id, environment):
-        request = api_requests.DownloadMediaRequestRequest(
-            self.session,
-            url_kwargs={"website_id": website_id},
-            data={"stage": environment},
-        )
-        return request()
-
-    def download_media_progress(self, url):
-        request = api_requests.DownloadMediaProgressRequest(
-            self.session, url=url
-        )
-        return request()
-
-    def upload_db(self, website_id, environment, archive_path, prefix):
-        request = api_requests.UploadDBRequest(
-            self.session,
-            url_kwargs={"website_id": website_id},
-            data={"stage": environment, "prefix": prefix},
-            files={"db_dump": open(archive_path, "rb")},
-        )
-        return request()
-
-    def upload_db_progress(self, url):
-        request = api_requests.UploadDBProgressRequest(self.session, url=url)
-        return request()
-
-    def upload_media(
-        self, website_id, environment, archive_path, prefix="DEFAULT"
-    ):
-        request = api_requests.UploadMediaFilesRequest(
-            self.session,
-            url_kwargs={"website_id": website_id},
-            data={"stage": environment, "prefix": prefix},
-            files={"media_files": open(archive_path, "rb")},
-        )
-        return request()
-
-    def upload_media_progress(self, url):
-        request = api_requests.UploadMediaFilesProgressRequest(
-            self.session, url=url
-        )
-        return request()
-
-    def backup_upload_request(
-        self,
-        environment: str,
-        service_intance_uuids: list[str],
-        notes: str = None,
-        delete_at: datetime = None,
-    ):
-        data = {
-            "environment": environment,
-            "services": service_intance_uuids,
-        }
-
-        if delete_at is not None:
-            data["scheduled_for_deletion_at"] = delete_at.strftime(
-                "%Y-%m-%dT%H:%M:%S"
-            )
-        if notes is not None:
-            data["notes"] = notes
-
-        return api_requests.CreateBackupUploadRequest(
-            self.session, data=data
-        )()
-
-    def finish_backup_upload(self, finish_url):
-        return requests.post(url=finish_url)
-
-    def create_backup_restore(self, backup_uuid: str, si_backup_uuid: str):
-        return api_requests.CreateBackupRestoreRequest(
-            self.session,
-            data={
-                "backup": backup_uuid,
-                "service_instance_restores": [
-                    {"service_instance_backup": si_backup_uuid},
-                ],
-            },
-        )()
-
-    def get_backup_restore(self, backup_restore_uuid: str):
-        return api_requests.GetBackupRestoreRequest(
-            self.session,
-            url_kwargs={
-                "backup_restore_uuid": backup_restore_uuid,
-            },
-        )()
-
     def list_deployments(
         self,
         website_id,
@@ -978,6 +868,51 @@ class CloudClient(object):
             self.session,
             url_kwargs={
                 "backup_download_service_instance_uuid": backup_download_service_instance_uuid
+            },
+        )()
+
+    def backup_upload_request(
+        self,
+        environment: str,
+        service_intance_uuids: list[str],
+        notes: str = None,
+        delete_at: datetime = None,
+    ):
+        data = {
+            "environment": environment,
+            "services": service_intance_uuids,
+        }
+
+        if delete_at is not None:
+            data["scheduled_for_deletion_at"] = delete_at.strftime(
+                "%Y-%m-%dT%H:%M:%S"
+            )
+        if notes is not None:
+            data["notes"] = notes
+
+        return api_requests.CreateBackupUploadRequest(
+            self.session, data=data
+        )()
+
+    def finish_backup_upload(self, finish_url):
+        return requests.post(url=finish_url)
+
+    def create_backup_restore(self, backup_uuid: str, si_backup_uuid: str):
+        return api_requests.CreateBackupRestoreRequest(
+            self.session,
+            data={
+                "backup": backup_uuid,
+                "service_instance_restores": [
+                    {"service_instance_backup": si_backup_uuid},
+                ],
+            },
+        )()
+
+    def get_backup_restore(self, backup_restore_uuid: str):
+        return api_requests.GetBackupRestoreRequest(
+            self.session,
+            url_kwargs={
+                "backup_restore_uuid": backup_restore_uuid,
             },
         )()
 
