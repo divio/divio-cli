@@ -353,7 +353,9 @@ class CloudClient(object):
                 fg="yellow",
             )
 
-    def deploy_application_or_get_progress(self, website_id, environment):
+    def deploy_application_or_get_progress(
+        self, application_uuid, environment
+    ):
         def fmt_progress(data):
             if not data:
                 return "Connecting to remote"
@@ -364,8 +366,29 @@ class CloudClient(object):
                 )
             return data
 
-        response = self.deploy_project_progress(website_id, environment)
-        if response["is_deploying"]:
+        try:
+            env = self.get_environment_by_application(
+                application_uuid, environment
+            )
+        except IndexError:
+            click.secho(
+                "Environment with the name '{}' does not exist.".format(
+                    environment
+                ),
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+        try:
+            response = self.get_deployment_by_application(
+                application_uuid, env["uuid"]
+            )
+            response = self.get_deployment_by_uuid(response["uuid"])
+        except IndexError:
+            response = None
+
+        if response and response["ended_at"] is None:
             click.secho(
                 "Already deploying {} environment, attaching to running "
                 "deployment".format(environment),
@@ -375,9 +398,9 @@ class CloudClient(object):
             click.secho(
                 "Deploying {} environment".format(environment), fg="green"
             )
-            self.deploy_project(website_id, environment)
+            deployment = self.deploy_project(env["uuid"])
             sleep(1)
-            response = self.deploy_project_progress(website_id, environment)
+            response = self.get_deployment_by_uuid(deployment["uuid"])
         try:
             with click.progressbar(
                 length=100,
@@ -386,25 +409,13 @@ class CloudClient(object):
                 item_show_func=fmt_progress,
             ) as bar:
                 progress_percent = 0
-                while response["is_deploying"]:
-                    response = self.deploy_project_progress(
-                        website_id, environment
-                    )
-                    bar.current_item = progress = response["deploy_progress"]
-                    if (
-                        "main_percent" in progress
-                        and "extra_percent" in progress
-                    ):
-                        # update the difference of the current percentage
-                        # to the new percentage
-                        progress_percent = (
-                            progress["main_percent"]
-                            + progress["extra_percent"]
-                            - bar.pos
-                        )
-                        bar.update(progress_percent)
+                while response["ended_at"] is None:
+                    progress_percent = response["percent"]
+                    response = self.get_deployment_by_uuid(response["uuid"])
+                    bar.current_item = response["status"]
+                    bar.update(progress_percent - bar.pos)
                     sleep(3)
-                if response["last_deployment"]["status"] == "failure":
+                if response["status"] == "failure":
                     bar.current_item = "error"
                     bar.update(progress_percent)
 
@@ -419,28 +430,30 @@ class CloudClient(object):
         except KeyboardInterrupt:
             click.secho("Disconnected")
 
-    def deploy_project_progress(self, website_id, environment):
-        request = api_requests.DeployProjectProgressRequest(
-            self.session, url_kwargs={"website_id": website_id}
+    def get_deployment_by_application(
+        self, application_uuid, environment_uuid
+    ):
+        request = api_requests.DeploymentByApplicationRequest(
+            self.session,
+            url_kwargs={
+                "application_uuid": application_uuid,
+                "environment_uuid": environment_uuid,
+            },
         )
-        data = request()
-        try:
-            return data[environment]
-        except KeyError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+        return request()
 
-    def deploy_project(self, website_id, environment):
-        data = {"stage": environment}
-        request = api_requests.DeployProjectRequest(
-            self.session, url_kwargs={"website_id": website_id}, data=data
+    def get_deployment_by_uuid(self, deployment_uuid):
+        request = api_requests.DeploymentRequest(
+            self.session,
+            url_kwargs={
+                "deployment_uuid": deployment_uuid,
+            },
         )
+        return request()
+
+    def deploy_project(self, environment_uuid):
+        data = {"environment": environment_uuid}
+        request = api_requests.DeployProjectRequest(self.session, data=data)
         return request()
 
     def get_project(self, application_uuid):

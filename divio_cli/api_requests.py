@@ -255,13 +255,15 @@ class ProjectDetailRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/{application_uuid}/"
 
 
-class DeployProjectProgressRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/deploy/"
-    method = "GET"
+class DeploymentByApplicationRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/deployments/?application={application_uuid}&environment={environment_uuid}"
+
+    def process(self, response):
+        return response.json()["results"][0]
 
 
-class DeployProjectRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/deploy/"
+class DeployProjectRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/deployments/"
     method = "POST"
 
 
