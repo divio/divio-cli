@@ -19,10 +19,11 @@ TEST_COMMANDS_CLICK = [
     ["app", "list"],
     ["app", "export", "db"],
     ["app", "pull", "db"],
+    ["app", "pull", "db", "test", "mysql"],
     ["app", "pull", "media"],
     ["app", "push", "db", NOI, "--keep-tempfile"],  # keep for next test
     ["app", "push", "db", NOI, "--dumpfile", DBFILE],
-    ["app", "push", "db", "test", "MYSQL", NOI, "--keep-tempfile"],
+    ["app", "push", "db", "test", "mysql", NOI, "--keep-tempfile"],
     ["app", "push", "db", "test", "MYSQL", NOI, "--dumpfile", DBFILE],
     ["app", "push", "media", NOI],
     ["app", "logs", "test"],

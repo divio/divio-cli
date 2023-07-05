@@ -821,6 +821,9 @@ def common_pull_options(f):
     @allow_remote_id_override
     @functools.wraps(f)
     def wrapper_common_options(*args, **kwargs):
+        if "prefix" in kwargs:
+            # prefixes are always in capital letters
+            kwargs["prefix"] = kwargs["prefix"].upper()
         return f(*args, **kwargs)
 
     return wrapper_common_options
@@ -894,6 +897,9 @@ def common_push_options(f):
     @allow_remote_id_override
     @functools.wraps(f)
     def wrapper_common_options(*args, **kwargs):
+        if "prefix" in kwargs:
+            # prefixes are always in capital letters
+            kwargs["prefix"] = kwargs["prefix"].upper()
         return f(*args, **kwargs)
 
     return wrapper_common_options

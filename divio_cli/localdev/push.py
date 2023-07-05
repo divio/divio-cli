@@ -24,7 +24,7 @@ class PushBase:
     ):
         self.client = client
         self.environment = environment
-        self.prefix = (prefix or "default").upper()
+        self.prefix = prefix
         self.type = type
 
         self.project_home = utils.get_application_home()
