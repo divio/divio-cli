@@ -15,7 +15,7 @@ from . import exceptions, localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
 from .excepthook import DivioExcepthookIntegration, divio_shutdown
-from .localdev.utils import allow_remote_id_override
+from .localdev.utils import allow_remote_id_override, get_project_settings
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
@@ -331,7 +331,12 @@ def configure(obj):
 @allow_remote_id_override
 def application_dashboard(obj, remote_id):
     """Open the application dashboard on the Divio Control Panel."""
-    launch_url(get_cp_url(client=obj.client, application_id=remote_id))
+    zone = get_project_settings(silent=True)["zone"]
+    launch_url(
+        get_cp_url(
+            client=obj.client, application_id=remote_id, zone=obj.zone or zone
+        )
+    )
 
 
 @app.command(name="up", aliases=["start"])

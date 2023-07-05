@@ -167,9 +167,13 @@ def open_application_cloud_site(client, application_id, environment):
         )
 
 
-def get_cp_url(client, application_id, section="dashboard"):
+def get_cp_url(client, application_id, zone, section="dashboard"):
     project_data = client.get_project(application_id)
-    url = project_data["dashboard_url"]
+
+    organisation = project_data["organisation"]
+    application = project_data["uuid"]
+
+    url = f"https://control.{zone}/o/{organisation}/app/{application}/"
 
     if section != "dashboard":
         url = urljoin(url, section)
