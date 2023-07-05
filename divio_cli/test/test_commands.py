@@ -4,7 +4,9 @@ from click.testing import CliRunner
 from divio_cli import cli
 
 
-# 10 12 14
+NOI = "--noinput"
+DBFILE = ".divio/local_db.sql"
+
 TEST_COMMANDS_CLICK = [
     ["doctor"],
     ["doctor", "-m"],
@@ -15,31 +17,14 @@ TEST_COMMANDS_CLICK = [
     ["app", "deploy", "test"],
     ["app", "deploy-log"],
     ["app", "list"],
-    ["app", "pull", "db"],
-    ["app", "push", "db", "--noinput"],
     ["app", "export", "db"],
-    ["app", "push", "db", "--keep-tempfile"],  # keep file for next test
-    ["app", "push", "db", "--noinput", "--dumpfile", "local_db.sql"],
-    [
-        "app",
-        "push",
-        "db",
-        "test",
-        "MYSQL",
-        "--keep-tempfile",
-    ],  # keep file for next test
-    [
-        "app",
-        "push",
-        "db",
-        "test",
-        "MYSQL",
-        "--noinput",
-        "--dumpfile",
-        "local_db.sql",
-    ],
+    ["app", "pull", "db"],
     ["app", "pull", "media"],
-    ["app", "push", "media", "--noinput"],
+    ["app", "push", "db", NOI, "--keep-tempfile"],  # keep for next test
+    ["app", "push", "db", NOI, "--dumpfile", DBFILE],
+    ["app", "push", "db", "test", "MYSQL", NOI, "--keep-tempfile"],
+    ["app", "push", "db", "test", "MYSQL", NOI, "--dumpfile", DBFILE],
+    ["app", "push", "media", NOI],
     ["app", "logs", "test"],
     ["app", "status"],
     ["app", "update"],

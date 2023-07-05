@@ -765,10 +765,12 @@ def pull_media(
         )
 
     with utils.TimedStep("Downloading"):
-        backup_path = download_file(download_url)
+        directory = os.path.join(project_home, settings.DIVIO_DUMP_FOLDER)
+        backup_path = download_file(download_url, directory=directory)
         if not backup_path:
             # no backup yet, skipping
             return
+        click.secho(f"to {backup_path}", nl=False)
 
     media_path = os.path.join(local_data_folder, "media")
 
@@ -806,7 +808,9 @@ def pull_media(
         with open(backup_path, "rb") as fobj:
             with tarfile.open(fileobj=fobj, mode="r:*") as media_archive:
                 media_archive.extractall(path=media_path)
-        if not keep_tempfile:
+
+    if not keep_tempfile:
+        with utils.TimedStep("Removing temporary files"):
             os.remove(backup_path)
 
     main_step.done()

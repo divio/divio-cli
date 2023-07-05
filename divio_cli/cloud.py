@@ -7,6 +7,7 @@ from itertools import groupby
 from netrc import netrc
 from operator import itemgetter
 from time import sleep
+from typing import List
 from urllib.parse import urlparse
 
 import click
@@ -874,7 +875,7 @@ class CloudClient(object):
     def backup_upload_request(
         self,
         environment: str,
-        service_intance_uuids: list[str],
+        service_intance_uuids: List[str],
         notes: str = None,
         delete_at: datetime = None,
     ):

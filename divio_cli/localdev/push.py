@@ -7,6 +7,7 @@ import click
 
 from divio_cli.cloud import CloudClient
 from divio_cli.localdev import backups, utils
+from divio_cli.settings import DIVIO_DUMP_FOLDER
 from divio_cli.utils import get_size, get_subprocess_env, pretty_size
 
 
@@ -81,7 +82,7 @@ class PushBase:
         assert self.local_file
         assert self.si_uuid
 
-        with utils.TimedStep("Uploading"):
+        with utils.TimedStep(f"Uploading {self.local_file}"):
             self.backup_uuid, self.si_backup_uuid = backups.upload_backup(
                 client=self.client,
                 environment_uuid=self.env_uuid,
@@ -123,7 +124,9 @@ class PushMedia(PushBase):
 
     def export_step(self):
         compress_step = utils.TimedStep("Compressing local media folder")
-        archive_path = os.path.join(self.project_home, "local_media.tar.gz")
+        archive_path = os.path.join(
+            self.project_home, DIVIO_DUMP_FOLDER, "local_media.tar.gz"
+        )
         media_dir = os.path.join(self.project_home, "data", "media")
 
         items = os.listdir(media_dir) if os.path.isdir(media_dir) else []
@@ -167,10 +170,7 @@ class PushDb(PushBase):
             utils.exit(f"File {local_file} doesn't look like a database dump")
 
     def export_step(self):
-        # Avoid circular imports
-        from divio_cli.localdev.main import DEFAULT_DUMP_FILENAME
-
-        local_file = DEFAULT_DUMP_FILENAME
+        local_file = os.path.join(DIVIO_DUMP_FOLDER, "local_db.sql")
         db_type = utils.get_db_type(self.prefix, path=self.project_home)
 
         dump_database(
@@ -209,12 +209,12 @@ def dump_database(
         utils.exit(
             "Docker-compose.yml does not exist. Can not handle database without!",
         )
-        return
     utils.DockerComposeConfig(docker_compose)
     utils.start_database_server(docker_compose, prefix=prefix)
 
     dump_step = utils.TimedStep("Dumping local database")
     db_container_id = utils.get_db_container_id(project_home, prefix=prefix)
+
     # TODO: database
     if db_type == "fsm-postgres":
         return_code = subprocess.call(
