@@ -147,10 +147,11 @@ def check_output(*popenargs, **kwargs):
 
 
 def open_application_cloud_site(client, application_id, environment):
-    project_data = client.get_project(application_id)
     try:
-        url = project_data["{}_status".format(environment)]["site_url"]
-    except KeyError:
+        env = client.get_environment_by_application(
+            application_id, environment
+        )
+    except IndexError:
         click.secho(
             "Environment with the name '{}' does not exist.".format(
                 environment
@@ -159,6 +160,7 @@ def open_application_cloud_site(client, application_id, environment):
             err=True,
         )
         sys.exit(1)
+    url = env.get("deployed_url")
     if url:
         launch_url(url)
     else:
