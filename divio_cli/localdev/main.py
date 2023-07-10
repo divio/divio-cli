@@ -665,7 +665,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         start_preparation = time()
         response = (
             self.client.download_db_request(
-                self.remote_id, self.environment, self.prefix
+                self.website_id, self.environment, self.prefix
             )
             or {}
         )
@@ -764,7 +764,7 @@ def pull_media(client, environment, remote_id=None, path=None):
     start_time = time()
     click.secho(" ---> Preparing download ", nl=False)
     start_preparation = time()
-    response = client.download_media_request(remote_id, environment) or {}
+    response = client.download_media_request(website_id, environment) or {}
     progress_url = response.get("progress_url")
     if not progress_url:
         click.secho(" error!", fg="red")
@@ -988,7 +988,7 @@ def push_db(client, environment, remote_id, prefix, db_type):
     click.secho(" ---> Uploading", nl=False)
     start_upload = time()
     response = (
-        client.upload_db(remote_id, environment, archive_path, prefix) or {}
+        client.upload_db(website_id, environment, archive_path, prefix) or {}
     )
     click.echo(" [{}s]".format(int(time() - start_upload)))
 
@@ -1016,14 +1016,17 @@ def push_db(client, environment, remote_id, prefix, db_type):
     click.echo(" [{}s]".format(int(time() - start_time)))
 
 
-def push_local_db(client, environment, dump_filename, website_id, prefix):
+def push_local_db(client, environment, dump_filename, remote_id, prefix):
+    project_home = utils.get_application_home()
+    website_id = utils.get_project_settings(project_home)["id"]
+
     archive_wd = os.path.dirname(os.path.realpath(dump_filename))
     archive_filename = dump_filename.replace(".sql", ".tar.gz")
     archive_path = os.path.join(archive_wd, archive_filename)
 
     click.secho(
         " ===> Pushing local database to {} {} environment".format(
-            website_id, environment
+            remote_id, environment
         )
     )
     start_time = time()
@@ -1121,7 +1124,8 @@ def push_media(client, environment, remote_id, prefix):
     click.secho("Uploading", nl=False)
     start_upload = time()
     response = (
-        client.upload_media(remote_id, environment, archive_path, prefix) or {}
+        client.upload_media(website_id, environment, archive_path, prefix)
+        or {}
     )
     click.echo(" [{}s]".format(int(time() - start_upload)))
     progress_url = response.get("progress_url")

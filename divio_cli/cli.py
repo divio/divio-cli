@@ -908,7 +908,7 @@ def push_db(obj, remote_id, prefix, environment, dumpfile, noinput):
             obj.client,
             environment=environment,
             dump_filename=dumpfile,
-            website_id=remote_id,
+            remote_id=remote_id,
             prefix=prefix,
         )
 
