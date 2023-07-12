@@ -137,6 +137,44 @@ class CloudClient(object):
         request = api_requests.ProjectListRequest(self.session)
         return request()
 
+    def get_services(self, region_uuid=None, application_uuid=None):
+        kwargs = {}
+
+        # TODO this smells like a security issue
+        kwargs["filter_region"] = (
+            f"region={region_uuid}" if region_uuid else ""
+        )
+
+        kwargs["filter_website"] = (
+            f"website={application_uuid}" if application_uuid else ""
+        )
+        request = api_requests.ServicesRequest(
+            self.session,
+            url_kwargs=kwargs,
+        )
+        return request()
+
+    def get_service_instances(self, environment_uuid):
+        request = api_requests.ServiceInstancesRequest(
+            self.session,
+            url_kwargs={"environment_uuid": environment_uuid},
+        )
+        return request()
+
+    def add_service_instances(
+        self, environment_uuid, prefix, region_uuid, service_uuid
+    ):
+        request = api_requests.ServiceInstancesCreateRequest(
+            self.session,
+            data={
+                "environment": environment_uuid,
+                "region": region_uuid,
+                "service": service_uuid,
+                "prefix": prefix,
+            },
+        )
+        return request()
+
     def ssh(self, website_id, environment):
         project_data = self.get_project(website_id)
         try:
