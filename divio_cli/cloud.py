@@ -793,6 +793,10 @@ class CloudClient(object):
             "Could not get remote repository information."
         )
 
+    def get_organisations(self):
+        request = api_requests.OrganisationsListRequest(self.session)
+        return request()
+
 
 class WritableNetRC(netrc):
     def __init__(self, *args, **kwargs):
