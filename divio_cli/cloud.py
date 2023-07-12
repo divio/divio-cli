@@ -137,6 +137,13 @@ class CloudClient(object):
         request = api_requests.ProjectListRequest(self.session)
         return request()
 
+    def get_organisation(self, organisation_uuid):
+        request = api_requests.OrganisationDetailRequest(
+            self.session,
+            url_kwargs={"organisation_uuid": organisation_uuid},
+        )
+        return request()
+
     def ssh(self, application_uuid, environment):
         try:
             env = self.get_environment_by_application(

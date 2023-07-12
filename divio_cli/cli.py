@@ -1,4 +1,3 @@
-import itertools
 import json
 import os
 import sys
@@ -210,34 +209,16 @@ def application_list(obj, grouped, pager, as_json):
 
     header = ("ID", "Slug", "Name", "Organisation")
 
-    # get all users + organisations
-    groups = {
-        "users": {
-            account["id"]: {"name": "Personal", "applications": []}
-            for account in api_response["accounts"]
-            if account["type"] == "user"
-        },
-        "organisations": {
-            account["id"]: {"name": account["name"], "applications": []}
-            for account in api_response["accounts"]
-            if account["type"] == "organisation"
-        },
-    }
-
-    # sort websites into groups
-    for website in api_response["websites"]:
-        organisation_id = website["organisation_id"]
-        if organisation_id:
-            owner = groups["organisations"][website["organisation_id"]]
-        else:
-            owner = groups["users"][website["owner_id"]]
-        owner["applications"].append(
-            (str(website["id"]), website["domain"], website["name"])
+    data = {}
+    for application in api_response["results"]:
+        org_name = obj.client.get_organisation(application["organisation"])[
+            "name"
+        ]
+        if not data.get(org_name):
+            data[org_name] = []
+        data[org_name].append(
+            (application["uuid"], application["slug"], application["name"])
         )
-
-    accounts = itertools.chain(
-        groups["users"].items(), groups["organisations"].items()
-    )
 
     def sort_applications(items):
         return sorted(items, key=lambda x: x[0].lower())
@@ -245,25 +226,23 @@ def application_list(obj, grouped, pager, as_json):
     # print via pager
     if grouped:
         output_items = []
-        for group, data in accounts:
-            applications = data["applications"]
-            if applications:
-                output_items.append(
-                    "{title}\n{line}\n\n{table}\n\n".format(
-                        title=data["name"],
-                        line="=" * len(data["name"]),
-                        table=table(
-                            sort_applications(applications), header[:3]
-                        ),
-                    )
+        for organisation in data:
+            output_items.append(
+                "{title}\n{line}\n\n{table}\n\n".format(
+                    title=organisation,
+                    line="=" * len(organisation),
+                    table=table(
+                        sort_applications(data[organisation]), header[:3]
+                    ),
                 )
+            )
         output = os.linesep.join(output_items).rstrip(os.linesep)
     else:
-        # add account name to all applications
+        # add org name to all applications
         applications = [
-            each + (data["name"],)
-            for group, data in accounts
-            for each in data["applications"]
+            each + (organisation,)
+            for organisation in data
+            for each in data[organisation]
         ]
         output = table(sort_applications(applications), header)
 

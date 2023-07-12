@@ -247,12 +247,16 @@ class LoginStatusRequest(APIRequest):
     method = "GET"
 
 
-class ProjectListRequest(APIRequest):
-    url = "/api/v1/user-websites/"
+class ProjectListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/"
 
 
 class ProjectDetailRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/{application_uuid}/"
+
+
+class OrganisationDetailRequest(JsonResponse, APIV3Request):
+    url = "/iam/v3/organisations/{organisation_uuid}/"
 
 
 class DeploymentByApplicationRequest(JsonResponse, APIV3Request):
