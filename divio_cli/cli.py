@@ -182,6 +182,50 @@ def app():
     """Manage your application"""
 
 
+@app.command(name="create")
+@click.option(
+    "-n",
+    "--name",
+    required=True,
+    help="The name of the application.",
+)
+@click.option(
+    "-s",
+    "--slug",
+    required=True,
+    help="The slug of the application.",
+)
+@click.option(
+    "-o",
+    "--organisation",
+    required=True,
+    help="The organisation UUID.",
+)
+@click.option(
+    "-r",
+    "--region",
+    required=True,
+    help="The region UUID.",
+)
+@click.option(
+    "-t",
+    "--project-template",
+    required=True,
+    help="The project template URL.",
+)
+@click.pass_obj
+def application_create(
+    obj, name, slug, organisation, region, project_template
+):
+    """Create a new application."""
+
+    response = obj.client.create_application(
+        name, slug, organisation, region, project_template
+    )
+    json_response = json.dumps(response, indent=2)
+    echo_large_content(json_response, ctx=obj)
+
+
 @app.command(name="list")
 @click.option(
     "-g",
@@ -202,7 +246,7 @@ def app():
 def application_list(obj, grouped, pager, as_json):
     """List all your applications."""
     obj.pager = pager
-    api_response = obj.client.get_applications()
+    api_response = obj.client.list_applications()
 
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))

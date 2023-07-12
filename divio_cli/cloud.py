@@ -133,9 +133,53 @@ class CloudClient(object):
         else:
             return False, messages.LOGIN_CHECK_ERROR
 
-    def get_applications(self):
+    def list_applications(self):
         request = api_requests.ProjectListRequest(self.session)
         return request()
+
+    def get_application(self, application_uuid):
+        try:
+            response = api_requests.ApplicationRequest(
+                self.session,
+                url_kwargs={"application_uuid": application_uuid},
+            )()
+            return response
+
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+    def create_application(
+        self,
+        name,
+        slug,
+        organisation,
+        region,
+        project_template,
+    ):
+        try:
+            response = api_requests.CreateApplicationRequest(
+                self.session,
+                data={
+                    "name": name,
+                    "slug": slug,
+                    "organisation": organisation,
+                    "region": region,
+                    "project_template": project_template,
+                },
+            )()
+            return response
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
 
     def ssh(self, website_id, environment):
         project_data = self.get_project(website_id)
@@ -201,22 +245,6 @@ class CloudClient(object):
             response = api_requests.EnvironmentRequest(
                 self.session,
                 url_kwargs={"environment_uuid": status["uuid"]},
-            )()
-            return response
-
-        except (KeyError, json.decoder.JSONDecodeError):
-            click.secho(
-                "Error establishing connection.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
-
-    def get_application(self, application_uuid):
-        try:
-            response = api_requests.ApplicationRequest(
-                self.session,
-                url_kwargs={"application_uuid": application_uuid},
             )()
             return response
 

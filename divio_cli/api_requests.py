@@ -392,3 +392,8 @@ class DeploymentEnvironmentVariablesRequest(JsonResponse, APIV3Request):
 class ApplicationRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/{application_uuid}/"
     method = "GET"
+
+
+class CreateApplicationRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/create_with_template/"
+    method = "POST"
