@@ -1162,3 +1162,33 @@ def doctor(obj, machine_readable, checks):
         )
 
     sys.exit(exitcode)
+
+
+@cli.group(cls=ClickAliasedGroup)
+def regions():
+    pass
+
+
+@regions.command(name="list")
+@click.option("--json", "as_json", is_flag=True, default=False)
+@click.pass_obj
+def regions_list(obj, as_json):
+    api_response = obj.client.get_regions()
+    if as_json:
+        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+
+    header = [
+        "UUID",
+        "Name",
+    ]
+    data = [
+        [
+            entry["uuid"],
+            entry["name"],
+        ]
+        for entry in api_response["results"]
+    ]
+    output = table(data, header, tablefmt="grid", maxcolwidths=50)
+
+    echo_large_content(output, ctx=obj)

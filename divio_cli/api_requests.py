@@ -392,3 +392,8 @@ class DeploymentEnvironmentVariablesRequest(JsonResponse, APIV3Request):
 class ApplicationRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/{application_uuid}/"
     method = "GET"
+
+
+class RegionListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/regions/"
+    method = "GET"
