@@ -177,6 +177,41 @@ def login(ctx, token, check):
     sys.exit(0 if success else 1)
 
 
+@cli.group(cls=ClickAliasedGroup)
+def template():
+    """Application Templates"""
+
+
+@template.command(name="list")
+@click.option("--json", "as_json", is_flag=True, default=False)
+@click.pass_obj
+def template_list(obj, as_json):
+    api_response = obj.client.get_templates()
+
+    if as_json:
+        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+
+    header = [
+        "UUID",
+        "Name",
+        "Description",
+        "Artifact-URL",
+    ]
+    data = [
+        [
+            entry["uuid"],
+            entry["name"],
+            entry["short_description"],
+            entry["url"],
+        ]
+        for entry in api_response["results"]
+    ]
+    output = table(data, header, tablefmt="grid", maxcolwidths=30)
+
+    echo_large_content(output, ctx=obj)
+
+
 @cli.group(cls=ClickAliasedGroup, aliases=["project"])
 def app():
     """Manage your application"""
