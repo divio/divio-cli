@@ -160,6 +160,8 @@ class CloudClient(object):
         organisation,
         region,
         project_template,
+        boilerplate,
+        plan,
     ):
         try:
             response = api_requests.CreateApplicationRequest(
@@ -170,6 +172,8 @@ class CloudClient(object):
                     "organisation": organisation,
                     "region": region,
                     "project_template": project_template,
+                    "boilerplate": boilerplate,
+                    "plan": plan,
                 },
             )()
             return response

@@ -213,14 +213,26 @@ def app():
     required=True,
     help="The project template URL.",
 )
+@click.option(
+    "-b",
+    "--boilerplate",
+    required=True,
+    help="The boilerplate UUID.",
+)
+@click.option(
+    "-p",
+    "--plan",
+    required=True,
+    help="The plan UUID.",
+)
 @click.pass_obj
 def application_create(
-    obj, name, slug, organisation, region, project_template
+    obj, name, slug, organisation, region, project_template, boilerplate, plan
 ):
     """Create a new application."""
 
     response = obj.client.create_application(
-        name, slug, organisation, region, project_template
+        name, slug, organisation, region, project_template, boilerplate, plan
     )
     json_response = json.dumps(response, indent=2)
     echo_large_content(json_response, ctx=obj)
