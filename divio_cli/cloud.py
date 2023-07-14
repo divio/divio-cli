@@ -793,6 +793,10 @@ class CloudClient(object):
             "Could not get remote repository information."
         )
 
+    def get_regions(self):
+        request = api_requests.ListRegionsRequest(self.session)
+        return request()
+
     def get_organisations(self):
         request = api_requests.ListOrganisationsRequest(self.session)
         return request()

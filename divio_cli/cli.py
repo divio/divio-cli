@@ -1201,3 +1201,40 @@ def list_organisations(obj, as_json):
     output = table(data, headers, tablefmt="grid", maxcolwidths=50)
 
     echo_large_content(output, ctx=obj)
+
+
+@cli.group(cls=ClickAliasedGroup)
+def regions():
+    """Manage regions"""
+
+
+@regions.command(name="list")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
+@click.pass_obj
+def list_regions(obj, as_json):
+    """List all available regions"""
+    api_response = obj.client.get_regions()
+    if as_json:
+        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+
+    headers = [
+        "UUID",
+        "Name",
+    ]
+    data = [
+        [
+            entry["uuid"],
+            entry["name"],
+        ]
+        for entry in api_response["results"]
+    ]
+    output = table(data, headers, tablefmt="grid", maxcolwidths=50)
+
+    echo_large_content(output, ctx=obj)
