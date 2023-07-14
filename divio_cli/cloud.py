@@ -160,8 +160,9 @@ class CloudClient(object):
         organisation,
         region,
         project_template,
-        boilerplate,
         plan,
+        release_commands,
+        git_repo,
     ):
         try:
             response = api_requests.CreateApplicationRequest(
@@ -172,8 +173,9 @@ class CloudClient(object):
                     "organisation": organisation,
                     "region": region,
                     "project_template": project_template,
-                    "boilerplate": boilerplate,
                     "plan": plan,
+                    "release_commands": release_commands,
+                    "git_repo": git_repo,
                 },
             )()
             return response
@@ -805,6 +807,44 @@ class CloudClient(object):
             sys.exit(0)
 
         return results_grouped_by_environment, messages
+
+    def create_repository(self, organisation, url, key_type):
+        try:
+            response = api_requests.CreateRepositoryRequest(
+                self.session,
+                data={
+                    "organisation": organisation,
+                    "url": url,
+                    "key_type": key_type,
+                },
+            )()
+            return response
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection while creating repository.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+    def check_repository(self, repository_uuid, branch, migrate="true"):
+        try:
+            response = api_requests.CheckRepositoryRequest(
+                self.session,
+                url_kwargs={"repository_uuid": repository_uuid},
+                data={
+                    "branch": branch,
+                    "migrate": migrate,
+                },
+            )()
+            return response
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection while authenticating repository.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
 
     def get_repository_dsn(self, website_id):
         """

@@ -355,6 +355,16 @@ class GetEnvironmentVariablesRequest(JsonResponse, APIV3Request):
 # Repository
 
 
+class CreateRepositoryRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/repositories/"
+    method = "POST"
+
+
+class CheckRepositoryRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/repositories/{repository_uuid}/check/"
+    method = "POST"
+
+
 class RepositoryRequest(JsonResponse, APIRequest):
     url = "/api/v2/repositories/?website={website_id}"
 

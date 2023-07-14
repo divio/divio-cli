@@ -16,6 +16,7 @@ from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
 from .excepthook import DivioExcepthookIntegration, divio_shutdown
 from .localdev.utils import allow_remote_id_override
+from .messages import CREATE_APP_WIZARD_MESSAGES
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
@@ -38,6 +39,9 @@ try:
     import ipdb as pdb
 except ImportError:
     import pdb
+
+import time
+
 
 # Display the default value for options globally.
 click.option = partial(click.option, show_default=True)
@@ -186,54 +190,163 @@ def app():
 @click.option(
     "-n",
     "--name",
-    required=True,
+    default=None,
     help="The name of the application.",
 )
 @click.option(
     "-s",
     "--slug",
-    required=True,
+    default=None,
     help="The slug of the application.",
 )
 @click.option(
     "-o",
     "--organisation",
-    required=True,
+    default=None,
     help="The organisation UUID.",
 )
 @click.option(
     "-r",
     "--region",
-    required=True,
+    default=None,
     help="The region UUID.",
 )
 @click.option(
     "-t",
     "--project-template",
-    required=True,
+    default=None,
     help="The project template URL.",
-)
-@click.option(
-    "-b",
-    "--boilerplate",
-    required=True,
-    help="The boilerplate UUID.",
 )
 @click.option(
     "-p",
     "--plan",
-    required=True,
-    help="The plan UUID.",
+    default=None,
+    help="The application plan UUID.",
 )
 @click.pass_obj
 def application_create(
-    obj, name, slug, organisation, region, project_template, boilerplate, plan
+    obj, name, slug, organisation, region, project_template, plan
 ):
-    """Create a new application."""
+
+    # Required parameters.
+    while not name:
+        name = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_name"])
+    click.secho(f"Registered name: {name}", fg="green")
+
+    while not slug:
+        slug = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_slug"])
+    click.secho(f"Registered slug: {slug}", fg="green")
+
+    while not organisation:
+        organisation = click.prompt(
+            CREATE_APP_WIZARD_MESSAGES["enter_organisation"]
+        )
+    click.secho(f"Registered organisation: {organisation}", fg="green")
+
+    while not region:
+        region = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_region"])
+    click.secho(f"Registered region: {region}", fg="green")
+
+    while not project_template:
+        project_template = click.prompt(
+            CREATE_APP_WIZARD_MESSAGES["enter_project_template"]
+        )
+    click.secho(f"Registered project template: {project_template}", fg="green")
+
+    while not plan:
+        plan = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_plan"])
+    click.secho(f"Registered plan: {plan}\n", fg="green")
+
+    # Release commands.
+    release_commands = []
+    if click.confirm(CREATE_APP_WIZARD_MESSAGES["create_release_commands"]):
+        add_another_release_command = True
+        while add_another_release_command:
+            release_command_name = click.prompt(
+                CREATE_APP_WIZARD_MESSAGES["enter_release_command_name"]
+            )
+            release_command_value = click.prompt(
+                CREATE_APP_WIZARD_MESSAGES["enter_release_command_value"]
+            )
+            release_commands.append(
+                {
+                    "name": release_command_name,
+                    "command": release_command_value,
+                }
+            )
+            add_another_release_command = click.confirm(
+                CREATE_APP_WIZARD_MESSAGES["add_another_release_command"]
+            )
+
+    # Application repository.
+    git_repo = {}
+    if click.confirm(CREATE_APP_WIZARD_MESSAGES["connect_custom_repository"]):
+        repository_url = click.prompt(
+            CREATE_APP_WIZARD_MESSAGES["enter_repository_url"]
+        )
+        repository_default_branch = click.prompt(
+            CREATE_APP_WIZARD_MESSAGES["enter_repository_default_branch"],
+            default="main",
+        )
+        repository_key_type = click.prompt(
+            CREATE_APP_WIZARD_MESSAGES["enter_repository_access_key_type"],
+            default="ED25519",
+        )
+
+        # Create and validate the repository.
+        response = obj.client.create_repository(
+            organisation, repository_url, repository_key_type
+        )
+        repository_uuid = response["uuid"]
+        repository_ssh_key = response["auth_info"]
+
+        # Ask the user to add the ssh public key (deploy key) to the
+        # repository provider.
+        click.secho(f"SSH Key: {repository_ssh_key}", fg="green")
+        click.confirm(CREATE_APP_WIZARD_MESSAGES["create_deploy_key"])
+
+        # Verify the repository.
+        c = 0
+        response = obj.client.check_repository(
+            repository_uuid, repository_default_branch
+        )
+
+        while response["code"] == "waiting" and c < 5:
+            time.sleep(5)
+            response = obj.client.check_repository(
+                repository_uuid, repository_default_branch
+            )
+            c += 1
+
+        if response["code"] == "waiting":
+            click.secho(
+                CREATE_APP_WIZARD_MESSAGES["repository_verification_timeout"],
+                fg="red",
+            )
+            sys.exit(1)
+        elif response["code"] != "success":
+            click.secho(
+                response["non_field_errors"][0],
+                fg="red",
+            )
+            sys.exit(1)
+        else:
+            git_repo = {
+                "uuid": repository_uuid,
+                "default_branch": repository_default_branch,
+            }
 
     response = obj.client.create_application(
-        name, slug, organisation, region, project_template, boilerplate, plan
+        name,
+        slug,
+        organisation,
+        region,
+        project_template,
+        plan,
+        release_commands,
+        git_repo,
     )
+
     json_response = json.dumps(response, indent=2)
     echo_large_content(json_response, ctx=obj)
 

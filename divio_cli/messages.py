@@ -57,3 +57,23 @@ PUSH_MEDIA_WARNING = "\n".join(
         "\nPlease proceed with caution!",
     )
 )
+
+
+CREATE_APP_WIZARD_MESSAGES = {
+    "enter_name": "Enter a name for your application",
+    "enter_slug": "Enter a slug for your application",
+    "enter_organisation": "Enter the UUID of the organisation you want to create the application for",
+    "enter_region": "Enter the UUID of the region you want to create the application in",
+    "enter_project_template": "Enter the URL of the project template you want to use",
+    "enter_plan": "Enter the UUID of the application plan you want to use",
+    "create_release_commands": "Do you want to create some release commands for your application?",
+    "enter_release_command_name": "Enter a name for your release command",
+    "enter_release_command_value": "Enter the value for your release command",
+    "add_another_release_command": "Do you want to add another release command?",
+    "connect_custom_repository": "Want to use a custom repository for your application instead of the default one hosted by Divio?",
+    "enter_repository_url": "Enter the URL of the repository you want to use",
+    "enter_repository_default_branch": "Enter the name of the default branch you want to use",
+    "enter_repository_access_key_type": "Enter the type of access key you want to use for your repository",
+    "create_deploy_key": "Please register this ssh key with your repository provider. Ready to continue?",
+    "repository_verification_timeout": "Repository verification timed out. Please try again later.",
+}
