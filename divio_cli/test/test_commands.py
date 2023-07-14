@@ -27,6 +27,7 @@ TEST_COMMANDS_CLICK = [
     ["version", "-s"],
     ["version", "-m"],
     ["regions", "list"],
+    ["organisations", "list"],
 ]
 
 
