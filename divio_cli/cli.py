@@ -184,6 +184,7 @@ def services():
 
 @services.command(name="list")
 @click.option(
+    "-r",
     "--region",
     required=True,
 )
@@ -195,8 +196,7 @@ def services():
     help="Choose whether to display content in json format.",
 )
 @click.pass_obj
-@allow_remote_id_override
-def list_services(obj, remote_id, region, as_json):
+def list_services(obj, region, as_json):
     """List all available services for a regions."""
     api_response = obj.client.get_services(region_uuid=region)
 
@@ -908,14 +908,17 @@ def list_service_instances(obj, remote_id, environment, as_json):
 @service_instances.command(name="add")
 @click.argument("environment", default="test")
 @click.option(
+    "-p",
     "--prefix",
     required=True,
 )
 @click.option(
+    "-r",
     "--region",
     required=True,
 )
 @click.option(
+    "-s",
     "--service",
     required=True,
 )
