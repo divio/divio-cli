@@ -407,3 +407,13 @@ class CreateServiceInstanceRequest(JsonResponse, APIV3Request):
 class ListServicesRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/services/?{filter_region}&{filter_website}"
     method = "GET"
+
+
+class ListRegionsRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/regions/"
+    method = "GET"
+
+
+class ListOrganisationsRequest(JsonResponse, APIV3Request):
+    url = "/iam/v3/organisations/"
+    method = "GET"
