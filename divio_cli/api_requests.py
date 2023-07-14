@@ -394,6 +394,6 @@ class ApplicationRequest(JsonResponse, APIV3Request):
     method = "GET"
 
 
-class ProjectTemplatesListRequest(JsonResponse, APIV3Request):
+class ListProjectTemplatesRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/project-templates/"
     method = "GET"

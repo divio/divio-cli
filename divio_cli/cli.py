@@ -179,20 +179,24 @@ def login(ctx, token, check):
 
 @cli.group(cls=ClickAliasedGroup)
 def template():
-    """Application Templates"""
+    """Manage templates for applications."""
 
 
 @template.command(name="list")
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
-def template_list(obj, as_json):
+def list_templates(obj, as_json):
+    "List available project templates."
     api_response = obj.client.get_templates()
 
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
         return
+    if not api_response["results"]:
+        click.echo("No templates found")
+        return
 
-    header = [
+    headers = [
         "UUID",
         "Name",
         "Description",
@@ -207,7 +211,7 @@ def template_list(obj, as_json):
         ]
         for entry in api_response["results"]
     ]
-    output = table(data, header, tablefmt="grid", maxcolwidths=30)
+    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
 
     echo_large_content(output, ctx=obj)
 

@@ -134,7 +134,7 @@ class CloudClient(object):
             return False, messages.LOGIN_CHECK_ERROR
 
     def get_templates(self):
-        request = api_requests.ProjectTemplatesListRequest(self.session)
+        request = api_requests.ListProjectTemplatesRequest(self.session)
         return request()
 
     def get_applications(self):
