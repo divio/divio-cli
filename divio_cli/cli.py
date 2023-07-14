@@ -203,6 +203,9 @@ def list_services(obj, region, as_json):
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
         return
+    if not api_response["results"]:
+        click.echo("No services found.")
+        return
 
     headers = ["UUID", "Name", "Type", "Description"]
     data = [
@@ -879,6 +882,9 @@ def list_service_instances(obj, remote_id, environment, as_json):
 
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+    if not api_response["results"]:
+        click.echo("No service instances found.")
         return
 
     headers = [

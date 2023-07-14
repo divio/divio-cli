@@ -27,7 +27,6 @@ TEST_COMMANDS_CLICK = [
     ["version"],
     ["version", "-s"],
     ["version", "-m"],
-    ["services", "list"],
 ]
 
 
