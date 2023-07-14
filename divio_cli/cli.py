@@ -1166,13 +1166,20 @@ def doctor(obj, machine_readable, checks):
 
 @cli.group(cls=ClickAliasedGroup)
 def organisations():
-    ...
+    "Manage your organisations"
 
 
 @organisations.command(name="list")
-@click.option("--json", "as_json", is_flag=True, default=False)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
 @click.pass_obj
 def list_organisations(obj, as_json):
+    "List your organisations"
     api_response = obj.client.get_organisations()
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
