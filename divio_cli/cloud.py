@@ -148,14 +148,14 @@ class CloudClient(object):
         kwargs["filter_website"] = (
             f"website={application_uuid}" if application_uuid else ""
         )
-        request = api_requests.ServicesRequest(
+        request = api_requests.ListServicesRequest(
             self.session,
             url_kwargs=kwargs,
         )
         return request()
 
     def get_service_instances(self, environment_uuid):
-        request = api_requests.ServiceInstancesRequest(
+        request = api_requests.ListServiceInstancesRequest(
             self.session,
             url_kwargs={"environment_uuid": environment_uuid},
         )
@@ -164,7 +164,7 @@ class CloudClient(object):
     def add_service_instances(
         self, environment_uuid, prefix, region_uuid, service_uuid
     ):
-        request = api_requests.ServiceInstancesCreateRequest(
+        request = api_requests.CreateServiceInstanceRequest(
             self.session,
             data={
                 "environment": environment_uuid,

@@ -178,26 +178,33 @@ def login(ctx, token, check):
 
 
 @cli.group(name="services")
-def cli_services():
+def services():
     """Pull db or files from the Divio cloud environment."""
 
 
-@cli_services.command(name="list")
+@services.command(name="list")
 @click.option(
     "--region",
     required=True,
 )
-@click.option("--json", "as_json", is_flag=True, default=False)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
 @click.pass_obj
 @allow_remote_id_override
-def service_list(obj, remote_id, region, as_json):
+def list_services(obj, remote_id, region, as_json):
+    """List all available services for a regions."""
     api_response = obj.client.get_services(region_uuid=region)
 
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
         return
 
-    header = ["UUID", "Name", "Type", "Description"]
+    headers = ["UUID", "Name", "Type", "Description"]
     data = [
         [
             entry["uuid"],
@@ -207,7 +214,7 @@ def service_list(obj, remote_id, region, as_json):
         ]
         for entry in api_response["results"]
     ]
-    output = table(data, header, tablefmt="grid", maxcolwidths=30)
+    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
 
     echo_large_content(output, ctx=obj)
 
@@ -232,7 +239,13 @@ def app():
     is_flag=True,
     help="Choose whether to display content via pager.",
 )
-@click.option("--json", "as_json", is_flag=True, default=False)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
 @click.pass_obj
 def application_list(obj, grouped, pager, as_json):
     """List all your applications."""
@@ -243,7 +256,7 @@ def application_list(obj, grouped, pager, as_json):
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
         return
 
-    header = ("ID", "Slug", "Name", "Organisation")
+    header = ["ID", "Slug", "Name", "Organisation"]
 
     # get all users + organisations
     groups = {
@@ -832,15 +845,22 @@ def application_setup(obj, slug, environment, path, overwrite, skip_doctor):
 
 @app.group(name="service-instances")
 def service_instances():
-    """Pull db or files from the Divio cloud environment."""
+    """Commands for service instances like a database or storage."""
 
 
 @service_instances.command(name="list")
 @click.argument("environment", default="test")
-@click.option("--json", "as_json", is_flag=True, default=False)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
 @click.pass_obj
 @allow_remote_id_override
-def service_instances_list(obj, remote_id, environment, as_json):
+def list_service_instances(obj, remote_id, environment, as_json):
+    """List the services instances of an application"""
     project_data = obj.client.get_project(remote_id)
     try:
         status = project_data["{}_status".format(environment)]
@@ -861,7 +881,14 @@ def service_instances_list(obj, remote_id, environment, as_json):
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
         return
 
-    header = ["UUID", "Prefix", "Type", "Service  Status", "Region", "Service"]
+    headers = [
+        "UUID",
+        "Prefix",
+        "Type",
+        "Service  Status",
+        "Region",
+        "Service",
+    ]
     data = [
         [
             entry["uuid"],
@@ -873,7 +900,7 @@ def service_instances_list(obj, remote_id, environment, as_json):
         ]
         for entry in api_response["results"]
     ]
-    output = table(data, header, tablefmt="grid", maxcolwidths=30)
+    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
 
     echo_large_content(output, ctx=obj)
 
@@ -894,9 +921,10 @@ def service_instances_list(obj, remote_id, environment, as_json):
 )
 @click.pass_obj
 @allow_remote_id_override
-def service_instances_add(
+def add_service_instances(
     obj, remote_id, environment, prefix, region, service
 ):
+    """Adding a new service instance like a database to an application."""
     project_data = obj.client.get_project(remote_id)
     try:
         status = project_data["{}_status".format(environment)]
