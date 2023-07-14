@@ -1172,13 +1172,13 @@ def organisations():
 @organisations.command(name="list")
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
-def organisationss_list(obj, as_json):
+def list_organisations(obj, as_json):
     api_response = obj.client.get_organisations()
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
         return
 
-    header = [
+    headers = [
         "UUID",
         "Name",
         "Created at",
@@ -1191,6 +1191,6 @@ def organisationss_list(obj, as_json):
         ]
         for entry in api_response["results"]
     ]
-    output = table(data, header, tablefmt="grid", maxcolwidths=50)
+    output = table(data, headers, tablefmt="grid", maxcolwidths=50)
 
     echo_large_content(output, ctx=obj)

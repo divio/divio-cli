@@ -794,7 +794,7 @@ class CloudClient(object):
         )
 
     def get_organisations(self):
-        request = api_requests.OrganisationsListRequest(self.session)
+        request = api_requests.ListOrganisationsRequest(self.session)
         return request()
 
 

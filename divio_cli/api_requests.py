@@ -394,6 +394,6 @@ class ApplicationRequest(JsonResponse, APIV3Request):
     method = "GET"
 
 
-class OrganisationsListRequest(JsonResponse, APIV3Request):
+class ListOrganisationsRequest(JsonResponse, APIV3Request):
     url = "/iam/v3/organisations/"
     method = "GET"
