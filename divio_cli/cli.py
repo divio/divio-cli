@@ -1167,7 +1167,6 @@ def doctor(obj, machine_readable, checks):
 @cli.group(cls=ClickAliasedGroup)
 def regions():
     """Manage regions"""
-    pass
 
 
 @regions.command(name="list")
