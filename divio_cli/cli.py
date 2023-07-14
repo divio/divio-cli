@@ -178,11 +178,11 @@ def login(ctx, token, check):
 
 
 @cli.group(cls=ClickAliasedGroup)
-def template():
+def templates():
     """Manage templates for applications."""
 
 
-@template.command(name="list")
+@templates.command(name="list")
 @click.option("--json", "as_json", is_flag=True, default=False)
 @click.pass_obj
 def list_templates(obj, as_json):
