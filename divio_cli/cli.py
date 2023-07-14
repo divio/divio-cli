@@ -177,6 +177,51 @@ def login(ctx, token, check):
     sys.exit(0 if success else 1)
 
 
+@cli.group(name="services")
+def services():
+    """Pull db or files from the Divio cloud environment."""
+
+
+@services.command(name="list")
+@click.option(
+    "-r",
+    "--region",
+    required=True,
+)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
+@click.pass_obj
+def list_services(obj, region, as_json):
+    """List all available services for a regions."""
+    api_response = obj.client.get_services(region_uuid=region)
+
+    if as_json:
+        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+    if not api_response["results"]:
+        click.echo("No services found.")
+        return
+
+    headers = ["UUID", "Name", "Type", "Description"]
+    data = [
+        [
+            entry["uuid"],
+            entry["name"],
+            entry["type"],
+            entry["description"],
+        ]
+        for entry in api_response["results"]
+    ]
+    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
+
+    echo_large_content(output, ctx=obj)
+
+
 @cli.group(cls=ClickAliasedGroup, aliases=["project"])
 def app():
     """Manage your application"""
@@ -197,7 +242,13 @@ def app():
     is_flag=True,
     help="Choose whether to display content via pager.",
 )
-@click.option("--json", "as_json", is_flag=True, default=False)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
 @click.pass_obj
 def application_list(obj, grouped, pager, as_json):
     """List all your applications."""
@@ -208,7 +259,7 @@ def application_list(obj, grouped, pager, as_json):
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
         return
 
-    header = ("ID", "Slug", "Name", "Organisation")
+    header = ["ID", "Slug", "Name", "Organisation"]
 
     # get all users + organisations
     groups = {
@@ -792,6 +843,114 @@ def application_setup(obj, slug, environment, path, overwrite, skip_doctor):
 
     localdev.create_workspace(
         obj.client, slug, environment, path, overwrite, obj.zone
+    )
+
+
+@app.group(name="service-instances")
+def service_instances():
+    """Commands for service instances like a database or storage."""
+
+
+@service_instances.command(name="list")
+@click.argument("environment", default="test")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
+@click.pass_obj
+@allow_remote_id_override
+def list_service_instances(obj, remote_id, environment, as_json):
+    """List the services instances of an application"""
+    project_data = obj.client.get_project(remote_id)
+    try:
+        status = project_data["{}_status".format(environment)]
+    except KeyError:
+        click.secho(
+            "Environment with the name '{}' does not exist.".format(
+                environment
+            ),
+            fg="red",
+            err=True,
+        )
+        sys.exit(1)
+    api_response = obj.client.get_service_instances(
+        environment_uuid=status["uuid"]
+    )
+
+    if as_json:
+        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+    if not api_response["results"]:
+        click.echo("No service instances found.")
+        return
+
+    headers = [
+        "UUID",
+        "Prefix",
+        "Type",
+        "Service  Status",
+        "Region",
+        "Service",
+    ]
+    data = [
+        [
+            entry["uuid"],
+            entry["prefix"],
+            entry["type"],
+            entry["service_status"],
+            entry["region"],
+            entry["service"],
+        ]
+        for entry in api_response["results"]
+    ]
+    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
+
+    echo_large_content(output, ctx=obj)
+
+
+@service_instances.command(name="add")
+@click.argument("environment", default="test")
+@click.option(
+    "-p",
+    "--prefix",
+    required=True,
+)
+@click.option(
+    "-r",
+    "--region",
+    required=True,
+)
+@click.option(
+    "-s",
+    "--service",
+    required=True,
+)
+@click.pass_obj
+@allow_remote_id_override
+def add_service_instances(
+    obj, remote_id, environment, prefix, region, service
+):
+    """Adding a new service instance like a database to an application."""
+    project_data = obj.client.get_project(remote_id)
+    try:
+        status = project_data["{}_status".format(environment)]
+    except KeyError:
+        click.secho(
+            "Environment with the name '{}' does not exist.".format(
+                environment
+            ),
+            fg="red",
+            err=True,
+        )
+        sys.exit(1)
+    obj.client.add_service_instances(
+        environment_uuid=status["uuid"],
+        prefix=prefix,
+        region_uuid=region,
+        service_uuid=service,
     )
 
 

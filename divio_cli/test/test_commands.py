@@ -23,6 +23,7 @@ TEST_COMMANDS_CLICK = [
     ["app", "logs", "test"],
     ["app", "status"],
     ["app", "update"],
+    ["app", "service-instances", "list"],
     ["version"],
     ["version", "-s"],
     ["version", "-m"],
