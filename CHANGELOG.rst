@@ -5,6 +5,7 @@ x.x.x (x-x-x)
 -------------------
 
 * Added tests for environment variables and deployments commands.
+* Added support to list and add services to an application.
 
 3.17.2 (2023-03-16)
 -------------------
