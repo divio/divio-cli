@@ -794,7 +794,7 @@ class CloudClient(object):
         )
 
     def get_regions(self):
-        request = api_requests.RegionListRequest(self.session)
+        request = api_requests.ListRegionsRequest(self.session)
         return request()
 
 

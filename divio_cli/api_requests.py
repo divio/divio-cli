@@ -394,6 +394,6 @@ class ApplicationRequest(JsonResponse, APIV3Request):
     method = "GET"
 
 
-class RegionListRequest(JsonResponse, APIV3Request):
+class ListRegionsRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/regions/"
     method = "GET"
