@@ -251,6 +251,18 @@ class ProjectListRequest(APIRequest):
     url = "/api/v1/user-websites/"
 
 
+class ListApplicationsRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/"
+
+class ListOrganisationsRequest(JsonResponse, APIV3Request):
+    url = "iam/v3/organisations/"
+
+class ListRegionsRequest(JsonResponse, APIV3Request):
+    url = "apps/v3/regions"
+
+class ListApplicationPlansRequest(JsonResponse, APIV3Request):
+    url = "apps/v3/application-plans/"
+
 class ProjectDetailRequest(APIRequest):
     url = "/api/v1/website/{website_id}/detail/"
 

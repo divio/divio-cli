@@ -133,9 +133,43 @@ class CloudClient(object):
         else:
             return False, messages.LOGIN_CHECK_ERROR
 
-    def list_applications(self):
+    def list_applications_v1(self):
         request = api_requests.ProjectListRequest(self.session)
         return request()
+    
+    def list_applications(self):
+        results, messages = json_response_request_paginate(
+            api_requests.ListApplicationsRequest,
+            self.session,
+            limit_results=None,
+        )
+        
+        return results
+    
+    def list_organisations(self):
+        results, messages = json_response_request_paginate(
+            api_requests.ListOrganisationsRequest,
+            self.session,
+            limit_results=None,
+        )
+        return results
+    
+    def list_regions(self):
+        results, messages = json_response_request_paginate(
+            api_requests.ListRegionsRequest,
+            self.session,
+            limit_results=None,
+        )
+        return results
+    
+    def list_application_plans(self):
+        results, messages = json_response_request_paginate(
+            api_requests.ListApplicationPlansRequest,
+            self.session,
+            limit_results=None,
+        )
+        return results
+
 
     def get_application(self, application_uuid):
         try:

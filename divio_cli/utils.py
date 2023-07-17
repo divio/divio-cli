@@ -15,6 +15,8 @@ import click
 import requests
 from packaging import version
 from tabulate import tabulate
+import re
+from urllib.parse import urlparse
 
 from . import __version__
 
@@ -487,3 +489,14 @@ def echo_environment_variables_as_txt(
         "\nSensitive environment variables are not included in this view.",
         fg="yellow",
     )
+
+def is_valid_slug(s):
+    pattern = re.compile("[a-z0-9-]+")
+    return pattern.fullmatch(s) is not None
+
+def is_valid_url(s):
+    try:
+        result = urlparse(s)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False

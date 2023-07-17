@@ -30,6 +30,8 @@ from .utils import (
     launch_url,
     open_application_cloud_site,
     table,
+    is_valid_slug,
+    is_valid_url,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -227,35 +229,110 @@ def app():
 def application_create(
     obj, name, slug, organisation, region, project_template, plan
 ):
+    """Create a new application."""
+
+    wizard_actions = {
+        "applications": obj.client.list_applications,
+        "organisations": obj.client.list_organisations,
+        "regions": obj.client.list_regions,
+        "plans": obj.client.list_application_plans,
+    }
+
+    
+    with click.progressbar(
+        wizard_actions.items(), 
+        label="Loading application creation wizard:",
+        fill_char="■",
+        length=len(wizard_actions),
+        bar_template="%(label)s  %(bar)s  %(info)s",
+    ) as bar:
+        for action, func in bar:
+            wizard_actions[action] = func()
+
+
+    organisation_uuid_name_mapping = {
+        org["uuid"]: org["name"] for org in wizard_actions["organisations"]
+    }
+
+    regions_uuid_name_mapping = {
+        region["uuid"]: region["name"] for region in wizard_actions["regions"]
+    }
+
+    plans_uuid_name_mapping = {
+        plan["uuid"]: plan["name"] for plan in wizard_actions["plans"]
+    }
+    
+    click.secho("Wizard loaded, let's begin! 🪄\n", fg="green")
 
     # Required parameters.
     while not name:
-        name = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_name"])
-    click.secho(f"Registered name: {name}", fg="green")
+        name = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_application_name"])
+        applications_names = [app["name"] for app in wizard_actions["applications"]]
+        if name in applications_names:
+            click.secho(
+                CREATE_APP_WIZARD_MESSAGES["application_name_already_exists"], fg="red"
+            )
+            name = None
+
+    click.secho(f"Registered application name: {name} ", fg="green")
 
     while not slug:
-        slug = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_slug"])
-    click.secho(f"Registered slug: {slug}", fg="green")
+        slug = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_application_slug"])
+        if not is_valid_slug(slug):
+            click.secho(
+                CREATE_APP_WIZARD_MESSAGES["invalid_application_slug"], fg="red"
+            )
+            slug = None
+        applications_slugs = [app["slug"] for app in wizard_actions["applications"]]
+        if slug in applications_slugs:
+            click.secho(
+                CREATE_APP_WIZARD_MESSAGES["application_slug_already_exists"], fg="red"
+            )
+            slug = None
+
+    click.secho(f"Registered application slug: {slug}", fg="green")
 
     while not organisation:
         organisation = click.prompt(
             CREATE_APP_WIZARD_MESSAGES["enter_organisation"]
         )
-    click.secho(f"Registered organisation: {organisation}", fg="green")
+        if organisation not in organisation_uuid_name_mapping.keys():
+            click.secho(
+                CREATE_APP_WIZARD_MESSAGES["invalid_organisation"], fg="red"
+            )
+            organisation = None
+    click.secho(f"Registered organisation: {organisation} - {organisation_uuid_name_mapping[organisation]} ", fg="green")
 
     while not region:
         region = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_region"])
-    click.secho(f"Registered region: {region}", fg="green")
+
+        if region not in regions_uuid_name_mapping.keys():
+            click.secho(
+                CREATE_APP_WIZARD_MESSAGES["invalid_region"], fg="red"
+            )
+            region = None
+    click.secho(f"Registered region: {region} - {regions_uuid_name_mapping[region]}", fg="green")
+
+    while not plan:
+        plan = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_plan"])
+
+        if plan not in plans_uuid_name_mapping.keys():
+            click.secho(
+                CREATE_APP_WIZARD_MESSAGES["invalid_plan"], fg="red"
+            )
+            plan = None
+    click.secho(f"Registered plan: {plan} - {plans_uuid_name_mapping[plan]}", fg="green")
 
     while not project_template:
         project_template = click.prompt(
             CREATE_APP_WIZARD_MESSAGES["enter_project_template"]
         )
-    click.secho(f"Registered project template: {project_template}", fg="green")
-
-    while not plan:
-        plan = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_plan"])
-    click.secho(f"Registered plan: {plan}\n", fg="green")
+        if not is_valid_url(project_template):
+            click.secho(
+                CREATE_APP_WIZARD_MESSAGES["invalid_project_template_url"], fg="red"
+            )
+            project_template = None
+    click.secho(f"Registered project template URL: {project_template}", fg="green")
 
     # Release commands.
     release_commands = []
@@ -371,7 +448,7 @@ def application_create(
 def application_list(obj, grouped, pager, as_json):
     """List all your applications."""
     obj.pager = pager
-    api_response = obj.client.list_applications()
+    api_response = obj.client.list_applications_v1()
 
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
