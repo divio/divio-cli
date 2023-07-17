@@ -133,43 +133,43 @@ class CloudClient(object):
         else:
             return False, messages.LOGIN_CHECK_ERROR
 
-    def list_applications_v1(self):
+    def get_applications_v1(self):
         request = api_requests.ProjectListRequest(self.session)
         return request()
-    
-    def list_applications(self):
+
+    def get_applications(self):
         results, messages = json_response_request_paginate(
             api_requests.ListApplicationsRequest,
             self.session,
             limit_results=None,
         )
-        
-        return results
-    
-    def list_organisations(self):
+
+        return results, messages
+
+    def get_organisations(self, limit_results=None):
         results, messages = json_response_request_paginate(
             api_requests.ListOrganisationsRequest,
             self.session,
-            limit_results=None,
+            limit_results=limit_results,
         )
-        return results
-    
-    def list_regions(self):
+
+        return results, messages
+
+    def get_regions(self, limit_results=None):
         results, messages = json_response_request_paginate(
             api_requests.ListRegionsRequest,
             self.session,
-            limit_results=None,
+            limit_results=limit_results,
         )
-        return results
-    
-    def list_application_plans(self):
+        return results, messages
+
+    def get_application_plans(self):
         results, messages = json_response_request_paginate(
             api_requests.ListApplicationPlansRequest,
             self.session,
             limit_results=None,
         )
-        return results
-
+        return results, messages
 
     def get_application(self, application_uuid):
         try:
@@ -187,7 +187,7 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-    def create_application(
+    def application_create(
         self,
         name,
         slug,
@@ -221,7 +221,9 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-    def get_services(self, region_uuid=None, application_uuid=None):
+    def get_services(
+        self, region_uuid=None, application_uuid=None, limit_results=None
+    ):
         kwargs = {}
 
         # TODO this smells like a security issue
@@ -232,18 +234,23 @@ class CloudClient(object):
         kwargs["filter_website"] = (
             f"website={application_uuid}" if application_uuid else ""
         )
-        request = api_requests.ListServicesRequest(
+
+        results, messages = json_response_request_paginate(
+            api_requests.ListServicesRequest,
             self.session,
             url_kwargs=kwargs,
+            limit_results=limit_results,
         )
-        return request()
+        return results, messages
 
-    def get_service_instances(self, environment_uuid):
-        request = api_requests.ListServiceInstancesRequest(
+    def get_service_instances(self, environment_uuid, limit_results=None):
+        results, messages = json_response_request_paginate(
+            api_requests.ListServiceInstancesRequest,
             self.session,
             url_kwargs={"environment_uuid": environment_uuid},
+            limit_results=limit_results,
         )
-        return request()
+        return results, messages
 
     def add_service_instances(
         self, environment_uuid, prefix, region_uuid, service_uuid
@@ -636,7 +643,7 @@ class CloudClient(object):
         )
         return request()
 
-    def list_deployments(
+    def get_deployments(
         self,
         website_id,
         environment,
@@ -801,7 +808,7 @@ class CloudClient(object):
             "deployment": deployment,
         }
 
-    def list_environment_variables(
+    def get_environment_variables(
         self,
         website_id,
         environment,
@@ -936,14 +943,6 @@ class CloudClient(object):
         raise click.ClickException(
             "Could not get remote repository information."
         )
-
-    def get_regions(self):
-        request = api_requests.ListRegionsRequest(self.session)
-        return request()
-
-    def get_organisations(self):
-        request = api_requests.ListOrganisationsRequest(self.session)
-        return request()
 
 
 class WritableNetRC(netrc):

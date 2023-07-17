@@ -27,11 +27,11 @@ from .utils import (
     get_cp_url,
     get_git_checked_branch,
     hr,
+    is_valid_slug,
+    is_valid_url,
     launch_url,
     open_application_cloud_site,
     table,
-    is_valid_slug,
-    is_valid_url,
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
@@ -185,7 +185,7 @@ def login(ctx, token, check):
 
 @cli.group(name="services")
 def services():
-    """Pull db or files from the Divio cloud environment."""
+    """Manage services."""
 
 
 @services.command(name="list")
@@ -193,6 +193,7 @@ def services():
     "-r",
     "--region",
     required=True,
+    help="The UUID of the region to list services for.",
 )
 @click.option(
     "--json",
@@ -201,16 +202,32 @@ def services():
     default=False,
     help="Choose whether to display content in json format.",
 )
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    help="The maximum number of results that can be retrieved.",
+)
 @click.pass_obj
-def list_services(obj, region, as_json):
-    """List all available services for a regions."""
-    api_response = obj.client.get_services(region_uuid=region)
+def list_services(obj, region, as_json, limit_results):
+    """List all available services for a region."""
+
+    results, messages = obj.client.get_services(
+        region_uuid=region, limit_results=limit_results
+    )
+
+    if not results:
+        click.secho("No services found.", fg="yellow")
+        return
+
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
 
     if as_json:
-        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
-        return
-    if not api_response["results"]:
-        click.echo("No services found.")
+        click.echo(json.dumps(results, indent=2, sort_keys=True))
         return
 
     headers = ["UUID", "Name", "Type", "Description"]
@@ -221,7 +238,7 @@ def list_services(obj, region, as_json):
             entry["type"],
             entry["description"],
         ]
-        for entry in api_response["results"]
+        for entry in results
     ]
     output = table(data, headers, tablefmt="grid", maxcolwidths=30)
 
@@ -277,23 +294,21 @@ def application_create(
     """Create a new application."""
 
     wizard_actions = {
-        "applications": obj.client.list_applications,
-        "organisations": obj.client.list_organisations,
-        "regions": obj.client.list_regions,
-        "plans": obj.client.list_application_plans,
+        "applications": obj.client.get_applications,
+        "organisations": obj.client.get_organisations,
+        "regions": obj.client.get_regions,
+        "plans": obj.client.get_application_plans,
     }
 
-    
     with click.progressbar(
-        wizard_actions.items(), 
+        wizard_actions.items(),
         label="Loading application creation wizard:",
         fill_char="■",
         length=len(wizard_actions),
         bar_template="%(label)s  %(bar)s  %(info)s",
     ) as bar:
         for action, func in bar:
-            wizard_actions[action] = func()
-
+            wizard_actions[action], _ = func()
 
     organisation_uuid_name_mapping = {
         org["uuid"]: org["name"] for org in wizard_actions["organisations"]
@@ -306,32 +321,43 @@ def application_create(
     plans_uuid_name_mapping = {
         plan["uuid"]: plan["name"] for plan in wizard_actions["plans"]
     }
-    
+
     click.secho("Wizard loaded, let's begin! 🪄\n", fg="green")
 
     # Required parameters.
     while not name:
-        name = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_application_name"])
-        applications_names = [app["name"] for app in wizard_actions["applications"]]
+        name = click.prompt(
+            CREATE_APP_WIZARD_MESSAGES["enter_application_name"]
+        )
+        applications_names = [
+            app["name"] for app in wizard_actions["applications"]
+        ]
         if name in applications_names:
             click.secho(
-                CREATE_APP_WIZARD_MESSAGES["application_name_already_exists"], fg="red"
+                CREATE_APP_WIZARD_MESSAGES["application_name_already_exists"],
+                fg="red",
             )
             name = None
 
     click.secho(f"Registered application name: {name} ", fg="green")
 
     while not slug:
-        slug = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_application_slug"])
+        slug = click.prompt(
+            CREATE_APP_WIZARD_MESSAGES["enter_application_slug"]
+        )
         if not is_valid_slug(slug):
             click.secho(
-                CREATE_APP_WIZARD_MESSAGES["invalid_application_slug"], fg="red"
+                CREATE_APP_WIZARD_MESSAGES["invalid_application_slug"],
+                fg="red",
             )
             slug = None
-        applications_slugs = [app["slug"] for app in wizard_actions["applications"]]
+        applications_slugs = [
+            app["slug"] for app in wizard_actions["applications"]
+        ]
         if slug in applications_slugs:
             click.secho(
-                CREATE_APP_WIZARD_MESSAGES["application_slug_already_exists"], fg="red"
+                CREATE_APP_WIZARD_MESSAGES["application_slug_already_exists"],
+                fg="red",
             )
             slug = None
 
@@ -346,27 +372,32 @@ def application_create(
                 CREATE_APP_WIZARD_MESSAGES["invalid_organisation"], fg="red"
             )
             organisation = None
-    click.secho(f"Registered organisation: {organisation} - {organisation_uuid_name_mapping[organisation]} ", fg="green")
+    click.secho(
+        f"Registered organisation: {organisation} - {organisation_uuid_name_mapping[organisation]} ",
+        fg="green",
+    )
 
     while not region:
         region = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_region"])
 
         if region not in regions_uuid_name_mapping.keys():
-            click.secho(
-                CREATE_APP_WIZARD_MESSAGES["invalid_region"], fg="red"
-            )
+            click.secho(CREATE_APP_WIZARD_MESSAGES["invalid_region"], fg="red")
             region = None
-    click.secho(f"Registered region: {region} - {regions_uuid_name_mapping[region]}", fg="green")
+    click.secho(
+        f"Registered region: {region} - {regions_uuid_name_mapping[region]}",
+        fg="green",
+    )
 
     while not plan:
         plan = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_plan"])
 
         if plan not in plans_uuid_name_mapping.keys():
-            click.secho(
-                CREATE_APP_WIZARD_MESSAGES["invalid_plan"], fg="red"
-            )
+            click.secho(CREATE_APP_WIZARD_MESSAGES["invalid_plan"], fg="red")
             plan = None
-    click.secho(f"Registered plan: {plan} - {plans_uuid_name_mapping[plan]}", fg="green")
+    click.secho(
+        f"Registered plan: {plan} - {plans_uuid_name_mapping[plan]}",
+        fg="green",
+    )
 
     while not project_template:
         project_template = click.prompt(
@@ -374,10 +405,13 @@ def application_create(
         )
         if not is_valid_url(project_template):
             click.secho(
-                CREATE_APP_WIZARD_MESSAGES["invalid_project_template_url"], fg="red"
+                CREATE_APP_WIZARD_MESSAGES["invalid_project_template_url"],
+                fg="red",
             )
             project_template = None
-    click.secho(f"Registered project template URL: {project_template}", fg="green")
+    click.secho(
+        f"Registered project template URL: {project_template}", fg="green"
+    )
 
     # Release commands.
     release_commands = []
@@ -458,7 +492,7 @@ def application_create(
                 "default_branch": repository_default_branch,
             }
 
-    response = obj.client.create_application(
+    response = obj.client.application_create(
         name,
         slug,
         organisation,
@@ -499,7 +533,7 @@ def application_create(
 def application_list(obj, grouped, pager, as_json):
     """List all your applications."""
     obj.pager = pager
-    api_response = obj.client.list_applications_v1()
+    api_response = obj.client.get_applications_v1()
 
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
@@ -751,7 +785,7 @@ def list_deployments(obj, environment, all_environments, limit_results):
     deployments across all environments of an application.
     """
 
-    results, messages = obj.client.list_deployments(
+    results, messages = obj.client.get_deployments(
         website_id=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
@@ -916,7 +950,7 @@ def list_environment_variables(
     or environment variables across all environments of an application.
     """
 
-    results, messages = obj.client.list_environment_variables(
+    results, messages = obj.client.get_environment_variables(
         website_id=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
@@ -993,7 +1027,7 @@ def get_environment_variable(
     or any occurrence of it across all environments of an application.
     """
 
-    results, messages = obj.client.list_environment_variables(
+    results, messages = obj.client.get_environment_variables(
         website_id=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
@@ -1106,10 +1140,20 @@ def service_instances():
     default=False,
     help="Choose whether to display content in json format.",
 )
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    help="The maximum number of results that can be retrieved.",
+)
 @click.pass_obj
 @allow_remote_id_override
-def list_service_instances(obj, remote_id, environment, as_json):
-    """List the services instances of an application"""
+def list_service_instances(
+    obj, remote_id, environment, as_json, limit_results
+):
+    """List the services instances of an application."""
+
     project_data = obj.client.get_project(remote_id)
     try:
         status = project_data["{}_status".format(environment)]
@@ -1122,22 +1166,31 @@ def list_service_instances(obj, remote_id, environment, as_json):
             err=True,
         )
         sys.exit(1)
-    api_response = obj.client.get_service_instances(
-        environment_uuid=status["uuid"]
+
+    results, messages = obj.client.get_service_instances(
+        environment_uuid=status["uuid"], limit_results=limit_results
     )
 
-    if as_json:
-        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+    if not results:
+        click.echo(
+            f"No service instances found for {environment!r} environment."
+        )
         return
-    if not api_response["results"]:
-        click.echo("No service instances found.")
+
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
+
+    if as_json:
+        click.echo(json.dumps(results, indent=2, sort_keys=True))
         return
 
     headers = [
         "UUID",
         "Prefix",
         "Type",
-        "Service  Status",
+        "Service Status",
         "Region",
         "Service",
     ]
@@ -1150,10 +1203,10 @@ def list_service_instances(obj, remote_id, environment, as_json):
             entry["region"],
             entry["service"],
         ]
-        for entry in api_response["results"]
+        for entry in results
     ]
-    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
 
+    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
     echo_large_content(output, ctx=obj)
 
 
@@ -1571,7 +1624,7 @@ def doctor(obj, machine_readable, checks):
 
 @cli.group(cls=ClickAliasedGroup)
 def organisations():
-    "Manage your organisations"
+    """Manage your organisations."""
 
 
 @organisations.command(name="list")
@@ -1582,12 +1635,30 @@ def organisations():
     default=False,
     help="Choose whether to display content in json format.",
 )
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    help="The maximum number of results that can be retrieved.",
+)
 @click.pass_obj
-def list_organisations(obj, as_json):
+def list_organisations(obj, as_json, limit_results):
     "List your organisations"
-    api_response = obj.client.get_organisations()
+
+    results, messages = obj.client.get_organisations(limit_results)
+
+    if not results:
+        click.secho("No organisations found.", fg="yellow")
+        return
+
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
+
     if as_json:
-        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        click.echo(json.dumps(results, indent=2, sort_keys=True))
         return
 
     headers = [
@@ -1601,7 +1672,7 @@ def list_organisations(obj, as_json):
             entry["name"],
             entry["created_at"],
         ]
-        for entry in api_response["results"]
+        for entry in results
     ]
     output = table(data, headers, tablefmt="grid", maxcolwidths=50)
 
@@ -1610,7 +1681,7 @@ def list_organisations(obj, as_json):
 
 @cli.group(cls=ClickAliasedGroup)
 def regions():
-    """Manage regions"""
+    """Manage regions."""
 
 
 @regions.command(name="list")
@@ -1621,12 +1692,30 @@ def regions():
     default=False,
     help="Choose whether to display content in json format.",
 )
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    help="The maximum number of results that can be retrieved.",
+)
 @click.pass_obj
-def list_regions(obj, as_json):
+def list_regions(obj, as_json, limit_results):
     """List all available regions"""
-    api_response = obj.client.get_regions()
+
+    results, messages = obj.client.get_regions(limit_results)
+
+    if not results:
+        click.secho("No regions found.", fg="yellow")
+        return
+
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
+
     if as_json:
-        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        click.echo(json.dumps(results, indent=2, sort_keys=True))
         return
 
     headers = [
@@ -1638,7 +1727,7 @@ def list_regions(obj, as_json):
             entry["uuid"],
             entry["name"],
         ]
-        for entry in api_response["results"]
+        for entry in results
     ]
     output = table(data, headers, tablefmt="grid", maxcolwidths=50)
 
