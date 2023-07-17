@@ -6,6 +6,9 @@ x.x.x (x-x-x)
 
 * Added tests for environment variables and deployments commands.
 * Added application creation functionality based on the new application creation approach.
+* Added support to list and add services to an application.
+* Added support to list regions.
+* Added support to list organisations.
 
 3.17.2 (2023-03-16)
 -------------------
