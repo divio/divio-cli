@@ -139,7 +139,7 @@ class CloudClient(object):
 
     def get_applications(self):
         results, messages = json_response_request_paginate(
-            api_requests.ListApplicationsRequest,
+            api_requests.ApplicationsListRequest,
             self.session,
             limit_results=None,
         )
@@ -155,17 +155,37 @@ class CloudClient(object):
 
         return results, messages
 
-    def get_regions(self, limit_results=None):
+    def get_regions(self, limit_results=None, params={}):
         results, messages = json_response_request_paginate(
             api_requests.ListRegionsRequest,
             self.session,
+            params=params,
             limit_results=limit_results,
         )
         return results, messages
 
+    def get_application_plan_groups_v2(self):
+        request = api_requests.ApplicationPlanGroupsV2ListRequest(
+            self.session,
+        )
+        return request()
+
+    def get_application_plan_group_v2(self, plan_group_id):
+        request = api_requests.ApplicationPlanGroupV2GetRequest(
+            self.session,
+            url_kwargs={"plan_group_id": plan_group_id},
+        )
+        return request()
+
+    def get_application_plans_v2(self, organisation_uuid):
+        request = api_requests.ApplicationPlansV2ListRequest(
+            self.session, url_kwargs={"organisation_uuid": organisation_uuid}
+        )
+        return request()
+
     def get_application_plans(self):
         results, messages = json_response_request_paginate(
-            api_requests.ListApplicationPlansRequest,
+            api_requests.ApplicationPlansListRequest,
             self.session,
             limit_results=None,
         )
@@ -187,30 +207,11 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-    def application_create(
-        self,
-        name,
-        slug,
-        organisation,
-        region,
-        project_template,
-        plan,
-        release_commands,
-        git_repo,
-    ):
+    def application_create(self, data):
         try:
             response = api_requests.CreateApplicationRequest(
                 self.session,
-                data={
-                    "name": name,
-                    "slug": slug,
-                    "organisation": organisation,
-                    "region": region,
-                    "project_template": project_template,
-                    "plan": plan,
-                    "release_commands": release_commands,
-                    "git_repo": git_repo,
-                },
+                data=data,
             )()
             return response
         except (KeyError, json.decoder.JSONDecodeError):
@@ -943,6 +944,42 @@ class CloudClient(object):
         raise click.ClickException(
             "Could not get remote repository information."
         )
+
+    def validate_application_name(self, name):
+        try:
+            response = api_requests.ApplicationValidateRequest(
+                self.session,
+                data={
+                    "name": name,
+                },
+                proceed_on_4xx=True,
+            )()
+            return response
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection while validating application name.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+    def validate_application_slug(self, slug):
+        try:
+            response = api_requests.ApplicationValidateRequest(
+                self.session,
+                data={
+                    "slug": slug,
+                },
+                proceed_on_4xx=True,
+            )()
+            return response
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection while validating application slug.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
 
 
 class WritableNetRC(netrc):

@@ -2,7 +2,6 @@ import io
 import json
 import os
 import platform
-import re
 import shutil
 import subprocess
 import sys
@@ -488,11 +487,6 @@ def echo_environment_variables_as_txt(
         "\nSensitive environment variables are not included in this view.",
         fg="yellow",
     )
-
-
-def is_valid_slug(s):
-    pattern = re.compile("[a-z0-9-]+")
-    return pattern.fullmatch(s) is not None
 
 
 def is_valid_url(s):

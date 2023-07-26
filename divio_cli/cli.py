@@ -14,9 +14,18 @@ import divio_cli
 from . import exceptions, localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
+from .create_app_wizard_utils import (
+    get_application_custom_git_repo,
+    get_application_release_commands,
+    validate_application_name,
+    validate_application_organisation,
+    validate_application_plan,
+    validate_application_region,
+    validate_application_slug,
+    validate_application_template,
+)
 from .excepthook import DivioExcepthookIntegration, divio_shutdown
 from .localdev.utils import allow_remote_id_override
-from .messages import CREATE_APP_WIZARD_MESSAGES
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
@@ -27,8 +36,6 @@ from .utils import (
     get_cp_url,
     get_git_checked_branch,
     hr,
-    is_valid_slug,
-    is_valid_url,
     launch_url,
     open_application_cloud_site,
     table,
@@ -41,8 +48,6 @@ try:
     import ipdb as pdb
 except ImportError:
     import pdb
-
-import time
 
 
 # Display the default value for options globally.
@@ -270,6 +275,12 @@ def app():
     help="The organisation UUID.",
 )
 @click.option(
+    "-p",
+    "--plan",
+    default=None,
+    help="The application plan UUID.",
+)
+@click.option(
     "-r",
     "--region",
     default=None,
@@ -277,230 +288,74 @@ def app():
 )
 @click.option(
     "-t",
-    "--project-template",
+    "--template",
     default=None,
     help="The project template URL.",
 )
 @click.option(
-    "-p",
-    "--plan",
-    default=None,
-    help="The application plan UUID.",
+    "-i",
+    "--interactive",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Run the wizard in interactive mode.",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Show verbose output.",
 )
 @click.pass_obj
 def application_create(
-    obj, name, slug, organisation, region, project_template, plan
+    obj, name, slug, organisation, plan, region, template, interactive, verbose
 ):
     """Create a new application."""
 
-    wizard_actions = {
-        "applications": obj.client.get_applications,
-        "organisations": obj.client.get_organisations,
-        "regions": obj.client.get_regions,
-        "plans": obj.client.get_application_plans,
-    }
+    # ~~~ NAME ~~~
+    name = validate_application_name(obj, name, interactive, verbose)
 
-    with click.progressbar(
-        wizard_actions.items(),
-        label="Loading application creation wizard:",
-        fill_char="■",
-        length=len(wizard_actions),
-        bar_template="%(label)s  %(bar)s  %(info)s",
-    ) as bar:
-        for action, func in bar:
-            wizard_actions[action], _ = func()
+    # ~~~ SLUG ~~~
+    slug = validate_application_slug(obj, slug, interactive, verbose)
 
-    organisation_uuid_name_mapping = {
-        org["uuid"]: org["name"] for org in wizard_actions["organisations"]
-    }
-
-    regions_uuid_name_mapping = {
-        region["uuid"]: region["name"] for region in wizard_actions["regions"]
-    }
-
-    plans_uuid_name_mapping = {
-        plan["uuid"]: plan["name"] for plan in wizard_actions["plans"]
-    }
-
-    click.secho("Wizard loaded, let's begin! 🪄\n", fg="green")
-
-    # Required parameters.
-    while not name:
-        name = click.prompt(
-            CREATE_APP_WIZARD_MESSAGES["enter_application_name"]
-        )
-        applications_names = [
-            app["name"] for app in wizard_actions["applications"]
-        ]
-        if name in applications_names:
-            click.secho(
-                CREATE_APP_WIZARD_MESSAGES["application_name_already_exists"],
-                fg="red",
-            )
-            name = None
-
-    click.secho(f"Registered application name: {name} ", fg="green")
-
-    while not slug:
-        slug = click.prompt(
-            CREATE_APP_WIZARD_MESSAGES["enter_application_slug"]
-        )
-        if not is_valid_slug(slug):
-            click.secho(
-                CREATE_APP_WIZARD_MESSAGES["invalid_application_slug"],
-                fg="red",
-            )
-            slug = None
-        applications_slugs = [
-            app["slug"] for app in wizard_actions["applications"]
-        ]
-        if slug in applications_slugs:
-            click.secho(
-                CREATE_APP_WIZARD_MESSAGES["application_slug_already_exists"],
-                fg="red",
-            )
-            slug = None
-
-    click.secho(f"Registered application slug: {slug}", fg="green")
-
-    while not organisation:
-        organisation = click.prompt(
-            CREATE_APP_WIZARD_MESSAGES["enter_organisation"]
-        )
-        if organisation not in organisation_uuid_name_mapping.keys():
-            click.secho(
-                CREATE_APP_WIZARD_MESSAGES["invalid_organisation"], fg="red"
-            )
-            organisation = None
-    click.secho(
-        f"Registered organisation: {organisation} - {organisation_uuid_name_mapping[organisation]} ",
-        fg="green",
+    # ~~~ ORGANISATION ~~~
+    organisation = validate_application_organisation(
+        obj, organisation, interactive, verbose
     )
 
-    while not region:
-        region = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_region"])
-
-        if region not in regions_uuid_name_mapping.keys():
-            click.secho(CREATE_APP_WIZARD_MESSAGES["invalid_region"], fg="red")
-            region = None
-    click.secho(
-        f"Registered region: {region} - {regions_uuid_name_mapping[region]}",
-        fg="green",
+    # ~~~ PLAN ~~~
+    plan_uuid, plan_id = validate_application_plan(
+        obj, plan, organisation, interactive, verbose
     )
 
-    while not plan:
-        plan = click.prompt(CREATE_APP_WIZARD_MESSAGES["enter_plan"])
-
-        if plan not in plans_uuid_name_mapping.keys():
-            click.secho(CREATE_APP_WIZARD_MESSAGES["invalid_plan"], fg="red")
-            plan = None
-    click.secho(
-        f"Registered plan: {plan} - {plans_uuid_name_mapping[plan]}",
-        fg="green",
+    # ~~~ REGION ~~~
+    region = validate_application_region(
+        obj, region, plan_uuid, plan_id, interactive, verbose
     )
 
-    while not project_template:
-        project_template = click.prompt(
-            CREATE_APP_WIZARD_MESSAGES["enter_project_template"]
-        )
-        if not is_valid_url(project_template):
-            click.secho(
-                CREATE_APP_WIZARD_MESSAGES["invalid_project_template_url"],
-                fg="red",
-            )
-            project_template = None
-    click.secho(
-        f"Registered project template URL: {project_template}", fg="green"
-    )
+    # ~~~ TEMPLATE ~~~
+    template = validate_application_template(obj, template, interactive, verbose)
 
-    # Release commands.
-    release_commands = []
-    if click.confirm(CREATE_APP_WIZARD_MESSAGES["create_release_commands"]):
-        add_another_release_command = True
-        while add_another_release_command:
-            release_command_name = click.prompt(
-                CREATE_APP_WIZARD_MESSAGES["enter_release_command_name"]
-            )
-            release_command_value = click.prompt(
-                CREATE_APP_WIZARD_MESSAGES["enter_release_command_value"]
-            )
-            release_commands.append(
-                {
-                    "name": release_command_name,
-                    "command": release_command_value,
-                }
-            )
-            add_another_release_command = click.confirm(
-                CREATE_APP_WIZARD_MESSAGES["add_another_release_command"]
-            )
+    # ~~~ RELEASE COMMANDS ~~~
+    release_commands = get_application_release_commands(verbose)
 
-    # Application repository.
-    git_repo = {}
-    if click.confirm(CREATE_APP_WIZARD_MESSAGES["connect_custom_repository"]):
-        repository_url = click.prompt(
-            CREATE_APP_WIZARD_MESSAGES["enter_repository_url"]
-        )
-        repository_default_branch = click.prompt(
-            CREATE_APP_WIZARD_MESSAGES["enter_repository_default_branch"],
-            default="main",
-        )
-        repository_key_type = click.prompt(
-            CREATE_APP_WIZARD_MESSAGES["enter_repository_access_key_type"],
-            default="ED25519",
-        )
+    # ~~~ CUSTOM REPOSITORY ~~~
+    git_repo = get_application_custom_git_repo(obj, organisation, verbose)
 
-        # Create and validate the repository.
-        response = obj.client.create_repository(
-            organisation, repository_url, repository_key_type
-        )
-        repository_uuid = response["uuid"]
-        repository_ssh_key = response["auth_info"]
-
-        # Ask the user to add the ssh public key (deploy key) to the
-        # repository provider.
-        click.secho(f"SSH Key: {repository_ssh_key}", fg="green")
-        click.confirm(CREATE_APP_WIZARD_MESSAGES["create_deploy_key"])
-
-        # Verify the repository.
-        c = 0
-        response = obj.client.check_repository(
-            repository_uuid, repository_default_branch
-        )
-
-        while response["code"] == "waiting" and c < 5:
-            time.sleep(5)
-            response = obj.client.check_repository(
-                repository_uuid, repository_default_branch
-            )
-            c += 1
-
-        if response["code"] == "waiting":
-            click.secho(
-                CREATE_APP_WIZARD_MESSAGES["repository_verification_timeout"],
-                fg="red",
-            )
-            sys.exit(1)
-        elif response["code"] != "success":
-            click.secho(
-                response["non_field_errors"][0],
-                fg="red",
-            )
-            sys.exit(1)
-        else:
-            git_repo = {
-                "uuid": repository_uuid,
-                "default_branch": repository_default_branch,
-            }
 
     response = obj.client.application_create(
-        name,
-        slug,
-        organisation,
-        region,
-        project_template,
-        plan,
-        release_commands,
-        git_repo,
+        data = {
+            "name": name,
+            "slug": slug,
+            "organisation": organisation,
+            "plan": plan_uuid,
+            "region": region,
+            "template": template,
+            "release_commands": release_commands,
+            "git_repo": git_repo,
+        }
     )
 
     json_response = json.dumps(response, indent=2)

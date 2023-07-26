@@ -34,7 +34,20 @@ class SingleHostSession(requests.Session):
             setattr(self, key, value)
 
     def request(self, method, url, v3_compatibilty=False, *args, **kwargs):
-        url = urljoin(self.host, url)
+        if "control.local.aldryn.net" in self.host:
+            # TODO: Remove when local host namespaces are uniformed
+            # with development and production.
+            namespaces = ["iam", "services", "billing", "admin"]
+            for ns in namespaces:
+                if url.strip("/").startswith(ns):
+                    url = urljoin(self.host, url)
+                    url = url.replace("control", ns, 1)
+                    break
+            else:
+                url = urljoin(self.host, url)
+        else:
+            url = urljoin(self.host, url)
+
         if v3_compatibilty:
             # V3 compatibility hack
             url = url.replace("control", "api", 1)
@@ -79,6 +92,7 @@ class APIRequest(object):
         params=None,
         data=None,
         files=None,
+        proceed_on_4xx=False,
         *args,
         **kwargs,
     ):
@@ -89,6 +103,8 @@ class APIRequest(object):
         self.params = params or {}
         self.data = data or {}
         self.files = files or {}
+        assert isinstance(proceed_on_4xx, bool)
+        self.proceed_on_4xx = proceed_on_4xx
 
     def __call__(self, *args, **kwargs):
         return self.request(*args, **kwargs)
@@ -143,7 +159,7 @@ class APIRequest(object):
         return self.verify(response)
 
     def verify(self, response):
-        if not response.ok:
+        if not response.ok and not self.proceed_on_4xx:
             error_msg = self.get_error_code_map(self.get_login()).get(
                 response.status_code, self.default_error_message
             )
@@ -251,11 +267,27 @@ class ProjectListRequest(APIRequest):
     url = "/api/v1/user-websites/"
 
 
-class ListApplicationsRequest(JsonResponse, APIV3Request):
+class ApplicationsListRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/"
 
 
-class ListApplicationPlansRequest(JsonResponse, APIV3Request):
+class ApplicationPlanGroupsV2ListRequest(APIRequest):
+    url = "/api/v2/websiteplangroup/"
+
+
+class ApplicationPlanGroupV2GetRequest(APIRequest):
+    url = "/api/v2/websiteplangroup/{plan_group_id}/"
+
+
+class ApplicationPlanGroupsListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/group-plans/"
+
+
+class ApplicationPlansV2ListRequest(APIRequest):
+    url = "/api/v2/websiteplan/?organisation={organisation_uuid}"
+
+
+class ApplicationPlansListRequest(JsonResponse, APIV3Request):
     url = "apps/v3/application-plans/"
 
 
@@ -440,3 +472,8 @@ class ListRegionsRequest(JsonResponse, APIV3Request):
 class ListOrganisationsRequest(JsonResponse, APIV3Request):
     url = "/iam/v3/organisations/"
     method = "GET"
+
+
+class ApplicationValidateRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/validate/"
+    method = "POST"
