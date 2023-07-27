@@ -180,33 +180,6 @@ class CloudClient(object):
         )
         return request()
 
-    def get_application_plan_groups_v2(self):
-        request = api_requests.ApplicationPlanGroupsV2ListRequest(
-            self.session,
-        )
-        return request()
-
-    def get_application_plan_group_v2(self, plan_group_id):
-        request = api_requests.ApplicationPlanGroupV2GetRequest(
-            self.session,
-            url_kwargs={"plan_group_id": plan_group_id},
-        )
-        return request()
-
-    def get_application_plans_v2(self, organisation_uuid):
-        request = api_requests.ApplicationPlansV2ListRequest(
-            self.session, url_kwargs={"organisation_uuid": organisation_uuid}
-        )
-        return request()
-
-    def get_application_plans(self):
-        results, messages = json_response_request_paginate(
-            api_requests.ApplicationPlansListRequest,
-            self.session,
-            limit_results=None,
-        )
-        return results, messages
-
     def get_application(self, application_uuid):
         try:
             response = api_requests.ApplicationRequest(

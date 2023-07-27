@@ -279,22 +279,6 @@ class ApplicationPlanGroupGetRequest(JsonResponse, APIV3Request):
     url = "/billing/v3/application-plan-groups/{plan_group_uuid}/"
 
 
-class ApplicationPlanGroupsV2ListRequest(APIRequest):
-    url = "/api/v2/websiteplangroup/"
-
-
-class ApplicationPlanGroupV2GetRequest(APIRequest):
-    url = "/api/v2/websiteplangroup/{plan_group_id}/"
-
-
-class ApplicationPlansV2ListRequest(APIRequest):
-    url = "/api/v2/websiteplan/?organisation={organisation_uuid}"
-
-
-class ApplicationPlansListRequest(JsonResponse, APIV3Request):
-    url = "apps/v3/application-plans/"
-
-
 class ProjectDetailRequest(APIRequest):
     url = "/api/v1/website/{website_id}/detail/"
 

@@ -318,9 +318,7 @@ class CreateAppWizard:
                 tablefmt="grid",
                 maxcolwidths=50,
             )
-            click.secho(
-                "SUCCESS: Release commands", fg="green"
-            )
+            click.secho("SUCCESS: Release commands", fg="green")
             click.secho(release_commands_table, fg="yellow")
 
         return release_commands
