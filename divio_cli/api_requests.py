@@ -271,16 +271,20 @@ class ApplicationsListRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/"
 
 
+class ApplicationPlanGroupsListRequest(JsonResponse, APIV3Request):
+    url = "/billing/v3/application-plan-groups/"
+
+
+class ApplicationPlanGroupGetRequest(JsonResponse, APIV3Request):
+    url = "/billing/v3/application-plan-groups/{plan_group_uuid}/"
+
+
 class ApplicationPlanGroupsV2ListRequest(APIRequest):
     url = "/api/v2/websiteplangroup/"
 
 
 class ApplicationPlanGroupV2GetRequest(APIRequest):
     url = "/api/v2/websiteplangroup/{plan_group_id}/"
-
-
-class ApplicationPlanGroupsListRequest(JsonResponse, APIV3Request):
-    url = "/apps/v3/group-plans/"
 
 
 class ApplicationPlansV2ListRequest(APIRequest):

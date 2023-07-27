@@ -75,7 +75,7 @@ class CreateAppWizard:
             else:
                 if self.verbose:
                     click.secho(
-                        f"SUCCESS: Accepted {name!r} as the name of the application.",
+                        f"SUCCESS: Name {name!r}.",
                         fg="green",
                     )
                 return name
@@ -106,7 +106,7 @@ class CreateAppWizard:
             else:
                 if self.verbose:
                     click.secho(
-                        f"SUCCESS: Accepted {slug!r} as the slug of the application.",
+                        f"SUCCESS: Slug {slug!r}.",
                         fg="green",
                     )
                 return slug
@@ -151,15 +151,12 @@ class CreateAppWizard:
             else:
                 if self.verbose:
                     click.secho(
-                        (
-                            f"SUCCESS: Accepted {orgs_uuid_name_mapping[organisation]!r} "
-                            f"as the organisation of the application."
-                        ),
+                        f"SUCCESS: Organisation {orgs_uuid_name_mapping[organisation]!r}.",
                         fg="green",
                     )
                 return organisation
 
-    def get_plan(self, plan, organisation_uuid):
+    def get_plan(self, plan, organisation):
         if not plan and not self.interactive:
             click.secho(
                 "Error: Missing option '-p' / '--plan'. Required in non-interactive mode.",
@@ -167,18 +164,13 @@ class CreateAppWizard:
             )
             sys.exit(1)
 
-        plan_groups = self.client.get_application_plan_groups_v2()["results"]
-        plans = self.client.get_application_plans_v2(organisation_uuid)[
-            "results"
-        ]
+        plan_groups, _ = self.client.get_application_plan_groups(
+            params={"organisation": organisation}
+        )
 
-        valid_plan_group_uuids = [p["group_uuid"] for p in plans]
-
-        available_plan_groups = [
-            g for g in plan_groups if g["uuid"] in valid_plan_group_uuids
-        ]
         plan_groups_uuid_name_mapping = {
-            group["uuid"]: group["name"] for group in available_plan_groups
+            plan_group["uuid"]: plan_group["name"]
+            for plan_group in plan_groups
         }
 
         while True:
@@ -188,14 +180,13 @@ class CreateAppWizard:
                         "uuid",
                         message=CREATE_APP_WIZARD_MESSAGES["enter_plan"],
                         choices=[
-                            (org["name"], org["uuid"])
-                            for org in available_plan_groups
+                            (pg["name"], pg["uuid"]) for pg in plan_groups
                         ],
                     )
                 ]
                 plan = inquirer.prompt(options)["uuid"]
 
-            if plan not in valid_plan_group_uuids:
+            if plan not in plan_groups_uuid_name_mapping.keys():
                 click.secho(
                     CREATE_APP_WIZARD_MESSAGES["invalid_plan"], fg="red"
                 )
@@ -206,22 +197,15 @@ class CreateAppWizard:
                 if self.verbose:
                     click.secho(
                         (
-                            f"SUCCESS: Accepted {plan_groups_uuid_name_mapping[plan]!r} "
+                            f"SUCCESS: Plan {plan_groups_uuid_name_mapping[plan]!r} "
                             "as the plan of the application."
                         ),
                         fg="green",
                     )
 
-                # TODO: Return the plan ID for now.
-                # To be removed once the API is updated.
-                for p in available_plan_groups:
-                    if p["uuid"] == plan:
-                        plan_id = p["id"]
-                        break
+                return plan
 
-                return plan, plan_id
-
-    def get_region(self, region, plan, plan_id):
+    def get_region(self, region, plan):
         if not region and not self.interactive:
             click.secho(
                 "Error: Missing option '-r' / '--region'. Required in non-interactive mode.",
@@ -229,14 +213,12 @@ class CreateAppWizard:
             )
             sys.exit(1)
 
-        available_regions_uuids = self.client.get_application_plan_group_v2(
-            plan_id
-        )["regions_uuids"]
-
+        available_regions_uuids = self.client.get_application_plan_group(plan)[
+            "regions"
+        ]
         available_regions, _ = self.client.get_regions(
             params={"uuid": available_regions_uuids}
         )
-
         regions_uuid_name_mapping = {
             region["uuid"]: region["name"] for region in available_regions
         }
@@ -256,7 +238,7 @@ class CreateAppWizard:
 
                 region = inquirer.prompt(options)["uuid"]
 
-            if region not in regions_uuid_name_mapping.keys():
+            if region not in available_regions_uuids:
                 click.secho(
                     CREATE_APP_WIZARD_MESSAGES["invalid_region"], fg="red"
                 )
@@ -267,10 +249,7 @@ class CreateAppWizard:
             else:
                 if self.verbose:
                     click.secho(
-                        (
-                            f"SUCCESS: Accepted {regions_uuid_name_mapping[region]!r} "
-                            "as the region of the application."
-                        ),
+                        f"SUCCESS: Region {regions_uuid_name_mapping[region]!r}.",
                         fg="green",
                     )
                 return region
@@ -301,10 +280,7 @@ class CreateAppWizard:
             else:
                 if self.verbose:
                     click.secho(
-                        (
-                            f"SUCCESS: Accepted {template!r} "
-                            "as the template of the application."
-                        ),
+                        f"SUCCESS: Template {template!r}.",
                         fg="green",
                     )
                 return template
@@ -343,7 +319,7 @@ class CreateAppWizard:
                 maxcolwidths=50,
             )
             click.secho(
-                "SUCCESS: Accepted the following release commands:", fg="green"
+                "SUCCESS: Release commands", fg="green"
             )
             click.secho(release_commands_table, fg="yellow")
 
@@ -412,7 +388,7 @@ class CreateAppWizard:
             else:
                 if self.verbose:
                     click.secho(
-                        "SUCCESS: Accepted custom repository.", fg="green"
+                        "SUCCESS: Verified custom repository.", fg="green"
                     )
                 git_repo = {
                     "uuid": repository_uuid,

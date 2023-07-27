@@ -164,6 +164,22 @@ class CloudClient(object):
         )
         return results, messages
 
+    def get_application_plan_groups(self, params={}):
+        results, messages = json_response_request_paginate(
+            api_requests.ApplicationPlanGroupsListRequest,
+            self.session,
+            params=params,
+            limit_results=None,
+        )
+        return results, messages
+
+    def get_application_plan_group(self, plan_group_uuid):
+        request = api_requests.ApplicationPlanGroupGetRequest(
+            self.session,
+            url_kwargs={"plan_group_uuid": plan_group_uuid},
+        )
+        return request()
+
     def get_application_plan_groups_v2(self):
         request = api_requests.ApplicationPlanGroupsV2ListRequest(
             self.session,

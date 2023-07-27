@@ -308,12 +308,8 @@ def application_create(
     name = wizard.get_name(name)
     slug = wizard.get_slug(slug)
     organisation = wizard.get_organisation(organisation)
-    # TODO: Needs to be refactored as soon as
-    # the Plan Group V3 API is updated.
-    plan_uuid, plan_id = wizard.get_plan(plan, organisation)
-    # TODO: Needs to be refactored as soon as
-    # the Plan Group V3 API is updated.
-    region = wizard.get_region(region, plan_uuid, plan_id)
+    plan = wizard.get_plan(plan, organisation)
+    region = wizard.get_region(region, plan)
     template = wizard.get_template(template)
     release_commands = wizard.get_release_commands()
     git_repo = wizard.get_custom_git_repo(organisation)
@@ -322,7 +318,7 @@ def application_create(
         name=name,
         slug=slug,
         organisation=organisation,
-        plan=plan_uuid,
+        plan=plan,
         region=region,
         template=template,
         release_commands=release_commands,
