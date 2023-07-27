@@ -14,16 +14,7 @@ import divio_cli
 from . import exceptions, localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
-from .create_app_wizard_utils import (
-    get_application_custom_git_repo,
-    get_application_release_commands,
-    validate_application_name,
-    validate_application_organisation,
-    validate_application_plan,
-    validate_application_region,
-    validate_application_slug,
-    validate_application_template,
-)
+from .create_app_wizard_utils import CreateAppWizard
 from .excepthook import DivioExcepthookIntegration, divio_shutdown
 from .localdev.utils import allow_remote_id_override
 from .upload.addon import upload_addon
@@ -297,7 +288,6 @@ def app():
     "--interactive",
     is_flag=True,
     default=False,
-    show_default=True,
     help="Run the wizard in interactive mode.",
 )
 @click.option(
@@ -305,7 +295,6 @@ def app():
     "--verbose",
     is_flag=True,
     default=False,
-    show_default=True,
     help="Show verbose output.",
 )
 @click.pass_obj
@@ -314,52 +303,31 @@ def application_create(
 ):
     """Create a new application."""
 
-    # ~~~ NAME ~~~
-    name = validate_application_name(obj, name, interactive, verbose)
+    wizard = CreateAppWizard(obj=obj, interactive=interactive, verbose=verbose)
 
-    # ~~~ SLUG ~~~
-    slug = validate_application_slug(obj, slug, interactive, verbose)
+    name = wizard.get_name(name)
+    slug = wizard.get_slug(slug)
+    organisation = wizard.get_organisation(organisation)
+    # TODO: Needs to be refactored as soon as
+    # the Plan Group V3 API is updated.
+    plan_uuid, plan_id = wizard.get_plan(plan, organisation)
+    # TODO: Needs to be refactored as soon as
+    # the Plan Group V3 API is updated.
+    region = wizard.get_region(region, plan_uuid, plan_id)
+    template = wizard.get_template(template)
+    release_commands = wizard.get_release_commands()
+    git_repo = wizard.get_custom_git_repo(organisation)
 
-    # ~~~ ORGANISATION ~~~
-    organisation = validate_application_organisation(
-        obj, organisation, interactive, verbose
+    wizard.create_app(
+        name=name,
+        slug=slug,
+        organisation=organisation,
+        plan=plan_uuid,
+        region=region,
+        template=template,
+        release_commands=release_commands,
+        git_repo=git_repo,
     )
-
-    # ~~~ PLAN ~~~
-    plan_uuid, plan_id = validate_application_plan(
-        obj, plan, organisation, interactive, verbose
-    )
-
-    # ~~~ REGION ~~~
-    region = validate_application_region(
-        obj, region, plan_uuid, plan_id, interactive, verbose
-    )
-
-    # ~~~ TEMPLATE ~~~
-    template = validate_application_template(obj, template, interactive, verbose)
-
-    # ~~~ RELEASE COMMANDS ~~~
-    release_commands = get_application_release_commands(verbose)
-
-    # ~~~ CUSTOM REPOSITORY ~~~
-    git_repo = get_application_custom_git_repo(obj, organisation, verbose)
-
-
-    response = obj.client.application_create(
-        data = {
-            "name": name,
-            "slug": slug,
-            "organisation": organisation,
-            "plan": plan_uuid,
-            "region": region,
-            "template": template,
-            "release_commands": release_commands,
-            "git_repo": git_repo,
-        }
-    )
-
-    json_response = json.dumps(response, indent=2)
-    echo_large_content(json_response, ctx=obj)
 
 
 @app.command(name="list")
