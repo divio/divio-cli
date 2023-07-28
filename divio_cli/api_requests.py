@@ -411,3 +411,28 @@ class DeploymentEnvironmentVariablesRequest(JsonResponse, APIV3Request):
 class ApplicationRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/{application_uuid}/"
     method = "GET"
+
+
+class ListServiceInstancesRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/service-instances/?environment={environment_uuid}"
+    method = "GET"
+
+
+class CreateServiceInstanceRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/service-instances/"
+    method = "POST"
+
+
+class ListServicesRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/services/?{filter_region}&{filter_website}"
+    method = "GET"
+
+
+class ListRegionsRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/regions/"
+    method = "GET"
+
+
+class ListOrganisationsRequest(JsonResponse, APIV3Request):
+    url = "/iam/v3/organisations/"
+    method = "GET"
