@@ -835,7 +835,7 @@ def export_db(prefix):
 def push_db(
     client, environment, remote_id, prefix, local_file=None, keep_tempfile=True
 ):
-    pusher = PushDb(
+    pusher = PushDb.create(
         client=client,
         environment=environment,
         remote_id=remote_id,
@@ -849,7 +849,7 @@ def push_db(
 
 
 def push_media(client, environment, remote_id, prefix, keep_tempfile=True):
-    pusher = PushMedia(
+    pusher = PushMedia.create(
         client=client,
         environment=environment,
         remote_id=remote_id,

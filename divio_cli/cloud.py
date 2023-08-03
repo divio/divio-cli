@@ -868,7 +868,7 @@ class CloudClient(object):
         return api_requests.GetBackupDownloadServiceInstanceRequest(
             self.session,
             url_kwargs={
-                "backup_download_service_instance_uuid": backup_download_service_instance_uuid
+                "backup_download_si_uuid": backup_download_service_instance_uuid
             },
         )()
 
@@ -885,9 +885,7 @@ class CloudClient(object):
         }
 
         if delete_at is not None:
-            data["scheduled_for_deletion_at"] = delete_at.strftime(
-                "%Y-%m-%dT%H:%M:%S"
-            )
+            data["scheduled_for_deletion_at"] = delete_at.isoformat()
         if notes is not None:
             data["notes"] = notes
 

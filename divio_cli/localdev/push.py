@@ -3,6 +3,7 @@ import subprocess
 import tarfile
 import time
 
+import attr
 import click
 
 from divio_cli.cloud import CloudClient
@@ -11,46 +12,59 @@ from divio_cli.settings import DIVIO_DUMP_FOLDER
 from divio_cli.utils import get_size, get_subprocess_env, pretty_size
 
 
+@attr.define
 class PushBase:
     """A base class for db and media push"""
 
-    def __init__(
-        self,
-        client: CloudClient,
-        environment: str,
-        remote_id: str,
-        prefix: str,
-        type: backups.Type,
-    ):
-        self.client = client
-        self.environment = environment
-        self.prefix = prefix
-        self.type = type
+    client: CloudClient
+    environment: str
+    remote_id: str
+    prefix: str
 
-        self.project_home = utils.get_application_home()
-        settings = utils.get_project_settings(self.project_home)
-        self.website_id = settings["id"]
+    project_home: str
+    website_id: str
+    env_uuid: str
+    remote_project_name: str
+    si_uuid: str
+
+    backup_type: backups.Type = None  # overriden by subclasses
+
+    @classmethod
+    def create(
+        cls, client: CloudClient, environment: str, remote_id: str, prefix: str
+    ):
+        project_home = utils.get_application_home()
+        settings = utils.get_project_settings(project_home)
+        website_id = settings["id"]
 
         # Find the matching service instance for the given service type
-        env = client.get_environment(self.website_id, environment)
-        self.env_uuid = env["uuid"]
-        si = client.get_service_instance(type, self.env_uuid, prefix)
-        self.si_uuid = si["uuid"]
+        env = client.get_environment(website_id, environment)
+        env_uuid = env["uuid"]
+        si = client.get_service_instance(cls.backup_type, env_uuid, prefix)
+        si_uuid = si["uuid"]
 
-        self.remote_project_name = (
+        remote_project_name = (
             settings["slug"]
-            if self.website_id == remote_id
+            if website_id == remote_id
             else f"project {remote_id}"
+        )
+
+        return cls(
+            client=client,
+            environment=environment,
+            remote_id=remote_id,
+            prefix=prefix,
+            project_home=project_home,
+            website_id=website_id,
+            env_uuid=env_uuid,
+            remote_project_name=remote_project_name,
+            si_uuid=si_uuid,
         )
 
     def run(self, local_file=None, cleanup=True):
         main_step = utils.MainStep(
-            "pushing local %s to %s's %s environment"
-            % (
-                self.type.lower(),
-                self.remote_project_name,
-                self.environment,
-            )
+            f"pushing local {self.__class__.backup_type.lower()} to "
+            f"{self.remote_project_name}'s {self.environment} environment"
         )
 
         if local_file:
@@ -72,7 +86,7 @@ class PushBase:
     def verify_step(self, local_file):
         """Verify a given file has the expected format"""
         if not os.path.exists(local_file):
-            utils.exit(f"File {local_file} does not exist.")
+            utils.exit_err(f"File {local_file} does not exist.")
 
     def export_step(self) -> str:
         """Export dump/media and return the local file path"""
@@ -105,7 +119,7 @@ class PushBase:
                 time.sleep(2)
                 restore = self.client.get_backup_restore(restore_uuid)
             if restore.get("success") != "SUCCESS":
-                utils.exit("Backup restore failed.")
+                utils.exit_err("Backup restore failed.")
 
     def cleanup_step(self):
         with utils.TimedStep("Deleting temporary files"):
@@ -114,13 +128,12 @@ class PushBase:
 
 
 class PushMedia(PushBase):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, type=backups.Type.MEDIA, **kwargs)
+    backup_type = backups.Type.MEDIA
 
     def verify_step(self, local_file):
         super().verify_step(local_file)
         if not tarfile.is_tarfile(local_file):
-            utils.exit(f"Given file {local_file} is not a tarball.")
+            utils.exit_err(f"Given file {local_file} is not a tarball.")
 
     def export_step(self):
         compress_step = utils.TimedStep("Compressing local media folder")
@@ -131,7 +144,7 @@ class PushMedia(PushBase):
 
         items = os.listdir(media_dir) if os.path.isdir(media_dir) else []
         if not items:
-            utils.exit("Local media directory is empty")
+            utils.exit_err("Local media directory is empty")
 
         uncompressed_size = 0
         with tarfile.open(archive_path, mode="w:gz") as tar:
@@ -160,14 +173,15 @@ class PushMedia(PushBase):
 
 
 class PushDb(PushBase):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, type=backups.Type.DB, **kwargs)
+    backup_type = backups.Type.DB
 
     def verify_step(self, local_file):
         super().verify_step(local_file)
         db_type = utils.get_db_type(self.prefix, path=self.project_home)
         if not is_db_dump(local_file, db_type):
-            utils.exit(f"File {local_file} doesn't look like a database dump")
+            utils.exit_err(
+                f"File {local_file} doesn't look like a database dump"
+            )
 
     def export_step(self):
         local_file = os.path.join(DIVIO_DUMP_FOLDER, "local_db.sql")
@@ -206,10 +220,9 @@ def dump_database(
         docker_compose = utils.get_docker_compose_cmd(project_home)
     except RuntimeError:
         # Docker-compose does not exist
-        utils.exit(
-            "Docker-compose.yml does not exist. Can not handle database without!",
+        utils.exit_err(
+            "docker-compose.yml does not exist. Can not handle database without!",
         )
-    utils.DockerComposeConfig(docker_compose)
     utils.start_database_server(docker_compose, prefix=prefix)
 
     dump_step = utils.TimedStep("Dumping local database")
@@ -252,10 +265,10 @@ def dump_database(
             )
 
     else:
-        utils.exit("db type not known")
+        utils.exit_err("db type not known")
 
     if return_code != 0:
-        utils.exit("Error dumping the database")
+        utils.exit_err("Error dumping the database")
 
     dump_step.done()
 

@@ -16,7 +16,7 @@ from divio_cli.localdev import backups
 )
 def test_wait_for_backup_to_complete(monkeypatch, statuses, ok):
     mockexit = MagicMock()
-    monkeypatch.setattr("divio_cli.localdev.utils.exit", mockexit)
+    monkeypatch.setattr("divio_cli.localdev.utils.exit_err", mockexit)
 
     side_effects = [
         {
@@ -57,7 +57,7 @@ def test_wait_for_backup_to_complete_error(
     monkeypatch, si_backups, si_details, message
 ):
     mockexit = MagicMock()
-    monkeypatch.setattr("divio_cli.localdev.utils.exit", mockexit)
+    monkeypatch.setattr("divio_cli.localdev.utils.exit_err", mockexit)
 
     client = MagicMock()
     client.get_backup = Mock(

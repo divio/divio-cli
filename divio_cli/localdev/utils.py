@@ -425,7 +425,7 @@ class TimedStep:
         click.echo(" [{}s]".format(int(time() - self.start)))
 
 
-def exit(message):
+def exit_err(message, exit_code=1):
     click.secho(" error!", fg="red", err=True)
     click.secho(message)
-    sys.exit(1)
+    sys.exit(exit_code)

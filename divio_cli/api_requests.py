@@ -317,7 +317,9 @@ class ListBackupDownloadServiceInstancesRequest(JsonResponse, APIV3Request):
 
 
 class GetBackupDownloadServiceInstanceRequest(JsonResponse, APIV3Request):
-    url = "/apps/v3/backup-download-service-instances/{backup_download_service_instance_uuid}"
+    url = (
+        "/apps/v3/backup-download-service-instances/{backup_download_si_uuid}"
+    )
 
 
 # Create backup and restore using upload (pull)
