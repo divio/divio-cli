@@ -12,7 +12,7 @@ from divio_cli.settings import DIVIO_DUMP_FOLDER
 from divio_cli.utils import get_size, get_subprocess_env, pretty_size
 
 
-@attr.define
+@attr.s(auto_attribs=True)
 class PushBase:
     """A base class for db and media push"""
 

@@ -42,15 +42,19 @@ Integration Tests:
 
     # prepare netrc as login
     - echo "$CI_TEST_NETRC" > ~/.netrc
+    # Install docker-compose
+    - apk add --no-cache docker-compose
   script: 
       - python3 -m ensurepip --default-pip
       - python3 -m pip install --upgrade pip
       - pip install -r requirements.txt
-      - pip install docker-compose pytest pytest-cov "cryptography<3.4"
+      # For PyYAML issue, see https://github.com/docker/compose/issues/10836
+      #- pip install "PyYAML<5.4" docker-compose pytest pytest-cov
+      - pip install pytest pytest-cov
       - python3 setup.py develop
       - divio doctor
       - mkdir -p ${CI_PROJECT_DIR}/test_data
-      - pytest -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
+      - pytest -s -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
   after_script:
       - mkdir -p ${CI_PROJECT_DIR}/artifacts
       - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest

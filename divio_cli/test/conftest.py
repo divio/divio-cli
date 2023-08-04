@@ -41,10 +41,14 @@ def _divio_project(request, tmpdir_factory):
 
     print(f"Setup command: {setup_command}")
 
-    subprocess.check_call(
+    ret = subprocess.run(
         ["divio"] + setup_command,
         cwd=str(tmp_folder.resolve()),
+        capture_output=True,
+        encoding="utf-8",
     )
+    # Print the output in case of error
+    assert ret.returncode == 0, (ret.stderr, ret.stdout)
 
     return tmp_project_path
 
