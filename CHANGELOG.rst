@@ -8,6 +8,7 @@ x.x.x (x-x-x)
 * Added support to list and add services to an application.
 * Added support to list regions.
 * Added support to list organisations.
+* Limit pyyaml dependency to be at least 5.4.1
 
 3.17.2 (2023-03-16)
 -------------------
