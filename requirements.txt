@@ -4,7 +4,7 @@ click_aliases
 urllib3 < 2
 colorama; sys_platform == 'win32'
 packaging
-pyaml > 5.4.1
+pyaml
 python-dateutil
 requests
 sentry-sdk
