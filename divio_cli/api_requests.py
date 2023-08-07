@@ -91,6 +91,7 @@ class APIRequest(object):
         self.files = files or {}
 
     def __call__(self, *args, **kwargs):
+
         return self.request(*args, **kwargs)
 
     def get_url(self):
@@ -123,6 +124,8 @@ class APIRequest(object):
         return headers
 
     def request(self, *args, **kwargs):
+        print(kwargs)
+        print("...")
         try:
             response = self.session.request(
                 self.method,

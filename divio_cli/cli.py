@@ -324,7 +324,6 @@ def application_deploy_log(obj, remote_id, environment):
             fg="yellow",
         )
 
-
 @app.command(name="logs")
 @click.argument("environment", default="test")
 @click.option(

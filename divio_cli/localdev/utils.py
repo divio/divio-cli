@@ -283,19 +283,22 @@ def allow_remote_id_override(func):
 
     @functools.wraps(func)
     def read_remote_id(obj, remote_id, *args, **kwargs):
-
+        
         ERROR_MSG = (
-            "This command requires a Divio Cloud Project id. Please "
+            "This command requires a Divio Cloud application UUID. Please "
             "provide one with the --remote-id option or call the "
-            "command from a project directory."
+            "command from an application directory."
         )
 
-        if remote_id and not remote_id.isdigit():
+        if remote_id and remote_id.isdigit():
             # Returning application UUID directly
-            return remote_id
+            # TODO: fixure out the uuid from the id
+            raise NotImplemented("IDs are not supported")
 
         if not remote_id:
             try:
+                # TODO: this needs to check uuid AND id
+                # rewrite the ID to the uuid in the file
                 remote_id = get_project_settings(silent=True)[
                     "application_uuid"
                 ]

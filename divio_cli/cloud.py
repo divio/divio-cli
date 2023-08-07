@@ -288,6 +288,7 @@ class CloudClient(object):
             sys.exit(1)
 
     def show_log(self, application_uuid, environment, tail=False, utc=True):
+        print(".")
         def print_log_data(data):
             for entry in data:
                 dt = isoparse(entry["timestamp"])
