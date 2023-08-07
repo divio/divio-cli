@@ -127,6 +127,36 @@ class CloudClient:
 
         return messages.LOGIN_SUCCESSFUL.format(greeting=greeting)
 
+    def logout(self, interactive=True):
+        def secho(*args, **kwargs):
+            if not interactive:
+                return None
+
+            return click.secho(*args, **kwargs)
+
+        def confirm(*args, **kwargs):
+            if not interactive:
+                return True
+
+            return click.confirm(*args, **kwargs)
+
+        host = urlparse(self.endpoint).hostname
+
+        if host not in self.netrc.hosts:
+            secho(messages.LOGOUT_ERROR.format(host), fg="red")
+
+            return 1
+
+        if not confirm(messages.LOGOUT_CONFIRMATION.format(host)):
+            return 1
+
+        self.netrc.remove(host)
+        self.netrc.write()
+
+        secho(messages.LOGOUT_SUCCESS.format(host))
+
+        return 0
+
     def check_login_status(self):
         request = api_requests.LoginStatusRequest(self.session)
         response = request()
