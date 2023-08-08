@@ -8,6 +8,8 @@ x.x.x (x-x-x)
 * Added support to list and add services to an application.
 * Added support to list regions.
 * Added support to list organisations.
+* Added support for environment prefix to app pull.
+* Added the option to keep temporary files for app push and pull.
 
 3.17.2 (2023-03-16)
 -------------------
