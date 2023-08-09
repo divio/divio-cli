@@ -5,6 +5,8 @@ from io import BytesIO
 
 import click
 
+from divio_cli.exceptions import DivioException
+
 from .. import settings
 from ..validators.boilerplate import validate_boilerplate
 from ..validators.common import load_config
@@ -56,9 +58,9 @@ def upload_boilerplate(client, path=None, noinput=False):
     if errors:
         message = "The following errors happened during validation:"
         message = "{}\n - {}".format(message, "\n - ".join(errors))
-        raise click.ClickException(message)
+        raise DivioException(message)
 
-    excludes, files = get_boilerplate_files(path)
+    _excludes, files = get_boilerplate_files(path)
 
     if not noinput:
         click.secho(

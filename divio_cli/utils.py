@@ -16,6 +16,8 @@ import requests
 from packaging import version
 from tabulate import tabulate
 
+from divio_cli.exceptions import DivioException, EnvironmentDoesNotExist
+
 from . import __version__
 
 
@@ -134,8 +136,7 @@ def execute(func, *popenargs, **kwargs):
             fg="red",
             err=True,
         )
-        click.secho(os.linesep.join(output), fg="red", err=True)
-        sys.exit(1)
+        raise DivioException(os.linesep.join(output))
 
 
 def check_call(*popenargs, **kwargs):
@@ -151,14 +152,7 @@ def open_application_cloud_site(client, application_id, environment):
     try:
         url = project_data["{}_status".format(environment)]["site_url"]
     except KeyError:
-        click.secho(
-            "Environment with the name '{}' does not exist.".format(
-                environment
-            ),
-            fg="red",
-            err=True,
-        )
-        sys.exit(1)
+        raise EnvironmentDoesNotExist(environment)
     if url:
         launch_url(url)
     else:
@@ -377,15 +371,12 @@ def json_response_request_paginate(
     request, session, limit_results, params={}, url_kwargs={}
 ):
     if limit_results is not None and limit_results < 1:
-        click.secho(
+        raise DivioException(
             (
                 "The maximum number of results cannot be lower than 1. "
                 "Please adjust the --limit option accordingly."
-            ),
-            fg="red",
-            err=True,
+            )
         )
-        sys.exit(1)
 
     params.update({"page_size": limit_results})
     try:
@@ -417,8 +408,7 @@ def json_response_request_paginate(
                 url=next_page,
             )()
     except (KeyError, json.decoder.JSONDecodeError):
-        click.secho("Error establishing connection.", fg="red", err=True)
-        sys.exit(1)
+        raise DivioException("Error establishing connection.")
 
     return results, messages
 

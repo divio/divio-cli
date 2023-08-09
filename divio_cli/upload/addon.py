@@ -5,6 +5,8 @@ from io import BytesIO, StringIO
 
 import click
 
+from divio_cli.exceptions import DivioException
+
 from .. import settings
 from ..utils import (
     create_temp_dir,
@@ -31,7 +33,7 @@ def package_addon(path):
         if filename.endswith(".tar.gz"):
             return os.path.join(temp_dir, filename)
 
-    raise click.ClickException("Packaged addon could not be found")
+    raise DivioException("Packaged addon could not be found")
 
 
 def add_addon_meta_files(tar, path):

@@ -8,6 +8,7 @@ x.x.x (x-x-x)
 * Added support to list and add services to an application.
 * Added support to list regions.
 * Added support to list organisations.
+* Improve exception handling.
 
 3.17.2 (2023-03-16)
 -------------------
