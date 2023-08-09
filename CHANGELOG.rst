@@ -9,6 +9,7 @@ x.x.x (x-x-x)
 * Added support to list regions.
 * Added support to list organisations.
 * Improve exception handling.
+* Removed support for Python 3.6 (end of life since December 2021).
 
 3.17.2 (2023-03-16)
 -------------------
