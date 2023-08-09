@@ -1,4 +1,3 @@
-attrs
 click >= 7.0
 click_aliases
 urllib3 < 2
