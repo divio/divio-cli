@@ -141,9 +141,9 @@ def setup_website_containers(
 ):
     try:
         docker_compose = utils.get_docker_compose_cmd(path)
-    except DockerComposeDoesNotExist:
+    except DockerComposeDoesNotExist as e:
         # give a reason
-        raise DockerComposeDoesNotExist("Cannot setup containers")
+        raise DockerComposeDoesNotExist("Cannot setup containers") from e
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
     # stop all running containers for project
@@ -257,18 +257,17 @@ def create_workspace(
         website_slug=website_slug, path=path, client=client, zone=zone
     )
 
-    # setup docker website containers
+    # setup docker website containers (if docker-compose.yml exists)
     try:
         setup_website_containers(
             client=client, environment=environment, path=path
         )
+        pull_media(client=client, environment=environment, path=path)
     except DockerComposeDoesNotExist:
         click.secho(
             "Warning: docker-compose.yml does not exist. Will continue without...",
             fg="yellow",
         )
-    # download media files
-    pull_media(client=client, environment=environment, path=path)
 
     instructions = (
         "Your workspace is setup and ready to start.",
@@ -1198,9 +1197,9 @@ def develop_package(package, no_rebuild=False):
         try:
             docker_compose = utils.get_docker_compose_cmd(project_home)
             check_call(docker_compose("build", "web"))
-        except DockerComposeDoesNotExist:
+        except DockerComposeDoesNotExist as e:
             # Docker-compose does not exist
-            raise DockerComposeDoesNotExist("Cannot rebuild project")
+            raise DockerComposeDoesNotExist("Cannot rebuild project") from e
 
     click.secho(
         "The package {} has been added to your local development project!".format(
