@@ -11,7 +11,7 @@ variables:
 
 Unit Tests:
     stage: qa
-    image: themattrix/tox
+    image: registry.gitlab.com/divio/incubator/multi-python
     script: tox
     artifacts:
       paths:
