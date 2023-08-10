@@ -1,14 +1,14 @@
-import click
 import pytest
 
 from divio_cli import settings
+from divio_cli.exceptions import ConfigurationNotFound
 from divio_cli.localdev import utils
 
 
 def test_get_application_home(tmp_path):
 
-    # Loud fail to get the aldryn file
-    with pytest.raises(click.exceptions.ClickException):
+    # Should fail to get the aldryn file
+    with pytest.raises(ConfigurationNotFound):
         home = utils.get_application_home(str(tmp_path))
 
     # Silent fail to find the aldryn file

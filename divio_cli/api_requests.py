@@ -1,8 +1,9 @@
 import os
 from urllib.parse import urljoin, urlparse
 
-import click
 import requests
+
+from divio_cli.exceptions import DivioException
 
 from . import messages
 from .utils import create_temp_dir, get_user_agent
@@ -46,14 +47,12 @@ class SingleHostSession(requests.Session):
         )
 
 
-class APIRequestError(click.ClickException):
-    def show(self, file=None):
-        click.secho(
-            "\nError: {}".format(self.format_message()),
-            file=file,
-            err=True,
-            fg="red",
-        )
+class APIRequestError(DivioException):
+    pass
+
+
+class NetworkError(DivioException):
+    pass
 
 
 class APIRequest(object):
@@ -138,7 +137,7 @@ class APIRequest(object):
             requests.exceptions.ConnectionError,
             requests.exceptions.Timeout,
         ) as e:
-            raise click.ClickException(messages.NETWORK_ERROR_MESSAGE + str(e))
+            raise NetworkError(messages.NETWORK_ERROR_MESSAGE + str(e))
 
         return self.verify(response)
 
