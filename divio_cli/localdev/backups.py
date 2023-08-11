@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional, Tuple
 
+import boto3
+
 from divio_cli.exceptions import DivioException
 
 from ..cloud import CloudClient
@@ -47,9 +49,6 @@ def create_backup(
         delete_at=datetime.utcnow() + BACKUP_RETENTION,
     )
     backup_uuid = response["uuid"]
-    if not backup_uuid:
-        raise DivioException(response.get("result") or "")
-
     return _wait_for_backup_to_complete(client, backup_uuid)
 
 
@@ -106,8 +105,6 @@ def upload_backup(
     creds = params["upload_parameters"]
 
     if params["handler"] == "s3-sts-v1":
-        import boto3
-
         boto3.client(
             "s3",
             aws_access_key_id=creds["aws_access_key_id"],
