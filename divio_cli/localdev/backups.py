@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import time
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional, Tuple
 
 import boto3
 
@@ -25,8 +26,8 @@ def create_backup(
     website_id: str,
     environment: str,
     type: Type,
-    prefix: Optional[str] = None,
-) -> Tuple[str, str]:
+    prefix: str | None = None,
+) -> tuple[str, str]:
     """
     Trigger a backup for the service instance matching `type` and `prefix`.
 
@@ -85,7 +86,7 @@ def upload_backup(
     environment_uuid: str,
     si_uuid: str,
     local_file: str,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """
     Upload a local file to Divio. This creates as a backup
     (+service instance backup) that can be later restored.
@@ -161,7 +162,7 @@ def create_backup_download_url(
 
 def _wait_for_backup_to_complete(
     client: CloudClient, backup_uuid: str, message: str = "Backup failed"
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     # Wait for the backup to complete
     backup = {"state": ""}
     while backup.get("state") != "COMPLETED":
