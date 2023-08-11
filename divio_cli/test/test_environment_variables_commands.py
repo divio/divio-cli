@@ -30,7 +30,7 @@ ENVIRONMENT_VARIABLES_COMMANDS = [
 
 @pytest.mark.integration
 @pytest.mark.parametrize("command", ENVIRONMENT_VARIABLES_COMMANDS)
-def test_call_click_commands(divio_project, command):
+def test_call_envvars_commands(divio_project, command):
     runner = CliRunner()
     result = runner.invoke(cli.cli, command)
     assert result.exit_code == 0
