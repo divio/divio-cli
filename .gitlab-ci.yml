@@ -12,7 +12,7 @@ variables:
 Unit Tests:
     stage: qa
     image: registry.gitlab.com/divio/incubator/multi-python
-    script: tox
+    script: tox -x tox.skip_missing_interpreters=false
     artifacts:
       paths:
         - ${CI_PROJECT_DIR}/artifacts/.coverage.*
