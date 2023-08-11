@@ -11,6 +11,7 @@ from .. import config, settings
 from ..exceptions import (
     ConfigurationNotFound,
     DivioException,
+    DivioWarning,
     DockerComposeDoesNotExist,
 )
 from ..utils import check_call, check_output, is_windows
@@ -373,15 +374,16 @@ class TimedStep:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc, _exc_tb):
         if not exc_type:
             self.done()
 
+        if isinstance(exc, DivioException):
+            # Since inside a step, ensure we have the right formatting
+            prefix = "error!"
+            if isinstance(exc, DivioWarning):
+                prefix = "warning!"
+            exc.message = f" {prefix}\n{exc.message or ''}"
+
     def done(self):
         click.echo(" [{}s]".format(int(time() - self.start)))
-
-
-def exit_err(message, exit_code=1):
-    click.secho(" error!", fg="red", err=True)
-    click.secho(message)
-    sys.exit(exit_code)

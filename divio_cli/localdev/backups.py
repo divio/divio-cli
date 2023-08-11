@@ -3,8 +3,9 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional, Tuple
 
+from divio_cli.exceptions import DivioException
+
 from ..cloud import CloudClient
-from . import utils
 
 
 BACKUP_RETENTION = timedelta(hours=1)
@@ -47,7 +48,7 @@ def create_backup(
     )
     backup_uuid = response["uuid"]
     if not backup_uuid:
-        utils.exit_err(response.get("result") or "")
+        raise DivioException(response.get("result") or "")
 
     return _wait_for_backup_to_complete(client, backup_uuid)
 
@@ -62,19 +63,19 @@ def get_backup_uuid_from_service_backup(
     """
     backup_si = client.get_service_instance_backup(backup_si_uuid)
     if not backup_si:
-        utils.exit_err("Invalid service instance backup provided.")
+        raise DivioException("Invalid service instance backup provided.")
 
     if not backup_si.get("ended_at"):
-        utils.exit_err(
+        raise DivioException(
             "The provided service instance backup is still running."
         )
     if backup_si.get("errors"):
-        utils.exit_err(
+        raise DivioException(
             "The provided service instance backup completed with errors:"
             f" {backup_si['errors']}."
         )
     if backup_si.get("service_type") != service_type:
-        utils.exit_err(
+        raise DivioException(
             "The provided service instance backup is for a different service type."
         )
     return backup_si["backup"]
@@ -118,7 +119,7 @@ def upload_backup(
             Key=creds["key"],
         )
     else:
-        utils.exit_err(f"Unsupported backend: {params['handler']}")
+        raise DivioException(f"Unsupported backend: {params['handler']}")
 
     client.finish_backup_upload(params["finish_url"])
     return _wait_for_backup_to_complete(
@@ -144,7 +145,7 @@ def create_backup_download_url(
     ) = client.create_backup_download(backup_uuid, backup_si_uuid)
 
     if not backup_download_uuid or not backup_download_si_uuid:
-        utils.exit_err("Error while creating backup download")
+        raise DivioException("Error while creating backup download")
 
     # Wait for the backup download to complete
     backup_download_si = {"ended_at": None}
@@ -154,7 +155,7 @@ def create_backup_download_url(
             backup_download_si_uuid
         )
     if backup_download_si.get("errors"):
-        utils.exit_err(
+        raise DivioException(
             f"Backup download failed: {backup_download_si['errors']}"
         )
 
@@ -183,9 +184,9 @@ def _wait_for_backup_to_complete(
                     message += f", {errors}"
             except:
                 pass
-        utils.exit_err(message)
+        raise DivioException(message)
 
     if not si_backups:
-        utils.exit_err("No service instance backup was found.")
+        raise DivioException("No service instance backup was found.")
 
     return backup["uuid"], backup["service_instance_backups"][0]

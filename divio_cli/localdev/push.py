@@ -7,6 +7,7 @@ import attr
 import click
 
 from divio_cli.cloud import CloudClient
+from divio_cli.exceptions import DivioException
 from divio_cli.localdev import backups, utils
 from divio_cli.settings import DIVIO_DUMP_FOLDER
 from divio_cli.utils import get_size, get_subprocess_env, pretty_size
@@ -86,7 +87,7 @@ class PushBase:
     def verify_step(self, local_file):
         """Verify a given file has the expected format"""
         if not os.path.exists(local_file):
-            utils.exit_err(f"File {local_file} does not exist.")
+            raise DivioException(f"File {local_file} does not exist.")
 
     def export_step(self) -> str:
         """Export dump/media and return the local file path"""
@@ -119,7 +120,7 @@ class PushBase:
                 time.sleep(2)
                 restore = self.client.get_backup_restore(restore_uuid)
             if restore.get("success") != "SUCCESS":
-                utils.exit_err("Backup restore failed.")
+                raise DivioException("Backup restore failed.")
 
     def cleanup_step(self):
         with utils.TimedStep("Deleting temporary files"):
@@ -133,7 +134,7 @@ class PushMedia(PushBase):
     def verify_step(self, local_file):
         super().verify_step(local_file)
         if not tarfile.is_tarfile(local_file):
-            utils.exit_err(f"Given file {local_file} is not a tarball.")
+            raise DivioException(f"Given file {local_file} is not a tarball.")
 
     def export_step(self):
         compress_step = utils.TimedStep("Compressing local media folder")
@@ -144,7 +145,7 @@ class PushMedia(PushBase):
 
         items = os.listdir(media_dir) if os.path.isdir(media_dir) else []
         if not items:
-            utils.exit_err("Local media directory is empty")
+            raise DivioException("Local media directory is empty")
 
         uncompressed_size = 0
         with tarfile.open(archive_path, mode="w:gz") as tar:
@@ -179,7 +180,7 @@ class PushDb(PushBase):
         super().verify_step(local_file)
         db_type = utils.get_db_type(self.prefix, path=self.project_home)
         if not is_db_dump(local_file, db_type):
-            utils.exit_err(
+            raise DivioException(
                 f"File {local_file} doesn't look like a database dump"
             )
 
@@ -220,7 +221,7 @@ def dump_database(
         docker_compose = utils.get_docker_compose_cmd(project_home)
     except RuntimeError:
         # Docker-compose does not exist
-        utils.exit_err(
+        raise DivioException(
             "docker-compose.yml does not exist. Can not handle database without!",
         )
     utils.start_database_server(docker_compose, prefix=prefix)
@@ -265,10 +266,10 @@ def dump_database(
             )
 
     else:
-        utils.exit_err("db type not known")
+        raise DivioException("db type not known")
 
     if return_code != 0:
-        utils.exit_err("Error dumping the database")
+        raise DivioException("Error dumping the database")
 
     dump_step.done()
 

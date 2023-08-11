@@ -728,7 +728,7 @@ class CloudClient(object):
         data = {
             "environment": environment_uuid,
             "services": [service_instance_uuid],
-            "trigger": "MANUAL",  # TODO Use a temporary type
+            "trigger": "MANUAL",
         }
 
         if delete_at is not None:
@@ -760,7 +760,7 @@ class CloudClient(object):
             data={
                 "backup": backup_uuid,
                 "service_instance_backups": [backup_service_instance_uuid],
-                "trigger": "MANUAL",  # TODO Use a temporary type
+                "trigger": "MANUAL",
             },
         )()
 
