@@ -1,7 +1,8 @@
 import json
 import os
 
-from .. import exceptions, messages
+from .. import messages
+from ..exceptions import DivioException
 
 
 VALID_LICENSE_FILENAMES = ("LICENSE.txt", "LICENSE", "license.txt", "license")
@@ -17,15 +18,13 @@ def get_license(path):
 def load_config(fname, path=None):
     config_fpath = os.path.join(path or ".", fname)
     if not os.path.exists(config_fpath):
-        raise exceptions.DivioException(
-            messages.FILE_NOT_FOUND.format(config_fpath)
-        )
+        raise DivioException(messages.FILE_NOT_FOUND.format(config_fpath))
 
     with open(config_fpath) as f:
         try:
             return json.load(f)
         except ValueError:
-            raise exceptions.DivioException(
+            raise DivioException(
                 "Config file could not be loaded: Invalid JSON"
             )
 

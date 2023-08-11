@@ -2,10 +2,11 @@
 import errno
 import os
 import subprocess
-import sys
 from collections import OrderedDict
 
 import click
+
+from divio_cli.exceptions import DivioException
 
 from . import cloud, utils
 from .settings import DOCKER_TEST_IMAGE
@@ -242,10 +243,7 @@ def check_requirements(config=None, checks=None):
             continue
         check = ALL_CHECKS.get(check_key)
         if not check:
-            click.secho(
-                "Invalid check {}".format(check_key), fg="red", err=True
-            )
-            sys.exit(1)
+            raise DivioException(f"Invalid check {check_key}")
         errors = check().run_check()
         yield check_key, check.name, errors
 

@@ -2,25 +2,18 @@ import functools
 import json
 import os
 import subprocess
-import sys
 from time import time
 
 import click
 import yaml
 
-from .. import config, exceptions, settings
-from ..utils import check_call, check_output, is_windows
-
-
-DOT_ALDRYN_FILE_NOT_FOUND = (
-    "Divio Cloud configuration file '{}' or '{}' could not be found!\n"
-    "Please make sure you're in a Divio Cloud project folder and the "
-    "file exists.\n\n"
-    "You can create a new configuration file for an existing project "
-    "with the `divio app configure` command.".format(
-        settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
-    )
+from .. import config, settings
+from ..exceptions import (
+    ConfigurationNotFound,
+    DivioException,
+    DockerComposeDoesNotExist,
 )
+from ..utils import check_call, check_output, is_windows
 
 
 def get_project_settings(path=None, silent=False):
@@ -46,14 +39,9 @@ def get_project_settings(path=None, silent=False):
         with open(path) as fh:
             return json.load(fh)
     except (TypeError, OSError):
-        raise click.ClickException(DOT_ALDRYN_FILE_NOT_FOUND)
+        raise ConfigurationNotFound()
     except json.decoder.JSONDecodeError:
-        click.secho(
-            "Error: Unexpected value in {}".format(path),
-            fg="red",
-            err=True,
-        )
-        sys.exit(1)
+        raise DivioException(f"Unexpected value in {path}")
 
 
 def get_application_home(path=None, silent=False):
@@ -82,7 +70,7 @@ def get_application_home(path=None, silent=False):
         current_path = os.path.abspath(os.path.join(current_path, os.pardir))
     if silent:
         return
-    raise click.ClickException(DOT_ALDRYN_FILE_NOT_FOUND)
+    raise ConfigurationNotFound()
 
 
 UNIX_DOCKER_COMPOSE_FILENAME = "docker-compose.yml"
@@ -99,9 +87,7 @@ def get_docker_compose_cmd(path):
     docker_compose_filename = os.path.join(path, docker_compose_filename)
 
     if not os.path.isfile(docker_compose_filename):
-        raise RuntimeError(
-            "Warning: Could not find a 'docker-compose.yml' file."
-        )
+        raise DockerComposeDoesNotExist()
 
     conf = config.Config()
     cmd = conf.get_docker_compose_cmd()
@@ -144,12 +130,7 @@ def ensure_windows_docker_compose_file_exists(path):
     unix_path = os.path.join(path, UNIX_DOCKER_COMPOSE_FILENAME)
     if not os.path.isfile(unix_path):
         # TODO: use correct exit from click
-        click.secho(
-            "docker-compose.yml not found at {}".format(unix_path),
-            fg="red",
-            err=True,
-        )
-        sys.exit(1)
+        raise DivioException(f"docker-compose.yml not found at {unix_path}")
 
     with open(unix_path, "r") as fh:
         conf = yaml.load(fh, Loader=yaml.SafeLoader)
@@ -187,12 +168,7 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
     """
     Returns the container id for a running database with a given prefix.
     """
-    try:
-        docker_compose = get_docker_compose_cmd(path)
-    except RuntimeError:
-        raise exceptions.DivioException(
-            "docker-compose.yml not found. Unable to find database container"
-        )
+    docker_compose = get_docker_compose_cmd(path)
     should_check_oldstyle = False
     output = None
 
@@ -221,7 +197,7 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
             pass
 
     if not output and raise_on_missing:
-        raise exceptions.DivioException("Unable to find database container")
+        raise DivioException("Unable to find database container")
     return output
 
 
@@ -303,7 +279,7 @@ def allow_remote_id_override(func):
                 ]
                 remote_id = obj.client.get_website_id_for_slug(slug=slug)
             except Exception:
-                raise click.ClickException(
+                raise DivioException(
                     "Unable to retrieve application via UUID."
                 )
 
@@ -311,10 +287,10 @@ def allow_remote_id_override(func):
             try:
                 remote_id = get_project_settings(silent=True)["id"]
             except KeyError:
-                raise click.ClickException(ERROR_MSG)
+                raise DivioException(ERROR_MSG)
             else:
                 if not remote_id:
-                    raise click.ClickException(ERROR_MSG)
+                    raise DivioException(ERROR_MSG)
         return func(obj, int(remote_id), *args, **kwargs)
 
     return click.option(
@@ -334,16 +310,8 @@ def get_service_type(identifier, path=None):
     variable of a services from the docker-compose file.
     """
     project_home = get_application_home(path)
-    try:
-        docker_compose = get_docker_compose_cmd(project_home)
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not get the service type without!",
-            fg="red",
-            err=True,
-        )
-        sys.exit(1)
+    docker_compose = get_docker_compose_cmd(project_home)
+
     docker_compose_config = DockerComposeConfig(docker_compose)
     services = docker_compose_config.get_services()
     if (
@@ -367,28 +335,16 @@ def get_db_type(prefix, path=None):
         )
     except RuntimeError:
         # legacy section. we try to look for the db, if it does not exist, fail
-        try:
-            docker_compose = get_docker_compose_cmd(path)
-        except RuntimeError:
-            # Docker-compose does not exist
-            click.secho(
-                "Warning: docker-compose.yml does not exist. Can not get the service type without!",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+        docker_compose = get_docker_compose_cmd(path)
         docker_compose_config = DockerComposeConfig(docker_compose)
         if not docker_compose_config.has_service("db"):
-            click.secho(
+            raise DivioException(
                 "The local database container must be called "
                 "`database_default`, must define the `SERVICE_MANAGER` "
                 "environment variable and must mount the project directory "
                 "from the host to the /app directory of the container."
                 "\n\nSee https://docs.divio.com/en/latest/reference/docker-docker-compose/#database-default",
-                fg="red",
-                err=True,
             )
-            sys.exit(1)
         else:
             # Fall back to database for legacy docker-compose files
             db_type = "fsm-postgres"

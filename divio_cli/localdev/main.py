@@ -13,6 +13,12 @@ from time import sleep, time
 import click
 import requests
 
+from divio_cli.exceptions import (
+    ConfigurationNotFound,
+    DivioException,
+    DockerComposeDoesNotExist,
+    ExitCode,
+)
 from divio_cli.localdev.push import PushDb, PushMedia, dump_database
 from divio_cli.utils import get_local_git_remotes
 
@@ -44,7 +50,7 @@ def get_git_host(zone=None):
         git_host = get_project_settings(get_application_home()).get(
             "git_host", None
         )
-    except click.ClickException:
+    except ConfigurationNotFound:
         git_host = None
 
     if not git_host:
@@ -109,9 +115,7 @@ def configure_project(website_slug, path, client, zone=None):
                 raise
 
     if not os.path.isdir(os.path.dirname(path)):
-        raise click.ClickException(
-            "{} is not a directory".format(os.path.dirname(path))
-        )
+        raise DivioException(f"{os.path.dirname(path)} is not a directory")
 
     # Write the file
     with open(path, "w+") as fh:
@@ -135,13 +139,9 @@ def setup_website_containers(
 ):
     try:
         docker_compose = utils.get_docker_compose_cmd(path)
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Will continue without...",
-            fg="yellow",
-        )
-        return
+    except DockerComposeDoesNotExist as e:
+        # give a reason
+        raise DockerComposeDoesNotExist("Cannot setup containers") from e
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
     # stop all running containers for project
@@ -236,11 +236,7 @@ def create_workspace(
             else:
                 os.remove(path)
         else:
-            click.secho(
-                "Aborting",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Aborting", fg=None)
 
     website_id = client.get_website_id_for_slug(website_slug)
     env = client.get_environment(website_id, environment)
@@ -259,11 +255,17 @@ def create_workspace(
         website_slug=website_slug, path=path, client=client, zone=zone
     )
 
-    # setup docker website containers
-    setup_website_containers(client=client, environment=environment, path=path)
-
-    # download media files
-    pull_media(client=client, environment=environment, path=path)
+    # setup docker website containers (if docker-compose.yml exists)
+    try:
+        setup_website_containers(
+            client=client, environment=environment, path=path
+        )
+        pull_media(client=client, environment=environment, path=path)
+    except DockerComposeDoesNotExist:
+        click.secho(
+            "Warning: docker-compose.yml does not exist. Will continue without...",
+            fg="yellow",
+        )
 
     instructions = (
         "Your workspace is setup and ready to start.",
@@ -306,7 +308,7 @@ class DatabaseImportBase(object):
         self.website_slug = utils.get_project_settings(self.path)["slug"]
         try:
             self.docker_compose = utils.get_docker_compose_cmd(self.path)
-        except RuntimeError:
+        except DockerComposeDoesNotExist:
             self.docker_compose = None
         self.database_extensions = self.get_active_db_extensions()
         self.start_time = time()
@@ -331,7 +333,7 @@ class DatabaseImportBase(object):
 
         if "db_extensions" in project_settings:
             if not isinstance(project_settings["db_extensions"], list):
-                raise click.ClickException(
+                raise DivioException(
                     'Divio configuration file contains invalid "db_extensions" value. '
                     "It should contain a list of extensions, for instance: {}".format(
                         default_db_extensions
@@ -360,13 +362,10 @@ class DatabaseImportBase(object):
             else:
                 break
         else:
-            click.secho(
+            raise DivioException(
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
-                fg="red",
-                err=True,
             )
-            sys.exit(1)
         click.echo(" [{}s]".format(int(time() - start_wait)))
 
         # drop any existing connections
@@ -428,13 +427,10 @@ class DatabaseImportBase(object):
             else:
                 break
         else:
-            click.secho(
+            raise DivioException(
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
-                fg="red",
-                err=True,
             )
-            sys.exit(1)
         click.echo(" [{}s]".format(int(time() - start_wait)))
 
     def prepare_db_server(self):
@@ -459,8 +455,7 @@ class DatabaseImportBase(object):
         elif self.db_type == "fsm-mysql":
             self.prepare_db_server_mysql(db_container_id, start_wait)
         else:
-            click.secho("db type not known", fg="red", err=True)
-            sys.exit(1)
+            raise DivioException("db type not known")
 
     def get_db_restore_command(self, db_type):
         raise NotImplementedError
@@ -535,16 +530,13 @@ class DatabaseImportBase(object):
                 catch=False,
             )
         except subprocess.CalledProcessError as exc:
-            click.secho(
+            raise DivioException(
                 "Could not restore the database dump. This is likely a "
                 "configuration issue."
                 "\n\nSee https://docs.divio.com/en/latest/reference/docker-docker-compose/#services-defined-in-docker-compose-yml\n\n"
                 "The executed command was:\n"
                 "  {command}".format(command=" ".join(exc.cmd)),
-                fg="red",
-                err=True,
             )
-            sys.exit(1)
 
     def restore_db_mysql(self, db_container_id):
         restore_command = self.get_db_restore_command(self.db_type)
@@ -584,8 +576,7 @@ class DatabaseImportBase(object):
         elif self.db_type == "fsm-mysql":
             self.restore_db_mysql(db_container_id)
         else:
-            click.secho("db type not known", fg="red", err=True)
-            sys.exit(1)
+            raise DivioException("db type not known")
         click.echo("\n      [{}s]".format(int(time() - start_import)))
 
     def finish(self):
@@ -726,16 +717,7 @@ def pull_media(
         if remote_id == website_id
         else "Project {}".format(remote_id)
     )
-    try:
-        docker_compose = utils.get_docker_compose_cmd(project_home)
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not handle media without!",
-            fg="red",
-        )
-        return
-
+    docker_compose = utils.get_docker_compose_cmd(project_home)
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
     local_data_folder = os.path.join(project_home, "data")
@@ -865,7 +847,7 @@ def update_local_application(git_branch, client, strict=False):
     project_home = utils.get_application_home()
     try:
         docker_compose = utils.get_docker_compose_cmd(project_home)
-    except RuntimeError:
+    except DockerComposeDoesNotExist:
         # Docker-compose does not exist
         docker_compose = None
 
@@ -883,7 +865,7 @@ def update_local_application(git_branch, client, strict=False):
             err=True,
         )
         if strict:
-            sys.exit(1)
+            sys.exit(ExitCode.GENERIC_ERROR)
 
     click.secho("Pulling changes from git remote", fg="green")
     check_call(("git", "pull", "origin", git_branch))
@@ -918,9 +900,9 @@ def develop_package(package, no_rebuild=False):
     addons_dev_dir = os.path.join(project_home, "addons-dev")
 
     if not os.path.isdir(os.path.join(addons_dev_dir, package)):
-        raise click.ClickException(
-            "Package {} could not be found in {}. Please make "
-            "sure it exists and try again.".format(package, addons_dev_dir)
+        raise DivioException(
+            f"Package {package} could not be found in {addons_dev_dir}. "
+            "Please make sure it exists and try again."
         )
 
     url_pattern = re.compile(r"(\S*/{}/\S*)".format(package))
@@ -961,13 +943,9 @@ def develop_package(package, no_rebuild=False):
         try:
             docker_compose = utils.get_docker_compose_cmd(project_home)
             check_call(docker_compose("build", "web"))
-        except RuntimeError:
+        except DockerComposeDoesNotExist as e:
             # Docker-compose does not exist
-            click.echo(
-                "Can not rebuild without docker-compose.yml",
-                fg="red",
-                err=True,
-            )
+            raise DockerComposeDoesNotExist("Cannot rebuild project") from e
 
     click.secho(
         "The package {} has been added to your local development project!".format(
@@ -977,19 +955,7 @@ def develop_package(package, no_rebuild=False):
 
 
 def open_application(open_browser=True):
-    try:
-        docker_compose = utils.get_docker_compose_cmd(
-            utils.get_application_home()
-        )
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not open project without!",
-            fg="red",
-            err=True,
-        )
-        return
-
+    docker_compose = utils.get_docker_compose_cmd(utils.get_application_home())
     CHECKING_PORT = "80"
     try:
         addr = check_output(
@@ -997,21 +963,19 @@ def open_application(open_browser=True):
         )
     except subprocess.CalledProcessError:
         if click.prompt(
-            "Your project is not running. Do you want to start " "it now?"
+            "Your project is not running. Do you want to start it now? [y|N]"
         ):
             return start_application()
         return
     try:
         host, port = addr.rstrip(os.linesep).split(":")
     except ValueError:
-        click.secho(
-            "Can not get port of the project. Please check `docker-compose logs` in case the project did not start correctly and please verify that a port {} is exposed.".format(
-                CHECKING_PORT
-            ),
-            fg="red",
-            err=True,
+        raise DivioException(
+            (
+                "Can not get port of the project. Please check `docker-compose logs` in case the project "
+                "did not start correctly and please verify that a port {CHECKING_PORT} is exposed."
+            )
         )
-        sys.exit(1)
 
     if host == "0.0.0.0":
         docker_host_url = os.environ.get("DOCKER_HOST")
@@ -1028,7 +992,7 @@ def open_application(open_browser=True):
     click.secho("Waiting for project to start..", fg="green", nl=False)
     # wait 30s for runserver to startup
     seconds = 30
-    for attempt in range(seconds):
+    for _attempt in range(seconds):
         click.secho(".", fg="green", nl=False)
         try:
             requests.head(addr)
@@ -1038,7 +1002,7 @@ def open_application(open_browser=True):
             click.echo()
             break
     else:
-        raise click.ClickException(
+        raise DivioException(
             "\nProject failed to start. Please run 'docker-compose logs' "
             "to get more information."
         )
@@ -1064,18 +1028,7 @@ def configure(client, zone=None):
 
 
 def start_application():
-    try:
-        docker_compose = utils.get_docker_compose_cmd(
-            utils.get_application_home()
-        )
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not start project without!",
-            fg="red",
-            err=True,
-        )
-        return
+    docker_compose = utils.get_docker_compose_cmd(utils.get_application_home())
     try:
         check_output(
             docker_compose("up", "-d"), catch=False, stderr=subprocess.STDOUT
@@ -1083,45 +1036,21 @@ def start_application():
     except subprocess.CalledProcessError as exc:
         output = exc.output.decode()
         if "port is already allocated" in output:
-            click.secho(
+            output = (
                 "There's already another program running on this project's "
                 "port. Please either stop the other program or change the "
-                "port in the 'docker-compose.yml' file and try again.\n",
-                fg="red",
-                err=True,
+                "port in the 'docker-compose.yml' file and try again.\n"
             )
-        raise click.ClickException(output)
+        raise DivioException(output)
 
     return open_application(open_browser=True)
 
 
 def show_application_status():
-    try:
-        docker_compose = utils.get_docker_compose_cmd(
-            utils.get_application_home()
-        )
-        check_call(docker_compose("ps"))
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not show status without!",
-            fg="red",
-            err=True,
-        )
-        return
+    docker_compose = utils.get_docker_compose_cmd(utils.get_application_home())
+    check_call(docker_compose("ps"))
 
 
 def stop_application():
-    try:
-        docker_compose = utils.get_docker_compose_cmd(
-            utils.get_application_home()
-        )
-        check_call(docker_compose("stop"))
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not stop project without!",
-            fg="red",
-            err=True,
-        )
-        return
+    docker_compose = utils.get_docker_compose_cmd(utils.get_application_home())
+    check_call(docker_compose("stop"))
