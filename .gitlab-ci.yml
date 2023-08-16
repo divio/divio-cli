@@ -11,8 +11,8 @@ variables:
 
 Unit Tests:
     stage: qa
-    image: themattrix/tox
-    script: tox
+    image: divio/multi-python
+    script: tox -x tox.skip_missing_interpreters=false
     artifacts:
       paths:
         - ${CI_PROJECT_DIR}/artifacts/.coverage.*
