@@ -702,7 +702,7 @@ class CloudClient(object):
             ]
 
             if len(matches) == 0:
-                raise DivioWarning(
+                raise DivioException(
                     f"No service of type {instance_type} with prefix {prefix} "
                     f"found for environment {environment_uuid}."
                 )
