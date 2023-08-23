@@ -23,37 +23,34 @@ LOGIN_CHECK_SUCCESSFUL = (
     "Authentication with server successful. You are logged in."
 )
 LOGIN_CHECK_ERROR = (
-    "You are currently not logged in, " "please log in using `divio login`."
+    "You are currently not logged in, please log in using `divio login`."
 )
 
-PUSH_DB_WARNING = "\n".join(
-    (
-        "WARNING",
-        "=======",
-        "\nYou are about to push your local database to the {environment} environment on ",
-        "the Divio Cloud. This will replace ALL data on the Divio Cloud {environment} ",
-        "environment with the data you are about to push, including (but not limited to):",
-        "  - User accounts",
-        "  - CMS Pages & Plugins",
-        "\nYou will also lose any changes that have been made on the {environment} ",
-        "environment since you pulled its database to your local environment. ",
-        "\nIt is recommended to go the backup section on control.divio.com",
-        "and take a backup before restoring the database.",
-        "\nPlease proceed with caution!",
-    )
+PUSH_DB_WARNING = (
+    "\nWARNING"
+    "\n======="
+    "\n\nYou are about to push your local database to the {environment} environment on"
+    "\nthe Divio Cloud. This will replace ALL data on the Divio Cloud {environment}"
+    "\nenvironment with the data you are about to push, including (but not limited to):"
+    "\n  - User accounts"
+    "\n  - CMS Pages & Plugins"
+    "\n\nYou will also lose any changes that have been made on the {environment}"
+    "\nenvironment since you pulled its database to your local environment."
+    "\n\nIt is recommended to go the backup section on control.divio.com"
+    "\nand take a backup before restoring the database."
+    "\nPlease proceed with caution!"
 )
 
-PUSH_MEDIA_WARNING = "\n".join(
-    (
-        "WARNING",
-        "=======",
-        "\nYou are about to push your local media files to the {environment} environment on ",
-        "the Divio Cloud. This will replace ALL existing media files with the ",
-        "ones you are about to push.",
-        "\nYou will also lose any changes that have been made on the {environment} ",
-        "environment since you pulled its files to your local environment. ",
-        "\nIt is recommended to go the backup section on control.divio.com",
-        "and take a backup before restoring media files.",
-        "\nPlease proceed with caution!",
-    )
+
+PUSH_MEDIA_WARNING = (
+    "\nWARNING"
+    "\n======="
+    "\n\nYou are about to push your local media files to the {environment} environment on"
+    "\nthe Divio Cloud. This will replace ALL existing media files with the"
+    "\nones you are about to push."
+    "\n\nYou will also lose any changes that have been made on the {environment}"
+    "\nenvironment since you pulled its files to your local environment."
+    "\n\nIt is recommended to go the backup section on control.divio.com"
+    "\nand take a backup before restoring media files."
+    "\n\nPlease proceed with caution!"
 )

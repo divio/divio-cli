@@ -16,19 +16,19 @@ def get_global_config_path():
         return settings.DIVIO_GLOBAL_CONFIG_FILE
 
 
-class Config(object):
+class Config:
     config = {}
 
     def __init__(self):
-        super(Config, self).__init__()
+        super().__init__()
         self.config_path = get_global_config_path()
         self.read()
 
     def read(self):
         try:
-            with open(self.config_path, "r") as fh:
+            with open(self.config_path) as fh:
                 config = json.load(fh)
-        except IOError:
+        except OSError:
             # file doesn't exist
             config = {}
         except ValueError:
@@ -51,7 +51,7 @@ class Config(object):
     def check_for_updates(self, force=False):
         """check for updates daily"""
         if self.config.get("disable_update_check", False) and not force:
-            return
+            return None
 
         timestamp_key = "update_check_timestamp"
         version_key = "update_check_version"
@@ -81,14 +81,14 @@ class Config(object):
             if newest_version <= installed_version:
                 self.config.pop(version_key)
                 self.save()
-        return dict(
-            current=__version__,
-            remote=str(newest_version),
-            update_available=(
+        return {
+            "current": __version__,
+            "remote": str(newest_version),
+            "update_available": (
                 newest_version > installed_version if newest_version else False
             ),
-            pypi_error=pypi_error,
-        )
+            "pypi_error": pypi_error,
+        }
 
     def skip_doctor(self):
         return self.config.get("skip_doctor")
