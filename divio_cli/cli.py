@@ -41,9 +41,9 @@ from .validators.boilerplate import validate_boilerplate
 
 
 try:
-    import ipdb as pdb
+    import ipdb as pdb  # noqa: T100
 except ImportError:
-    import pdb
+    import pdb  # noqa: T100
 
 # Display the default value for options globally.
 click.option = partial(click.option, show_default=True)
@@ -143,7 +143,7 @@ def cli(ctx, debug, zone, sudo):
 def login_token_helper(ctx, value):
     if not value:
         url = ctx.obj.client.get_access_token_url()
-        click.secho("Your browser has been opened to visit: {}".format(url))
+        click.secho(f"Your browser has been opened to visit: {url}")
         launch_url(url)
         value = click.prompt(
             "Please copy the access token and paste it here. (your input is not displayed)",
@@ -302,7 +302,7 @@ def application_list(obj, grouped, pager, as_json):
     # print via pager
     if grouped:
         output_items = []
-        for group, data in accounts:
+        for _group, data in accounts:
             applications = data["applications"]
             if applications:
                 output_items.append(
@@ -318,7 +318,7 @@ def application_list(obj, grouped, pager, as_json):
     else:
         # add account name to all applications
         applications = [
-            each + (data["name"],)
+            (*each, data["name"])
             for group, data in accounts
             for each in data["applications"]
         ]
@@ -558,7 +558,7 @@ def get_deployment(obj, deployment_uuid):
             deployment["environment_variables"]
         )
         # Flipped table.
-        columns = obj.table_format_columns + ["environment_variables"]
+        columns = [*obj.table_format_columns, "environment_variables"]
         rows = [[key, deployment[key] or ""] for key in columns]
         content_table = table(
             rows, headers=(), tablefmt="grid", maxcolwidths=50
@@ -869,7 +869,7 @@ def list_service_instances(obj, remote_id, environment, as_json):
     """List the services instances of an application"""
     project_data = obj.client.get_project(remote_id)
     try:
-        status = project_data["{}_status".format(environment)]
+        status = project_data[f"{environment}_status"]
     except KeyError:
         raise EnvironmentDoesNotExist(environment)
     api_response = obj.client.get_service_instances(
@@ -932,7 +932,7 @@ def add_service_instances(
     """Adding a new service instance like a database to an application."""
     project_data = obj.client.get_project(remote_id)
     try:
-        status = project_data["{}_status".format(environment)]
+        status = project_data[f"{environment}_status"]
     except KeyError:
         raise EnvironmentDoesNotExist(environment)
 

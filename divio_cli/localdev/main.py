@@ -57,7 +57,7 @@ def get_git_host(zone=None):
         git_host = os.environ.get("DIVIO_GIT_HOST")
 
     if git_host:
-        click.secho("Using custom git host {}\n".format(git_host), fg="yellow")
+        click.secho(f"Using custom git host {git_host}\n", fg="yellow")
     else:
         if not zone:
             zone = get_divio_zone()
@@ -157,9 +157,7 @@ def setup_website_containers(
 
     if docker_compose_config.has_service(
         "db"
-    ) or docker_compose_config.has_service(
-        "database_{}".format(prefix).lower()
-    ):
+    ) or docker_compose_config.has_service(f"database_{prefix}".lower()):
         click.secho("removing old database container", fg="green")
         if docker_compose_config.has_service("database_default"):
             check_call(docker_compose("stop", "database_default"), catch=False)
@@ -223,8 +221,8 @@ def create_workspace(
 
     if os.path.exists(path) and (not os.path.isdir(path) or os.listdir(path)):
         if force_overwrite or click.confirm(
-            "The path {} already exists and is not an empty directory. "
-            "Do you want to remove it and continue?".format(path)
+            f"The path {path} already exists and is not an empty directory. "
+            "Do you want to remove it and continue?"
         ):
             if os.path.isdir(path):
 
@@ -272,10 +270,10 @@ def create_workspace(
         f"Change directory to '{path}' and run 'divio app up'",
     )
 
-    click.secho("\n\n{}".format(os.linesep.join(instructions)), fg="green")
+    click.secho(f"\n\n{os.linesep.join(instructions)}", fg="green")
 
 
-class DatabaseImportBase(object):
+class DatabaseImportBase:
     restore_commands = {
         "fsm-postgres": {
             "sql": "psql -U postgres db < {}",
@@ -297,7 +295,7 @@ class DatabaseImportBase(object):
     }
 
     def __init__(self, *args, **kwargs):
-        super(DatabaseImportBase, self).__init__()
+        super().__init__()
         self.client = kwargs.pop("client")
         self.prefix = kwargs.pop("prefix")
         self.db_type = kwargs.pop("db_type")
@@ -344,7 +342,7 @@ class DatabaseImportBase(object):
             return default_db_extensions
 
     def prepare_db_server_postgres(self, db_container_id, start_wait):
-        for attempt in range(10):
+        for _attempt in range(10):
             try:
                 check_call(
                     [
@@ -366,7 +364,7 @@ class DatabaseImportBase(object):
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
             )
-        click.echo(" [{}s]".format(int(time() - start_wait)))
+        click.echo(f" [{int(time() - start_wait)}s]")
 
         # drop any existing connections
         check_call(
@@ -405,10 +403,10 @@ class DatabaseImportBase(object):
             env=get_subprocess_env(),
         )  # TODO: silence me
 
-        click.echo(" [{}s]".format(int(time() - start_remove)))
+        click.echo(f" [{int(time() - start_remove)}s]")
 
     def prepare_db_server_mysql(self, db_container_id, start_wait):
-        for attempt in range(10):
+        for _attempt in range(10):
             try:
                 check_call(
                     [
@@ -431,7 +429,7 @@ class DatabaseImportBase(object):
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
             )
-        click.echo(" [{}s]".format(int(time() - start_wait)))
+        click.echo(f" [{int(time() - start_wait)}s]")
 
     def prepare_db_server(self):
         utils.start_database_server(self.docker_compose, prefix=self.prefix)
@@ -495,9 +493,7 @@ class DatabaseImportBase(object):
             click.echo("")
             for extension in self.database_extensions:
                 if extension in available_extensions:
-                    click.echo(
-                        "      Enabling extension: {}".format(extension)
-                    )
+                    click.echo(f"      Enabling extension: {extension}")
                     check_call(
                         [
                             "docker",
@@ -508,9 +504,7 @@ class DatabaseImportBase(object):
                             "postgres",
                             "--dbname=db",
                             "-c",
-                            "CREATE EXTENSION IF NOT EXISTS {};".format(
-                                extension
-                            ),
+                            f"CREATE EXTENSION IF NOT EXISTS {extension};",
                         ],
                         silent=True,
                     )
@@ -577,17 +571,17 @@ class DatabaseImportBase(object):
             self.restore_db_mysql(db_container_id)
         else:
             raise DivioException("db type not known")
-        click.echo("\n      [{}s]".format(int(time() - start_import)))
+        click.echo(f"\n      [{int(time() - start_import)}s]")
 
     def finish(self):
         click.secho("Done", fg="green", nl=False)
-        click.echo(" [{}s]".format(int(time() - self.start_time)))
+        click.echo(f" [{int(time() - self.start_time)}s]")
 
 
 class ImportLocalDatabase(DatabaseImportBase):
     def __init__(self, *args, **kwargs):
         self.custom_dump_path = kwargs.pop("custom_dump_path")
-        super(ImportLocalDatabase, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def setup(self):
         click.secho(
@@ -607,12 +601,12 @@ class ImportLocalDatabase(DatabaseImportBase):
                 "docker",
                 "cp",
                 self.custom_dump_path,
-                "{}:/tmp/dump".format(db_container_id),
+                f"{db_container_id}:/tmp/dump",
             ],
             catch=False,
             silent=True,
         )
-        click.echo(" [{}s]".format(int(time() - start_copy)))
+        click.echo(f" [{int(time() - start_copy)}s]")
         self.db_dump_path = "/tmp/dump"
 
     def get_db_restore_command(self, db_type):
@@ -625,7 +619,7 @@ class ImportLocalDatabase(DatabaseImportBase):
 
 class ImportRemoteDatabase(DatabaseImportBase):
     def __init__(self, *args, **kwargs):
-        super(ImportRemoteDatabase, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.environment = kwargs.pop("environment", None)
         self.remote_id = kwargs.pop("remote_id", None) or self.website_id
         self.keep_tempfile = kwargs.pop("keep_tempfile", None)
@@ -634,7 +628,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         remote_project_name = (
             self.website_slug
             if self.remote_id == self.website_id
-            else "Project {}".format(self.remote_id)
+            else f"Project {self.remote_id}"
         )
         click.secho(
             " ===> Pulling database from {} {} environment".format(
@@ -696,7 +690,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
             else:
                 utils.step(f"Removing temp file: {self.host_db_dump_path}")
                 os.remove(self.host_db_dump_path)
-        super(ImportRemoteDatabase, self).finish(*args, **kwargs)
+        super().finish(*args, **kwargs)
 
 
 def pull_media(
@@ -713,9 +707,7 @@ def pull_media(
     website_slug = utils.get_project_settings(project_home)["slug"]
     remote_id = remote_id or website_id
     remote_project_name = (
-        website_slug
-        if remote_id == website_id
-        else "Project {}".format(remote_id)
+        website_slug if remote_id == website_id else f"Project {remote_id}"
     )
     docker_compose = utils.get_docker_compose_cmd(project_home)
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
@@ -780,9 +772,7 @@ def pull_media(
         except subprocess.CalledProcessError as exc:
             # This can happen due to a race condition in docker compose >= 2
             click.secho(
-                "Failed to set user ownership of media files.  {}\n".format(
-                    exc
-                ),
+                f"Failed to set user ownership of media files.  {exc}\n",
                 fg="yellow",
             )
 
@@ -801,9 +791,7 @@ def pull_media(
 def export_db(prefix):
     dump_filename = DEFAULT_DUMP_FILENAME
 
-    click.secho(
-        " ===> Exporting local database {} to {}".format(prefix, dump_filename)
-    )
+    click.secho(f" ===> Exporting local database {prefix} to {dump_filename}")
     start_time = time()
 
     project_home = utils.get_application_home()
@@ -811,7 +799,7 @@ def export_db(prefix):
     dump_database(dump_filename=dump_filename, db_type=db_type, prefix=prefix)
 
     click.secho("Done", fg="green", nl=False)
-    click.echo(" [{}s]".format(int(time() - start_time)))
+    click.echo(f" [{int(time() - start_time)}s]")
 
 
 def push_db(
@@ -905,8 +893,8 @@ def develop_package(package, no_rebuild=False):
             "Please make sure it exists and try again."
         )
 
-    url_pattern = re.compile(r"(\S*/{}/\S*)".format(package))
-    new_package_path = "-e /app/addons-dev/{}\n".format(package)
+    url_pattern = re.compile(rf"(\S*/{package}/\S*)")
+    new_package_path = f"-e /app/addons-dev/{package}\n"
 
     # add package to requirements.in for dependencies
     requirements_file = os.path.join(project_home, "requirements.in")
@@ -966,15 +954,13 @@ def open_application(open_browser=True):
             "Your project is not running. Do you want to start it now? [y|N]"
         ):
             return start_application()
-        return
+        return None
     try:
         host, port = addr.rstrip(os.linesep).split(":")
     except ValueError:
         raise DivioException(
-            (
-                "Can not get port of the project. Please check `docker-compose logs` in case the project "
-                "did not start correctly and please verify that a port {CHECKING_PORT} is exposed."
-            )
+            "Can not get port of the project. Please check `docker-compose logs` in case the project "
+            f"did not start correctly and please verify that a port {CHECKING_PORT} is exposed."
         )
 
     if host == "0.0.0.0":
@@ -983,11 +969,9 @@ def open_application(open_browser=True):
             proto, host_port = os.environ.get("DOCKER_HOST").split("://")
             host = host_port.split(":")[0]
 
-    addr = "http://{}:{}/".format(host, port)
+    addr = f"http://{host}:{port}/"
 
-    click.secho(
-        "Your project is configured to run at {}".format(addr), fg="green"
-    )
+    click.secho(f"Your project is configured to run at {addr}", fg="green")
 
     click.secho("Waiting for project to start..", fg="green", nl=False)
     # wait 30s for runserver to startup

@@ -40,7 +40,7 @@ def get_project_settings(path=None, silent=False):
         with open(path) as fh:
             return json.load(fh)
     except (TypeError, OSError):
-        raise ConfigurationNotFound()
+        raise ConfigurationNotFound
     except json.decoder.JSONDecodeError:
         raise DivioException(f"Unexpected value in {path}")
 
@@ -70,8 +70,8 @@ def get_application_home(path=None, silent=False):
         previous_path = current_path
         current_path = os.path.abspath(os.path.join(current_path, os.pardir))
     if silent:
-        return
-    raise ConfigurationNotFound()
+        return None
+    raise ConfigurationNotFound
 
 
 UNIX_DOCKER_COMPOSE_FILENAME = "docker-compose.yml"
@@ -88,14 +88,14 @@ def get_docker_compose_cmd(path):
     docker_compose_filename = os.path.join(path, docker_compose_filename)
 
     if not os.path.isfile(docker_compose_filename):
-        raise DockerComposeDoesNotExist()
+        raise DockerComposeDoesNotExist
 
     conf = config.Config()
     cmd = conf.get_docker_compose_cmd()
-    docker_compose_base = cmd + ["-f", docker_compose_filename]
+    docker_compose_base = [*cmd, "-f", docker_compose_filename]
 
     def docker_compose(*commands):
-        return docker_compose_base + [cmd for cmd in commands]
+        return docker_compose_base + list(commands)
 
     return docker_compose
 
@@ -133,7 +133,7 @@ def ensure_windows_docker_compose_file_exists(path):
         # TODO: use correct exit from click
         raise DivioException(f"docker-compose.yml not found at {unix_path}")
 
-    with open(unix_path, "r") as fh:
+    with open(unix_path) as fh:
         conf = yaml.load(fh, Loader=yaml.SafeLoader)
 
     for component, sections in conf.items():
@@ -175,7 +175,7 @@ def get_db_container_id(path, raise_on_missing=True, prefix="DEFAULT"):
 
     try:
         output = check_output(
-            docker_compose("ps", "-q", "database_{}".format(prefix).lower()),
+            docker_compose("ps", "-q", f"database_{prefix}".lower()),
             catch=False,
             stderr=open(os.devnull, "w"),
         ).rstrip(os.linesep)
@@ -207,21 +207,16 @@ def start_database_server(docker_compose, prefix):
     click.secho(" ---> Starting local database server")
     click.secho("      ", nl=False)
     docker_compose_config = DockerComposeConfig(docker_compose)
-    if (
-        "database_{}".format(prefix).lower()
-        in docker_compose_config.get_services()
-    ):
-        check_call(
-            docker_compose("up", "-d", "database_{}".format(prefix).lower())
-        )
+    if f"database_{prefix}".lower() in docker_compose_config.get_services():
+        check_call(docker_compose("up", "-d", f"database_{prefix}".lower()))
     else:
         check_call(docker_compose("up", "-d", "db"))
-    click.secho("      [{}s]".format(int(time() - start_db)))
+    click.secho(f"      [{int(time() - start_db)}s]")
 
 
-class DockerComposeConfig(object):
+class DockerComposeConfig:
     def __init__(self, docker_compose):
-        super(DockerComposeConfig, self).__init__()
+        super().__init__()
         self.config = yaml.load(
             check_output(docker_compose("config")), Loader=yaml.SafeLoader
         )
@@ -253,6 +248,7 @@ class DockerComposeConfig(object):
             else:
                 if mount["target"] == remote_path:
                     return True
+        return None
 
 
 def allow_remote_id_override(func):
@@ -331,9 +327,7 @@ def get_db_type(prefix, path=None):
     can properly fall back to PostgreSQL in case of old structures.
     """
     try:
-        db_type = get_service_type(
-            "database_{}".format(prefix.lower()), path=path
-        )
+        db_type = get_service_type(f"database_{prefix.lower()}", path=path)
     except RuntimeError:
         # legacy section. we try to look for the db, if it does not exist, fail
         docker_compose = get_docker_compose_cmd(path)
@@ -346,9 +340,8 @@ def get_db_type(prefix, path=None):
                 "from the host to the /app directory of the container."
                 "\n\nSee https://docs.divio.com/en/latest/reference/docker-docker-compose/#database-default",
             )
-        else:
-            # Fall back to database for legacy docker-compose files
-            db_type = "fsm-postgres"
+        # Fall back to database for legacy docker-compose files
+        db_type = "fsm-postgres"
     return db_type
 
 
@@ -359,7 +352,7 @@ class MainStep:
 
     def done(self):
         click.secho("Done", fg="green", nl=False)
-        click.echo(" [{}s]".format(int(time() - self.start)))
+        click.echo(f" [{int(time() - self.start)}s]")
 
 
 def step(message, **kwargs):
@@ -386,4 +379,4 @@ class TimedStep:
             exc.message = f" {prefix}\n{exc.message or ''}"
 
     def done(self):
-        click.echo(" [{}s]".format(int(time() - self.start)))
+        click.echo(f" [{int(time() - self.start)}s]")

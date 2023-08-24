@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import subprocess
 import tarfile
@@ -94,8 +96,8 @@ class PushBase:
         raise NotImplementedError
 
     def upload_step(self):
-        assert self.local_file
-        assert self.si_uuid
+        if not (self.local_file and self.si_uuid):
+            raise ValueError("upload step called without local file or si")
 
         with utils.TimedStep(f"Uploading {self.local_file}"):
             self.backup_uuid, self.si_backup_uuid = backups.upload_backup(
@@ -106,7 +108,8 @@ class PushBase:
             )
 
     def restore_step(self):
-        assert self.si_uuid and self.backup_uuid and self.si_backup_uuid
+        if not (self.si_uuid and self.backup_uuid and self.si_backup_uuid):
+            raise ValueError("restore step called without backup")
 
         with utils.TimedStep("Restoring"):
             res = self.client.create_backup_restore(
@@ -209,7 +212,10 @@ def is_db_dump(local_file: str, db_type: str):
 
 
 def dump_database(
-    dump_filename: str, db_type: str, prefix: str, archive_filename: str = None
+    dump_filename: str,
+    db_type: str,
+    prefix: str,
+    archive_filename: str | None = None,
 ):
     """
     Dump a database running in docker.
@@ -289,3 +295,4 @@ def dump_database(
             )
         compressed_size = os.path.getsize(archive_filename)
         click.echo(f"-> {pretty_size(compressed_size)}")
+        return None

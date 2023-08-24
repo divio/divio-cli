@@ -27,7 +27,7 @@ def test_get_application_home(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "exception,expected",
+    ("exception", "expected"),
     [
         (ValueError(), ""),
         (RuntimeError("oops"), "oops"),

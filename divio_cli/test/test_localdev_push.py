@@ -7,7 +7,13 @@ from divio_cli.localdev.push import PushBase, is_db_dump
 
 
 @pytest.mark.parametrize(
-    "local_file,cleanup,verify_called,export_called,cleanup_called",
+    (
+        "local_file",
+        "cleanup",
+        "verify_called",
+        "export_called",
+        "cleanup_called",
+    ),
     [
         (None, True, False, True, True),
         (None, False, False, True, False),
@@ -36,7 +42,7 @@ def test_pushbase_run(
 
 
 @pytest.mark.parametrize(
-    "statuses,ok",
+    ("statuses", "ok"),
     [
         ([(False, "FAILURE"), (True, "SUCCESS")], True),
         ([(False, "SUCCESS"), (True, "FAILURE")], False),
@@ -76,7 +82,7 @@ def test_pushbase_restore_step(statuses, ok):
 
 
 @pytest.mark.parametrize(
-    "content,postgres_res,mysql_res",
+    ("content", "postgres_res", "mysql_res"),
     [
         (b"\x50\x47\x44\x42\x44\x34\x34", True, False),
         (b"\x50\x47\x42\x44", False, False),

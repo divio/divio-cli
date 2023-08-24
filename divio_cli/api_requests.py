@@ -11,7 +11,7 @@ from .utils import create_temp_dir, get_user_agent
 
 class SingleHostSession(requests.Session):
     def __init__(self, host, **kwargs):
-        super(SingleHostSession, self).__init__()
+        super().__init__()
         self.debug = kwargs.pop("debug", False)
         self.host = host.rstrip("/")
 
@@ -42,9 +42,7 @@ class SingleHostSession(requests.Session):
             # All v3 endpoints support JSON, and some use nested data structures
             # that do not work with url-encoded body
             kwargs["json"] = kwargs.pop("data", {})
-        return super(SingleHostSession, self).request(
-            method, url, *args, **kwargs
-        )
+        return super().request(method, url, *args, **kwargs)
 
 
 class APIRequestError(DivioException):
@@ -55,7 +53,7 @@ class NetworkError(DivioException):
     pass
 
 
-class APIRequest(object):
+class APIRequest:
     network_exception_message = messages.NETWORK_ERROR_MESSAGE
     default_error_message = messages.SERVER_ERROR
     response_code_error_map = {
@@ -126,11 +124,11 @@ class APIRequest(object):
             response = self.session.request(
                 self.method,
                 self.get_url(),
+                *args,
                 data=self.data,
                 files=self.files,
                 headers=self.get_headers(),
                 params=self.params,
-                *args,
                 **kwargs,
             )
         except (
@@ -154,15 +152,12 @@ class APIRequest(object):
                 # non_field_errors is the default key our APIs are using for returning such errors.
                 try:
                     non_field_errors = "\n".join(
-                        [
-                            error
-                            for error in response.json()["non_field_errors"]
-                        ]
+                        list(response.json()["non_field_errors"])
                     )
-                    error_msg = "{}\n\n{}".format(error_msg, non_field_errors)
+                    error_msg = f"{error_msg}\n\n{non_field_errors}"
                 # Must keep this generic due to compatibility issues of requests library for json decode exceptions.
                 except Exception:
-                    error_msg = "{}\n\n{}".format(error_msg, response_content)
+                    error_msg = f"{error_msg}\n\n{response_content}"
             raise APIRequestError(error_msg)
         return self.process(response)
 
@@ -172,27 +167,25 @@ class APIRequest(object):
 
 class APIV3Request(APIRequest):
     def request(self, *args, **kwargs):
-        return super(APIV3Request, self).request(
-            v3_compatibilty=True, *args, **kwargs
-        )
+        return super().request(*args, v3_compatibilty=True, **kwargs)
 
 
-class RawResponse(object):
+class RawResponse:
     def process(self, response):
         return response
 
 
-class TextResponse(object):
+class TextResponse:
     def process(self, response):
         return response.text
 
 
-class JsonResponse(object):
+class JsonResponse:
     def process(self, response):
         return response.json()
 
 
-class DjangoFormMixin(object):
+class DjangoFormMixin:
     success_message = "Request successful"
 
     def verify(self, response):
@@ -204,19 +197,19 @@ class DjangoFormMixin(object):
                 "-------------------------------------------\n\n"
             )
             for field, errors in response.json().items():
-                formatted += " - {}\n".format(field)
+                formatted += f" - {field}\n"
                 for error in errors:
-                    formatted += "   - {}\n".format(error)
+                    formatted += f"   - {error}\n"
                 formatted += "\n"
             return formatted.strip("\n")
-        return super(DjangoFormMixin, self).verify(response)
+        return super().verify(response)
 
 
-class FileResponse(object):
+class FileResponse:
     def __init__(self, *args, **kwargs):
         self.filename = kwargs.pop("filename", None)
         self.directory = kwargs.pop("directory", None)
-        super(FileResponse, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def process(self, response):
         dump_path = os.path.join(
@@ -232,7 +225,7 @@ class FileResponse(object):
 
     def request(self, *args, **kwargs):
         kwargs["stream"] = True
-        return super(FileResponse, self).request(*args, **kwargs)
+        return super().request(*args, **kwargs)
 
 
 class LoginRequest(APIRequest):
@@ -287,7 +280,15 @@ class SlugToIDRequest(APIRequest):
         return response.json().get("id")
 
 
-# Create backup (push)
+class DownloadBackupRequest(FileResponse, APIRequest):
+    url = "/api/v1/workspace/{website_slug}/download/backup/"
+    headers = {"accept": "application/x-tar-gz"}
+
+    def verify(self, response):
+        if response.status_code == requests.codes.not_found:
+            # no backups yet, ignore
+            return None
+        return super().verify(response)
 
 
 class CreateBackupRequest(JsonResponse, APIV3Request):

@@ -39,7 +39,7 @@ def test_create_backup():
 
 
 @pytest.mark.parametrize(
-    "backup_si,error",
+    ("backup_si", "error"),
     [
         ({}, "Invalid service instance backup provided."),
         (
@@ -152,7 +152,7 @@ def test_upload_backup_wrong_handler():
 
 
 @pytest.mark.parametrize(
-    "statuses,error_message",
+    ("statuses", "error_message"),
     [
         ([("", ""), ("<date>", "")], None),
         ([("", ""), ("<date>", "error!")], "Backup download failed: error!"),
@@ -185,7 +185,7 @@ def test_create_backup_download_url(statuses, error_message):
 
 
 @pytest.mark.parametrize(
-    "statuses,ok",
+    ("statuses", "ok"),
     [
         ([(False, "PARTIAL"), (True, "SUCCESS")], True),
         ([(False, "SUCCESS"), (True, "FAILURE")], False),
@@ -219,7 +219,7 @@ def test__wait_for_backup_to_complete(statuses, ok):
 
 
 @pytest.mark.parametrize(
-    "si_backups,si_details,message",
+    ("si_backups", "si_details", "message"),
     [
         (
             ["si_uuid", "si_uuid_2"],
