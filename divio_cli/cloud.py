@@ -49,7 +49,7 @@ def get_endpoint(zone=None):
         endpoint = ENDPOINT.format(zone=zone)
 
     if zone != DEFAULT_ZONE:
-        click.secho("Using zone: {}\n".format(endpoint), fg="green")
+        click.secho(f"Using zone: {endpoint}\n", fg="green")
     return endpoint
 
 
@@ -66,7 +66,7 @@ def get_service_color(service):
         return "yellow"
 
 
-class CloudClient(object):
+class CloudClient:
     def __init__(self, endpoint, debug=False, sudo=False):
         self.debug = debug
         self.sudo = sudo
@@ -81,7 +81,7 @@ class CloudClient(object):
         data = self.netrc.hosts.get(host)
         headers = {}
         if data:
-            headers["Authorization"] = "Token {}".format(data[2])
+            headers["Authorization"] = f"Token {data[2]}"
         if self.sudo:
             headers["X-Sudo"] = "make me a sandwich"
         return headers
@@ -101,7 +101,7 @@ class CloudClient(object):
         )
 
     def authenticate(self, token):
-        self.session.headers["Authorization"] = "Token {}".format(token)
+        self.session.headers["Authorization"] = f"Token {token}"
 
     def login(self, token):
         request = api_requests.LoginRequest(
@@ -116,9 +116,9 @@ class CloudClient(object):
         email = user_data.get("email")
 
         if first_name and last_name:
-            greeting = "{} {} ({})".format(first_name, last_name, email)
+            greeting = f"{first_name} {last_name} ({email})"
         elif first_name:
-            greeting = "{} ({})".format(first_name, email)
+            greeting = f"{first_name} ({email})"
         else:
             greeting = email
 
@@ -183,7 +183,7 @@ class CloudClient(object):
     def ssh(self, website_id, environment):
         project_data = self.get_project(website_id)
         try:
-            status = project_data["{}_status".format(environment)]
+            status = project_data[f"{environment}_status"]
         except KeyError:
             raise EnvironmentDoesNotExist(environment)
         if status["deployed_before"]:
@@ -216,26 +216,24 @@ class CloudClient(object):
     def get_environment(self, website_id, environment):
         project_data = self.get_project(website_id)
         try:
-            status = project_data["{}_status".format(environment)]
+            status = project_data[f"{environment}_status"]
         except KeyError:
             raise EnvironmentDoesNotExist(environment)
         try:
-            response = api_requests.EnvironmentRequest(
+            return api_requests.EnvironmentRequest(
                 self.session,
                 url_kwargs={"environment_uuid": status["uuid"]},
             )()
-            return response
 
         except (KeyError, json.decoder.JSONDecodeError):
             raise DivioException("Error establishing connection.")
 
     def get_application(self, application_uuid):
         try:
-            response = api_requests.ApplicationRequest(
+            return api_requests.ApplicationRequest(
                 self.session,
                 url_kwargs={"application_uuid": application_uuid},
             )()
-            return response
 
         except (KeyError, json.decoder.JSONDecodeError):
             raise DivioException("Error establishing connection.")
@@ -263,7 +261,7 @@ class CloudClient(object):
 
         project_data = self.get_project(website_id)
         try:
-            status = project_data["{}_status".format(environment)]
+            status = project_data[f"{environment}_status"]
         except KeyError:
             raise EnvironmentDoesNotExist(environment)
 
@@ -324,16 +322,17 @@ class CloudClient(object):
                         self.session,
                         url_kwargs={"deployment_uuid": last_deployment_uuid},
                     )()
-                    output = f"Deployment ID: {deploy_log['uuid']}\n\n{deploy_log['logs']}"
-                    return output
+                    return f"Deployment ID: {deploy_log['uuid']}\n\n{deploy_log['logs']}"
 
                 except json.decoder.JSONDecodeError:
                     raise DivioException("Error in fetching deployment logs.")
+            return None
         else:
             click.secho(
                 f"Environment with name {env_name} does not exist.",
                 fg="yellow",
             )
+            return None
 
     def deploy_application_or_get_progress(self, website_id, environment):
         def fmt_progress(data):
@@ -354,9 +353,7 @@ class CloudClient(object):
                 fg="yellow",
             )
         else:
-            click.secho(
-                "Deploying {} environment".format(environment), fg="green"
-            )
+            click.secho(f"Deploying {environment} environment", fg="green")
             self.deploy_project(website_id, environment)
             sleep(1)
             response = self.deploy_project_progress(website_id, environment)
@@ -395,9 +392,9 @@ class CloudClient(object):
                         f"'divio app deploy-log {environment}' "
                         "to get more information"
                     )
-                else:
-                    bar.current_item = "Done"
-                    bar.update(100)
+
+                bar.current_item = "Done"
+                bar.update(100)
 
         except KeyboardInterrupt:
             click.secho("Disconnected")
@@ -761,7 +758,7 @@ class WritableNetRC(netrc):
         kwargs["file"] = netrc_path
         try:
             netrc.__init__(self, *args, **kwargs)
-        except IOError:
+        except OSError:
             raise DivioException(
                 f"Please make sure your netrc config file ('{netrc_path}') "
                 "can be read and written by the current user."
@@ -789,13 +786,13 @@ class WritableNetRC(netrc):
         out = []
         for machine, data in self.hosts.items():
             login, account, password = data
-            out.append("machine {}".format(machine))
+            out.append(f"machine {machine}")
             if login:
-                out.append("\tlogin {}".format(login))
+                out.append(f"\tlogin {login}")
             if account:
-                out.append("\taccount {}".format(account))
+                out.append(f"\taccount {account}")
             if password:
-                out.append("\tpassword {}".format(password))
+                out.append(f"\tpassword {password}")
 
         with open(path, "w") as f:
             f.write(os.linesep.join(out))

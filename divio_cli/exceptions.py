@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import sys
 from enum import IntEnum
-from typing import Optional
 
 import attr
 import click
@@ -28,9 +29,9 @@ class ExitCode(IntEnum):
 class DivioException(click.ClickException):
     """Base class for all known exceptions that shouldn't trigger a sentry report."""
 
-    message: Optional[str] = None
+    message: str | None = None
     exit_code: ExitCode = ExitCode.GENERIC_ERROR
-    fg: Optional[str] = "red"
+    fg: str | None = "red"
 
     def show(self):
         if self.message:

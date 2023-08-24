@@ -28,7 +28,7 @@ def validate_aldryn_config_py(path):
                     # not found while handling absolute import
 
                     # randomizing source name
-                    source = "aldryn_config.config_{}".format(int(time.time()))
+                    source = f"aldryn_config.config_{int(time.time())}"
                     module = imp.load_source(source, temp_path)
 
                 # checking basic functionality of the Form

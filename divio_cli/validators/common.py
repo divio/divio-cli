@@ -13,6 +13,7 @@ def get_license(path):
         fpath = os.path.join(path, fname)
         if os.path.exists(fpath):
             return fpath
+    return None
 
 
 def load_config(fname, path=None):
@@ -41,8 +42,6 @@ def validate_package_config(config, required_keys, path):
 
     for key in required_keys:
         if key not in config:
-            errors.append(
-                'Required key "{}" not found in config file.'.format(key)
-            )
+            errors.append(f'Required key "{key}" not found in config file.')
 
     return errors

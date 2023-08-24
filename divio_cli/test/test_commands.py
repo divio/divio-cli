@@ -32,7 +32,7 @@ TEST_COMMANDS_CLICK = [
 ]
 
 
-@pytest.mark.integration
+@pytest.mark.integration()
 @pytest.mark.parametrize("command", TEST_COMMANDS_CLICK)
 def test_call_click_commands(divio_project, command):
     runner = CliRunner()

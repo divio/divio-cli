@@ -8,7 +8,7 @@ import requests
 
 
 @pytest.fixture(scope="session")
-def _divio_project(request, tmpdir_factory):
+def _divio_project(request, tmpdir_factory):  # noqa: PT005
 
     test_project_name = os.getenv("TEST_PROJECT_NAME", None)
     if test_project_name is None:
@@ -27,12 +27,12 @@ def _divio_project(request, tmpdir_factory):
     # Check if we have a special zone we want to test against
     test_zone = os.getenv("TEST_ZONE", None)
     if test_zone:
-        setup_command = ["-z", test_zone] + setup_command
+        setup_command = ["-z", test_zone, *setup_command]
 
-    print(f"Setup command: {setup_command}")
+    print(f"Setup command: {setup_command}")  # noqa: T201
 
     subprocess.check_call(
-        ["divio"] + setup_command,
+        ["divio", *setup_command],
         cwd=str(tmp_folder.resolve()),
     )
 
@@ -43,18 +43,18 @@ def _divio_project(request, tmpdir_factory):
 def base_session():
     session = requests.Session()
     session.debug = False
-    yield session
+    return session
 
 
-@pytest.fixture
+@pytest.fixture()
 def bad_request_response():
-    class HttpBadResponse(object):
+    class HttpBadResponse:
         ok = False
         status_code = 400
         content = "Bad response"
         text = "Bad response"
 
-    yield HttpBadResponse()
+    return HttpBadResponse()
 
 
 @contextlib.contextmanager
@@ -67,7 +67,7 @@ def remember_cwd(targetdir):
         os.chdir(curdir)
 
 
-@pytest.fixture
+@pytest.fixture()
 def divio_project(_divio_project):
     with remember_cwd(_divio_project):
         yield _divio_project
