@@ -10,11 +10,16 @@ from sentry_sdk.integrations.atexit import AtexitIntegration
 
 import divio_cli
 
-from . import exceptions, localdev, messages, settings
+from . import localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
 from .excepthook import DivioExcepthookIntegration, divio_shutdown
-from .localdev.utils import allow_remote_id_override, get_project_settings
+from .exceptions import (
+    DivioException,
+    EnvironmentDoesNotExist,
+    ExitCode,
+)
+from .localdev.utils import allow_remote_id_override
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
@@ -24,6 +29,7 @@ from .utils import (
     echo_large_content,
     get_cp_url,
     get_git_checked_branch,
+    get_project_settings,
     hr,
     launch_url,
     open_application_cloud_site,
@@ -34,9 +40,9 @@ from .validators.boilerplate import validate_boilerplate
 
 
 try:
-    import ipdb as pdb
+    import ipdb as pdb  # noqa: T100
 except ImportError:
-    import pdb
+    import pdb  # noqa: T100
 
 # Display the default value for options globally.
 click.option = partial(click.option, show_default=True)
@@ -136,7 +142,7 @@ def cli(ctx, debug, zone, sudo):
 def login_token_helper(ctx, value):
     if not value:
         url = ctx.obj.client.get_access_token_url()
-        click.secho("Your browser has been opened to visit: {}".format(url))
+        click.secho(f"Your browser has been opened to visit: {url}")
         launch_url(url)
         value = click.prompt(
             "Please copy the access token and paste it here. (your input is not displayed)",
@@ -173,7 +179,7 @@ def login(ctx, token, check):
         msg = ctx.obj.client.login(token)
 
     click.echo(msg)
-    sys.exit(0 if success else 1)
+    sys.exit(ExitCode.SUCCESS if success else ExitCode.GENERIC_ERROR)
 
 
 @cli.group(name="services")
@@ -291,7 +297,7 @@ def application_list(obj, grouped, pager, as_json):
     else:
         # add org name to all applications
         applications = [
-            each + (organisation,)
+            (*each, organisation)
             for organisation in data
             for each in data[organisation]
         ]
@@ -323,6 +329,7 @@ def application_deploy_log(obj, remote_id, environment):
             "No logs available.",
             fg="yellow",
         )
+
 
 @app.command(name="logs")
 @click.argument("environment", default="test")
@@ -535,7 +542,7 @@ def get_deployment(obj, deployment_uuid):
             deployment["environment_variables"]
         )
         # Flipped table.
-        columns = obj.table_format_columns + ["environment_variables"]
+        columns = [*obj.table_format_columns, "environment_variables"]
         rows = [[key, deployment[key] or ""] for key in columns]
         content_table = table(
             rows, headers=(), tablefmt="grid", maxcolwidths=50
@@ -816,13 +823,10 @@ def application_setup(obj, slug, environment, path, overwrite, skip_doctor):
     if not skip_doctor and not check_requirements_human(
         config=obj.client.config, silent=True
     ):
-        click.secho(
+        raise DivioException(
             "There was a problem while checking your system. Please run "
-            "'divio doctor'.",
-            fg="red",
-            err=True,
+            "'divio doctor'."
         )
-        sys.exit(1)
 
     localdev.create_workspace(
         obj.client, slug, environment, path, overwrite, obj.zone
@@ -849,16 +853,9 @@ def list_service_instances(obj, remote_id, environment, as_json):
     """List the services instances of an application"""
     project_data = obj.client.get_project(remote_id)
     try:
-        status = project_data["{}_status".format(environment)]
+        status = project_data[f"{environment}_status"]
     except KeyError:
-        click.secho(
-            "Environment with the name '{}' does not exist.".format(
-                environment
-            ),
-            fg="red",
-            err=True,
-        )
-        sys.exit(1)
+        raise EnvironmentDoesNotExist(environment)
     api_response = obj.client.get_service_instances(
         environment_uuid=status["uuid"]
     )
@@ -919,16 +916,10 @@ def add_service_instances(
     """Adding a new service instance like a database to an application."""
     project_data = obj.client.get_project(remote_id)
     try:
-        status = project_data["{}_status".format(environment)]
+        status = project_data[f"{environment}_status"]
     except KeyError:
-        click.secho(
-            "Environment with the name '{}' does not exist.".format(
-                environment
-            ),
-            fg="red",
-            err=True,
-        )
-        sys.exit(1)
+        raise EnvironmentDoesNotExist(environment)
+
     obj.client.add_service_instances(
         environment_uuid=status["uuid"],
         prefix=prefix,
@@ -1145,10 +1136,7 @@ def addon(obj, path):
 @click.pass_context
 def addon_validate(ctx):
     """Validate addon configuration."""
-    try:
-        validate_addon(ctx.parent.params["path"])
-    except exceptions.DivioException as exc:
-        raise click.ClickException(*exc.args)
+    validate_addon(ctx.parent.params["path"])
     click.echo("Addon is valid!")
 
 
@@ -1156,11 +1144,7 @@ def addon_validate(ctx):
 @click.pass_context
 def addon_upload(ctx):
     """Upload addon to the Divio Control Panel."""
-    try:
-        ret = upload_addon(ctx.obj.client, ctx.parent.params["path"])
-    except exceptions.DivioException as exc:
-        raise click.ClickException(*exc.args)
-    click.echo(ret)
+    click.echo(upload_addon(ctx.obj.client, ctx.parent.params["path"]))
 
 
 @addon.command(name="register")
@@ -1195,10 +1179,7 @@ def boilerplate(obj, path):
 @click.pass_context
 def boilerplate_validate(ctx):
     """Validate boilerplate configuration."""
-    try:
-        validate_boilerplate(ctx.parent.params["path"])
-    except exceptions.DivioException as exc:
-        raise click.ClickException(*exc.args)
+    validate_boilerplate(ctx.parent.params["path"])
     click.echo("Boilerplate is valid.")
 
 
@@ -1212,13 +1193,9 @@ def boilerplate_validate(ctx):
 @click.pass_context
 def boilerplate_upload(ctx, noinput):
     """Upload boilerplate to the Divio Control Panel."""
-    try:
-        ret = upload_boilerplate(
-            ctx.obj.client, ctx.parent.params["path"], noinput
-        )
-    except exceptions.DivioException as exc:
-        raise click.ClickException(*exc.args)
-    click.echo(ret)
+    click.echo(
+        upload_boilerplate(ctx.obj.client, ctx.parent.params["path"], noinput)
+    )
 
 
 @cli.command()
@@ -1300,7 +1277,9 @@ def doctor(obj, machine_readable, checks):
     else:
         click.echo("Verifying your system setup...")
         exitcode = (
-            0 if check_requirements_human(obj.client.config, checks) else 1
+            ExitCode.SUCCESS
+            if check_requirements_human(obj.client.config, checks)
+            else ExitCode.GENERIC_ERROR
         )
 
     sys.exit(exitcode)

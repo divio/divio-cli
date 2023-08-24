@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import sys
 from itertools import groupby
 from netrc import netrc
 from operator import itemgetter
@@ -10,6 +9,13 @@ from urllib.parse import urlparse
 
 import click
 from dateutil.parser import isoparse
+
+from divio_cli.exceptions import (
+    ConfigurationNotFound,
+    DivioException,
+    DivioWarning,
+    EnvironmentDoesNotExist,
+)
 
 from . import api_requests, messages, settings
 from .config import Config
@@ -26,8 +32,7 @@ def get_divio_zone():
         application_specific_zone = get_project_settings(
             get_application_home()
         ).get("zone", None)
-    except click.ClickException:
-        # Happens when there is no configuration file
+    except ConfigurationNotFound:
         pass
     else:
         if application_specific_zone:
@@ -44,7 +49,7 @@ def get_endpoint(zone=None):
         endpoint = ENDPOINT.format(zone=zone)
 
     if zone != DEFAULT_ZONE:
-        click.secho("Using zone: {}\n".format(endpoint), fg="green")
+        click.secho(f"Using zone: {endpoint}\n", fg="green")
     return endpoint
 
 
@@ -61,7 +66,7 @@ def get_service_color(service):
         return "yellow"
 
 
-class CloudClient(object):
+class CloudClient:
     def __init__(self, endpoint, debug=False, sudo=False):
         self.debug = debug
         self.sudo = sudo
@@ -76,7 +81,7 @@ class CloudClient(object):
         data = self.netrc.hosts.get(host)
         headers = {}
         if data:
-            headers["Authorization"] = "Token {}".format(data[2])
+            headers["Authorization"] = f"Token {data[2]}"
         if self.sudo:
             headers["X-Sudo"] = "make me a sandwich"
         return headers
@@ -96,7 +101,7 @@ class CloudClient(object):
         )
 
     def authenticate(self, token):
-        self.session.headers["Authorization"] = "Token {}".format(token)
+        self.session.headers["Authorization"] = f"Token {token}"
 
     def login(self, token):
         request = api_requests.LoginRequest(
@@ -111,9 +116,9 @@ class CloudClient(object):
         email = user_data.get("email")
 
         if first_name and last_name:
-            greeting = "{} {} ({})".format(first_name, last_name, email)
+            greeting = f"{first_name} {last_name} ({email})"
         elif first_name:
-            greeting = "{} ({})".format(first_name, email)
+            greeting = f"{first_name} ({email})"
         else:
             greeting = email
 
@@ -143,7 +148,6 @@ class CloudClient(object):
             url_kwargs={"organisation_uuid": organisation_uuid},
         )
         return request()
-
 
     def get_services(self, region_uuid=None, application_uuid=None):
         kwargs = {}
@@ -184,20 +188,15 @@ class CloudClient(object):
         return request()
 
     def ssh(self, application_uuid, environment):
-        project_data = self.get_project(website_id)
+        self.get_project(application_uuid)
         try:
             env = self.get_environment_by_application(
                 application_uuid, environment
             )
-        except IndexError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+
+        except KeyError:
+            raise EnvironmentDoesNotExist(environment)
+
         if env["last_finished_deployment"]:
             try:
                 response = api_requests.EnvironmentRequest(
@@ -217,20 +216,13 @@ class CloudClient(object):
                 os.execvp("ssh", ssh_command)
 
             except (KeyError, json.decoder.JSONDecodeError):
-                click.secho(
-                    "Error establishing ssh connection.", fg="red", err=True
-                )
-                sys.exit(1)
+                raise DivioException("Error establishing ssh connection.")
 
         else:
-            click.secho(
-                "SSH connection not available: environment '{}' not deployed yet.".format(
-                    environment
-                ),
+            raise DivioException(
+                f"SSH connection not available: environment '{environment}' not deployed yet.",
                 fg="yellow",
-                err=True,
             )
-            sys.exit(1)
 
     def get_environment_by_application(self, application_uuid, environment):
         response = api_requests.EnvironmentListRequest(
@@ -247,48 +239,29 @@ class CloudClient(object):
             env = self.get_environment_by_application(
                 application_uuid, environment
             )
-        except IndexError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+        except KeyError:
+            raise EnvironmentDoesNotExist(environment)
+
         try:
-            response = api_requests.EnvironmentRequest(
+            return api_requests.EnvironmentRequest(
                 self.session,
                 url_kwargs={"environment_uuid": env["uuid"]},
             )()
-            return response
 
         except (KeyError, json.decoder.JSONDecodeError):
-            click.secho(
-                "Error establishing connection.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Error establishing connection.")
 
     def get_application(self, application_uuid):
         try:
-            response = api_requests.ApplicationRequest(
+            return api_requests.ApplicationRequest(
                 self.session,
                 url_kwargs={"application_uuid": application_uuid},
             )()
-            return response
 
         except (KeyError, json.decoder.JSONDecodeError):
-            click.secho(
-                "Error establishing connection.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Error establishing connection.")
 
     def show_log(self, application_uuid, environment, tail=False, utc=True):
-        print(".")
         def print_log_data(data):
             for entry in data:
                 dt = isoparse(entry["timestamp"])
@@ -313,15 +286,9 @@ class CloudClient(object):
             env = self.get_environment_by_application(
                 application_uuid, environment
             )
-        except IndexError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+        except KeyError:
+            raise EnvironmentDoesNotExist(environment)
+
         if env["last_finished_deployment"]:
             try:
                 # Make the initial log request
@@ -345,25 +312,19 @@ class CloudClient(object):
                             if not response["results"]:
                                 sleep(1)
                     except (KeyboardInterrupt, SystemExit):
-                        click.secho("Exiting...")
-                        sys.exit(1)
+                        raise DivioException("Exiting...", fg=None)
             except (
                 KeyError,
                 json.decoder.JSONDecodeError,
                 api_requests.APIRequestError,
             ):
-                click.secho("Error retrieving logs.", fg="red", err=True)
-                sys.exit(1)
+                raise DivioException("Error retrieving logs.")
 
         else:
-            click.secho(
-                "Logs not available: environment '{}' not deployed yet.".format(
-                    environment
-                ),
+            raise DivioException(
+                f"Logs not available: environment '{environment}' not deployed yet.",
                 fg="yellow",
-                err=True,
             )
-            sys.exit(1)
 
     def get_deploy_log(self, application_uuid, env_name):
         environment = self.get_environment(application_uuid, env_name)
@@ -385,21 +346,17 @@ class CloudClient(object):
                         self.session,
                         url_kwargs={"deployment_uuid": last_deployment_uuid},
                     )()
-                    output = f"Deployment ID: {deploy_log['uuid']}\n\n{deploy_log['logs']}"
-                    return output
+                    return f"Deployment ID: {deploy_log['uuid']}\n\n{deploy_log['logs']}"
 
                 except json.decoder.JSONDecodeError:
-                    click.secho(
-                        "Error in fetching deployment logs.",
-                        fg="red",
-                        err=True,
-                    )
-                    sys.exit(1)
+                    raise DivioException("Error in fetching deployment logs.")
+            return None
         else:
             click.secho(
                 f"Environment with name {env_name} does not exist.",
                 fg="yellow",
             )
+            return None
 
     def deploy_application_or_get_progress(
         self, application_uuid, environment
@@ -418,15 +375,8 @@ class CloudClient(object):
             env = self.get_environment_by_application(
                 application_uuid, environment
             )
-        except IndexError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+        except KeyError:
+            raise EnvironmentDoesNotExist(environment)
 
         try:
             response = self.get_deployment_by_application(
@@ -443,9 +393,7 @@ class CloudClient(object):
                 fg="yellow",
             )
         else:
-            click.secho(
-                "Deploying {} environment".format(environment), fg="green"
-            )
+            click.secho(f"Deploying {environment} environment", fg="green")
             deployment = self.deploy_project(env["uuid"])
             sleep(1)
             response = self.get_deployment_by_uuid(deployment["uuid"])
@@ -467,13 +415,14 @@ class CloudClient(object):
                     bar.current_item = "error"
                     bar.update(progress_percent)
 
-                    raise click.ClickException(
-                        "\nDeployment failed. Please run 'divio app deploy-log {}' "
-                        "to get more information".format(environment)
+                    raise DivioException(
+                        "\nDeployment failed. Please run "
+                        f"'divio app deploy-log {environment}' "
+                        "to get more information"
                     )
-                else:
-                    bar.current_item = "Done"
-                    bar.update(100)
+
+                bar.current_item = "Done"
+                bar.update(100)
 
         except KeyboardInterrupt:
             click.secho("Disconnected")
@@ -646,7 +595,14 @@ class CloudClient(object):
                     fg="red",
                     err=True,
                 )
-                sys.exit(1)
+            try:
+                env = self.get_environment_by_application(
+                    application_uuid, environment
+                )
+
+                params.update({"environment": env["uuid"]})
+            except KeyError:
+                raise EnvironmentDoesNotExist(environment)
 
         try:
             results, messages = json_response_request_paginate(
@@ -676,18 +632,9 @@ class CloudClient(object):
                     if all_environments
                     else f"No deployments found for {environment!r} environment."
                 )
-                click.secho(
-                    no_deployments_found_msg,
-                    fg="yellow",
-                )
-                sys.exit(0)
+                raise DivioWarning(no_deployments_found_msg)
         except json.decoder.JSONDecodeError:
-            click.secho(
-                "Error in fetching deployments.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Error in fetching deployments.")
 
         return results_grouped_by_environment, messages
 
@@ -719,12 +666,7 @@ class CloudClient(object):
             environment_slug = envs_uuid_slug_mapping[environment_uuid]
             deployment.pop("environment")
         except (json.decoder.JSONDecodeError, KeyError):
-            click.secho(
-                "Error in fetching deployment.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Error in fetching deployment.")
 
         return {
             "environment": environment_slug,
@@ -763,18 +705,11 @@ class CloudClient(object):
 
             value = deployment["environment_variables"].get(variable_name)
             if value is None:
-                click.secho(
+                raise DivioWarning(
                     f"There is no environment variable named {variable_name!r} for this deployment.",
-                    fg="yellow",
                 )
-                sys.exit(0)
         except (json.decoder.JSONDecodeError, KeyError):
-            click.secho(
-                "Error in fetching deployment.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Error in fetching deployment.")
 
         return {
             "environment": environment_slug,
@@ -821,7 +756,11 @@ class CloudClient(object):
                     fg="red",
                     err=True,
                 )
-                sys.exit(1)
+            environment_key = f"{environment}_status"
+            if environment_key in project_data.keys():
+                params = {"environment": project_data[environment_key]["uuid"]}
+            else:
+                raise EnvironmentDoesNotExist(environment)
 
         if variable_name:
             params.update({"name": variable_name})
@@ -858,11 +797,7 @@ class CloudClient(object):
                     if all_environments
                     else f"No environment variables found for {environment!r} environment."
                 )
-            click.secho(
-                no_environment_variables_found_msg,
-                fg="yellow",
-            )
-            sys.exit(0)
+            raise DivioWarning(no_environment_variables_found_msg)
 
         return results_grouped_by_environment, messages
 
@@ -877,11 +812,18 @@ class CloudClient(object):
                 "Could not get remote repository information."
             )
 
-        request = api_requests.RepositoryRequest(
-            self.session, url_kwargs={"repository_uuid": repository_uuid}
-        )
-        response = request()
-        return response["dsn"]
+        try:
+            request = api_requests.RepositoryRequest(
+                self.session, url_kwargs={"repository_uuid": repository_uuid}
+            )
+            response = request()
+            return response["dsn"]
+
+        except IndexError:
+            # happens when there is no remote repository configured
+            return None
+
+        raise DivioException("Could not get remote repository information.")
 
     def get_regions(self):
         request = api_requests.ListRegionsRequest(self.session)
@@ -901,10 +843,10 @@ class WritableNetRC(netrc):
         kwargs["file"] = netrc_path
         try:
             netrc.__init__(self, *args, **kwargs)
-        except IOError:
-            raise click.ClickException(
-                "Please make sure your netrc config file ('{}') can be read "
-                "and written by the current user.".format(netrc_path)
+        except OSError:
+            raise DivioException(
+                f"Please make sure your netrc config file ('{netrc_path}') "
+                "can be read and written by the current user."
             )
 
     def get_netrc_path(self):
@@ -929,13 +871,13 @@ class WritableNetRC(netrc):
         out = []
         for machine, data in self.hosts.items():
             login, account, password = data
-            out.append("machine {}".format(machine))
+            out.append(f"machine {machine}")
             if login:
-                out.append("\tlogin {}".format(login))
+                out.append(f"\tlogin {login}")
             if account:
-                out.append("\taccount {}".format(account))
+                out.append(f"\taccount {account}")
             if password:
-                out.append("\tpassword {}".format(password))
+                out.append(f"\tpassword {password}")
 
         with open(path, "w") as f:
             f.write(os.linesep.join(out))
