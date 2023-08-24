@@ -764,11 +764,19 @@ class WritableNetRC(netrc):
                 "can be read and written by the current user."
             )
 
+    @classmethod
     def get_netrc_path(self):
         """
         netrc uses os.environ['HOME'] for path detection which is
-        not defined on Windows. Detecting the correct path ourselves
+        not defined on Windows. Detecting the correct path ourselves.
+
+        This method also checks if the environment variable "NETRC_PATH" is set
+        and returns it if so.
         """
+
+        if "NETRC_PATH" in os.environ:
+            return os.environ["NETRC_PATH"]
+
         home = os.path.expanduser("~")
         return os.path.join(home, ".netrc")
 
