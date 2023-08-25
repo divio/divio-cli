@@ -6,7 +6,6 @@ from divio_cli.exceptions import (
     DOT_DIVIO_FILE_NOT_FOUND,
     ConfigurationNotFound,
     DivioException,
-    DivioStepException,
     DivioWarning,
     DockerComposeDoesNotExist,
     EnvironmentDoesNotExist,
@@ -45,15 +44,6 @@ def test_divio_warning():
     assert ex.format_message() == "warning"
     assert ex.fg == "yellow"
     assert ex.exit_code == ExitCode.SUCCESS
-
-
-def test_step_exception():
-    ex = DivioStepException("step")
-    assert ex.format_message() == " error!\nstep"
-    assert ex.fg == "red"
-    assert ex.exit_code == ExitCode.GENERIC_ERROR
-
-    assert DivioStepException("step", fg="green").fg == "green"
 
 
 def test_environment_does_not_exist():

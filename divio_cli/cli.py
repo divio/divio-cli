@@ -1,3 +1,4 @@
+import functools
 import itertools
 import json
 import os
@@ -961,18 +962,39 @@ def application_pull():
     """Pull db or files from the Divio cloud environment."""
 
 
+def common_pull_options(f):
+    @click.option(
+        "--keep-tempfile",
+        is_flag=True,
+        default=False,
+        help="Keep the temporary file with the data.",
+    )
+    @click.option(
+        "--service-instance-backup",
+        "backup_si_uuid",
+        type=str,
+        default=None,
+        help="The UUID of a service instance backup to restore.",
+    )
+    @click.argument("environment", default="test")
+    @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
+    @click.pass_obj
+    @allow_remote_id_override
+    @functools.wraps(f)
+    def wrapper_common_options(*args, **kwargs):
+        if "prefix" in kwargs:
+            # prefixes are always in capital letters
+            kwargs["prefix"] = kwargs["prefix"].upper()
+        return f(*args, **kwargs)
+
+    return wrapper_common_options
+
+
 @application_pull.command(name="db")
-@click.option(
-    "--keep-tempfile",
-    is_flag=True,
-    default=False,
-    help="Keep the temporary file with the data.",
-)
-@click.argument("environment", default="test")
-@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
-@click.pass_obj
-@allow_remote_id_override
-def pull_db(obj, remote_id, environment, prefix, keep_tempfile):
+@common_pull_options
+def pull_db(
+    obj, remote_id, environment, prefix, keep_tempfile, backup_si_uuid
+):
     """
     Pull database the Divio cloud environment.
     """
@@ -989,20 +1011,26 @@ def pull_db(obj, remote_id, environment, prefix, keep_tempfile):
         remote_id=remote_id,
         db_type=db_type,
         dump_path=dump_path,
+        backup_si_uuid=backup_si_uuid,
         keep_tempfile=keep_tempfile,
     )()
 
 
 @application_pull.command(name="media")
-@click.argument("environment", default="test")
-@click.pass_obj
-@allow_remote_id_override
-def pull_media(obj, remote_id, environment):
+@common_pull_options
+def pull_media(
+    obj, remote_id, environment, prefix, keep_tempfile, backup_si_uuid
+):
     """
     Pull media files from the Divio cloud environment.
     """
     localdev.pull_media(
-        obj.client, environment=environment, remote_id=remote_id
+        obj.client,
+        environment=environment,
+        prefix=prefix,
+        remote_id=remote_id,
+        keep_tempfile=keep_tempfile,
+        backup_si_uuid=backup_si_uuid,
     )
 
 
@@ -1011,8 +1039,35 @@ def application_push():
     """Push db or media files to the Divio cloud environment."""
 
 
+def common_push_options(f):
+    @click.argument("environment", default="test")
+    @click.option(
+        "--noinput",
+        is_flag=True,
+        default=False,
+        help="Don't ask for confirmation.",
+    )
+    @click.option(
+        "--keep-tempfile",
+        is_flag=True,
+        default=False,
+        help="Keep the temporary file with the data.",
+    )
+    @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
+    @click.pass_obj
+    @allow_remote_id_override
+    @functools.wraps(f)
+    def wrapper_common_options(*args, **kwargs):
+        if "prefix" in kwargs:
+            # prefixes are always in capital letters
+            kwargs["prefix"] = kwargs["prefix"].upper()
+        return f(*args, **kwargs)
+
+    return wrapper_common_options
+
+
 @application_push.command(name="db")
-@click.argument("environment", default="test")
+@common_push_options
 @click.option(
     "-d",
     "--dumpfile",
@@ -1020,69 +1075,35 @@ def application_push():
     type=click.Path(exists=True),
     help="Specify a dumped database file to upload.",
 )
-@click.option(
-    "--noinput",
-    is_flag=True,
-    default=False,
-    help="Don't ask for confirmation.",
-)
-@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
-@click.pass_obj
-@allow_remote_id_override
-def push_db(obj, remote_id, prefix, environment, dumpfile, noinput):
+def push_db(
+    obj, remote_id, prefix, environment, dumpfile, noinput, keep_tempfile
+):
     """
-    Push database to the Divio cloud environment..
+    Push database to the Divio cloud environment.
     """
-    from .localdev import utils
+    if not noinput:
+        click.secho(
+            messages.PUSH_DB_WARNING.format(environment=environment),
+            fg="red",
+        )
+        if not click.confirm("\nAre you sure you want to continue?"):
+            return
 
-    application_home = utils.get_application_home()
-    db_type = utils.get_db_type(prefix, path=application_home)
-    if not dumpfile:
-        if not noinput:
-            click.secho(
-                messages.PUSH_DB_WARNING.format(environment=environment),
-                fg="red",
-            )
-            if not click.confirm("\nAre you sure you want to continue?"):
-                return
-        localdev.push_db(
-            client=obj.client,
-            environment=environment,
-            remote_id=remote_id,
-            prefix=prefix,
-            db_type=db_type,
-        )
-    else:
-        if not noinput:
-            click.secho(
-                messages.PUSH_DB_WARNING.format(environment=environment),
-                fg="red",
-            )
-            if not click.confirm("\nAre you sure you want to continue?"):
-                return
-        localdev.push_local_db(
-            obj.client,
-            environment=environment,
-            dump_filename=dumpfile,
-            website_id=remote_id,
-            prefix=prefix,
-        )
+    localdev.push_db(
+        client=obj.client,
+        environment=environment,
+        remote_id=remote_id,
+        prefix=prefix,
+        local_file=dumpfile,
+        keep_tempfile=keep_tempfile,
+    )
 
 
 @application_push.command(name="media")
-@click.argument("environment", default="test")
-@click.option(
-    "--noinput",
-    is_flag=True,
-    default=False,
-    help="Don't ask for confirmation.",
-)
-@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
-@click.pass_obj
-@allow_remote_id_override
-def push_media(obj, remote_id, prefix, environment, noinput):
+@common_push_options
+def push_media(obj, remote_id, prefix, environment, noinput, keep_tempfile):
     """
-    Push database to the Divio cloud environment..
+    Push media storage to the Divio cloud environment.
     """
 
     if not noinput:
@@ -1092,8 +1113,13 @@ def push_media(obj, remote_id, prefix, environment, noinput):
         )
         if not click.confirm("\nAre you sure you want to continue?"):
             return
+
     localdev.push_media(
-        obj.client, environment=environment, remote_id=remote_id, prefix=prefix
+        client=obj.client,
+        environment=environment,
+        remote_id=remote_id,
+        prefix=prefix,
+        keep_tempfile=keep_tempfile,
     )
 
 
@@ -1285,10 +1311,12 @@ def version(obj, skip_check, machine_readable):
 @click.option("-c", "--checks", default=None)
 @click.pass_obj
 def doctor(obj, machine_readable, checks):
-    """Check that your system meets the development requirements.
+    """
+    Check that your system meets the development requirements.
 
     To disable checks selectively in case of false positives, see
-    https://docs.divio.com/en/latest/reference/divio-cli/#using-skip-doctor-checks"""
+    https://docs.divio.com/en/latest/reference/divio-cli/#using-skip-doctor-checks
+    """
 
     if checks:
         checks = checks.split(",")

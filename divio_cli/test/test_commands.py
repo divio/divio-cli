@@ -9,6 +9,9 @@ from divio_cli import cli
 from divio_cli.cloud import WritableNetRC
 
 
+NOI = "--noinput"
+DBFILE = ".divio/local_db.sql"
+
 TEST_COMMANDS_CLICK = [
     ["doctor"],
     ["doctor", "-m"],
@@ -19,12 +22,15 @@ TEST_COMMANDS_CLICK = [
     ["app", "deploy", "test"],
     ["app", "deploy-log"],
     ["app", "list"],
-    ["app", "pull", "db"],
-    ["app", "push", "db", "--noinput"],
     ["app", "export", "db"],
-    ["app", "push", "db", "--noinput", "--dumpfile", "local_db.sql"],
+    ["app", "pull", "db"],
+    ["app", "pull", "db", "test", "mysql"],
     ["app", "pull", "media"],
-    ["app", "push", "media", "--noinput"],
+    ["app", "push", "db", NOI, "--keep-tempfile"],  # keep for next test
+    ["app", "push", "db", NOI, "--dumpfile", DBFILE],
+    ["app", "push", "db", "test", "mysql", NOI, "--keep-tempfile"],
+    ["app", "push", "db", "test", "MYSQL", NOI, "--dumpfile", DBFILE],
+    ["app", "push", "media", NOI],
     ["app", "logs", "test"],
     ["app", "status"],
     ["app", "update"],
@@ -42,7 +48,7 @@ TEST_COMMANDS_CLICK = [
 def test_call_click_commands(divio_project, command):
     runner = CliRunner()
     result = runner.invoke(cli.cli, command)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 @pytest.mark.integration()

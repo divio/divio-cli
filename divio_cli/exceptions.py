@@ -42,19 +42,15 @@ class DivioException(click.ClickException):
         if self.exit_code != 1:
             sys.exit(self.exit_code)
 
+    def __str__(self) -> str:
+        return self.format_message() or ""
+
 
 class DivioWarning(DivioException):
     """A warning printed in yellow with a success exit code."""
 
     def __init__(self, message):
         super().__init__(message, fg="yellow", exit_code=ExitCode.SUCCESS)
-
-
-class DivioStepException(DivioException):
-    """Exception that is raised inside a step and requires a new line before the message."""
-
-    def format_message(self):
-        return f" error!\n{self.message}"
 
 
 class ConfigurationNotFound(DivioException):

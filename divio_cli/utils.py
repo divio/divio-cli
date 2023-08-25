@@ -280,10 +280,13 @@ def get_user_agent():
 
 def download_file(url, directory=None, filename=None):
     response = requests.get(url, stream=True)
+    if not filename:
+        if response.headers.get("Content-Encoding") == "gzip":
+            filename = "data.tar.gz"
+        else:
+            filename = "data.dump"
 
-    dump_path = os.path.join(
-        directory or create_temp_dir(), filename or "data.tar.gz"
-    )
+    dump_path = os.path.join(directory or create_temp_dir(), filename)
 
     with open(dump_path, "wb") as f:
         for chunk in response.iter_content(chunk_size=1024):

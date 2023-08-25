@@ -36,7 +36,7 @@ DEPLOYMENTS_COMMANDS = [
 
 @pytest.mark.integration()
 @pytest.mark.parametrize("command", DEPLOYMENTS_COMMANDS)
-def test_call_click_commands(divio_project, command):
+def test_call_deployment_commands(divio_project, command):
     runner = CliRunner()
     result = runner.invoke(cli.cli, command)
     assert result.exit_code == 0
