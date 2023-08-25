@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -13,6 +13,14 @@ _BACKUP_SUCCESS = {
     "uuid": "<backup-uuid>",
     "service_instance_backups": ["<si-uuid>"],
 }
+
+
+def test_get_backup_delete_at():
+    now = datetime.now(tz=timezone.utc)
+    dt = backups.get_backup_delete_at()
+
+    assert dt.tzinfo == timezone.utc
+    assert timedelta(minutes=59) < dt - now < timedelta(minutes=61)
 
 
 def test_create_backup():

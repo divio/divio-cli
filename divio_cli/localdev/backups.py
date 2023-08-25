@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 import boto3
@@ -19,6 +19,11 @@ DOWNLOAD_BACKUP_NOTE = "Divio CLI pull"
 class Type(str, Enum):
     MEDIA = "STORAGE"
     DB = "DATABASE"
+
+
+def get_backup_delete_at() -> datetime:
+    """Get the date at which a backup created now should be deleted."""
+    return datetime.now(tz=timezone.utc) + BACKUP_RETENTION
 
 
 def create_backup(
@@ -47,7 +52,7 @@ def create_backup(
         environment_uuid=env_uuid,
         service_instance_uuid=si_uuid,
         notes=DOWNLOAD_BACKUP_NOTE,
-        delete_at=datetime.utcnow() + BACKUP_RETENTION,
+        delete_at=get_backup_delete_at(),
     )
     backup_uuid = response["uuid"]
     return _wait_for_backup_to_complete(client, backup_uuid)
@@ -98,7 +103,7 @@ def upload_backup(
         environment=environment_uuid,
         service_intance_uuids=[si_uuid],
         notes=UPLOAD_BACKUP_NOTE,
-        delete_at=datetime.utcnow() + BACKUP_RETENTION,
+        delete_at=get_backup_delete_at(),
     )
 
     backup_uuid = res["uuid"]

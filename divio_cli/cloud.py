@@ -732,8 +732,8 @@ class CloudClient:
         }
 
         if delete_at is not None:
-            data["scheduled_for_deletion_at"] = delete_at.strftime(
-                "%Y-%m-%dT%H:%M:%S"
+            data["scheduled_for_deletion_at"] = delete_at.isoformat().replace(
+                "+00:00", "Z"  # match django's formatting
             )
         if notes is not None:
             data["notes"] = notes
