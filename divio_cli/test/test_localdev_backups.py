@@ -42,7 +42,7 @@ def test_create_backup():
     assert args["service_instance_uuid"] == "<si_uuid>"
     assert args["notes"] == "Divio CLI pull"
     assert args["delete_at"] - (
-        datetime.utcnow() + timedelta(minutes=60)
+        datetime.now(tz=timezone.utc) + timedelta(minutes=60)
     ) < timedelta(seconds=1)
 
 
