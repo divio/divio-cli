@@ -10,3 +10,4 @@ python-dateutil
 requests
 sentry-sdk
 tabulate >= 0.8.10
+rlpython
