@@ -183,6 +183,19 @@ def login(ctx, token, check):
     sys.exit(ExitCode.SUCCESS if success else ExitCode.GENERIC_ERROR)
 
 
+@cli.command()
+@click.option(
+    "--non-interactive",
+    is_flag=True,
+    default=False,
+    help="Skip confirmation",
+)
+@click.pass_context
+def logout(ctx, non_interactive):
+    """Log off from Divio Control Panel"""
+    sys.exit(ctx.obj["client"].logout(interactive=not non_interactive))
+
+
 @cli.group(name="services")
 def services():
     """Pull db or files from the Divio cloud environment."""

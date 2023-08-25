@@ -12,7 +12,7 @@ variables:
 Unit Tests:
     stage: qa
     image: divio/multi-python
-    script: tox -x tox.skip_missing_interpreters=false
+    script: tox -x tox.skip_missing_interpreters=false -- -m "not integration"
     artifacts:
       paths:
         - ${CI_PROJECT_DIR}/artifacts/.coverage.*
