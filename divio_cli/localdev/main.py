@@ -13,6 +13,13 @@ from time import sleep, time
 import click
 import requests
 
+from divio_cli.exceptions import (
+    ConfigurationNotFound,
+    DivioException,
+    DockerComposeDoesNotExist,
+    ExitCode,
+)
+from divio_cli.localdev.push import PushDb, PushMedia, dump_database
 from divio_cli.utils import get_local_git_remotes
 
 from .. import settings
@@ -21,14 +28,12 @@ from ..utils import (
     check_call,
     check_output,
     download_file,
-    get_size,
     get_subprocess_env,
     is_windows,
     launch_url,
     needs_legacy_migration,
-    pretty_size,
 )
-from . import utils
+from . import backups, utils
 from .utils import get_application_home, get_project_settings
 
 
@@ -45,14 +50,14 @@ def get_git_host(zone=None):
         git_host = get_project_settings(get_application_home()).get(
             "git_host", None
         )
-    except click.ClickException:
+    except ConfigurationNotFound:
         git_host = None
 
     if not git_host:
         git_host = os.environ.get("DIVIO_GIT_HOST")
 
     if git_host:
-        click.secho("Using custom git host {}\n".format(git_host), fg="yellow")
+        click.secho(f"Using custom git host {git_host}\n", fg="yellow")
     else:
         if not zone:
             zone = get_divio_zone()
@@ -110,9 +115,7 @@ def configure_project(website_slug, path, client, zone=None):
                 raise
 
     if not os.path.isdir(os.path.dirname(path)):
-        raise click.ClickException(
-            "{} is not a directory".format(os.path.dirname(path))
-        )
+        raise DivioException(f"{os.path.dirname(path)} is not a directory")
 
     # Write the file
     with open(path, "w+") as fh:
@@ -136,13 +139,9 @@ def setup_website_containers(
 ):
     try:
         docker_compose = utils.get_docker_compose_cmd(path)
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Will continue without...",
-            fg="yellow",
-        )
-        return
+    except DockerComposeDoesNotExist as e:
+        # give a reason
+        raise DockerComposeDoesNotExist("Cannot setup containers") from e
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
     # stop all running containers for project
@@ -158,9 +157,7 @@ def setup_website_containers(
 
     if docker_compose_config.has_service(
         "db"
-    ) or docker_compose_config.has_service(
-        "database_{}".format(prefix).lower()
-    ):
+    ) or docker_compose_config.has_service(f"database_{prefix}".lower()):
         click.secho("removing old database container", fg="green")
         if docker_compose_config.has_service("database_default"):
             check_call(docker_compose("stop", "database_default"), catch=False)
@@ -224,8 +221,8 @@ def create_workspace(
 
     if os.path.exists(path) and (not os.path.isdir(path) or os.listdir(path)):
         if force_overwrite or click.confirm(
-            "The path {} already exists and is not an empty directory. "
-            "Do you want to remove it and continue?".format(path)
+            f"The path {path} already exists and is not an empty directory. "
+            "Do you want to remove it and continue?"
         ):
             if os.path.isdir(path):
 
@@ -237,11 +234,7 @@ def create_workspace(
             else:
                 os.remove(path)
         else:
-            click.secho(
-                "Aborting",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Aborting", fg=None)
 
     website_id = client.get_website_id_for_slug(website_slug)
     env = client.get_environment(website_id, environment)
@@ -260,21 +253,27 @@ def create_workspace(
         website_slug=website_slug, path=path, client=client, zone=zone
     )
 
-    # setup docker website containers
-    setup_website_containers(client=client, environment=environment, path=path)
-
-    # download media files
-    pull_media(client=client, environment=environment, path=path)
+    # setup docker website containers (if docker-compose.yml exists)
+    try:
+        setup_website_containers(
+            client=client, environment=environment, path=path
+        )
+        pull_media(client=client, environment=environment, path=path)
+    except DockerComposeDoesNotExist:
+        click.secho(
+            "Warning: docker-compose.yml does not exist. Will continue without...",
+            fg="yellow",
+        )
 
     instructions = (
         "Your workspace is setup and ready to start.",
         f"Change directory to '{path}' and run 'divio app up'",
     )
 
-    click.secho("\n\n{}".format(os.linesep.join(instructions)), fg="green")
+    click.secho(f"\n\n{os.linesep.join(instructions)}", fg="green")
 
 
-class DatabaseImportBase(object):
+class DatabaseImportBase:
     restore_commands = {
         "fsm-postgres": {
             "sql": "psql -U postgres db < {}",
@@ -296,7 +295,7 @@ class DatabaseImportBase(object):
     }
 
     def __init__(self, *args, **kwargs):
-        super(DatabaseImportBase, self).__init__()
+        super().__init__()
         self.client = kwargs.pop("client")
         self.prefix = kwargs.pop("prefix")
         self.db_type = kwargs.pop("db_type")
@@ -307,7 +306,7 @@ class DatabaseImportBase(object):
         self.website_slug = utils.get_project_settings(self.path)["slug"]
         try:
             self.docker_compose = utils.get_docker_compose_cmd(self.path)
-        except RuntimeError:
+        except DockerComposeDoesNotExist:
             self.docker_compose = None
         self.database_extensions = self.get_active_db_extensions()
         self.start_time = time()
@@ -332,7 +331,7 @@ class DatabaseImportBase(object):
 
         if "db_extensions" in project_settings:
             if not isinstance(project_settings["db_extensions"], list):
-                raise click.ClickException(
+                raise DivioException(
                     'Divio configuration file contains invalid "db_extensions" value. '
                     "It should contain a list of extensions, for instance: {}".format(
                         default_db_extensions
@@ -343,7 +342,7 @@ class DatabaseImportBase(object):
             return default_db_extensions
 
     def prepare_db_server_postgres(self, db_container_id, start_wait):
-        for attempt in range(10):
+        for _attempt in range(10):
             try:
                 check_call(
                     [
@@ -361,14 +360,11 @@ class DatabaseImportBase(object):
             else:
                 break
         else:
-            click.secho(
+            raise DivioException(
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
-                fg="red",
-                err=True,
             )
-            sys.exit(1)
-        click.echo(" [{}s]".format(int(time() - start_wait)))
+        click.echo(f" [{int(time() - start_wait)}s]")
 
         # drop any existing connections
         check_call(
@@ -407,10 +403,10 @@ class DatabaseImportBase(object):
             env=get_subprocess_env(),
         )  # TODO: silence me
 
-        click.echo(" [{}s]".format(int(time() - start_remove)))
+        click.echo(f" [{int(time() - start_remove)}s]")
 
     def prepare_db_server_mysql(self, db_container_id, start_wait):
-        for attempt in range(10):
+        for _attempt in range(10):
             try:
                 check_call(
                     [
@@ -429,14 +425,11 @@ class DatabaseImportBase(object):
             else:
                 break
         else:
-            click.secho(
+            raise DivioException(
                 "Couldn't connect to database container. "
                 "Database server may not have started.",
-                fg="red",
-                err=True,
             )
-            sys.exit(1)
-        click.echo(" [{}s]".format(int(time() - start_wait)))
+        click.echo(f" [{int(time() - start_wait)}s]")
 
     def prepare_db_server(self):
         utils.start_database_server(self.docker_compose, prefix=self.prefix)
@@ -460,8 +453,7 @@ class DatabaseImportBase(object):
         elif self.db_type == "fsm-mysql":
             self.prepare_db_server_mysql(db_container_id, start_wait)
         else:
-            click.secho("db type not known", fg="red", err=True)
-            sys.exit(1)
+            raise DivioException("db type not known")
 
     def get_db_restore_command(self, db_type):
         raise NotImplementedError
@@ -501,9 +493,7 @@ class DatabaseImportBase(object):
             click.echo("")
             for extension in self.database_extensions:
                 if extension in available_extensions:
-                    click.echo(
-                        "      Enabling extension: {}".format(extension)
-                    )
+                    click.echo(f"      Enabling extension: {extension}")
                     check_call(
                         [
                             "docker",
@@ -514,9 +504,7 @@ class DatabaseImportBase(object):
                             "postgres",
                             "--dbname=db",
                             "-c",
-                            "CREATE EXTENSION IF NOT EXISTS {};".format(
-                                extension
-                            ),
+                            f"CREATE EXTENSION IF NOT EXISTS {extension};",
                         ],
                         silent=True,
                     )
@@ -536,16 +524,13 @@ class DatabaseImportBase(object):
                 catch=False,
             )
         except subprocess.CalledProcessError as exc:
-            click.secho(
+            raise DivioException(
                 "Could not restore the database dump. This is likely a "
                 "configuration issue."
                 "\n\nSee https://docs.divio.com/en/latest/reference/docker-docker-compose/#services-defined-in-docker-compose-yml\n\n"
                 "The executed command was:\n"
                 "  {command}".format(command=" ".join(exc.cmd)),
-                fg="red",
-                err=True,
             )
-            sys.exit(1)
 
     def restore_db_mysql(self, db_container_id):
         restore_command = self.get_db_restore_command(self.db_type)
@@ -580,25 +565,23 @@ class DatabaseImportBase(object):
         db_container_id = utils.get_db_container_id(
             self.path, prefix=self.prefix
         )
-
         if self.db_type == "fsm-postgres":
             self.restore_db_postgres(db_container_id)
         elif self.db_type == "fsm-mysql":
             self.restore_db_mysql(db_container_id)
         else:
-            click.secho("db type not known", fg="red", err=True)
-            sys.exit(1)
-        click.echo("\n      [{}s]".format(int(time() - start_import)))
+            raise DivioException("db type not known")
+        click.echo(f"\n      [{int(time() - start_import)}s]")
 
     def finish(self):
         click.secho("Done", fg="green", nl=False)
-        click.echo(" [{}s]".format(int(time() - self.start_time)))
+        click.echo(f" [{int(time() - self.start_time)}s]")
 
 
 class ImportLocalDatabase(DatabaseImportBase):
     def __init__(self, *args, **kwargs):
         self.custom_dump_path = kwargs.pop("custom_dump_path")
-        super(ImportLocalDatabase, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def setup(self):
         click.secho(
@@ -618,12 +601,12 @@ class ImportLocalDatabase(DatabaseImportBase):
                 "docker",
                 "cp",
                 self.custom_dump_path,
-                "{}:/tmp/dump".format(db_container_id),
+                f"{db_container_id}:/tmp/dump",
             ],
             catch=False,
             silent=True,
         )
-        click.echo(" [{}s]".format(int(time() - start_copy)))
+        click.echo(f" [{int(time() - start_copy)}s]")
         self.db_dump_path = "/tmp/dump"
 
     def get_db_restore_command(self, db_type):
@@ -636,15 +619,16 @@ class ImportLocalDatabase(DatabaseImportBase):
 
 class ImportRemoteDatabase(DatabaseImportBase):
     def __init__(self, *args, **kwargs):
-        super(ImportRemoteDatabase, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.environment = kwargs.pop("environment", None)
         self.remote_id = kwargs.pop("remote_id", None) or self.website_id
         self.keep_tempfile = kwargs.pop("keep_tempfile", None)
+        self.backup_si_uuid = kwargs.pop("backup_si_uuid", None)
 
         remote_project_name = (
             self.website_slug
             if self.remote_id == self.website_id
-            else "Project {}".format(self.remote_id)
+            else f"Project {self.remote_id}"
         )
         click.secho(
             " ===> Pulling database from {} {} environment".format(
@@ -653,42 +637,36 @@ class ImportRemoteDatabase(DatabaseImportBase):
         )
 
     def setup(self):
-        click.secho(" ---> Preparing download ", nl=False)
-        start_preparation = time()
-        response = (
-            self.client.download_db_request(
-                self.remote_id, self.environment, self.prefix
+        if self.backup_si_uuid:
+            with utils.TimedStep("Verifying backup instance"):
+                backup_uuid = backups.get_backup_uuid_from_service_backup(
+                    self.client, self.backup_si_uuid, backups.Type.DB
+                )
+        else:
+            with utils.TimedStep("Creating backup"):
+                backup_uuid, self.backup_si_uuid = backups.create_backup(
+                    self.client,
+                    self.website_id,
+                    self.environment,
+                    backups.Type.DB,
+                    self.prefix,
+                )
+
+        with utils.TimedStep("Preparing download"):
+            download_url = backups.create_backup_download_url(
+                self.client, backup_uuid, self.backup_si_uuid
             )
-            or {}
-        )
-        progress_url = response.get("progress_url")
-        if not progress_url:
-            click.secho(" error!", fg="red")
-            sys.exit(1)
-        progress = {"success": None}
-        while progress.get("success") is None:
-            sleep(2)
-            progress = self.client.download_db_progress(url=progress_url)
-        if not progress.get("success"):
-            click.secho(" error!", fg="red")
-            click.secho(progress.get("result") or "")
-            sys.exit(1)
-        download_url = progress.get("result") or None
-        click.echo(" [{}s]".format(int(time() - start_preparation)))
 
-        start_download = time()
         if download_url:
-
             # Create the dump target directory if it does not exist yet
             if not os.path.exists(self.dump_path):
                 os.makedirs(self.dump_path)
 
-            self.host_db_dump_path = download_file(
-                download_url, directory=self.dump_path
-            )
-            click.secho(f" ---> Writing temp file: {self.host_db_dump_path}")
-            click.secho(" ---> Downloading database", nl=False)
-            click.echo(" [{}s]".format(int(time() - start_download)))
+            with utils.TimedStep("Downloading database"):
+                self.host_db_dump_path = download_file(
+                    download_url, directory=self.dump_path
+                )
+            utils.step(f"Writing temp file: {self.host_db_dump_path}")
             # strip path from dump_path for use in the docker container and ensure
             # posix path, even when running on Windows
             host_dump_path = re.findall(
@@ -697,48 +675,41 @@ class ImportRemoteDatabase(DatabaseImportBase):
             )
             self.db_dump_path = PurePosixPath("/app", *host_dump_path)
         else:
-            click.secho(" ---> empty database")
+            utils.step("empty database")
             self.db_dump_path = None
             self.host_db_dump_path = None
 
     def get_db_restore_command(self, db_type):
-        cmd = self.restore_commands[db_type]["archived-binary"]
+        cmd = self.restore_commands[db_type]["binary"]
         return cmd.format(self.db_dump_path)
 
     def finish(self, *args, **kwargs):
         if self.host_db_dump_path:
             if self.keep_tempfile:
-                click.secho(
-                    f" ---> Keeping temp file: {self.host_db_dump_path}"
-                )
+                utils.step(f"Keeping temp file: {self.host_db_dump_path}")
             else:
-                click.secho(
-                    f" ---> Removing temp file: {self.host_db_dump_path}"
-                )
+                utils.step(f"Removing temp file: {self.host_db_dump_path}")
                 os.remove(self.host_db_dump_path)
-        super(ImportRemoteDatabase, self).finish(*args, **kwargs)
+        super().finish(*args, **kwargs)
 
 
-def pull_media(client, environment, remote_id=None, path=None):
+def pull_media(
+    client,
+    environment,
+    prefix=None,
+    remote_id=None,
+    path=None,
+    backup_si_uuid=None,
+    keep_tempfile=False,
+):
     project_home = utils.get_application_home(path)
     website_id = utils.get_project_settings(project_home)["id"]
     website_slug = utils.get_project_settings(project_home)["slug"]
     remote_id = remote_id or website_id
     remote_project_name = (
-        website_slug
-        if remote_id == website_id
-        else "Project {}".format(remote_id)
+        website_slug if remote_id == website_id else f"Project {remote_id}"
     )
-    try:
-        docker_compose = utils.get_docker_compose_cmd(project_home)
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not handle media without!",
-            fg="red",
-        )
-        return
-
+    docker_compose = utils.get_docker_compose_cmd(project_home)
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
     local_data_folder = os.path.join(project_home, "data")
@@ -748,46 +719,38 @@ def pull_media(client, environment, remote_id=None, path=None):
         click.secho("No mount for /data folder found")
         return
 
-    click.secho(
-        " ===> Pulling media files from {} {} environment".format(
-            remote_project_name, environment
-        )
+    main_step = utils.MainStep(
+        f"Pulling media files from {remote_project_name} {environment} environment"
     )
-    start_time = time()
-    click.secho(" ---> Preparing download ", nl=False)
-    start_preparation = time()
-    response = client.download_media_request(remote_id, environment) or {}
-    progress_url = response.get("progress_url")
-    if not progress_url:
-        click.secho(" error!", fg="red")
-        sys.exit(1)
+    if backup_si_uuid:
+        with utils.TimedStep("Verifying backup instance"):
+            backup_uuid = backups.get_backup_uuid_from_service_backup(
+                client, backup_si_uuid, backups.Type.MEDIA
+            )
+    else:
+        with utils.TimedStep("Creating backup"):
+            backup_uuid, backup_si_uuid = backups.create_backup(
+                client, website_id, environment, backups.Type.MEDIA, prefix
+            )
 
-    progress = {"success": None}
-    while progress.get("success") is None:
-        sleep(2)
-        progress = client.download_media_progress(url=progress_url)
-    if not progress.get("success"):
-        click.secho(" error!", fg="red")
-        click.secho(progress.get("result") or "")
-        sys.exit(1)
-    download_url = progress.get("result") or None
-    click.echo(" [{}s]".format(int(time() - start_preparation)))
+    with utils.TimedStep("Preparing download"):
+        download_url = backups.create_backup_download_url(
+            client, backup_uuid, backup_si_uuid
+        )
 
-    click.secho(" ---> Downloading", nl=False)
-    start_download = time()
-    backup_path = download_file(download_url)
-    if not backup_path:
-        # no backup yet, skipping
-        return
-    click.echo(" [{}s]".format(int(time() - start_download)))
+    with utils.TimedStep("Downloading"):
+        directory = os.path.join(project_home, settings.DIVIO_DUMP_FOLDER)
+        backup_path = download_file(download_url, directory=directory)
+        if not backup_path:
+            # no backup yet, skipping
+            return
+        click.secho(f"to {backup_path}", nl=False)
 
     media_path = os.path.join(local_data_folder, "media")
 
     if os.path.isdir(media_path):
-        start_remove = time()
-        click.secho(" ---> Removing local files", nl=False)
-        shutil.rmtree(media_path)
-        click.echo(" [{}s]".format(int(time() - start_remove)))
+        with utils.TimedStep("Removing local files"):
+            shutil.rmtree(media_path)
 
     if "linux" in sys.platform:
         # On Linux, Docker typically runs as root, so files and folders
@@ -809,137 +772,26 @@ def pull_media(client, environment, remote_id=None, path=None):
         except subprocess.CalledProcessError as exc:
             # This can happen due to a race condition in docker compose >= 2
             click.secho(
-                "Failed to set user ownership of media files.  {}\n".format(
-                    exc
-                ),
+                f"Failed to set user ownership of media files.  {exc}\n",
                 fg="yellow",
             )
 
-    click.secho(" ---> Extracting files to {}".format(media_path), nl=False)
-    start_extract = time()
-    with open(backup_path, "rb") as fobj:
-        with tarfile.open(fileobj=fobj, mode="r:*") as media_archive:
-            media_archive.extractall(path=media_path)
-    os.remove(backup_path)
-    click.echo(" [{}s]".format(int(time() - start_extract)))
-    click.secho("Done", fg="green", nl=False)
-    click.echo(" [{}s]".format(int(time() - start_time)))
+    with utils.TimedStep(f"Extracting files to {media_path}"):
+        with open(backup_path, "rb") as fobj:
+            with tarfile.open(fileobj=fobj, mode="r:*") as media_archive:
+                media_archive.extractall(path=media_path)
 
+    if not keep_tempfile:
+        with utils.TimedStep("Removing temporary files"):
+            os.remove(backup_path)
 
-def dump_database(dump_filename, db_type, prefix, archive_filename=None):
-    project_home = utils.get_application_home()
-    try:
-        docker_compose = utils.get_docker_compose_cmd(project_home)
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not handle database without!",
-            fg="red",
-        )
-        return
-    utils.DockerComposeConfig(docker_compose)
-
-    utils.start_database_server(docker_compose, prefix=prefix)
-
-    click.secho(" ---> Dumping local database", nl=False)
-    start_dump = time()
-    db_container_id = utils.get_db_container_id(project_home, prefix=prefix)
-    # TODO: database
-    if db_type == "fsm-postgres":
-        subprocess.call(
-            (
-                "docker",
-                "exec",
-                db_container_id,
-                "pg_dump",
-                "-U",
-                "postgres",
-                "-d",
-                "db",
-                "--no-owner",
-                "--no-privileges",
-                "-f",
-                os.path.join("/app/", dump_filename),
-            ),
-            env=get_subprocess_env(),
-        )
-
-    elif db_type == "fsm-mysql":
-        with open(dump_filename, "w") as f:
-            subprocess.call(
-                (
-                    "docker",
-                    "exec",
-                    db_container_id,
-                    "mysqldump",
-                    "--user=root",
-                    "--compress",
-                    "db",
-                ),
-                env=get_subprocess_env(),
-                stdout=f,
-            )
-
-    else:
-        click.secho("db type not known", fg="red", err=True)
-        sys.exit(1)
-
-    click.echo(" [{}s]".format(int(time() - start_dump)))
-
-    if not archive_filename:
-        # archive filename not specified
-        # return path to uncompressed dump
-        return os.path.join(project_home, dump_filename)
-
-    archive_path = os.path.join(project_home, archive_filename)
-    sql_dump_size = os.path.getsize(dump_filename)
-    click.secho(
-        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)),
-        nl=False,
-    )
-    start_compress = time()
-    with tarfile.open(archive_path, mode="w:gz") as tar:
-        tar.add(
-            os.path.join(project_home, dump_filename), arcname=dump_filename
-        )
-    compressed_size = os.path.getsize(archive_filename)
-    click.echo(
-        " {} [{}s]".format(
-            pretty_size(compressed_size), int(time() - start_compress)
-        )
-    )
-
-
-def compress_db(dump_filename, archive_filename=None, archive_wd=None):
-
-    if not archive_filename:
-        # archive filename not specified
-        # return path to uncompressed dump
-        return os.path.join(archive_wd, dump_filename)
-
-    archive_path = os.path.join(archive_wd, archive_filename)
-    sql_dump_size = os.path.getsize(dump_filename)
-    click.secho(
-        " ---> Compressing SQL dump ({})".format(pretty_size(sql_dump_size)),
-        nl=False,
-    )
-    start_compress = time()
-    with tarfile.open(archive_path, mode="w:gz") as tar:
-        tar.add(os.path.join(archive_wd, dump_filename), arcname=dump_filename)
-    compressed_size = os.path.getsize(archive_filename)
-    click.echo(
-        " {} [{}s]".format(
-            pretty_size(compressed_size), int(time() - start_compress)
-        )
-    )
+    main_step.done()
 
 
 def export_db(prefix):
     dump_filename = DEFAULT_DUMP_FILENAME
 
-    click.secho(
-        " ===> Exporting local database {} to {}".format(prefix, dump_filename)
-    )
+    click.secho(f" ===> Exporting local database {prefix} to {dump_filename}")
     start_time = time()
 
     project_home = utils.get_application_home()
@@ -947,196 +799,33 @@ def export_db(prefix):
     dump_database(dump_filename=dump_filename, db_type=db_type, prefix=prefix)
 
     click.secho("Done", fg="green", nl=False)
-    click.echo(" [{}s]".format(int(time() - start_time)))
+    click.echo(f" [{int(time() - start_time)}s]")
 
 
-def push_db(client, environment, remote_id, prefix, db_type):
-    project_home = utils.get_application_home()
-    website_id = utils.get_project_settings(project_home)["id"]
-    dump_filename = DEFAULT_DUMP_FILENAME
-    archive_filename = dump_filename.replace(".sql", ".tar.gz")
-    archive_path = os.path.join(project_home, archive_filename)
-    website_slug = utils.get_project_settings(project_home)["slug"]
-    remote_project_name = (
-        website_slug
-        if remote_id == website_id
-        else "Project {}".format(remote_id)
-    )
-
-    click.secho(
-        " ===> Pushing local database to {} {} environment".format(
-            remote_project_name, environment
-        )
-    )
-    start_time = time()
-
-    dump_database(
-        dump_filename=dump_filename,
-        db_type=db_type,
+def push_db(
+    client, environment, remote_id, prefix, local_file=None, keep_tempfile=True
+):
+    pusher = PushDb.create(
+        client=client,
+        environment=environment,
+        remote_id=remote_id,
         prefix=prefix,
-        archive_filename=archive_filename,
+    )
+    # do not cleanup after if the file was provided by the user or
+    # he explicitly asked not to
+    pusher.run(
+        local_file=local_file, cleanup=not (local_file or keep_tempfile)
     )
 
-    click.secho(" ---> Uploading", nl=False)
-    start_upload = time()
-    response = (
-        client.upload_db(remote_id, environment, archive_path, prefix) or {}
+
+def push_media(client, environment, remote_id, prefix, keep_tempfile=True):
+    pusher = PushMedia.create(
+        client=client,
+        environment=environment,
+        remote_id=remote_id,
+        prefix=prefix,
     )
-    click.echo(" [{}s]".format(int(time() - start_upload)))
-
-    progress_url = response.get("progress_url")
-    if not progress_url:
-        click.secho(" error!", fg="red")
-        sys.exit(1)
-
-    click.secho(" ---> Processing", nl=False)
-    start_processing = time()
-    progress = {"success": None}
-    while progress.get("success") is None:
-        sleep(2)
-        progress = client.upload_db_progress(url=progress_url)
-    if not progress.get("success"):
-        click.secho(" error!", fg="red")
-        click.secho(progress.get("result") or "")
-        sys.exit(1)
-    click.echo(" [{}s]".format(int(time() - start_processing)))
-
-    # clean up
-    for temp_file in (dump_filename, archive_filename):
-        os.remove(os.path.join(project_home, temp_file))
-    click.secho("Done", fg="green", nl=False)
-    click.echo(" [{}s]".format(int(time() - start_time)))
-
-
-def push_local_db(client, environment, dump_filename, website_id, prefix):
-    archive_wd = os.path.dirname(os.path.realpath(dump_filename))
-    archive_filename = dump_filename.replace(".sql", ".tar.gz")
-    archive_path = os.path.join(archive_wd, archive_filename)
-
-    click.secho(
-        " ===> Pushing local database to {} {} environment".format(
-            website_id, environment
-        )
-    )
-    start_time = time()
-
-    compress_db(
-        dump_filename=dump_filename,
-        archive_filename=archive_filename,
-        archive_wd=archive_wd,
-    )
-
-    click.secho(" ---> Uploading", nl=False)
-    start_upload = time()
-    response = (
-        client.upload_db(website_id, environment, archive_path, prefix) or {}
-    )
-    click.echo(" [{}s]".format(int(time() - start_upload)))
-
-    progress_url = response.get("progress_url")
-    if not progress_url:
-        click.secho(" error!", fg="red")
-        sys.exit(1)
-
-    click.secho(" ---> Processing", nl=False)
-    start_processing = time()
-    progress = {"success": None}
-    while progress.get("success") is None:
-        sleep(2)
-        progress = client.upload_db_progress(url=progress_url)
-    if not progress.get("success"):
-        click.secho(" error!", fg="red")
-        click.secho(progress.get("result") or "")
-        sys.exit(1)
-    click.echo(" [{}s]".format(int(time() - start_processing)))
-
-    # clean up
-    for temp_file in (dump_filename, archive_filename):
-        os.remove(os.path.join(archive_wd, temp_file))
-    click.secho("Done", fg="green", nl=False)
-    click.echo(" [{}s]".format(int(time() - start_time)))
-
-
-def push_media(client, environment, remote_id, prefix):
-    project_home = utils.get_application_home()
-    website_id = utils.get_project_settings(project_home)["id"]
-    archive_path = os.path.join(project_home, "local_media.tar.gz")
-    website_slug = utils.get_project_settings(project_home)["slug"]
-    remote_project_name = (
-        website_slug
-        if remote_id == website_id
-        else "Project {}".format(remote_id)
-    )
-
-    click.secho(
-        " ---> Pushing local media to {} {} environment".format(
-            remote_project_name, environment
-        )
-    )
-    start_time = time()
-    click.secho("Compressing local media folder", nl=False)
-    uncompressed_size = 0
-    start_compression = time()
-    with tarfile.open(archive_path, mode="w:gz") as tar:
-        media_dir = os.path.join(project_home, "data", "media")
-        if os.path.isdir(media_dir):
-            items = os.listdir(media_dir)
-        else:
-            items = []
-
-        if not items:
-            click.secho(
-                "\nError: Local media directory is empty",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
-
-        for item in items:
-            if item == "MANIFEST":
-                # partial uploads are currently not supported
-                # not including MANIFEST to do a full restore
-                continue
-            file_path = os.path.join(media_dir, item)
-            tar.add(file_path, arcname=item)
-            uncompressed_size += get_size(file_path)
-        file_count = len(tar.getmembers())
-    click.echo(
-        " {} {} ({}) compressed to {} [{}s]".format(
-            file_count,
-            "files" if file_count > 1 else "file",
-            pretty_size(uncompressed_size),
-            pretty_size(os.path.getsize(archive_path)),
-            int(time() - start_compression),
-        )
-    )
-    click.secho("Uploading", nl=False)
-    start_upload = time()
-    response = (
-        client.upload_media(remote_id, environment, archive_path, prefix) or {}
-    )
-    click.echo(" [{}s]".format(int(time() - start_upload)))
-    progress_url = response.get("progress_url")
-    if not progress_url:
-        click.secho(" error!", fg="red")
-        sys.exit(1)
-
-    click.secho("Processing", nl=False)
-    start_processing = time()
-    progress = {"success": None}
-    while progress.get("success") is None:
-        sleep(2)
-        progress = client.upload_media_progress(url=progress_url)
-    if not progress.get("success"):
-        click.secho(" error!", fg="red")
-        click.secho(progress.get("result") or "")
-        sys.exit(1)
-    click.echo(" [{}s]".format(int(time() - start_processing)))
-
-    # clean up
-    os.remove(archive_path)
-    click.secho("Done", fg="green", nl=False)
-    click.echo(" [{}s]".format(int(time() - start_time)))
+    pusher.run(cleanup=not keep_tempfile)
 
 
 def update_local_application(git_branch, client, strict=False):
@@ -1146,7 +835,7 @@ def update_local_application(git_branch, client, strict=False):
     project_home = utils.get_application_home()
     try:
         docker_compose = utils.get_docker_compose_cmd(project_home)
-    except RuntimeError:
+    except DockerComposeDoesNotExist:
         # Docker-compose does not exist
         docker_compose = None
 
@@ -1164,7 +853,7 @@ def update_local_application(git_branch, client, strict=False):
             err=True,
         )
         if strict:
-            sys.exit(1)
+            sys.exit(ExitCode.GENERIC_ERROR)
 
     click.secho("Pulling changes from git remote", fg="green")
     check_call(("git", "pull", "origin", git_branch))
@@ -1199,13 +888,13 @@ def develop_package(package, no_rebuild=False):
     addons_dev_dir = os.path.join(project_home, "addons-dev")
 
     if not os.path.isdir(os.path.join(addons_dev_dir, package)):
-        raise click.ClickException(
-            "Package {} could not be found in {}. Please make "
-            "sure it exists and try again.".format(package, addons_dev_dir)
+        raise DivioException(
+            f"Package {package} could not be found in {addons_dev_dir}. "
+            "Please make sure it exists and try again."
         )
 
-    url_pattern = re.compile(r"(\S*/{}/\S*)".format(package))
-    new_package_path = "-e /app/addons-dev/{}\n".format(package)
+    url_pattern = re.compile(rf"(\S*/{package}/\S*)")
+    new_package_path = f"-e /app/addons-dev/{package}\n"
 
     # add package to requirements.in for dependencies
     requirements_file = os.path.join(project_home, "requirements.in")
@@ -1242,13 +931,9 @@ def develop_package(package, no_rebuild=False):
         try:
             docker_compose = utils.get_docker_compose_cmd(project_home)
             check_call(docker_compose("build", "web"))
-        except RuntimeError:
+        except DockerComposeDoesNotExist as e:
             # Docker-compose does not exist
-            click.echo(
-                "Can not rebuild without docker-compose.yml",
-                fg="red",
-                err=True,
-            )
+            raise DockerComposeDoesNotExist("Cannot rebuild project") from e
 
     click.secho(
         "The package {} has been added to your local development project!".format(
@@ -1258,19 +943,7 @@ def develop_package(package, no_rebuild=False):
 
 
 def open_application(open_browser=True):
-    try:
-        docker_compose = utils.get_docker_compose_cmd(
-            utils.get_application_home()
-        )
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not open project without!",
-            fg="red",
-            err=True,
-        )
-        return
-
+    docker_compose = utils.get_docker_compose_cmd(utils.get_application_home())
     CHECKING_PORT = "80"
     try:
         addr = check_output(
@@ -1278,21 +951,17 @@ def open_application(open_browser=True):
         )
     except subprocess.CalledProcessError:
         if click.prompt(
-            "Your project is not running. Do you want to start " "it now?"
+            "Your project is not running. Do you want to start it now? [y|N]"
         ):
             return start_application()
-        return
+        return None
     try:
         host, port = addr.rstrip(os.linesep).split(":")
     except ValueError:
-        click.secho(
-            "Can not get port of the project. Please check `docker-compose logs` in case the project did not start correctly and please verify that a port {} is exposed.".format(
-                CHECKING_PORT
-            ),
-            fg="red",
-            err=True,
+        raise DivioException(
+            "Can not get port of the project. Please check `docker-compose logs` in case the project "
+            f"did not start correctly and please verify that a port {CHECKING_PORT} is exposed."
         )
-        sys.exit(1)
 
     if host == "0.0.0.0":
         docker_host_url = os.environ.get("DOCKER_HOST")
@@ -1300,16 +969,14 @@ def open_application(open_browser=True):
             proto, host_port = os.environ.get("DOCKER_HOST").split("://")
             host = host_port.split(":")[0]
 
-    addr = "http://{}:{}/".format(host, port)
+    addr = f"http://{host}:{port}/"
 
-    click.secho(
-        "Your project is configured to run at {}".format(addr), fg="green"
-    )
+    click.secho(f"Your project is configured to run at {addr}", fg="green")
 
     click.secho("Waiting for project to start..", fg="green", nl=False)
     # wait 30s for runserver to startup
     seconds = 30
-    for attempt in range(seconds):
+    for _attempt in range(seconds):
         click.secho(".", fg="green", nl=False)
         try:
             requests.head(addr)
@@ -1319,7 +986,7 @@ def open_application(open_browser=True):
             click.echo()
             break
     else:
-        raise click.ClickException(
+        raise DivioException(
             "\nProject failed to start. Please run 'docker-compose logs' "
             "to get more information."
         )
@@ -1345,18 +1012,7 @@ def configure(client, zone=None):
 
 
 def start_application():
-    try:
-        docker_compose = utils.get_docker_compose_cmd(
-            utils.get_application_home()
-        )
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not start project without!",
-            fg="red",
-            err=True,
-        )
-        return
+    docker_compose = utils.get_docker_compose_cmd(utils.get_application_home())
     try:
         check_output(
             docker_compose("up", "-d"), catch=False, stderr=subprocess.STDOUT
@@ -1364,45 +1020,21 @@ def start_application():
     except subprocess.CalledProcessError as exc:
         output = exc.output.decode()
         if "port is already allocated" in output:
-            click.secho(
+            output = (
                 "There's already another program running on this project's "
                 "port. Please either stop the other program or change the "
-                "port in the 'docker-compose.yml' file and try again.\n",
-                fg="red",
-                err=True,
+                "port in the 'docker-compose.yml' file and try again.\n"
             )
-        raise click.ClickException(output)
+        raise DivioException(output)
 
     return open_application(open_browser=True)
 
 
 def show_application_status():
-    try:
-        docker_compose = utils.get_docker_compose_cmd(
-            utils.get_application_home()
-        )
-        check_call(docker_compose("ps"))
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not show status without!",
-            fg="red",
-            err=True,
-        )
-        return
+    docker_compose = utils.get_docker_compose_cmd(utils.get_application_home())
+    check_call(docker_compose("ps"))
 
 
 def stop_application():
-    try:
-        docker_compose = utils.get_docker_compose_cmd(
-            utils.get_application_home()
-        )
-        check_call(docker_compose("stop"))
-    except RuntimeError:
-        # Docker-compose does not exist
-        click.secho(
-            "Warning: docker-compose.yml does not exist. Can not stop project without!",
-            fg="red",
-            err=True,
-        )
-        return
+    docker_compose = utils.get_docker_compose_cmd(utils.get_application_home())
+    check_call(docker_compose("stop"))

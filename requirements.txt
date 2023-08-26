@@ -1,6 +1,7 @@
+boto3
 click >= 7.0
 click_aliases
-urllib3 < 2
+urllib3
 colorama; sys_platform == 'win32'
 packaging
 pyaml
