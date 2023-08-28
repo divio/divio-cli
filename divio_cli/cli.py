@@ -19,7 +19,7 @@ from .exceptions import (
     EnvironmentDoesNotExist,
     ExitCode,
 )
-from .localdev.utils import allow_remote_id_override
+from .localdev.utils import allow_remote_id_override, get_project_settings
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
@@ -29,7 +29,6 @@ from .utils import (
     echo_large_content,
     get_cp_url,
     get_git_checked_branch,
-    get_project_settings,
     hr,
     launch_url,
     open_application_cloud_site,
