@@ -1,9 +1,7 @@
 import os
+import subprocess
 
 import pytest
-from click.testing import CliRunner
-
-from divio_cli import cli
 
 
 TEST_PROJECT_ID = os.getenv("TEST_PROJECT_ID", None)
@@ -31,6 +29,6 @@ ENVIRONMENT_VARIABLES_COMMANDS = [
 @pytest.mark.integration()
 @pytest.mark.parametrize("command", ENVIRONMENT_VARIABLES_COMMANDS)
 def test_call_click_commands(divio_project, command):
-    runner = CliRunner()
-    result = runner.invoke(cli.cli, command)
-    assert result.exit_code == 0
+    exitcode = subprocess.check_call(["divio", *command])
+
+    assert exitcode == 0
