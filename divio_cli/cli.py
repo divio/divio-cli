@@ -853,13 +853,16 @@ def service_instances():
 @allow_remote_id_override
 def list_service_instances(obj, remote_id, environment, as_json):
     """List the services instances of an application"""
-    project_data = obj.client.get_project(remote_id)
     try:
-        status = project_data[f"{environment}_status"]
+        environment_uuid = obj.client.get_environment(remote_id, environment)[
+            "uuid"
+        ]
+
     except KeyError:
         raise EnvironmentDoesNotExist(environment)
+
     api_response = obj.client.get_service_instances(
-        environment_uuid=status["uuid"]
+        environment_uuid=environment_uuid,
     )
 
     if as_json:
