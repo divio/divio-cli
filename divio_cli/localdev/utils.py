@@ -291,7 +291,7 @@ def allow_remote_id_override(func):
             else:
                 if not remote_id:
                     raise DivioException(ERROR_MSG)
-        return func(obj, int(remote_id), *args, **kwargs)
+        return func(obj, remote_id, *args, **kwargs)
 
     return click.option(
         "--remote-id",
