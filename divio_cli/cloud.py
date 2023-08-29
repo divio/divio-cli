@@ -807,10 +807,11 @@ class CloudClient:
         """
         response = self.get_project(application_uuid)
         repository_uuid = response.get("repository")
-        if not repository_uuid:
-            raise click.ClickException(
-                "Could not get remote repository information."
-            )
+
+        # if the repository uuid is None it means that the repository is
+        # hosted by divio and its dsn is well known
+        if repository_uuid is None:
+            return f"git@git.{get_divio_zone()}:{response['slug']}.git"
 
         try:
             request = api_requests.RepositoryRequest(
