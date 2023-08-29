@@ -1102,7 +1102,9 @@ def update_local_application(git_branch, client, strict=False):
     # We also check for remote repository configurations on a project update
     # to warn the user just in case something changed
     remote_dsn = client.get_repository_dsn(
-        utils.get_project_settings(utils.get_application_home())["id"]
+        utils.get_project_settings(utils.get_application_home())[
+            "application_uuid"
+        ]
     )
 
     if remote_dsn and remote_dsn not in get_local_git_remotes():
