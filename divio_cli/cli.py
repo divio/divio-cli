@@ -76,6 +76,9 @@ def cli(ctx, debug, zone, sudo):
     if sudo:
         click.secho("Running as sudo", fg="yellow")
 
+    if zone:
+        os.environ["DIVIO_ZONE"] = zone
+
     ctx.obj = Map()
     ctx.obj.client = CloudClient(
         get_endpoint(zone=zone), debug=debug, sudo=sudo
