@@ -568,7 +568,10 @@ class CloudClient:
     ):
         environment_response = api_requests.EnvironmentListRequest(
             self.session,
-            url_kwargs={"application_uuid": application_uuid},
+            url_kwargs={
+                "application_uuid": application_uuid,
+                "slug": "",
+            },
         )()["results"]
 
         # Map environments uuids with their corresponding slugs.
@@ -645,7 +648,10 @@ class CloudClient:
     ):
         environment_response = api_requests.EnvironmentListRequest(
             self.session,
-            url_kwargs={"application_uuid": application_uuid},
+            url_kwargs={
+                "application_uuid": application_uuid,
+                "slug": "",
+            },
         )()["results"]
 
         # Map environments uuids with their corresponding slugs.
@@ -682,7 +688,10 @@ class CloudClient:
     ):
         environment_response = api_requests.EnvironmentListRequest(
             self.session,
-            url_kwargs={"application_uuid": application_uuid},
+            url_kwargs={
+                "application_uuid": application_uuid,
+                "slug": "",
+            },
         )()["results"]
 
         # Map environments uuids with their corresponding slugs.
@@ -727,7 +736,10 @@ class CloudClient:
     ):
         environment_response = api_requests.EnvironmentListRequest(
             self.session,
-            url_kwargs={"application_uuid": application_uuid},
+            url_kwargs={
+                "application_uuid": application_uuid,
+                "slug": "",
+            },
         )()["results"]
 
         # Map environments uuids with their corresponding slugs.
