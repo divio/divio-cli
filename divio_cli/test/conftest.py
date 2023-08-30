@@ -1,7 +1,9 @@
 import contextlib
 import os
 import pathlib
+import shutil
 import subprocess
+from unittest.mock import Mock
 
 import pytest
 import requests
@@ -21,6 +23,15 @@ def _divio_project(request, tmpdir_factory):  # noqa: PT005
     # reference it in our test project to make docker-in-docker on Gitlab
     # work with the right volume mounts and correct paths.
     tmp_folder = pathlib.Path("test_data")
+    tmp_project_path = os.path.join(tmp_folder, test_project_name)
+
+    # Locally, we may run the tests multiple times
+    if os.path.exists(tmp_project_path):
+        if os.getenv("TEST_KEEP_PROJECT", "0") == "1":
+            # Reuse the existing project
+            return tmp_project_path
+        # Cleanup
+        shutil.rmtree(tmp_project_path)
 
     setup_command = ["app", "setup", test_project_name]
 
@@ -31,12 +42,17 @@ def _divio_project(request, tmpdir_factory):  # noqa: PT005
 
     print(f"Setup command: {setup_command}")  # noqa: T201
 
-    subprocess.check_call(
+    ret = subprocess.run(
         ["divio", *setup_command],
         cwd=str(tmp_folder.resolve()),
+        capture_output=True,
+        encoding="utf-8",
+        check=False,
     )
+    # Print the output in case of error
+    assert ret.returncode == 0, (ret.stderr, ret.stdout)
 
-    return os.path.join(tmp_folder, test_project_name)
+    return tmp_project_path
 
 
 @pytest.fixture(scope="session")
@@ -71,3 +87,11 @@ def remember_cwd(targetdir):
 def divio_project(_divio_project):
     with remember_cwd(_divio_project):
         yield _divio_project
+
+
+@pytest.fixture(autouse=True)
+def _sleepless(monkeypatch):
+    # IMPORTANT: this only works if we use "import time"
+    # vs "from time import sleep" in the module
+    # under test
+    monkeypatch.setattr("time.sleep", Mock())

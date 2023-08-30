@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import json
 import os
 import re
+from datetime import datetime
 from itertools import groupby
 from netrc import netrc
 from operator import itemgetter
@@ -8,6 +11,7 @@ from time import sleep
 from urllib.parse import urlparse
 
 import click
+import requests
 from dateutil.parser import isoparse
 
 from divio_cli.exceptions import (
@@ -126,6 +130,36 @@ class CloudClient:
         self.netrc.write()
 
         return messages.LOGIN_SUCCESSFUL.format(greeting=greeting)
+
+    def logout(self, interactive=True):
+        def secho(*args, **kwargs):
+            if not interactive:
+                return None
+
+            return click.secho(*args, **kwargs)
+
+        def confirm(*args, **kwargs):
+            if not interactive:
+                return True
+
+            return click.confirm(*args, **kwargs)
+
+        host = urlparse(self.endpoint).hostname
+
+        if host not in self.netrc.hosts:
+            secho(messages.LOGOUT_ERROR.format(host), fg="red")
+
+            return 1
+
+        if not confirm(messages.LOGOUT_CONFIRMATION.format(host)):
+            return 1
+
+        self.netrc.remove(host)
+        self.netrc.write()
+
+        secho(messages.LOGOUT_SUCCESS.format(host))
+
+        return 0
 
     def check_login_status(self):
         request = api_requests.LoginStatusRequest(self.session)
@@ -827,6 +861,172 @@ class CloudClient:
 
         raise DivioException("Could not get remote repository information.")
 
+    def get_service_instance(
+        self, instance_type, environment_uuid, prefix=None, limit_results=10
+    ):
+        if instance_type not in ["STORAGE", "DATABASE"]:
+            raise ValueError(f"invalid type: {instance_type}")
+
+        prefix = prefix or "DEFAULT"
+        try:
+            results, _ = json_response_request_paginate(
+                api_requests.ListServiceInstancesRequest,
+                self.session,
+                url_kwargs={"environment_uuid": environment_uuid},
+                limit_results=limit_results,
+            )
+
+            matches = [
+                r
+                for r in (results or {})
+                if r["type"] == instance_type and r["prefix"] == prefix
+            ]
+
+            if len(matches) == 0:
+                raise DivioException(
+                    f"No service of type {instance_type} with prefix {prefix} "
+                    f"found for environment {environment_uuid}."
+                )
+
+            if len(matches) == 1:
+                return matches[0]
+
+            raise DivioException(
+                f"Multiple services instances found for type {instance_type} (prefix={prefix})",
+            )
+
+        except json.decoder.JSONDecodeError:
+            raise DivioException(
+                "Could not fetch service instances.",
+            )
+
+    def create_backup(
+        self,
+        environment_uuid: str,
+        service_instance_uuid: str,
+        notes: str | None = None,
+        delete_at: datetime | None = None,
+    ):
+        data = {
+            "environment": environment_uuid,
+            "services": [service_instance_uuid],
+            "trigger": "MANUAL",
+        }
+
+        if delete_at is not None:
+            data["scheduled_for_deletion_at"] = delete_at.isoformat().replace(
+                "+00:00", "Z"  # match django rest framework's formatting
+            )
+        if notes is not None:
+            data["notes"] = notes
+
+        return api_requests.CreateBackupRequest(self.session, data=data)()
+
+    def get_backup(self, backup_uuid):
+        return api_requests.GetBackupRequest(
+            self.session,
+            url_kwargs={"backup_uuid": backup_uuid},
+        )()
+
+    def get_service_instance_backup(self, backup_si_uuid):
+        return api_requests.GetServiceInstanceBackupRequest(
+            self.session,
+            url_kwargs={"backup_si_uuid": backup_si_uuid},
+        )()
+
+    def create_backup_download(
+        self, backup_uuid, backup_service_instance_uuid
+    ):
+        response = api_requests.CreateBackupDownloadRequest(
+            self.session,
+            data={
+                "backup": backup_uuid,
+                "service_instance_backups": [backup_service_instance_uuid],
+                "trigger": "MANUAL",
+            },
+        )()
+
+        backup_download_uuid = response.get("uuid")
+        if not backup_download_uuid:
+            raise DivioException("Could not create backup download.")
+
+        try:
+            results, _ = json_response_request_paginate(
+                api_requests.ListBackupDownloadServiceInstancesRequest,
+                self.session,
+                params={"backup": backup_download_uuid},
+                limit_results=10,
+            )
+            if results:
+                backup_download_service_instance = results[0]
+                return (
+                    backup_download_uuid,
+                    backup_download_service_instance["uuid"],
+                )
+            else:
+                raise DivioException(
+                    "Could not find service instance backup download "
+                    f"for backup download {backup_download_uuid}."
+                )
+
+        except json.decoder.JSONDecodeError:
+            raise DivioException(
+                "Error while fetching service instance backups."
+            )
+
+    def get_backup_download_service_instance(
+        self, backup_download_service_instance_uuid
+    ):
+        return api_requests.GetBackupDownloadServiceInstanceRequest(
+            self.session,
+            url_kwargs={
+                "backup_download_si_uuid": backup_download_service_instance_uuid
+            },
+        )()
+
+    def backup_upload_request(
+        self,
+        environment: str,
+        service_intance_uuids: list[str],
+        notes: str | None = None,
+        delete_at: datetime | None = None,
+    ):
+        data = {
+            "environment": environment,
+            "services": service_intance_uuids,
+        }
+
+        if delete_at is not None:
+            data["scheduled_for_deletion_at"] = delete_at.isoformat()
+        if notes is not None:
+            data["notes"] = notes
+
+        return api_requests.CreateBackupUploadRequest(
+            self.session, data=data
+        )()
+
+    def finish_backup_upload(self, finish_url):
+        return requests.post(url=finish_url)
+
+    def create_backup_restore(self, backup_uuid: str, si_backup_uuid: str):
+        return api_requests.CreateBackupRestoreRequest(
+            self.session,
+            data={
+                "backup": backup_uuid,
+                "service_instance_restores": [
+                    {"service_instance_backup": si_backup_uuid},
+                ],
+            },
+        )()
+
+    def get_backup_restore(self, backup_restore_uuid: str):
+        return api_requests.GetBackupRestoreRequest(
+            self.session,
+            url_kwargs={
+                "backup_restore_uuid": backup_restore_uuid,
+            },
+        )()
+
     def get_regions(self):
         request = api_requests.ListRegionsRequest(self.session)
         return request()
@@ -851,11 +1051,19 @@ class WritableNetRC(netrc):
                 "can be read and written by the current user."
             )
 
+    @classmethod
     def get_netrc_path(self):
         """
         netrc uses os.environ['HOME'] for path detection which is
-        not defined on Windows. Detecting the correct path ourselves
+        not defined on Windows. Detecting the correct path ourselves.
+
+        This method also checks if the environment variable "NETRC_PATH" is set
+        and returns it if so.
         """
+
+        if "NETRC_PATH" in os.environ:
+            return os.environ["NETRC_PATH"]
+
         home = os.path.expanduser("~")
         return os.path.join(home, ".netrc")
 

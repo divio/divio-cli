@@ -305,52 +305,65 @@ class DownloadBackupRequest(FileResponse, APIRequest):
         return super().verify(response)
 
 
-# Download DB
-
-
-class DownloadDBRequestRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/download/db/request/"
+class CreateBackupRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backups/"
     method = "POST"
 
 
-class DownloadDBProgressRequest(JsonResponse, APIRequest):
+class GetBackupRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backups/{backup_uuid}/"
     method = "GET"
 
 
-# Download Media
+class GetServiceInstanceBackupRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/service-instance-backups/{backup_si_uuid}/"
+    method = "GET"
 
 
-class DownloadMediaRequestRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/download/media/request/"
+class CreateBackupDownloadRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backup-downloads/"
     method = "POST"
 
 
-class DownloadMediaProgressRequest(JsonResponse, APIRequest):
+class ListBackupDownloadServiceInstancesRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backup-download-service-instances/"
     method = "GET"
 
 
-# Upload DB
+class GetBackupDownloadServiceInstanceRequest(JsonResponse, APIV3Request):
+    url = (
+        "/apps/v3/backup-download-service-instances/{backup_download_si_uuid}"
+    )
 
 
-class UploadDBRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/upload/db/"
+# Create backup and restore using upload (pull)
+
+
+class CreateBackupUploadRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backups/upload/"
     method = "POST"
 
 
-class UploadDBProgressRequest(JsonResponse, APIRequest):
-    method = "GET"
+class FinishBackupUploadRequest(JsonResponse, APIV3Request):
+    # URL => found in the CreateBackupUploadRequest response body
+    method = "POST"
+
+    def __init__(self, session, *args, **kwargs):
+        # Do not use session, just a simple requests.request() call.
+        super().__init__(requests, *args, **kwargs)
 
 
-# Upload Media
-
-
-class UploadMediaFilesRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/upload/media/"
+class CreateBackupRestoreRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backup-restores/"
     method = "POST"
 
 
-class UploadMediaFilesProgressRequest(JsonResponse, APIRequest):
+class GetBackupRestoreRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/backup-restores/{backup_restore_uuid}/"
     method = "GET"
+
+
+# Environment variables
 
 
 class GetEnvironmentVariablesRequest(JsonResponse, APIV3Request):

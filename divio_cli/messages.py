@@ -26,6 +26,10 @@ LOGIN_CHECK_ERROR = (
     "You are currently not logged in, please log in using `divio login`."
 )
 
+LOGOUT_CONFIRMATION = "Are you sure you want to logout from {}?"
+LOGOUT_ERROR = "You are not logged into {} at the moment"
+LOGOUT_SUCCESS = "Logged out from {}"
+
 PUSH_DB_WARNING = (
     "\nWARNING"
     "\n======="

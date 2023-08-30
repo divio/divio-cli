@@ -16,10 +16,10 @@ import requests
 from divio_cli.exceptions import (
     ConfigurationNotFound,
     DivioException,
-    DivioStepException,
     DockerComposeDoesNotExist,
     ExitCode,
 )
+from divio_cli.localdev.push import PushDb, PushMedia, dump_database
 from divio_cli.utils import get_local_git_remotes
 
 from .. import settings
@@ -28,14 +28,12 @@ from ..utils import (
     check_call,
     check_output,
     download_file,
-    get_size,
     get_subprocess_env,
     is_windows,
     launch_url,
     needs_legacy_migration,
-    pretty_size,
 )
-from . import utils
+from . import backups, utils
 from .utils import get_application_home, get_project_settings
 
 
@@ -575,7 +573,6 @@ class DatabaseImportBase:
         db_container_id = utils.get_db_container_id(
             self.path, prefix=self.prefix
         )
-
         if self.db_type == "fsm-postgres":
             self.restore_db_postgres(db_container_id)
         elif self.db_type == "fsm-mysql":
@@ -634,6 +631,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         self.environment = kwargs.pop("environment", None)
         self.remote_id = kwargs.pop("remote_id", None) or self.website_id
         self.keep_tempfile = kwargs.pop("keep_tempfile", None)
+        self.backup_si_uuid = kwargs.pop("backup_si_uuid", None)
 
         remote_project_name = (
             self.website_slug
@@ -647,39 +645,36 @@ class ImportRemoteDatabase(DatabaseImportBase):
         )
 
     def setup(self):
-        click.secho(" ---> Preparing download ", nl=False)
-        start_preparation = time()
-        response = (
-            self.client.download_db_request(
-                self.website_id, self.environment, self.prefix
+        if self.backup_si_uuid:
+            with utils.TimedStep("Verifying backup instance"):
+                backup_uuid = backups.get_backup_uuid_from_service_backup(
+                    self.client, self.backup_si_uuid, backups.Type.DB
+                )
+        else:
+            with utils.TimedStep("Creating backup"):
+                backup_uuid, self.backup_si_uuid = backups.create_backup(
+                    self.client,
+                    self.website_id,
+                    self.environment,
+                    backups.Type.DB,
+                    self.prefix,
+                )
+
+        with utils.TimedStep("Preparing download"):
+            download_url = backups.create_backup_download_url(
+                self.client, backup_uuid, self.backup_si_uuid
             )
-            or {}
-        )
-        progress_url = response.get("progress_url")
-        if not progress_url:
-            raise DivioStepException
-        progress = {"success": None}
-        while progress.get("success") is None:
-            sleep(2)
-            progress = self.client.download_db_progress(url=progress_url)
-        if not progress.get("success"):
-            raise DivioStepException(progress.get("result") or "")
-        download_url = progress.get("result") or None
-        click.echo(f" [{int(time() - start_preparation)}s]")
 
-        start_download = time()
         if download_url:
-
             # Create the dump target directory if it does not exist yet
             if not os.path.exists(self.dump_path):
                 os.makedirs(self.dump_path)
 
-            self.host_db_dump_path = download_file(
-                download_url, directory=self.dump_path
-            )
-            click.secho(f" ---> Writing temp file: {self.host_db_dump_path}")
-            click.secho(" ---> Downloading database", nl=False)
-            click.echo(f" [{int(time() - start_download)}s]")
+            with utils.TimedStep("Downloading database"):
+                self.host_db_dump_path = download_file(
+                    download_url, directory=self.dump_path
+                )
+            utils.step(f"Writing temp file: {self.host_db_dump_path}")
             # strip path from dump_path for use in the docker container and ensure
             # posix path, even when running on Windows
             host_dump_path = re.findall(
@@ -688,29 +683,33 @@ class ImportRemoteDatabase(DatabaseImportBase):
             )
             self.db_dump_path = PurePosixPath("/app", *host_dump_path)
         else:
-            click.secho(" ---> empty database")
+            utils.step("empty database")
             self.db_dump_path = None
             self.host_db_dump_path = None
 
     def get_db_restore_command(self, db_type):
-        cmd = self.restore_commands[db_type]["archived-binary"]
+        cmd = self.restore_commands[db_type]["binary"]
         return cmd.format(self.db_dump_path)
 
     def finish(self, *args, **kwargs):
         if self.host_db_dump_path:
             if self.keep_tempfile:
-                click.secho(
-                    f" ---> Keeping temp file: {self.host_db_dump_path}"
-                )
+                utils.step(f"Keeping temp file: {self.host_db_dump_path}")
             else:
-                click.secho(
-                    f" ---> Removing temp file: {self.host_db_dump_path}"
-                )
+                utils.step(f"Removing temp file: {self.host_db_dump_path}")
                 os.remove(self.host_db_dump_path)
         super().finish(*args, **kwargs)
 
 
-def pull_media(client, environment, remote_id=None, path=None):
+def pull_media(
+    client,
+    environment,
+    prefix=None,
+    remote_id=None,
+    path=None,
+    backup_si_uuid=None,
+    keep_tempfile=False,
+):
     project_home = utils.get_application_home(path)
     website_id = utils.get_project_settings(project_home)["id"]
     website_slug = utils.get_project_settings(project_home)["slug"]
@@ -728,44 +727,38 @@ def pull_media(client, environment, remote_id=None, path=None):
         click.secho("No mount for /data folder found")
         return
 
-    click.secho(
-        " ===> Pulling media files from {} {} environment".format(
-            remote_project_name, environment
-        )
+    main_step = utils.MainStep(
+        f"Pulling media files from {remote_project_name} {environment} environment"
     )
-    start_time = time()
-    click.secho(" ---> Preparing download ", nl=False)
-    start_preparation = time()
-    response = client.download_media_request(website_id, environment) or {}
-    progress_url = response.get("progress_url")
-    if not progress_url:
-        raise DivioStepException
+    if backup_si_uuid:
+        with utils.TimedStep("Verifying backup instance"):
+            backup_uuid = backups.get_backup_uuid_from_service_backup(
+                client, backup_si_uuid, backups.Type.MEDIA
+            )
+    else:
+        with utils.TimedStep("Creating backup"):
+            backup_uuid, backup_si_uuid = backups.create_backup(
+                client, website_id, environment, backups.Type.MEDIA, prefix
+            )
 
-    progress = {"success": None}
-    while progress.get("success") is None:
-        sleep(2)
-        progress = client.download_media_progress(url=progress_url)
-    if not progress.get("success"):
-        click.secho(" error!", fg="red")
-        raise DivioStepException(progress.get("result") or "")
-    download_url = progress.get("result") or None
-    click.echo(f" [{int(time() - start_preparation)}s]")
+    with utils.TimedStep("Preparing download"):
+        download_url = backups.create_backup_download_url(
+            client, backup_uuid, backup_si_uuid
+        )
 
-    click.secho(" ---> Downloading", nl=False)
-    start_download = time()
-    backup_path = download_file(download_url)
-    if not backup_path:
-        # no backup yet, skipping
-        return
-    click.echo(f" [{int(time() - start_download)}s]")
+    with utils.TimedStep("Downloading"):
+        directory = os.path.join(project_home, settings.DIVIO_DUMP_FOLDER)
+        backup_path = download_file(download_url, directory=directory)
+        if not backup_path:
+            # no backup yet, skipping
+            return
+        click.secho(f"to {backup_path}", nl=False)
 
     media_path = os.path.join(local_data_folder, "media")
 
     if os.path.isdir(media_path):
-        start_remove = time()
-        click.secho(" ---> Removing local files", nl=False)
-        shutil.rmtree(media_path)
-        click.echo(f" [{int(time() - start_remove)}s]")
+        with utils.TimedStep("Removing local files"):
+            shutil.rmtree(media_path)
 
     if "linux" in sys.platform:
         # On Linux, Docker typically runs as root, so files and folders
@@ -791,112 +784,16 @@ def pull_media(client, environment, remote_id=None, path=None):
                 fg="yellow",
             )
 
-    click.secho(f" ---> Extracting files to {media_path}", nl=False)
-    start_extract = time()
-    with open(backup_path, "rb") as fobj:
-        with tarfile.open(fileobj=fobj, mode="r:*") as media_archive:
-            media_archive.extractall(path=media_path)
-    os.remove(backup_path)
-    click.echo(f" [{int(time() - start_extract)}s]")
-    click.secho("Done", fg="green", nl=False)
-    click.echo(f" [{int(time() - start_time)}s]")
+    with utils.TimedStep(f"Extracting files to {media_path}"):
+        with open(backup_path, "rb") as fobj:
+            with tarfile.open(fileobj=fobj, mode="r:*") as media_archive:
+                media_archive.extractall(path=media_path)
 
+    if not keep_tempfile:
+        with utils.TimedStep("Removing temporary files"):
+            os.remove(backup_path)
 
-def dump_database(dump_filename, db_type, prefix, archive_filename=None):
-    project_home = utils.get_application_home()
-    docker_compose = utils.get_docker_compose_cmd(project_home)
-    utils.DockerComposeConfig(docker_compose)
-
-    utils.start_database_server(docker_compose, prefix=prefix)
-
-    click.secho(" ---> Dumping local database", nl=False)
-    start_dump = time()
-    db_container_id = utils.get_db_container_id(project_home, prefix=prefix)
-    # TODO: database
-    if db_type == "fsm-postgres":
-        subprocess.call(
-            (
-                "docker",
-                "exec",
-                db_container_id,
-                "pg_dump",
-                "-U",
-                "postgres",
-                "-d",
-                "db",
-                "--no-owner",
-                "--no-privileges",
-                "-f",
-                os.path.join("/app/", dump_filename),
-            ),
-            env=get_subprocess_env(),
-        )
-
-    elif db_type == "fsm-mysql":
-        with open(dump_filename, "w") as f:
-            subprocess.call(
-                (
-                    "docker",
-                    "exec",
-                    db_container_id,
-                    "mysqldump",
-                    "--user=root",
-                    "--compress",
-                    "db",
-                ),
-                env=get_subprocess_env(),
-                stdout=f,
-            )
-
-    else:
-        raise DivioException("db type not known")
-
-    click.echo(f" [{int(time() - start_dump)}s]")
-
-    if not archive_filename:
-        # archive filename not specified
-        # return path to uncompressed dump
-        return os.path.join(project_home, dump_filename)
-
-    archive_path = os.path.join(project_home, archive_filename)
-    sql_dump_size = os.path.getsize(dump_filename)
-    click.secho(
-        f" ---> Compressing SQL dump ({pretty_size(sql_dump_size)})",
-        nl=False,
-    )
-    start_compress = time()
-    with tarfile.open(archive_path, mode="w:gz") as tar:
-        tar.add(
-            os.path.join(project_home, dump_filename), arcname=dump_filename
-        )
-    compressed_size = os.path.getsize(archive_filename)
-    click.echo(
-        f" {pretty_size(compressed_size)} [{int(time() - start_compress)}s]"
-    )
-    return None
-
-
-def compress_db(dump_filename, archive_filename=None, archive_wd=None):
-
-    if not archive_filename:
-        # archive filename not specified
-        # return path to uncompressed dump
-        return os.path.join(archive_wd, dump_filename)
-
-    archive_path = os.path.join(archive_wd, archive_filename)
-    sql_dump_size = os.path.getsize(dump_filename)
-    click.secho(
-        f" ---> Compressing SQL dump ({pretty_size(sql_dump_size)})",
-        nl=False,
-    )
-    start_compress = time()
-    with tarfile.open(archive_path, mode="w:gz") as tar:
-        tar.add(os.path.join(archive_wd, dump_filename), arcname=dump_filename)
-    compressed_size = os.path.getsize(archive_filename)
-    click.echo(
-        f" {pretty_size(compressed_size)} [{int(time() - start_compress)}s]"
-    )
-    return None
+    main_step.done()
 
 
 def export_db(prefix):
@@ -913,179 +810,30 @@ def export_db(prefix):
     click.echo(f" [{int(time() - start_time)}s]")
 
 
-def push_db(client, environment, remote_id, prefix, db_type):
-    project_home = utils.get_application_home()
-    website_id = utils.get_project_settings(project_home)["id"]
-    dump_filename = DEFAULT_DUMP_FILENAME
-    archive_filename = dump_filename.replace(".sql", ".tar.gz")
-    archive_path = os.path.join(project_home, archive_filename)
-    website_slug = utils.get_project_settings(project_home)["slug"]
-    remote_project_name = (
-        website_slug if remote_id == website_id else f"Project {remote_id}"
-    )
-
-    click.secho(
-        " ===> Pushing local database to {} {} environment".format(
-            remote_project_name, environment
-        )
-    )
-    start_time = time()
-
-    dump_database(
-        dump_filename=dump_filename,
-        db_type=db_type,
+def push_db(
+    client, environment, remote_id, prefix, local_file=None, keep_tempfile=True
+):
+    pusher = PushDb.create(
+        client=client,
+        environment=environment,
+        remote_id=remote_id,
         prefix=prefix,
-        archive_filename=archive_filename,
+    )
+    # do not cleanup after if the file was provided by the user or
+    # he explicitly asked not to
+    pusher.run(
+        local_file=local_file, cleanup=not (local_file or keep_tempfile)
     )
 
-    click.secho(" ---> Uploading", nl=False)
-    start_upload = time()
-    response = (
-        client.upload_db(website_id, environment, archive_path, prefix) or {}
+
+def push_media(client, environment, remote_id, prefix, keep_tempfile=True):
+    pusher = PushMedia.create(
+        client=client,
+        environment=environment,
+        remote_id=remote_id,
+        prefix=prefix,
     )
-    click.echo(f" [{int(time() - start_upload)}s]")
-
-    progress_url = response.get("progress_url")
-    if not progress_url:
-        raise DivioStepException
-
-    click.secho(" ---> Processing", nl=False)
-    start_processing = time()
-    progress = {"success": None}
-    while progress.get("success") is None:
-        sleep(2)
-        progress = client.upload_db_progress(url=progress_url)
-    if not progress.get("success"):
-        raise DivioStepException(progress.get("result") or "")
-    click.echo(f" [{int(time() - start_processing)}s]")
-
-    # clean up
-    for temp_file in (dump_filename, archive_filename):
-        os.remove(os.path.join(project_home, temp_file))
-    click.secho("Done", fg="green", nl=False)
-    click.echo(f" [{int(time() - start_time)}s]")
-
-
-def push_local_db(client, environment, dump_filename, remote_id, prefix):
-    project_home = utils.get_application_home()
-    website_id = utils.get_project_settings(project_home)["id"]
-
-    archive_wd = os.path.dirname(os.path.realpath(dump_filename))
-    archive_filename = dump_filename.replace(".sql", ".tar.gz")
-    archive_path = os.path.join(archive_wd, archive_filename)
-
-    click.secho(
-        " ===> Pushing local database to {} {} environment".format(
-            remote_id, environment
-        )
-    )
-    start_time = time()
-
-    compress_db(
-        dump_filename=dump_filename,
-        archive_filename=archive_filename,
-        archive_wd=archive_wd,
-    )
-
-    click.secho(" ---> Uploading", nl=False)
-    start_upload = time()
-    response = (
-        client.upload_db(website_id, environment, archive_path, prefix) or {}
-    )
-    click.echo(f" [{int(time() - start_upload)}s]")
-
-    progress_url = response.get("progress_url")
-    if not progress_url:
-        raise DivioStepException
-
-    click.secho(" ---> Processing", nl=False)
-    start_processing = time()
-    progress = {"success": None}
-    while progress.get("success") is None:
-        sleep(2)
-        progress = client.upload_db_progress(url=progress_url)
-    if not progress.get("success"):
-        raise DivioStepException(progress.get("result") or "")
-    click.echo(f" [{int(time() - start_processing)}s]")
-
-    # clean up
-    for temp_file in (dump_filename, archive_filename):
-        os.remove(os.path.join(archive_wd, temp_file))
-    click.secho("Done", fg="green", nl=False)
-    click.echo(f" [{int(time() - start_time)}s]")
-
-
-def push_media(client, environment, remote_id, prefix):
-    project_home = utils.get_application_home()
-    website_id = utils.get_project_settings(project_home)["id"]
-    archive_path = os.path.join(project_home, "local_media.tar.gz")
-    website_slug = utils.get_project_settings(project_home)["slug"]
-    remote_project_name = (
-        website_slug if remote_id == website_id else f"Project {remote_id}"
-    )
-
-    click.secho(
-        " ---> Pushing local media to {} {} environment".format(
-            remote_project_name, environment
-        )
-    )
-    start_time = time()
-    click.secho("Compressing local media folder", nl=False)
-    uncompressed_size = 0
-    start_compression = time()
-    with tarfile.open(archive_path, mode="w:gz") as tar:
-        media_dir = os.path.join(project_home, "data", "media")
-        if os.path.isdir(media_dir):
-            items = os.listdir(media_dir)
-        else:
-            items = []
-
-        if not items:
-            raise DivioStepException("local media directory is empty")
-
-        for item in items:
-            if item == "MANIFEST":
-                # partial uploads are currently not supported
-                # not including MANIFEST to do a full restore
-                continue
-            file_path = os.path.join(media_dir, item)
-            tar.add(file_path, arcname=item)
-            uncompressed_size += get_size(file_path)
-        file_count = len(tar.getmembers())
-    click.echo(
-        " {} {} ({}) compressed to {} [{}s]".format(
-            file_count,
-            "files" if file_count > 1 else "file",
-            pretty_size(uncompressed_size),
-            pretty_size(os.path.getsize(archive_path)),
-            int(time() - start_compression),
-        )
-    )
-    click.secho("Uploading", nl=False)
-    start_upload = time()
-    response = (
-        client.upload_media(website_id, environment, archive_path, prefix)
-        or {}
-    )
-    click.echo(f" [{int(time() - start_upload)}s]")
-    progress_url = response.get("progress_url")
-    if not progress_url:
-        raise DivioStepException
-
-    click.secho("Processing", nl=False)
-    start_processing = time()
-    progress = {"success": None}
-    while progress.get("success") is None:
-        sleep(2)
-        progress = client.upload_media_progress(url=progress_url)
-    if not progress.get("success"):
-        raise DivioStepException(progress.get("result") or "")
-    click.echo(f" [{int(time() - start_processing)}s]")
-
-    # clean up
-    os.remove(archive_path)
-    click.secho("Done", fg="green", nl=False)
-    click.echo(f" [{int(time() - start_time)}s]")
+    pusher.run(cleanup=not keep_tempfile)
 
 
 def update_local_application(git_branch, client, strict=False):

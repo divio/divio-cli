@@ -11,6 +11,7 @@ from .. import config, settings
 from ..exceptions import (
     ConfigurationNotFound,
     DivioException,
+    DivioWarning,
     DockerComposeDoesNotExist,
 )
 from ..utils import check_call, check_output, is_windows
@@ -346,3 +347,40 @@ def get_db_type(prefix, path=None):
         # Fall back to database for legacy docker-compose files
         db_type = "fsm-postgres"
     return db_type
+
+
+class MainStep:
+    def __init__(self, name):
+        click.secho(f" ===> {name} ")
+        self.start = time()
+
+    def done(self):
+        click.secho("Done", fg="green", nl=False)
+        click.echo(f" [{int(time() - self.start)}s]")
+
+
+def step(message, **kwargs):
+    click.secho(f" ---> {message} ", **kwargs)
+
+
+class TimedStep:
+    def __init__(self, message):
+        self.start = time()
+        step(message, nl=False)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, _exc_tb):
+        if not exc_type:
+            self.done()
+
+        if isinstance(exc, DivioException):
+            # Since inside a step, ensure we have the right formatting
+            prefix = "error!"
+            if isinstance(exc, DivioWarning):
+                prefix = "warning!"
+            exc.message = f" {prefix}\n{exc.message or ''}"
+
+    def done(self):
+        click.echo(f" [{int(time() - self.start)}s]")
