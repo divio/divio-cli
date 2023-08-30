@@ -94,7 +94,6 @@ def clone_project(website_slug, path, client, zone=None, branch=None):
 
 
 def configure_project(website_slug, path, client, zone=None):
-    website_id = client.get_website_id_for_slug(website_slug)
     application_uuid = client.get_application_uuid_for_slug(website_slug)
 
     if not zone:
@@ -103,7 +102,7 @@ def configure_project(website_slug, path, client, zone=None):
     # create configuration file
     website_data = {
         "application_uuid": application_uuid,
-        "id": website_id,
+        "id": application_uuid,
         "slug": website_slug,
         "zone": zone,
     }
