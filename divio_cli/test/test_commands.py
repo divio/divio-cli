@@ -1,11 +1,10 @@
-import shlex
-import subprocess
-
-import pytest
 import os
+import shlex
 import shutil
+import subprocess
 from tempfile import TemporaryDirectory
 
+import pytest
 from click.testing import CliRunner
 
 from divio_cli import cli
