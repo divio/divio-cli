@@ -657,8 +657,9 @@ def environment_variables(obj, remote_id, pager, as_json, as_txt):
     help="The maximum number of results that can be retrieved.",
 )
 @click.pass_obj
+@allow_remote_id_override
 def list_environment_variables(
-    obj, environment, all_environments, limit_results
+    obj, remote_id, environment, all_environments, limit_results
 ):
     """
     Retrieve environment variables from an environment
@@ -666,7 +667,7 @@ def list_environment_variables(
     """
 
     results, messages = obj.client.list_environment_variables(
-        application_uuid=obj.remote_id,
+        application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
