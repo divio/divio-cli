@@ -491,14 +491,17 @@ def deployments(obj, remote_id, pager, as_json):
     help="The maximum number of results that can be retrieved.",
 )
 @click.pass_obj
-def list_deployments(obj, environment, all_environments, limit_results):
+@allow_remote_id_override
+def list_deployments(
+    obj, remote_id, environment, all_environments, limit_results
+):
     """
     Retrieve deployments from an environment or
     deployments across all environments of an application.
     """
 
     results, messages = obj.client.list_deployments(
-        application_uuid=obj.remote_id,
+        application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
