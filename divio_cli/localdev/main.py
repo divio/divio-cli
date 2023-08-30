@@ -654,7 +654,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
             with utils.TimedStep("Creating backup"):
                 backup_uuid, self.backup_si_uuid = backups.create_backup(
                     self.client,
-                    self.website_id,
+                    self.remote_id,
                     self.environment,
                     backups.Type.DB,
                     self.prefix,
@@ -738,7 +738,7 @@ def pull_media(
     else:
         with utils.TimedStep("Creating backup"):
             backup_uuid, backup_si_uuid = backups.create_backup(
-                client, website_id, environment, backups.Type.MEDIA, prefix
+                client, remote_id, environment, backups.Type.MEDIA, prefix
             )
 
     with utils.TimedStep("Preparing download"):
