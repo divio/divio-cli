@@ -761,17 +761,6 @@ class CloudClient:
                     env_found = True
                     break
             if not env_found:
-                click.secho(
-                    "Environment with the name '{}' does not exist.".format(
-                        environment
-                    ),
-                    fg="red",
-                    err=True,
-                )
-            environment_key = f"{environment}_status"
-            if environment_key in project_data.keys():
-                params = {"environment": project_data[environment_key]["uuid"]}
-            else:
                 raise EnvironmentDoesNotExist(environment)
 
         if variable_name:
