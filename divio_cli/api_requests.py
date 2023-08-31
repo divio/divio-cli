@@ -88,6 +88,7 @@ class APIRequest:
         self.files = files or {}
 
     def __call__(self, *args, **kwargs):
+
         return self.request(*args, **kwargs)
 
     def get_url(self):
@@ -239,21 +240,27 @@ class LoginStatusRequest(APIRequest):
     method = "GET"
 
 
-class ProjectListRequest(APIRequest):
-    url = "/api/v1/user-websites/"
+class ProjectListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/"
 
 
-class ProjectDetailRequest(APIRequest):
-    url = "/api/v1/website/{website_id}/detail/"
+class ProjectDetailRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/{application_uuid}/"
 
 
-class DeployProjectProgressRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/deploy/"
-    method = "GET"
+class OrganisationDetailRequest(JsonResponse, APIV3Request):
+    url = "/iam/v3/organisations/{organisation_uuid}/"
 
 
-class DeployProjectRequest(JsonResponse, APIRequest):
-    url = "/api/v1/website/{website_id}/deploy/"
+class DeploymentByApplicationRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/deployments/?application={application_uuid}&environment={environment_uuid}"
+
+    def process(self, response):
+        return response.json()["results"][0]
+
+
+class DeployProjectRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/deployments/"
     method = "POST"
 
 
@@ -278,6 +285,13 @@ class SlugToIDRequest(APIRequest):
 
     def process(self, response):
         return response.json().get("id")
+
+
+class SlugToAppUUIDRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/?slug={website_slug}"
+
+    def process(self, response):
+        return response.json()["results"][0].get("uuid")
 
 
 class DownloadBackupRequest(FileResponse, APIRequest):
@@ -360,12 +374,18 @@ class GetEnvironmentVariablesRequest(JsonResponse, APIV3Request):
 # Repository
 
 
-class RepositoryRequest(JsonResponse, APIRequest):
-    url = "/api/v2/repositories/?website={website_id}"
+class RepositoryRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/repositories/{repository_uuid}/"
+    method = "GET"
 
 
 class LogRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/environments/{environment_uuid}/logs/"
+    method = "GET"
+
+
+class EnvironmentListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/environments/?application={application_uuid}&slug={slug}"
     method = "GET"
 
 

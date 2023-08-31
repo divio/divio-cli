@@ -41,7 +41,7 @@ class PushBase:
         website_id = settings["id"]
 
         # Find the matching service instance for the given service type
-        env = client.get_environment(website_id, environment)
+        env = client.get_environment(remote_id, environment)
         env_uuid = env["uuid"]
         si = client.get_service_instance(cls.backup_type, env_uuid, prefix)
         si_uuid = si["uuid"]

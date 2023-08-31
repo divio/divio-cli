@@ -65,8 +65,8 @@ def get_git_host(zone=None):
     return git_host
 
 
-def get_git_clone_url(slug, website_id, client, zone=None):
-    remote_dsn = client.get_repository_dsn(website_id)
+def get_git_clone_url(slug, application_uuid, client, zone=None):
+    remote_dsn = client.get_repository_dsn(application_uuid)
     # if we could get a remote_dsn, us it! Otherwise, its probably a default git setup
     if remote_dsn:
         return remote_dsn
@@ -78,10 +78,10 @@ def get_git_clone_url(slug, website_id, client, zone=None):
 
 def clone_project(website_slug, path, client, zone=None, branch=None):
     click.secho("\ncloning project repository", fg="green")
-    website_id = client.get_website_id_for_slug(website_slug)
+    application_uuid = client.get_application_uuid_for_slug(website_slug)
 
     website_git_url = get_git_clone_url(
-        website_slug, website_id, client=client, zone=zone
+        website_slug, application_uuid, client=client, zone=zone
     )
     clone_args = ["git", "clone"]
     if branch:
@@ -94,13 +94,18 @@ def clone_project(website_slug, path, client, zone=None, branch=None):
 
 
 def configure_project(website_slug, path, client, zone=None):
-    website_id = client.get_website_id_for_slug(website_slug)
+    application_uuid = client.get_application_uuid_for_slug(website_slug)
 
     if not zone:
         zone = get_divio_zone()
 
     # create configuration file
-    website_data = {"id": website_id, "slug": website_slug, "zone": zone}
+    website_data = {
+        "application_uuid": application_uuid,
+        "id": application_uuid,
+        "slug": website_slug,
+        "zone": zone,
+    }
     if os.path.exists(os.path.join(path, settings.ALDRYN_DOT_FILE)):
         path = os.path.join(path, settings.ALDRYN_DOT_FILE)
     else:
@@ -127,7 +132,9 @@ def configure_project(website_slug, path, client, zone=None):
     click.secho(
         "Git remote:         {}".format(
             click.style(
-                get_git_clone_url(website_slug, website_id, client, zone=zone),
+                get_git_clone_url(
+                    website_slug, application_uuid, client, zone=zone
+                ),
                 fg="bright_green",
             )
         )
@@ -236,8 +243,8 @@ def create_workspace(
         else:
             raise DivioException("Aborting", fg=None)
 
-    website_id = client.get_website_id_for_slug(website_slug)
-    env = client.get_environment(website_id, environment)
+    application_uuid = client.get_application_uuid_for_slug(website_slug)
+    env = client.get_environment_by_application(application_uuid, environment)
 
     # clone git project
     clone_project(
@@ -646,7 +653,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
             with utils.TimedStep("Creating backup"):
                 backup_uuid, self.backup_si_uuid = backups.create_backup(
                     self.client,
-                    self.website_id,
+                    self.remote_id,
                     self.environment,
                     backups.Type.DB,
                     self.prefix,
@@ -730,7 +737,7 @@ def pull_media(
     else:
         with utils.TimedStep("Creating backup"):
             backup_uuid, backup_si_uuid = backups.create_backup(
-                client, website_id, environment, backups.Type.MEDIA, prefix
+                client, remote_id, environment, backups.Type.MEDIA, prefix
             )
 
     with utils.TimedStep("Preparing download"):
@@ -842,7 +849,9 @@ def update_local_application(git_branch, client, strict=False):
     # We also check for remote repository configurations on a project update
     # to warn the user just in case something changed
     remote_dsn = client.get_repository_dsn(
-        utils.get_project_settings(utils.get_application_home())["id"]
+        utils.get_project_settings(utils.get_application_home())[
+            "application_uuid"
+        ]
     )
 
     if remote_dsn and remote_dsn not in get_local_git_remotes():

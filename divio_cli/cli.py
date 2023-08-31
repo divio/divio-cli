@@ -1,5 +1,4 @@
 import functools
-import itertools
 import json
 import os
 import sys
@@ -21,7 +20,7 @@ from .exceptions import (
     EnvironmentDoesNotExist,
     ExitCode,
 )
-from .localdev.utils import allow_remote_id_override
+from .localdev.utils import allow_remote_id_override, get_project_settings
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
@@ -77,6 +76,9 @@ click.option = partial(click.option, show_default=True)
 def cli(ctx, debug, zone, sudo):
     if sudo:
         click.secho("Running as sudo", fg="yellow")
+
+    if zone:
+        os.environ["DIVIO_ZONE"] = zone
 
     ctx.obj = Map()
     ctx.obj.client = CloudClient(
@@ -280,34 +282,16 @@ def application_list(obj, grouped, pager, as_json):
 
     header = ["ID", "Slug", "Name", "Organisation"]
 
-    # get all users + organisations
-    groups = {
-        "users": {
-            account["id"]: {"name": "Personal", "applications": []}
-            for account in api_response["accounts"]
-            if account["type"] == "user"
-        },
-        "organisations": {
-            account["id"]: {"name": account["name"], "applications": []}
-            for account in api_response["accounts"]
-            if account["type"] == "organisation"
-        },
-    }
-
-    # sort websites into groups
-    for website in api_response["websites"]:
-        organisation_id = website["organisation_id"]
-        if organisation_id:
-            owner = groups["organisations"][website["organisation_id"]]
-        else:
-            owner = groups["users"][website["owner_id"]]
-        owner["applications"].append(
-            (str(website["id"]), website["domain"], website["name"])
+    data = {}
+    for application in api_response["results"]:
+        org_name = obj.client.get_organisation(application["organisation"])[
+            "name"
+        ]
+        if not data.get(org_name):
+            data[org_name] = []
+        data[org_name].append(
+            (application["uuid"], application["slug"], application["name"])
         )
-
-    accounts = itertools.chain(
-        groups["users"].items(), groups["organisations"].items()
-    )
 
     def sort_applications(items):
         return sorted(items, key=lambda x: x[0].lower())
@@ -315,25 +299,23 @@ def application_list(obj, grouped, pager, as_json):
     # print via pager
     if grouped:
         output_items = []
-        for _group, data in accounts:
-            applications = data["applications"]
-            if applications:
-                output_items.append(
-                    "{title}\n{line}\n\n{table}\n\n".format(
-                        title=data["name"],
-                        line="=" * len(data["name"]),
-                        table=table(
-                            sort_applications(applications), header[:3]
-                        ),
-                    )
+        for organisation in data:
+            output_items.append(
+                "{title}\n{line}\n\n{table}\n\n".format(
+                    title=organisation,
+                    line="=" * len(organisation),
+                    table=table(
+                        sort_applications(data[organisation]), header[:3]
+                    ),
                 )
+            )
         output = os.linesep.join(output_items).rstrip(os.linesep)
     else:
-        # add account name to all applications
+        # add org name to all applications
         applications = [
-            (*each, data["name"])
-            for group, data in accounts
-            for each in data["applications"]
+            (*each, organisation)
+            for organisation in data
+            for each in data[organisation]
         ]
         output = table(sort_applications(applications), header)
 
@@ -401,7 +383,12 @@ def configure(obj):
 @allow_remote_id_override
 def application_dashboard(obj, remote_id):
     """Open the application dashboard on the Divio Control Panel."""
-    launch_url(get_cp_url(client=obj.client, application_id=remote_id))
+    zone = get_project_settings(silent=True)["zone"]
+    launch_url(
+        get_cp_url(
+            client=obj.client, application_id=remote_id, zone=obj.zone or zone
+        )
+    )
 
 
 @app.command(name="up", aliases=["start"])
@@ -518,14 +505,17 @@ def deployments(obj, remote_id, pager, as_json):
     help="The maximum number of results that can be retrieved.",
 )
 @click.pass_obj
-def list_deployments(obj, environment, all_environments, limit_results):
+@allow_remote_id_override
+def list_deployments(
+    obj, remote_id, environment, all_environments, limit_results
+):
     """
     Retrieve deployments from an environment or
     deployments across all environments of an application.
     """
 
     results, messages = obj.client.list_deployments(
-        website_id=obj.remote_id,
+        application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
@@ -681,8 +671,9 @@ def environment_variables(obj, remote_id, pager, as_json, as_txt):
     help="The maximum number of results that can be retrieved.",
 )
 @click.pass_obj
+@allow_remote_id_override
 def list_environment_variables(
-    obj, environment, all_environments, limit_results
+    obj, remote_id, environment, all_environments, limit_results
 ):
     """
     Retrieve environment variables from an environment
@@ -690,7 +681,7 @@ def list_environment_variables(
     """
 
     results, messages = obj.client.list_environment_variables(
-        website_id=obj.remote_id,
+        application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
@@ -767,7 +758,7 @@ def get_environment_variable(
     """
 
     results, messages = obj.client.list_environment_variables(
-        website_id=obj.remote_id,
+        application_uuid=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
@@ -880,13 +871,16 @@ def service_instances():
 @allow_remote_id_override
 def list_service_instances(obj, remote_id, environment, as_json):
     """List the services instances of an application"""
-    project_data = obj.client.get_project(remote_id)
     try:
-        status = project_data[f"{environment}_status"]
+        environment_uuid = obj.client.get_environment(remote_id, environment)[
+            "uuid"
+        ]
+
     except KeyError:
         raise EnvironmentDoesNotExist(environment)
+
     api_response = obj.client.get_service_instances(
-        environment_uuid=status["uuid"]
+        environment_uuid=environment_uuid,
     )
 
     if as_json:

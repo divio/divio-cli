@@ -148,9 +148,11 @@ def check_output(*popenargs, **kwargs):
 
 
 def open_application_cloud_site(client, application_id, environment):
-    project_data = client.get_project(application_id)
     try:
-        url = project_data[f"{environment}_status"]["site_url"]
+        env = client.get_environment_by_application(
+            application_id, environment
+        )
+        url = env[f"{environment}_status"]["site_url"]
     except KeyError:
         raise EnvironmentDoesNotExist(environment)
     if url:
@@ -159,9 +161,13 @@ def open_application_cloud_site(client, application_id, environment):
         click.secho(f"No {environment} environment deployed yet.", fg="yellow")
 
 
-def get_cp_url(client, application_id, section="dashboard"):
+def get_cp_url(client, application_id, zone, section="dashboard"):
     project_data = client.get_project(application_id)
-    url = project_data["dashboard_url"]
+
+    organisation = project_data["organisation"]
+    application = project_data["uuid"]
+
+    url = f"https://control.{zone}/o/{organisation}/app/{application}/"
 
     if section != "dashboard":
         url = urljoin(url, section)
