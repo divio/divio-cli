@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+    tests:
+        # user: 1000:1000
+
+        build:
+            dockerfile: Dockerfile.test
+            context: ./
+
+        volumes:
+            - ${SSH_AUTH_SOCK}:${SSH_AUTH_SOCK}
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ~/.netrc:/root/.netrc
+            - ./:/app
+
+        environment:
+            SSH_AUTH_SOCK: ${SSH_AUTH_SOCK}
+
+        env_file: ".env"
+        working_dir: "/app"
+
+    lint:
+        image: divio/lint:latest
+        user: 1000:1000
+
+        volumes:
+            - ./:/app
+
+        env_file: ".env"
+        working_dir: "/app"
+        command: "/bin/lint"

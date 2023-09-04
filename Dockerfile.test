@@ -1,0 +1,8 @@
+FROM divio/multi-python:latest
+
+COPY --from=docker:dind /usr/local/bin/docker /usr/local/bin/
+COPY --from=docker:dind /usr/local/bin/docker-compose /usr/local/bin/
+
+USER root
+RUN apt update; apt install -y ssh
+RUN git config --global --add safe.directory '*'
