@@ -6,6 +6,8 @@ from enum import Enum
 
 import boto3
 
+from azure.storage.blob import BlobClient
+
 from divio_cli.exceptions import DivioException
 
 from ..cloud import CloudClient
@@ -108,19 +110,12 @@ def upload_backup(
 
     backup_uuid = res["uuid"]
     params = res["results"][si_uuid]
-    creds = params["upload_parameters"]
+    upload_params = params["upload_parameters"]
 
     if params["handler"] == "s3-sts-v1":
-        boto3.client(
-            "s3",
-            aws_access_key_id=creds["aws_access_key_id"],
-            aws_secret_access_key=creds["aws_secret_access_key"],
-            aws_session_token=creds["aws_session_token"],
-        ).upload_file(
-            local_file,
-            Bucket=creds["bucket"],
-            Key=creds["key"],
-        )
+        _upload_backup_aws(upload_params, local_file)
+    elif params["handler"] == "az-sas-v1":
+        _upload_backup_azure(upload_params, local_file)
     else:
         raise DivioException(f"Unsupported backend: {params['handler']}")
 
@@ -128,6 +123,26 @@ def upload_backup(
     return _wait_for_backup_to_complete(
         client, backup_uuid, message="Backup upload failed"
     )
+
+
+def _upload_backup_aws(upload_params, local_file):
+    boto3.client(
+        "s3",
+        aws_access_key_id=upload_params["aws_access_key_id"],
+        aws_secret_access_key=upload_params["aws_secret_access_key"],
+        aws_session_token=upload_params["aws_session_token"],
+    ).upload_file(
+        local_file,
+        Bucket=upload_params["bucket"],
+        Key=upload_params["key"],
+    )
+
+
+def _upload_backup_azure(upload_params, local_file):
+    with open(local_file, "rb") as fh:
+        BlobClient.from_blob_url(blob_url=upload_params["url"]).upload_blob(
+            fh, overwrite=True, max_concurrency=10
+        )
 
 
 def create_backup_download_url(
