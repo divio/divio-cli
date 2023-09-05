@@ -331,6 +331,21 @@ class CloudClient(object):
             )
             sys.exit(1)
 
+    def get_environments(self, params={}):
+        try:
+            response = api_requests.EnvironmentsListRequest(
+                self.session, params=params
+            )()
+            return response
+
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
     def show_log(self, website_id, environment, tail=False, utc=True):
         def print_log_data(data):
             for entry in data:
@@ -530,6 +545,12 @@ class CloudClient(object):
         data = {"stage": environment}
         request = api_requests.DeployProjectRequest(
             self.session, url_kwargs={"website_id": website_id}, data=data
+        )
+        return request()
+
+    def deploy_environment(self, environment_uuid):
+        request = api_requests.DeployEnvironmentRequest(
+            self.session, data={"environment": environment_uuid}
         )
         return request()
 

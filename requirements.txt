@@ -1,12 +1,13 @@
 attrs
 click >= 7.0
 click_aliases
-urllib3 < 2
 colorama; sys_platform == 'win32'
+inquirer
 packaging
 pyaml
 python-dateutil
 requests
+rich
 sentry-sdk
 tabulate >= 0.8.10
-inquirer
+urllib3 < 2

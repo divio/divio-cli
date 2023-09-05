@@ -402,9 +402,24 @@ class LogRequest(JsonResponse, APIV3Request):
     method = "GET"
 
 
+class EnvironmentsListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/environments/"
+    method = "GET"
+
+
 class EnvironmentRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/environments/{environment_uuid}/"
     method = "GET"
+
+
+class DeployEnvironmentRequest(JsonResponse, APIV3Request):
+    """
+    Deploys a particular environment by providing the environment's
+    uuid (environment_uuid) in the request body.
+    """
+    
+    url = "/apps/v3/deployments/"
+    method = "POST"
 
 
 class DeployLogRequest(JsonResponse, APIV3Request):
@@ -433,7 +448,7 @@ class ApplicationRequest(JsonResponse, APIV3Request):
 
 
 class CreateApplicationRequest(JsonResponse, APIV3Request):
-    url = "/apps/v3/applications/create_with_template/"
+    url = "/apps/v3/applications/"
     method = "POST"
 
 

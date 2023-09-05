@@ -2,11 +2,14 @@ import io
 import json
 import os
 import platform
+import re
+import secrets
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import unicodedata
 from contextlib import contextmanager
 from math import log
 from urllib.parse import urljoin, urlparse
@@ -20,6 +23,32 @@ from . import __version__
 
 
 ALDRYN_DEFAULT_BRANCH_NAME = "develop"
+
+from rich.console import Console
+
+console = Console()
+
+def status_print(message, status="default"):
+    status_colors = {
+        "default": "white",
+        "success": "green",
+        "info": "blue",
+        "warning": "yellow",
+        "error": "red",
+        # Add more statuses and their corresponding colors here
+    }
+    
+    if status in status_colors:
+        color = status_colors[status]
+        status_text = f"[{color}][{status.upper()}][{color}/]"
+        console.print(status_text, message)
+    else:
+        raise ValueError(
+            (
+                f"Unknown status {status!r}. "
+                f"Choices are: {', '.join(status_colors)}."
+            )
+        )
 
 
 def hr(char="-", width=None, **kwargs):
@@ -489,9 +518,44 @@ def echo_environment_variables_as_txt(
     )
 
 
-def is_valid_url(s):
+def is_valid_template_url(url):
     try:
-        result = urlparse(s)
-        return all([result.scheme, result.netloc])
+        parsed_url = urlparse(url)
+        return all([parsed_url.scheme, parsed_url.netloc])
     except ValueError:
         return False
+
+
+def slugify(value, allow_unicode=False):
+    """
+    Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
+    dashes to single dashes. Remove characters that aren't alphanumerics,
+    or hyphens. Convert to lowercase. Also strip leading and trailing 
+    whitespace, dashes, and underscores.
+    """
+    value = str(value)
+    if allow_unicode:
+        value = unicodedata.normalize("NFKC", value)
+    else:
+        value = (
+            unicodedata.normalize("NFKD", value)
+            .encode("ascii", "ignore")
+            .decode("ascii")
+        )
+    value = re.sub(r"[^\w\s-]", "", value.lower())
+    return re.sub(r"[-\s_]+", "-", value).strip("-_")
+
+
+def suggest_slug(client, name):
+    slugified_name = slugify(name)
+    suggested_slug = slugified_name
+    response = client.validate_application_slug(suggested_slug)
+    
+    if suggested_slug != response.get("slug"):
+        while True:
+            suggested_slug = f"{slugified_name}-{secrets.token_hex()[:5]}"
+            response = client.validate_application_slug(suggested_slug)
+            if suggested_slug == response.get("slug"):
+                break
+
+    return suggested_slug

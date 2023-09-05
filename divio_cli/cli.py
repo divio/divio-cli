@@ -14,7 +14,7 @@ import divio_cli
 from . import exceptions, localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
-from .create_app_wizard_utils import CreateAppWizard
+from .wizards import CreateAppWizard
 from .excepthook import DivioExcepthookIntegration, divio_shutdown
 from .localdev.utils import allow_remote_id_override
 from .upload.addon import upload_addon
@@ -267,9 +267,9 @@ def app():
 )
 @click.option(
     "-p",
-    "--plan",
+    "--plan-group",
     default=None,
-    help="The application plan UUID.",
+    help="The application plan group UUID.",
 )
 @click.option(
     "-r",
@@ -284,46 +284,89 @@ def app():
     help="The project template URL.",
 )
 @click.option(
-    "-i",
-    "--interactive",
+    "-i/-I",
+    "--interactive/--non-interactive",
     is_flag=True,
-    default=False,
+    default=True,
     help="Run the wizard in interactive mode.",
 )
 @click.option(
-    "-v",
-    "--verbose",
+    "-v/-V",
+    "--verbose/--non-verbose",
+    is_flag=True,
+    default=True,
+    help="Show verbose output.",
+)
+@click.option(
+    "-d",
+    "--deploy",
     is_flag=True,
     default=False,
-    help="Show verbose output.",
+    help="Deploy the application after creation. (test environment)",
+)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
 )
 @click.pass_obj
 def application_create(
-    obj, name, slug, organisation, plan, region, template, interactive, verbose
+    obj,
+    name,
+    slug,
+    organisation,
+    plan_group,
+    region,
+    template,
+    interactive,
+    verbose,
+    deploy,
+    as_json,
 ):
     """Create a new application."""
+
+    obj.as_json = as_json
 
     wizard = CreateAppWizard(obj=obj, interactive=interactive, verbose=verbose)
 
     name = wizard.get_name(name)
-    slug = wizard.get_slug(slug)
-    organisation = wizard.get_organisation(organisation)
-    plan = wizard.get_plan(plan, organisation)
-    region = wizard.get_region(region, plan)
+    slug = wizard.get_slug(slug, name)
+    organisation, organisation_name = wizard.get_organisation(organisation)
+    plan_group, plan_group_name = wizard.get_plan_group(plan_group, organisation)
+    region, region_name = wizard.get_region(region, plan_group)
     template = wizard.get_template(template)
     release_commands = wizard.get_release_commands()
-    git_repo = wizard.get_custom_git_repo(organisation)
+    repository, repository_url, branch_name = wizard.get_custom_git_repo(organisation)
 
-    wizard.create_app(
-        name=name,
-        slug=slug,
-        organisation=organisation,
-        plan=plan,
-        region=region,
-        template=template,
-        release_commands=release_commands,
-        git_repo=git_repo,
-    )
+    data = {
+        "app": {
+            "name": name,
+            "slug": slug,
+            "organisation": organisation,
+            "plan_group": plan_group,
+            "region": region,
+            "project_template": template,
+            "release_commands": release_commands,
+        },
+        # `meta` has been constructed to pass on already retrieved values
+        # and to avoid additional requests. Primarily used for display purposes.
+        "meta": {
+            "organisation_name": organisation_name,
+            "plan_group_name": plan_group_name,
+            "region_name": region_name,
+            "repository_url": repository_url,
+            "deploy": deploy,
+        },
+    }
+
+    # TODO: make repository and branch nullable on CP?
+    if repository and branch_name:
+        data["app"]["repository"] = repository
+        data["app"]["branch"] = branch_name
+
+    wizard.create_app(data)
 
 
 @app.command(name="list")
