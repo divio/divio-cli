@@ -1,6 +1,6 @@
 import contextlib
 import os
-import pathlib
+import shlex
 import shutil
 import subprocess
 from unittest.mock import Mock
@@ -9,11 +9,16 @@ import pytest
 import requests
 
 
+TEST_DATA_DIRECTORY = "test_data"
+
+
 @pytest.fixture(scope="session")
 def _divio_project(request, tmpdir_factory):  # noqa: PT005
 
-    test_project_name = os.getenv("TEST_PROJECT_NAME", None)
-    if test_project_name is None:
+    # check if test project is set
+    test_project_name = os.getenv("TEST_PROJECT_NAME", "")
+
+    if not test_project_name:
         pytest.skip(
             "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."
         )
@@ -22,37 +27,34 @@ def _divio_project(request, tmpdir_factory):  # noqa: PT005
     # practice. This path needs to be well known and static as we have to
     # reference it in our test project to make docker-in-docker on Gitlab
     # work with the right volume mounts and correct paths.
-    tmp_folder = pathlib.Path("test_data")
-    tmp_project_path = os.path.join(tmp_folder, test_project_name)
+    test_project_directory = os.path.join(
+        TEST_DATA_DIRECTORY, test_project_name
+    )
 
     # Locally, we may run the tests multiple times
-    if os.path.exists(tmp_project_path):
+    if os.path.exists(test_project_directory):
         if os.getenv("TEST_KEEP_PROJECT", "0") == "1":
             # Reuse the existing project
-            return tmp_project_path
+            return test_project_directory
         # Cleanup
-        shutil.rmtree(tmp_project_path)
+        shutil.rmtree(test_project_directory)
 
-    setup_command = ["app", "setup", test_project_name]
+    # setup
+    setup_command = f"divio app setup {test_project_name}"
+    env = os.environ.copy()
 
-    # Check if we have a special zone we want to test against
-    test_zone = os.getenv("TEST_ZONE", None)
-    if test_zone:
-        setup_command = ["-z", test_zone, *setup_command]
+    if "TEST_ZONE" in env:
+        env["DIVIO_ZONE"] = env["TEST_ZONE"]
 
-    print(f"Setup command: {setup_command}")  # noqa: T201
+    print(f"setup command: {setup_command}")  # noqa: T201
 
-    ret = subprocess.run(
-        ["divio", *setup_command],
-        cwd=str(tmp_folder.resolve()),
-        capture_output=True,
-        encoding="utf-8",
-        check=False,
+    subprocess.check_call(
+        shlex.split(setup_command),
+        env=env,
+        cwd=TEST_DATA_DIRECTORY,
     )
-    # Print the output in case of error
-    assert ret.returncode == 0, (ret.stderr, ret.stdout)
 
-    return tmp_project_path
+    return test_project_directory
 
 
 @pytest.fixture(scope="session")
