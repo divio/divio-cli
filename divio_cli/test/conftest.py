@@ -23,6 +23,10 @@ def _divio_project(request, tmpdir_factory):  # noqa: PT005
             "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."
         )
 
+    # create test data directory if not present
+    if not os.path.exists(TEST_DATA_DIRECTORY):
+        os.makedirs(TEST_DATA_DIRECTORY)
+
     # We can not use a fully randomized name as it normally would be a best
     # practice. This path needs to be well known and static as we have to
     # reference it in our test project to make docker-in-docker on Gitlab
