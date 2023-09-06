@@ -28,24 +28,52 @@ You can opt-in to use the new command by updating your CLI global settings in `~
 
 # Testing
 
-We have two kinds of tests. Small and quick unit tests and the more complex and involved integration tests.
+The test suite is split into two categories: unit tests and integration tests. Unit tests run completely locally, so no previous setup is required. Integration tests run against the actual Divio infrastructure, so setup of a Divio project is required.
+In order to run the test suite, you have to have [GNU Make](https://www.gnu.org/software/make/) and [GNU Bash](https://www.gnu.org/software/bash/) on your system. The integration tests also require [Docker Compose](https://docs.docker.com/compose/).
+
+Both test categories take optional arguments like `TOX_ARGS` and `PYTEST_ARGS`:
+
+```bash
+make test TOX_ARGS="-e python.11" PYTEST_ARGS="-s"
+```
+
+To clear all local state run:
+
+```bash
+make clear
+```
 
 ## Unit tests
 
 These do not require external communication and can be run with the following command:
 
 ```bash
-tox -- -m "not integration"
+make test
 ```
 
 ## Integration tests
 
-These do require a more involved setup and will trigger actions on a real project. You have to provide the project name and your user must be logged in into divio cloud.
+These do require a more involved setup and will trigger actions on a real project.
+It is recommended to use a project on [control.dev.aldryn.net](https://control.dev.aldryn.net/) because it requires no locally setup control panel. Also the CI pipelines also test against control.dev.aldryn.net.
 
-You might get asked to provide authentication information during the test, depending on your setup.
+The CI uses [ci-test-project-do-not-delete](https://control.dev.aldryn.net/o/crce57yucffnjhb63yldeohmru/app/nxldpjkvbzggzh6xzvkqv4j3je/) project.
+**DONT USE THIS PROJECT FOR YOUR LOCAL TESTING!** The project reserved for CI testing. Create your own project and replicate the CI projects configuration.
+
+To run the integration test suite, run:
 
 ```bash
-tox --  -m "integration" --test_project_name <NAME_OF_A_PROJECT_FOR_TESTING>
+make integration test
+```
+
+The first run will fail, but create an empty `.env` file. Configure your test project there.
+You take a look at the variables tab in the [CI Settings](https://gitlab.com/divio/cloud/control-panel/-/settings/ci_cd) as a starting-point.
+
+## Linting
+
+To run the linter, run the following command:
+
+```bash
+make lint
 ```
 
 ## Creating a release

@@ -18,3 +18,4 @@ divio_cli/version.py
 
 junit-testreport-py*.xml
 test_data
+tests-env
