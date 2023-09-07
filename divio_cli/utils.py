@@ -28,20 +28,20 @@ from rich.console import Console
 
 console = Console()
 
-def status_print(message, status="default"):
+def status_print(message, status="default", **kwargs):
     status_colors = {
         "default": "white",
         "success": "green",
         "info": "blue",
         "warning": "yellow",
         "error": "red",
-        # Add more statuses and their corresponding colors here
+        # Add more statuses and their corresponding colors here.
     }
     
     if status in status_colors:
         color = status_colors[status]
         status_text = f"[{color}][{status.upper()}][{color}/]"
-        console.print(status_text, message)
+        console.print(status_text, message, **kwargs)
     else:
         raise ValueError(
             (

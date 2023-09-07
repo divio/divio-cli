@@ -6,6 +6,8 @@ import inquirer
 
 from .utils import is_valid_template_url, suggest_slug, status_print
 from rich.console import Console
+from rich.prompt import Prompt, Confirm
+from rich.panel import Panel
 from .wizards_utils import (
     APP_WIZARD_MESSAGES,
     AVAILABLE_REPOSITORY_SSH_KEY_TYPES,
@@ -19,16 +21,22 @@ console = Console()
 
 
 class CreateAppWizard:
-    def __init__(self, **kwargs):
-        self.interactive = kwargs.get("interactive")
-        self.verbose = kwargs.get("verbose")
-        self.obj = kwargs.get("obj")
-        self.client = self.obj.client
+    def __init__(self, obj):
+        self.client = obj.client
+        self.interactive = obj.interactive
+        self.verbose = obj.verbose
+        self.as_json = obj.as_json
+        self.metadata = obj.metadata
 
         if self.verbose:
-            click.secho(
-                APP_WIZARD_MESSAGES["welcome_message"] + "\n",
-                fg="green",
+            console.print(
+                Panel(
+                    APP_WIZARD_MESSAGES["welcome_message"],
+                    title="[bold]Application Creation Wizard",
+                    subtitle="[bold]Divio CLI",
+                    subtitle_align="right",
+                    border_style="green",
+                )
             )
 
     def get_name(self, name):
@@ -49,9 +57,7 @@ class CreateAppWizard:
         else:
             while True:
                 if not name:
-                    name = click.prompt(
-                        APP_WIZARD_MESSAGES["enter_name"]
-                    ).strip()  # Django strips by default.
+                    name = Prompt.ask(APP_WIZARD_MESSAGES["enter_name"])
 
                 response = self.client.validate_application_name(name)
                 validated_name = response.get("name")
@@ -89,19 +95,17 @@ class CreateAppWizard:
             suggested_slug = suggest_slug(self.client, name)
             while True:
                 if not slug:
-                    slug = click.prompt(
+                    slug = Prompt.ask(
                         APP_WIZARD_MESSAGES["enter_slug"],
                         default=suggested_slug,
-                    ).strip()
+                    )
 
                 response = self.client.validate_application_slug(slug)
                 validated_slug = response.get("slug")
                 if validated_slug != slug:
                     for error in validated_slug:
                         status_print(error, status="error")
-                    # Suggested slug failed validation. E.g. slug taken in the meantime.
-                    if slug == suggested_slug:
-                        suggested_slug = suggest_slug(self.client, name)
+                    suggested_slug = suggest_slug(self.client, name)
                     slug = None
                 else:
                     break
@@ -292,12 +296,13 @@ class CreateAppWizard:
                 )
                 sys.exit(1)
         else:
-            if template or click.confirm(
-                APP_WIZARD_MESSAGES["create_template"]
+            if template or Confirm.ask(
+                APP_WIZARD_MESSAGES["create_template"],
+                default=False,
             ):
                 while True:
                     if not template:
-                        template = click.prompt(
+                        template = Prompt.ask(
                             APP_WIZARD_MESSAGES["enter_template"]
                         )
                     # TODO: Validate the template URL against the CP.
@@ -310,7 +315,7 @@ class CreateAppWizard:
                     else:
                         break
 
-        if self.verbose:
+        if template and self.verbose:
             status_print(
                 f"Template: {template!r}",
                 status="success",
@@ -324,14 +329,15 @@ class CreateAppWizard:
         if not self.interactive:
             return release_commands
 
-        if click.confirm(
-            APP_WIZARD_MESSAGES["create_release_commands"]
+        if Confirm.ask(
+            APP_WIZARD_MESSAGES["create_release_commands"],
+            default=False,
         ):
             add_another = True
             while add_another:
 
                 while True:
-                    release_command_label = click.prompt(
+                    release_command_label = Prompt.ask(
                         APP_WIZARD_MESSAGES["enter_release_command_label"]
                     )
                     if release_command_label in [d["label"] for d in release_commands]:
@@ -346,7 +352,7 @@ class CreateAppWizard:
                     else:
                         break
 
-                release_command_value = click.prompt(
+                release_command_value = Prompt.ask(
                     APP_WIZARD_MESSAGES["enter_release_command"]
                 )
                 release_commands.append(
@@ -360,15 +366,22 @@ class CreateAppWizard:
                         f"Release command: {release_command_label!r}",
                         status="success",
                     )
-                add_another = click.confirm(
-                    APP_WIZARD_MESSAGES["add_another_release_command"]
+                add_another = Confirm.ask(
+                    APP_WIZARD_MESSAGES["add_another_release_command"],
+                    default=False,
                 )
 
         if release_commands and self.verbose:
             release_commands_summary = create_app_release_commands_summary(
-                release_commands, as_json=self.obj.as_json
+                release_commands, as_json=self.as_json
             )
-            console.print(release_commands_summary)
+            if self.as_json:
+                console.rule("Release commands")
+                console.print(release_commands_summary)
+                console.rule()
+            else:
+                release_commands_summary.title = "Release commands"
+                console.print(release_commands_summary)
 
         return release_commands
 
@@ -376,12 +389,15 @@ class CreateAppWizard:
         if not self.interactive:
             return None, None, None
 
-        if click.confirm(APP_WIZARD_MESSAGES["connect_repository"]):
-            repository_url = click.prompt(
+        if Confirm.ask(
+            APP_WIZARD_MESSAGES["connect_repository"], 
+            default=False,
+        ):
+            repository_url = Prompt.ask(
                 APP_WIZARD_MESSAGES["enter_repository_url"]
             )
-            repository_branch = click.prompt(
-                APP_WIZARD_MESSAGES["enter_repository_branch_name"],
+            repository_branch = Prompt.ask(
+                APP_WIZARD_MESSAGES["enter_repository_branch"],
                 default="main",
             )
 
@@ -408,7 +424,7 @@ class CreateAppWizard:
             console.rule("SSH Key")
             console.print(repository_ssh_key)
             console.rule()
-            click.confirm(APP_WIZARD_MESSAGES["create_deploy_key"], default=True)
+            Confirm.ask(APP_WIZARD_MESSAGES["create_deploy_key"], default=True)
 
             # Verify the repository.
             c = 0
@@ -432,7 +448,6 @@ class CreateAppWizard:
                 )
                 # TODO: Delete the repository before exiting.
                 sys.exit(1)
-
             elif response["code"] != "success":
                 click.secho(
                     response["non_field_errors"][0],
@@ -452,24 +467,29 @@ class CreateAppWizard:
         return None, None, None
 
     def create_app(self, data):
-        app_data = data["app"]
-        app_meta = data["meta"]
         if self.verbose:
-            log_app_details_summary(data, as_json=self.obj.as_json)
+            log_app_details_summary(data, self.metadata, as_json=self.as_json)
 
         if not self.interactive:
-            response = self.client.application_create(data=app_data)
+            response = self.client.application_create(data=data)
         else:
-            if click.confirm(
+            if Confirm.ask(
                 APP_WIZARD_MESSAGES["confirm_app_creation"],
                 default=True,
             ):
-                response = self.client.application_create(data=app_data)
+                response = self.client.application_create(data=data)
             else:
                 click.secho("Aborted.", fg="red")
                 sys.exit(0)
 
-        if app_meta["deploy"]:
+        if self.verbose:
+            app_url = build_app_url(self.client, response["uuid"])
+            status_print(
+                f"Application created! Visit here: {app_url}",
+                status="success",
+            )
+
+        if self.metadata["deploy"]:
             app_envs = self.client.get_environments(
                 params={"application": response["uuid"], "slug": "test"},
             )
@@ -479,14 +499,3 @@ class CreateAppWizard:
                     APP_WIZARD_MESSAGES["deployment_triggered"],
                     status="success",
                 )
-
-        if self.verbose:
-            app_url = build_app_url(self.client, response["uuid"])
-            status_print(
-                f"Application created!",
-                status="success",
-            )
-            status_print(
-                f"Application URL: {app_url}",
-                status="info",
-            )

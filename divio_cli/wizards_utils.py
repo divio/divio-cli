@@ -32,25 +32,25 @@ APP_WIZARD_MESSAGES = {
         "Error: Missing option '-o' / '--organisation'. "
         "Required in non-interactive mode."
     ),
-    "invalid_organisation": "ERROR: Invalid organization.",
+    "invalid_organisation": "Invalid organization.",
     # Plan group
     "select_plan_group": "Select a plan for your application",
     "plan_group_missing": (
         "Error: Missing option '-p' / '--plan-group'. "
         "Required in non-interactive mode."
     ),
-    "invalid_plan_group": "ERROR: Invalid plan.",
+    "invalid_plan_group": "Invalid plan.",
     # Region
     "select_region": "Select a region for your application",
     "region_missing": (
         "Error: Missing option '-r' / '--region'. "
         "Required in non-interactive mode."
     ),
-    "invalid_region": "ERROR: Invalid region.",
+    "invalid_region": "Invalid region.",
     # Template
-    "create_template": "Want to add a project template to your application?",
-    "enter_template": "Enter the URL of your project template",
-    "invalid_template_url": "ERROR: Invalid project template URL.",
+    "create_template": "Want to add a template to your application?",
+    "enter_template": "Enter the URL of your template",
+    "invalid_template_url": "Invalid template URL.",
     # Release commands
     "create_release_commands": "Want to create release commands for your application?",
     "enter_release_command_label": "Enter the label of your release command",
@@ -59,7 +59,7 @@ APP_WIZARD_MESSAGES = {
     # Custom repository
     "connect_repository": "Want to connect a custom repository to your application?",
     "enter_repository_url": "Enter the URL of your custom repository",
-    "enter_repository_branch_name": "Enter the name of your target branch",
+    "enter_repository_branch": "Enter the name of your target branch",
     "select_repository_ssh_key_type": "Select the type of your deploy key",
     "create_deploy_key": (
         "Please register this ssh key with your repository provider. "
@@ -68,7 +68,7 @@ APP_WIZARD_MESSAGES = {
     "repository_verification_timeout": "Repository verification timed out.",
     "confirm_app_creation": "Confirm application creation to proceed.",
     # Deploy
-    "deployment_triggered": "Deployment of test environment triggered.",
+    "deployment_triggered": "Deployment of 'test' environment triggered.",
 }
 
 AVAILABLE_REPOSITORY_SSH_KEY_TYPES = [
@@ -87,105 +87,94 @@ def create_app_release_commands_summary(release_commands, as_json=False):
         return JSON(json.dumps(release_commands))
     else:
         table = Table(
-            box=box.MINIMAL, 
-            show_lines=True,
+            box=box.SIMPLE,
         )
         table.add_column("Label", style="magenta")
         table.add_column("Command", style="cyan")
         for rc in release_commands:
-            table.add_row(
-                rc["label"],
-                rc["command"],
-            )
+            table.add_row(rc['label'], rc["command"])
+
 
         return table
 
 
-def log_app_details_summary(data, as_json=False):
+def log_app_details_summary(data, metadata, as_json=False):
     """Return a table of application details."""
-    app_data = data["app"]
-    app_meta = data["meta"]
 
     if as_json:
         app_details = {
-            "name": app_data["name"],
-            "slug": app_data["slug"],
+            "name": data["name"],
+            "slug": data["slug"],
             "organisation": {
-                "name": app_meta["organisation_name"],
-                "uuid": app_data["organisation"],
+                "name": metadata["organisation_name"],
+                "uuid": data["organisation"],
             },
             "plan_group": {
-                "name": app_meta["plan_group_name"],
-                "uuid": app_data["plan_group"],
+                "name": metadata["plan_group_name"],
+                "uuid": data["plan_group"],
             },
             "region": {
-                "name": app_meta["region_name"],
-                "uuid": app_data["region"],
+                "name": metadata["region_name"],
+                "uuid": data["region"],
             },
-            "project_template": app_data["project_template"],
-            "release_commands": app_data["release_commands"],
+            "template": data["app_template"],
+            "release_commands": data["release_commands"],
             "repository": {
-                "url": app_meta["repository_url"],
-                "branch": app_data["branch"],
-                "uuid": app_data["repository"],
-            } if app_data.get("repository") else {},
-            "deploy": app_meta["deploy"],
+                "url": metadata["repository_url"],
+                "branch": data["branch"],
+            } if data.get("repository") else {},
+            "deploy": metadata["deploy"],
         }
-        
-        app_details = JSON(json.dumps(app_details))
+
+        console.rule("Application details")
+        console.print(JSON(json.dumps(app_details)))
+        console.rule()
     else:
         release_commands_summary = create_app_release_commands_summary(
-            app_data["release_commands"]
+            data["release_commands"]
         ) or "—"
 
-        app_details = Group(
-            Panel(app_data["name"], title="Name"),
-            Panel(app_data["slug"], title="Slug"),
+        app_details_group = Group(
+            Panel(data["name"], title="Name"),
+            Panel(data["slug"], title="Slug"),
             Panel(
-                (
-                    f"[magenta]Name[/magenta]: {app_meta['organisation_name']}\n"
-                    f"[magenta]UUID[/magenta]: {app_data['organisation']}"
-                ),
-                title="Organisation"),
+                f"name: {metadata['organisation_name']}\nuuid: {data['organisation']}",
+                title="Organisation"
+            ),
             Panel(
-                (
-                    f"[magenta]Name[/magenta]: {app_meta['plan_group_name']}\n"
-                    f"[magenta]UUID[/magenta]: {app_data['plan_group']}"
-                ), 
-                title="Plan group"),
+                f"name: {metadata['plan_group_name']}\nuuid: {data['plan_group']}",
+                title="Plan group"
+            ),
             Panel(
-                (
-                    f"[magenta]Name[/magenta]: {app_meta['region_name']}\n"
-                    f"[magenta]UUID[/magenta]: {app_data['region']}"
-                ), 
-                title="Region"),
-            Panel(
-                (
-                    f"[magenta]URL[/magenta]: {app_data['project_template']}"
-                ) if app_data["project_template"] else "—", 
-                title="Project template"),
+                f"name: {metadata['region_name']}\nuuid: {data['region']}",
+                title="Region"
+            ),
+            Panel(data["app_template"] or "—", title="Template"),
             Panel(release_commands_summary, title="Release commands"),
             Panel(
-                (
-                    f"[magenta]URL[/magenta]: {app_meta['repository_url']}\n"
-                    f"[magenta]Branch[/magenta]: {app_data['branch']}\n"
-                    f"[magenta]UUID[/magenta]: {app_data['repository']}"
-                ) if app_data.get("repository") else "—", 
-                title="Repository"),
-            Panel(str(app_meta["deploy"]), title="Deploy"),
+                f"url: {metadata['repository_url']}\nbranch: {data['branch']}\nuuid: {data['repository']}"
+                if data.get("repository") else "—",
+                title="Repository"
+            ),
+            Panel(
+                "Activated" if metadata["deploy"] else "Deactivated",
+                title="Deploy (test environment)"
+            ),
         )
-        for panel in app_details.renderables:
+        
+        for panel in app_details_group.renderables:
             panel.title_align = "left"
             panel.border_style = "green"
 
         app_details = Panel(
-            app_details,
-            title = "Application details",
-            title_align = "left",
+            app_details_group,
+            box = box.MINIMAL,
             expand = False,
+            padding = 0,
+            width = 80,
         )
 
-    console.print(app_details)
+        console.print(app_details)
 
 
 def build_app_url(client, app_uuid):

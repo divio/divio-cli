@@ -251,51 +251,51 @@ def app():
     "-n",
     "--name",
     default=None,
-    help="The name of the application.",
+    help="Application name.",
 )
 @click.option(
     "-s",
     "--slug",
     default=None,
-    help="The slug of the application.",
+    help="Application slug.",
 )
 @click.option(
     "-o",
     "--organisation",
     default=None,
-    help="The organisation UUID.",
+    help="Organisation uuid.",
 )
 @click.option(
     "-p",
     "--plan-group",
     default=None,
-    help="The application plan group UUID.",
+    help="Plan group uuid.",
 )
 @click.option(
     "-r",
     "--region",
     default=None,
-    help="The region UUID.",
+    help="Region uuid.",
 )
 @click.option(
     "-t",
     "--template",
     default=None,
-    help="The project template URL.",
+    help="Template url.",
 )
 @click.option(
     "-i/-I",
     "--interactive/--non-interactive",
     is_flag=True,
     default=True,
-    help="Run the wizard in interactive mode.",
+    help="Choose whether to run in interactive mode.",
 )
 @click.option(
     "-v/-V",
     "--verbose/--non-verbose",
     is_flag=True,
     default=True,
-    help="Show verbose output.",
+    help="Choose whether to display verbose output.",
 )
 @click.option(
     "-d",
@@ -327,9 +327,12 @@ def application_create(
 ):
     """Create a new application."""
 
+    obj.interactive = interactive
+    obj.verbose = verbose
     obj.as_json = as_json
+    obj.metadata = {}
 
-    wizard = CreateAppWizard(obj=obj, interactive=interactive, verbose=verbose)
+    wizard = CreateAppWizard(obj)
 
     name = wizard.get_name(name)
     slug = wizard.get_slug(slug, name)
@@ -338,33 +341,30 @@ def application_create(
     region, region_name = wizard.get_region(region, plan_group)
     template = wizard.get_template(template)
     release_commands = wizard.get_release_commands()
-    repository, repository_url, branch_name = wizard.get_custom_git_repo(organisation)
+    repository, repository_url, branch = wizard.get_custom_git_repo(organisation)
 
     data = {
-        "app": {
-            "name": name,
-            "slug": slug,
-            "organisation": organisation,
-            "plan_group": plan_group,
-            "region": region,
-            "project_template": template,
-            "release_commands": release_commands,
-        },
-        # `meta` has been constructed to pass on already retrieved values
-        # and to avoid additional requests. Primarily used for display purposes.
-        "meta": {
-            "organisation_name": organisation_name,
-            "plan_group_name": plan_group_name,
-            "region_name": region_name,
-            "repository_url": repository_url,
-            "deploy": deploy,
-        },
+        "name": name,
+        "slug": slug,
+        "organisation": organisation,
+        "plan_group": plan_group,
+        "region": region,
+        "app_template": template,
+        "release_commands": release_commands,
+        "repository": repository,
+        # `branch` cannot yet be `None` at this point.
+        # If a custom repository is not provided, a branch
+        # is still needed for the Divio hosted git repository.
+        "branch": branch or "main",
     }
 
-    # TODO: make repository and branch nullable on CP?
-    if repository and branch_name:
-        data["app"]["repository"] = repository
-        data["app"]["branch"] = branch_name
+    obj.metadata.update({
+        "organisation_name": organisation_name,
+        "plan_group_name": plan_group_name,
+        "region_name": region_name,
+        "repository_url": repository_url,
+        "deploy": deploy,
+    })
 
     wizard.create_app(data)
 
