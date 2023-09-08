@@ -1,6 +1,6 @@
 import contextlib
 import os
-import pathlib
+import shlex
 import shutil
 import subprocess
 from unittest.mock import Mock
@@ -9,50 +9,76 @@ import pytest
 import requests
 
 
-@pytest.fixture(scope="session")
-def _divio_project(request, tmpdir_factory):  # noqa: PT005
+TEST_DATA_DIRECTORY = "test_data"
 
-    test_project_name = os.getenv("TEST_PROJECT_NAME", None)
-    if test_project_name is None:
+
+@pytest.fixture(scope="session")
+def _divio_project(request, pytestconfig, tmpdir_factory):  # noqa: PT005
+    capturemanager = pytestconfig.pluginmanager.getplugin("capturemanager")
+
+    # check if test project is set
+    test_project_name = os.getenv("TEST_PROJECT_NAME", "")
+
+    if not test_project_name:
         pytest.skip(
             "project name for the test is not supplied. Please use $TEST_PROJECT_NAME to specify one."
         )
 
-    # We can not use a fully randomized name as it normally would be a best
-    # practice. This path needs to be well known and static as we have to
-    # reference it in our test project to make docker-in-docker on Gitlab
-    # work with the right volume mounts and correct paths.
-    tmp_folder = pathlib.Path("test_data")
-    tmp_project_path = os.path.join(tmp_folder, test_project_name)
+    # create test data directory if not present
+    if not os.path.exists(TEST_DATA_DIRECTORY):
+        os.makedirs(TEST_DATA_DIRECTORY)
 
-    # Locally, we may run the tests multiple times
-    if os.path.exists(tmp_project_path):
-        if os.getenv("TEST_KEEP_PROJECT", "0") == "1":
+    # setup divio project
+    try:
+
+        # disable stdout capturing
+        capturemanager.suspend_global_capture(in_=True)
+
+        print("\n=== divio project setup ===")  # noqa: T201
+
+        # We can not use a fully randomized name as it normally would be a best
+        # practice. This path needs to be well known and static as we have to
+        # reference it in our test project to make docker-in-docker on Gitlab
+        # work with the right volume mounts and correct paths.
+        test_project_directory = os.path.join(
+            TEST_DATA_DIRECTORY, test_project_name
+        )
+
+        # Locally, we may run the tests multiple times
+        if os.path.exists(test_project_directory):
+
             # Reuse the existing project
-            return tmp_project_path
-        # Cleanup
-        shutil.rmtree(tmp_project_path)
+            if os.getenv("TEST_KEEP_PROJECT", "0") == "1":
+                print("TEST_KEEP_PROJECT is set. skipping setup")  # noqa: T201
 
-    setup_command = ["app", "setup", test_project_name]
+                return test_project_directory
 
-    # Check if we have a special zone we want to test against
-    test_zone = os.getenv("TEST_ZONE", None)
-    if test_zone:
-        setup_command = ["-z", test_zone, *setup_command]
+            # Cleanup
+            print(f"removing {test_project_directory}")  # noqa: T201
 
-    print(f"Setup command: {setup_command}")  # noqa: T201
+            shutil.rmtree(test_project_directory)
 
-    ret = subprocess.run(
-        ["divio", *setup_command],
-        cwd=str(tmp_folder.resolve()),
-        capture_output=True,
-        encoding="utf-8",
-        check=False,
-    )
-    # Print the output in case of error
-    assert ret.returncode == 0, (ret.stderr, ret.stdout)
+        # setup
+        setup_command = f"divio app setup {test_project_name}"
+        env = os.environ.copy()
 
-    return tmp_project_path
+        if "TEST_ZONE" in env:
+            env["DIVIO_ZONE"] = env["TEST_ZONE"]
+
+        print(f"setup command: {setup_command}")  # noqa: T201
+
+        subprocess.check_call(
+            shlex.split(setup_command),
+            env=env,
+            cwd=TEST_DATA_DIRECTORY,
+        )
+
+        return test_project_directory
+
+    finally:
+        print("=== divio project setup finished ===")  # noqa: T201
+
+        capturemanager.resume_global_capture()
 
 
 @pytest.fixture(scope="session")
