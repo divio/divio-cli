@@ -40,7 +40,7 @@ make test TOX_ARGS="-e python.11" PYTEST_ARGS="-s"
 To clear all local state run:
 
 ```bash
-make clear
+make clean
 ```
 
 ## Unit tests
@@ -54,19 +54,19 @@ make test
 ## Integration tests
 
 These do require a more involved setup and will trigger actions on a real project.
-It is recommended to use a project on [control.dev.aldryn.net](https://control.dev.aldryn.net/) because it requires no locally setup control panel. Also the CI pipelines also test against control.dev.aldryn.net.
+It is recommended to use a project on [control.dev.aldryn.net](https://control.dev.aldryn.net/) because it requires no control panel running locally, and is what the CI pipeline does.
 
 The CI uses [ci-test-project-do-not-delete](https://control.dev.aldryn.net/o/crce57yucffnjhb63yldeohmru/app/nxldpjkvbzggzh6xzvkqv4j3je/) project.
-**DONT USE THIS PROJECT FOR YOUR LOCAL TESTING!** The project reserved for CI testing. Create your own project and replicate the CI projects configuration.
+**DON NOT USE THIS PROJECT FOR YOUR LOCAL TESTING!** The project is reserved for CI testing. Create your own project and replicate the CI projects configuration.
 
 To run the integration test suite, run:
 
 ```bash
-make integration test
+make integration-test
 ```
 
-The first run will fail, but create an empty `.env` file. Configure your test project there.
-You take a look at the variables tab in the [CI Settings](https://gitlab.com/divio/cloud/control-panel/-/settings/ci_cd) as a starting-point.
+The first run will fail, but will create an empty `.env` file. Configure your test project there.
+You can take a look at the variables tab in the [CI Settings](https://gitlab.com/divio/cloud/control-panel/-/settings/ci_cd) as a starting-point.
 
 ## Linting
 
