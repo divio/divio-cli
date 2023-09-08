@@ -3,7 +3,7 @@ SHELL=/bin/bash
 ENV_FILE=.env
 PYTHON=python3
 PYTHON_VENV=.venv
-TOX_ARGS=-e py37
+TOX_ARGS=
 PYTEST_ARGS=-v -rsx
 
 .PHONY: clean test test_integration lint
