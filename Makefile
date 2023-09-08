@@ -17,7 +17,8 @@ $(PYTHON_VENV):
 	rm -rf $(PYTHON_VENV) && \
 	$(PYTHON) -m venv $(PYTHON_VENV) && \
 	. $(PYTHON_VENV)/bin/activate && \
-	pip install --upgrade pip tox
+	pip install --upgrade pip tox && \
+	pip install -e .
 
 clean:
 	rm -rf $(PYTHON_VENV)
