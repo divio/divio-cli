@@ -62,7 +62,7 @@ The CI uses [ci-test-project-do-not-delete](https://control.dev.aldryn.net/o/crc
 To run the integration test suite, run:
 
 ```bash
-make integration-test
+make test_integration
 ```
 
 The first run will fail, but will create an empty `.env` file. Configure your test project there.

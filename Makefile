@@ -6,7 +6,7 @@ PYTHON_VENV=tests-env
 TOX_ARGS=-e py37
 PYTEST_ARGS=-v -rsx
 
-.PHONY: clean test integration-test lint
+.PHONY: clean test test_integration lint
 
 
 # helper
@@ -30,7 +30,7 @@ test: | $(ENV_FILE) $(PYTHON_VENV)
 	. $(ENV_FILE) && \
 	tox $(TOX_ARGS) -- -m "not integration" $(PYTEST_ARGS)
 
-integration-test: | $(ENV_FILE) $(PYTHON_VENV)
+test_integration: | $(ENV_FILE) $(PYTHON_VENV)
 	. $(PYTHON_VENV)/bin/activate && \
 	. $(ENV_FILE) && \
 	tox $(TOX_ARGS) -- -m "integration" $(PYTEST_ARGS)
