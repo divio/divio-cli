@@ -30,7 +30,7 @@ test: | $(ENV_FILE) $(PYTHON_VENV)
 	. $(ENV_FILE) && \
 	tox $(TOX_ARGS) -- -m "not integration" $(PYTEST_ARGS)
 
-integration-test: | $(PYTHON_VENV)
+integration-test: | $(ENV_FILE) $(PYTHON_VENV)
 	. $(PYTHON_VENV)/bin/activate && \
 	. $(ENV_FILE) && \
 	tox $(TOX_ARGS) -- -m "integration" $(PYTEST_ARGS)
