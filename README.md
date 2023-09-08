@@ -57,7 +57,7 @@ These do require a more involved setup and will trigger actions on a real projec
 It is recommended to use a project on [control.dev.aldryn.net](https://control.dev.aldryn.net/) because it requires no control panel running locally, and is what the CI pipeline does.
 
 The CI uses [ci-test-project-do-not-delete](https://control.dev.aldryn.net/o/crce57yucffnjhb63yldeohmru/app/nxldpjkvbzggzh6xzvkqv4j3je/) project.
-**DON NOT USE THIS PROJECT FOR YOUR LOCAL TESTING!** The project is reserved for CI testing. Create your own project and replicate the CI projects configuration.
+**DO NOT USE THIS PROJECT FOR YOUR LOCAL TESTING!** The project is reserved for CI testing. Create your own project and replicate the CI project configuration.
 
 To run the integration test suite, run:
 
@@ -66,7 +66,7 @@ make test_integration
 ```
 
 The first run will fail, but will create an empty `.env` file. Configure your test project there.
-You can take a look at the variables tab in the [CI Settings](https://gitlab.com/divio/cloud/control-panel/-/settings/ci_cd) as a starting-point.
+You can take a look at the variables tab in the [CI Settings](https://gitlab.com/divio/cloud/control-panel/-/settings/ci_cd) as a starting point.
 
 ## Linting
 
