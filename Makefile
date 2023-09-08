@@ -2,7 +2,7 @@ SHELL=/bin/bash
 
 ENV_FILE=.env
 PYTHON=python3
-PYTHON_VENV=tests-env
+PYTHON_VENV=.venv
 TOX_ARGS=-e py37
 PYTEST_ARGS=-v -rsx
 
