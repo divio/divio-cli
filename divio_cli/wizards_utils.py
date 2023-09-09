@@ -3,7 +3,11 @@ from rich.table import Table
 from rich.console import Console, Group
 from rich.panel import Panel
 from rich.json import JSON
+from .utils import status_print, slugify
+import inquirer
+import time
 import json
+import sys
 
 console = Console()
 
@@ -49,23 +53,24 @@ APP_WIZARD_MESSAGES = {
     "invalid_region": "Invalid region.",
     # Template
     "create_template": "Want to add a template to your application?",
-    "enter_template": "Enter the URL of your template",
+    "select_template": "Select a template for your application",
+    "enter_template_url": "Enter the URL of your template",
     "invalid_template_url": "Invalid template URL.",
     # Release commands
-    "create_release_commands": "Want to create release commands for your application?",
+    "create_release_commands": "Want to create custom release commands for your application?",
     "enter_release_command_label": "Enter the label of your release command",
     "enter_release_command": "Enter your release command",
     "add_another_release_command": "Want to add another release command?",
     # Custom repository
-    "connect_repository": "Want to connect a custom repository to your application?",
+    "connect_repository": "Want to connect an external repository to your application?",
     "enter_repository_url": "Enter the URL of your custom repository",
     "enter_repository_branch": "Enter the name of your target branch",
     "select_repository_ssh_key_type": "Select the type of your deploy key",
     "create_deploy_key": (
-        "Please register this ssh key with your repository provider. "
-        "Otherwise, the repository verification will fail. Ready to continue?"
+        "Please register this ssh key with your repository provider. Ready to continue?"
     ),
-    "repository_verification_timeout": "Repository verification timed out.",
+    "repository_verification_skipped": "Repository verification skipped. No repository connected.",
+    "repository_verification_timeout": "Repository verification timeout.",
     "confirm_app_creation": "Confirm application creation to proceed.",
     # Deploy
     "deployment_triggered": "Deployment of 'test' environment triggered.",
@@ -176,7 +181,6 @@ def log_app_details_summary(data, metadata, as_json=False):
 
         console.print(app_details)
 
-
 def build_app_url(client, app_uuid):
     host = client.session.host
     app = client.get_application(app_uuid)
@@ -186,3 +190,75 @@ def build_app_url(client, app_uuid):
     app_url = "/".join([host, "o", org, "app", uuid])
 
     return app_url
+
+def suggest_app_slug(client, name):
+    slugified_name = slugify(name)
+    suggested_slug = slugified_name
+    response = client.validate_application_field("slug", suggested_slug)
+    
+    # For the slug to be present in the response, it means that
+    # it failed validation and we need to suggest a new one.
+    if response.get("slug"):
+        while True:
+            suggested_slug = f"{slugified_name}-{secrets.token_hex()[:5]}"
+            response = client.validate_application_field("slug", suggested_slug)
+            if not response.get("slug"):
+                break
+
+    return suggested_slug
+
+
+
+def verify_app_repository(client, verbose, uuid, branch, url):
+    c = 0
+    response = client.check_repository(
+        uuid, branch
+    )
+    with console.status("Verifying repository..."):
+        while response["code"] == "waiting" and c < 5:
+            time.sleep(5)
+            response = client.check_repository(
+                uuid, branch
+            )
+            c += 1
+
+    if response["code"] == "waiting":
+        status_print(
+            APP_WIZARD_MESSAGES[
+                "repository_verification_timeout"
+            ],
+            status="error",
+        )
+        # TODO: Delete the repository before exiting.
+    elif response["code"] != "success":
+        status_print(
+            f"{response['non_field_errors'][0]}",
+            status="error",
+        )
+        # TODO: Delete the repository before exiting.
+    else:
+        if verbose:
+            status_print(
+                f"Verified repository: {url!r}",
+                status="success",
+            )
+
+    if response["code"] != "success":
+        choices=[
+            ("Retry repository verification", "retry"),
+            ("Skip this step (no repository)", "skip"),
+        ]
+        options = [
+            inquirer.List(
+            "choice",
+            message="How would you like to proceed?",
+            choices=choices,
+            )
+        ]
+        verification_status = inquirer.prompt(options)["choice"]
+    else:
+        verification_status = "success"
+
+    return verification_status
+
+    

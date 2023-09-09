@@ -451,6 +451,14 @@ class CreateApplicationRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/"
     method = "POST"
 
+class ApplicationTemplateListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/app-templates/"
+    method = "GET"
+
+class ApplicationTemplateGetRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/app-templates/{template_uuid}/"
+    method = "GET"
+
 
 class ListServiceInstancesRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/service-instances/?environment={environment_uuid}"
@@ -476,7 +484,3 @@ class ListOrganisationsRequest(JsonResponse, APIV3Request):
     url = "/iam/v3/organisations/"
     method = "GET"
 
-
-class ApplicationValidateRequest(JsonResponse, APIV3Request):
-    url = "/apps/v3/applications/validate/"
-    method = "POST"

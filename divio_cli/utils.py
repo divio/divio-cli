@@ -517,15 +517,6 @@ def echo_environment_variables_as_txt(
         fg="yellow",
     )
 
-
-def is_valid_template_url(url):
-    try:
-        parsed_url = urlparse(url)
-        return all([parsed_url.scheme, parsed_url.netloc])
-    except ValueError:
-        return False
-
-
 def slugify(value, allow_unicode=False):
     """
     Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
@@ -545,17 +536,3 @@ def slugify(value, allow_unicode=False):
     value = re.sub(r"[^\w\s-]", "", value.lower())
     return re.sub(r"[-\s_]+", "-", value).strip("-_")
 
-
-def suggest_slug(client, name):
-    slugified_name = slugify(name)
-    suggested_slug = slugified_name
-    response = client.validate_application_slug(suggested_slug)
-    
-    if suggested_slug != response.get("slug"):
-        while True:
-            suggested_slug = f"{slugified_name}-{secrets.token_hex()[:5]}"
-            response = client.validate_application_slug(suggested_slug)
-            if suggested_slug == response.get("slug"):
-                break
-
-    return suggested_slug

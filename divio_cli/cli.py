@@ -339,8 +339,8 @@ def application_create(
     organisation, organisation_name = wizard.get_organisation(organisation)
     plan_group, plan_group_name = wizard.get_plan_group(plan_group, organisation)
     region, region_name = wizard.get_region(region, plan_group)
-    template = wizard.get_template(template)
-    release_commands = wizard.get_release_commands()
+    template, template_release_commands = wizard.get_template(template)
+    release_commands = wizard.get_release_commands(template_release_commands)
     repository, repository_url, branch = wizard.get_custom_git_repo(organisation)
 
     data = {

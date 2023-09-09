@@ -196,6 +196,21 @@ class CloudClient(object):
             )
             sys.exit(1)
 
+    def get_application_templates(self, limit_results=None):
+        results, messages = json_response_request_paginate(
+            api_requests.ApplicationTemplateListRequest,
+            self.session,
+            limit_results=limit_results,
+        )
+        return results, messages
+    
+    def get_application_template(self, template_uuid):
+        request = api_requests.ApplicationTemplateGetRequest(
+            self.session,
+            url_kwargs={"template_uuid": template_uuid},
+        )
+        return request()
+
     def application_create(self, data):
         try:
             response = api_requests.CreateApplicationRequest(
@@ -955,42 +970,47 @@ class CloudClient(object):
             "Could not get remote repository information."
         )
 
-    def validate_application_name(self, name):
+    def validate_application_field(self, field, value):
         try:
-            response = api_requests.ApplicationValidateRequest(
+            response = api_requests.CreateApplicationRequest(
                 self.session,
                 data={
-                    "name": name,
+                    field: value,
                 },
                 proceed_on_4xx=True,
             )()
             return response
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho(
-                "Error establishing connection while validating application name.",
+                (
+                    "Error establishing connection while "
+                    f"validating application field {field!r}."
+                ),
                 fg="red",
                 err=True,
             )
             sys.exit(1)
 
-    def validate_application_slug(self, slug):
+    def validate_repository_field(self, field, value):
         try:
-            response = api_requests.ApplicationValidateRequest(
+            response = api_requests.CreateRepositoryRequest(
                 self.session,
                 data={
-                    "slug": slug,
+                    field: value,
                 },
                 proceed_on_4xx=True,
             )()
             return response
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho(
-                "Error establishing connection while validating application slug.",
+                (
+                    "Error establishing connection while "
+                    f"validating repository field {field!r}."
+                ),
                 fg="red",
                 err=True,
             )
             sys.exit(1)
-
 
 class WritableNetRC(netrc):
     def __init__(self, *args, **kwargs):
