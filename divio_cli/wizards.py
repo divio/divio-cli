@@ -8,7 +8,7 @@ from .wizards_utils import (
     APP_WIZARD_MESSAGES,
     AVAILABLE_REPOSITORY_SSH_KEY_TYPES,
     create_app_release_commands_summary,
-    log_app_details_summary,
+    print_app_details_summary,
     verify_app_repository,
     suggest_app_slug,
     build_app_url,
@@ -49,8 +49,8 @@ class CreateAppWizard:
                 response = self.client.validate_application_field("name", name)
                 name_errors = response.get("name")
                 if name_errors:
-                    for err in name_errors:
-                        status_print(err, status="error")
+                    for e in name_errors:
+                        status_print(e, status="error")
                     sys.exit(1)
         else:
             while True:
@@ -60,9 +60,8 @@ class CreateAppWizard:
                 response = self.client.validate_application_field("name", name)
                 name_errors = response.get("name")
                 if name_errors:
-                    for error in name_errors:
-                        status_print(error, status="error")
-
+                    for e in name_errors:
+                        status_print(e, status="error")
                     name = None
                 else:
                     break
@@ -85,8 +84,8 @@ class CreateAppWizard:
                 response = self.client.validate_application_field("slug", slug)
                 slug_errors = response.get("slug")
                 if slug_errors:
-                    for error in slug_errors:
-                        status_print(error, status="error")
+                    for e in slug_errors:
+                        status_print(e, status="error")
                     sys.exit(1)
         else:
             # Create a valid initial slug suggestion.
@@ -101,8 +100,8 @@ class CreateAppWizard:
                 response = self.client.validate_application_field("slug", slug)
                 slug_errors = response.get("slug")
                 if slug_errors:
-                    for error in slug_errors:
-                        status_print(error, status="error")
+                    for e in slug_errors:
+                        status_print(e, status="error")
                     suggested_slug = suggest_app_slug(self.client, name)
                     slug = None
                 else:
@@ -285,14 +284,14 @@ class CreateAppWizard:
     def get_template(self, template):
         template_release_commands = None
 
-        divio_templates, _ = self.client.get_application_templates()
+        available_divio_templates, _ = self.client.get_application_templates()
         divio_templates = {
             t["uuid"]: {
                 "name": t["name"],
                 "url": t["url"],
             }
             for t in
-            divio_templates
+            available_divio_templates
         }
 
         # Non-interactive mode
@@ -303,12 +302,12 @@ class CreateAppWizard:
             response = self.client.validate_application_field("app_template", template)
             template_errors = response.get("app_template")
             if template_errors:
-                for error in template_errors:
-                    # Hacky way to convert the default error  
+                for e in template_errors:
+                    # Hacky way to convert the default error
                     # message provided by Django's URLField.
-                    if error == "Enter a valid URL.":
-                        error = "Invalid URL."
-                    status_print(error, status="error")
+                    if e == "Enter a valid URL.":
+                        e = "Invalid template URL."
+                    status_print(e, status="error")
                 sys.exit(1)
         # Interactive mode.
         else:
@@ -359,10 +358,10 @@ class CreateAppWizard:
                     response = self.client.validate_application_field("app_template", template)
                     template_errors = response.get("app_template")
                     if template_errors:
-                        for error in template_errors:
-                            if error == "Enter a valid URL.":
-                                error = "Invalid URL."
-                            status_print(error, status="error")
+                        for e in template_errors:
+                            if e == "Enter a valid URL.":
+                                e = "Invalid template URL."
+                            status_print(e, status="error")
                         template = None
                     else:
                         # There is a chance that the user entered a Divio template URL.
@@ -408,6 +407,7 @@ class CreateAppWizard:
         ):
             add_another = True
             while add_another:
+
                 # Retrieve and validate the release command label.
                 while True:  
                     release_command_label = Prompt.ask(
@@ -487,8 +487,8 @@ class CreateAppWizard:
                     response = self.client.validate_repository_field("url", repository_url)
                     repository_url_errors = response.get("url")
                     if repository_url_errors:
-                        for error in repository_url_errors:
-                            status_print(error, status="error")
+                        for e in repository_url_errors:
+                            status_print(e, status="error")
 
                         repository_url = None
                     else:
@@ -557,7 +557,7 @@ class CreateAppWizard:
                                    
     def create_app(self, data):
         if self.verbose:
-            log_app_details_summary(data, self.metadata, as_json=self.as_json)
+            print_app_details_summary(data, self.metadata, as_json=self.as_json)
 
         if not self.interactive:
             response = self.client.application_create(data=data)

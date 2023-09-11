@@ -7,7 +7,7 @@ from .utils import status_print, slugify
 import inquirer
 import time
 import json
-import sys
+import secrets
 
 console = Console()
 
@@ -55,7 +55,6 @@ APP_WIZARD_MESSAGES = {
     "create_template": "Want to add a template to your application?",
     "select_template": "Select a template for your application",
     "enter_template_url": "Enter the URL of your template",
-    "invalid_template_url": "Invalid template URL.",
     # Release commands
     "create_release_commands": "Want to create custom release commands for your application?",
     "enter_release_command_label": "Enter the label of your release command",
@@ -103,7 +102,7 @@ def create_app_release_commands_summary(release_commands, as_json=False):
         return table
 
 
-def log_app_details_summary(data, metadata, as_json=False):
+def print_app_details_summary(data, metadata, as_json=False):
     """Return a table of application details."""
 
     if as_json:
