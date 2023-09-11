@@ -341,7 +341,7 @@ def application_create(
     region, region_name = wizard.get_region(region, plan_group)
     template, template_release_commands = wizard.get_template(template)
     release_commands = wizard.get_release_commands(template_release_commands)
-    repository, repository_url, branch = wizard.get_custom_git_repo(organisation)
+    repository, repository_url, branch = wizard.get_git_repository(organisation)
 
     data = {
         "name": name,
@@ -352,9 +352,6 @@ def application_create(
         "app_template": template,
         "release_commands": release_commands,
         "repository": repository,
-        # `branch` cannot yet be `None` at this point.
-        # If a custom repository is not provided, a branch
-        # is still needed for the Divio hosted git repository.
         "branch": branch or "main",
     }
 

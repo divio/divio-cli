@@ -1,8 +1,5 @@
 import sys
-
-import click
 import inquirer
-
 from .utils import status_print
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
@@ -400,7 +397,7 @@ class CreateAppWizard:
         return template, template_release_commands
 
     def get_release_commands(self, template_release_commands):
-        release_commands = template_release_commands or []
+        release_commands = template_release_commands.copy() or []
         
         if not self.interactive:
             return release_commands
@@ -411,7 +408,7 @@ class CreateAppWizard:
         ):
             add_another = True
             while add_another:
-
+                # Retrieve and validate the release command label.
                 while True:  
                     release_command_label = Prompt.ask(
                         APP_WIZARD_MESSAGES["enter_release_command_label"]
@@ -427,12 +424,11 @@ class CreateAppWizard:
                         release_command_label = None
                     else:
                         break
-
+                
+                # Release command value.
                 release_command_value = Prompt.ask(
                     APP_WIZARD_MESSAGES["enter_release_command"]
                 )
-
-
 
                 release_commands.append(
                     {
@@ -440,11 +436,6 @@ class CreateAppWizard:
                         "command": release_command_value,
                     }
                 )
-
-                response = self.client.validate_application_field(
-                    "release_commands", release_commands
-                )
-                release_commands_errors = response.get("release_commands")
 
                 if self.verbose:
                     status_print(
@@ -456,7 +447,7 @@ class CreateAppWizard:
                     default=False,
                 )
 
-        if release_commands and self.verbose:
+        if release_commands and release_commands != template_release_commands and self.verbose:
             release_commands_summary = create_app_release_commands_summary(
                 release_commands, as_json=self.as_json
             )
@@ -471,8 +462,8 @@ class CreateAppWizard:
 
         return release_commands
 
-    def get_custom_git_repo(self, organisation):
-        retry_verification = False
+    def get_git_repository(self, organisation):
+        restart_connection = False
         suggested_repository_url = None
         suggested_repository_branch = "main"
 
@@ -480,7 +471,7 @@ class CreateAppWizard:
             return None, None, None
 
         while True:
-            if retry_verification or Confirm.ask(
+            if restart_connection or Confirm.ask(
                 APP_WIZARD_MESSAGES["connect_repository"], 
                 default=False,
             ):
@@ -537,32 +528,33 @@ class CreateAppWizard:
                     APP_WIZARD_MESSAGES["create_deploy_key"], 
                     default=True
                 ):
-                    verification_status = verify_app_repository(
-                        self.client,
-                        self.verbose,
-                        repository_uuid,
-                        repository_branch,
-                        repository_url,
-                    )
-
-                    if verification_status == "retry":
-                        retry_verification = True
-                        suggested_repository_url = repository_url
-                        suggested_repository_branch = repository_branch
-                        continue
-                    elif verification_status == "skip":
-                        status_print(
-                            APP_WIZARD_MESSAGES["repository_verification_skipped"],
-                            status="warning",
+                    while True:
+                        verification_status = verify_app_repository(
+                            self.client,
+                            self.verbose,
+                            repository_uuid,
+                            repository_branch,
+                            repository_url,
                         )
-                        return None, None, None
-                    else:
-                        return repository_uuid, repository_url, repository_branch
-                    
-        
 
-
-
+                        if verification_status == "retry":
+                            continue
+                        elif verification_status == "restart":
+                            restart_connection = True
+                            suggested_repository_url = repository_url
+                            suggested_repository_branch = repository_branch
+                            break
+                        elif verification_status == "skip":
+                            status_print(
+                                APP_WIZARD_MESSAGES["repository_verification_skipped"],
+                                status="warning",
+                            )
+                            return None, None, None
+                        else:
+                            return repository_uuid, repository_url, repository_branch
+            else:
+                return None, None, None
+                                   
     def create_app(self, data):
         if self.verbose:
             log_app_details_summary(data, self.metadata, as_json=self.as_json)

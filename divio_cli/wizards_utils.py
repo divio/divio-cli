@@ -246,6 +246,7 @@ def verify_app_repository(client, verbose, uuid, branch, url):
     if response["code"] != "success":
         choices=[
             ("Retry repository verification", "retry"),
+            ("Restart repository connection", "restart"),
             ("Skip this step (no repository)", "skip"),
         ]
         options = [
