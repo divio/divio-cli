@@ -1,17 +1,19 @@
 import sys
+
 import inquirer
-from .utils import status_print
 from rich.console import Console
-from rich.prompt import Prompt, Confirm
 from rich.panel import Panel
+from rich.prompt import Confirm, Prompt
+
+from .utils import status_print
 from .wizards_utils import (
     APP_WIZARD_MESSAGES,
     AVAILABLE_REPOSITORY_SSH_KEY_TYPES,
+    build_app_url,
     create_app_release_commands_summary,
     print_app_details_summary,
-    verify_app_repository,
     suggest_app_slug,
-    build_app_url,
+    verify_app_repository,
 )
 
 
@@ -68,7 +70,6 @@ class CreateAppWizard:
 
         if self.verbose:
             status_print(f"Name: {name!r}", status="success")
-
 
         return name
 
@@ -138,9 +139,7 @@ class CreateAppWizard:
                     options = [
                         inquirer.List(
                             "uuid",
-                            message=APP_WIZARD_MESSAGES[
-                                "select_organisation"
-                            ],
+                            message=APP_WIZARD_MESSAGES["select_organisation"],
                             choices=[
                                 (org["name"], org["uuid"])
                                 for org in available_organisations
@@ -223,9 +222,9 @@ class CreateAppWizard:
         return plan_group, plan_group_name
 
     def get_region(self, region, plan_group):
-        available_regions_uuids = self.client.get_application_plan_group(plan_group)[
-            "regions"
-        ]
+        available_regions_uuids = self.client.get_application_plan_group(
+            plan_group
+        )["regions"]
         available_regions, _ = self.client.get_regions(
             params={"uuid": available_regions_uuids}
         )
@@ -253,9 +252,7 @@ class CreateAppWizard:
                     options = [
                         inquirer.List(
                             "uuid",
-                            message=APP_WIZARD_MESSAGES[
-                                "select_region"
-                            ],
+                            message=APP_WIZARD_MESSAGES["select_region"],
                             choices=[
                                 (org["name"], org["uuid"])
                                 for org in available_regions
@@ -290,8 +287,7 @@ class CreateAppWizard:
                 "name": t["name"],
                 "url": t["url"],
             }
-            for t in
-            available_divio_templates
+            for t in available_divio_templates
         }
 
         # Non-interactive mode
@@ -299,7 +295,9 @@ class CreateAppWizard:
             if not template:
                 return None, None
 
-            response = self.client.validate_application_field("app_template", template)
+            response = self.client.validate_application_field(
+                "app_template", template
+            )
             template_errors = response.get("app_template")
             if template_errors:
                 for e in template_errors:
@@ -311,19 +309,21 @@ class CreateAppWizard:
                 sys.exit(1)
         # Interactive mode.
         else:
-            choices=[
+            choices = [
                 ("Select a Divio template", "select"),
                 ("Enter a custom template", "custom"),
                 ("Skip this step", "skip"),
             ]
             options = [
                 inquirer.List(
-                "choice",
-                message="Want to add a template to your application?",
-                choices=choices,
+                    "choice",
+                    message="Want to add a template to your application?",
+                    choices=choices,
                 )
             ]
-            create_template = "custom" if template else inquirer.prompt(options)["choice"]
+            create_template = (
+                "custom" if template else inquirer.prompt(options)["choice"]
+            )
 
             # No template
             if create_template == "skip":
@@ -333,21 +333,23 @@ class CreateAppWizard:
                 divio_templates_options = [
                     inquirer.List(
                         "uuid",
-                        message=APP_WIZARD_MESSAGES[
-                            "select_template"
-                        ],
+                        message=APP_WIZARD_MESSAGES["select_template"],
                         choices=[
                             (divio_templates[t]["name"], t)
                             for t in divio_templates
                         ],
                     )
                 ]
-                template_uuid = inquirer.prompt(divio_templates_options)["uuid"]
+                template_uuid = inquirer.prompt(divio_templates_options)[
+                    "uuid"
+                ]
                 template = divio_templates[template_uuid]["url"]
 
-                template_release_commands = self.client.get_application_template(
-                    template_uuid
-                )["release_commands"]
+                template_release_commands = (
+                    self.client.get_application_template(template_uuid)[
+                        "release_commands"
+                    ]
+                )
             # Custom template
             else:
                 while True:
@@ -355,7 +357,9 @@ class CreateAppWizard:
                         template = Prompt.ask(
                             APP_WIZARD_MESSAGES["enter_template_url"]
                         )
-                    response = self.client.validate_application_field("app_template", template)
+                    response = self.client.validate_application_field(
+                        "app_template", template
+                    )
                     template_errors = response.get("app_template")
                     if template_errors:
                         for e in template_errors:
@@ -368,9 +372,11 @@ class CreateAppWizard:
                         # If so, we need to fetch the release commands for that template.
                         for t in divio_templates:
                             if divio_templates[t]["url"] == template:
-                                template_release_commands = self.client.get_application_template(
-                                    t
-                                )["release_commands"]
+                                template_release_commands = (
+                                    self.client.get_application_template(t)[
+                                        "release_commands"
+                                    ]
+                                )
                                 break
                         break
 
@@ -381,15 +387,19 @@ class CreateAppWizard:
             )
 
         if template_release_commands and self.verbose:
-            template_release_commands_summary = create_app_release_commands_summary(
-                template_release_commands, as_json=self.as_json
+            template_release_commands_summary = (
+                create_app_release_commands_summary(
+                    template_release_commands, as_json=self.as_json
+                )
             )
             if self.as_json:
                 console.rule("Template release commands")
                 console.print(template_release_commands_summary)
                 console.rule()
             else:
-                template_release_commands_summary.title = "Template release commands:"
+                template_release_commands_summary.title = (
+                    "Template release commands:"
+                )
                 template_release_commands_summary.title_justify = "left"
                 console.print(template_release_commands_summary)
 
@@ -397,7 +407,7 @@ class CreateAppWizard:
 
     def get_release_commands(self, template_release_commands):
         release_commands = template_release_commands.copy() or []
-        
+
         if not self.interactive:
             return release_commands
 
@@ -409,11 +419,13 @@ class CreateAppWizard:
             while add_another:
 
                 # Retrieve and validate the release command label.
-                while True:  
+                while True:
                     release_command_label = Prompt.ask(
                         APP_WIZARD_MESSAGES["enter_release_command_label"]
                     )
-                    if release_command_label in [d["label"] for d in release_commands]:
+                    if release_command_label in [
+                        d["label"] for d in release_commands
+                    ]:
                         status_print(
                             (
                                 f"Release command with label {release_command_label!r} "
@@ -424,7 +436,7 @@ class CreateAppWizard:
                         release_command_label = None
                     else:
                         break
-                
+
                 # Release command value.
                 release_command_value = Prompt.ask(
                     APP_WIZARD_MESSAGES["enter_release_command"]
@@ -447,7 +459,11 @@ class CreateAppWizard:
                     default=False,
                 )
 
-        if release_commands and release_commands != template_release_commands and self.verbose:
+        if (
+            release_commands
+            and release_commands != template_release_commands
+            and self.verbose
+        ):
             release_commands_summary = create_app_release_commands_summary(
                 release_commands, as_json=self.as_json
             )
@@ -472,7 +488,7 @@ class CreateAppWizard:
 
         while True:
             if restart_connection or Confirm.ask(
-                APP_WIZARD_MESSAGES["connect_repository"], 
+                APP_WIZARD_MESSAGES["connect_repository"],
                 default=False,
             ):
                 # Repository URL
@@ -484,7 +500,9 @@ class CreateAppWizard:
                             default=suggested_repository_url,
                         )
 
-                    response = self.client.validate_repository_field("url", repository_url)
+                    response = self.client.validate_repository_field(
+                        "url", repository_url
+                    )
                     repository_url_errors = response.get("url")
                     if repository_url_errors:
                         for e in repository_url_errors:
@@ -493,7 +511,7 @@ class CreateAppWizard:
                         repository_url = None
                     else:
                         break
-            
+
                 # Repository branch
                 repository_branch = Prompt.ask(
                     APP_WIZARD_MESSAGES["enter_repository_branch"],
@@ -506,18 +524,22 @@ class CreateAppWizard:
                 ssh_key_type_options = [
                     inquirer.List(
                         "key",
-                        message=APP_WIZARD_MESSAGES["select_repository_ssh_key_type"],
+                        message=APP_WIZARD_MESSAGES[
+                            "select_repository_ssh_key_type"
+                        ],
                         choices=AVAILABLE_REPOSITORY_SSH_KEY_TYPES,
                     )
                 ]
-                repository_ssh_key_type = inquirer.prompt(ssh_key_type_options)["key"]
+                repository_ssh_key_type = inquirer.prompt(
+                    ssh_key_type_options
+                )["key"]
 
                 # Create the repository.
                 response = self.client.create_repository(
                     organisation, repository_url, repository_ssh_key_type
                 )
                 repository_uuid = response["uuid"]
-                repository_ssh_key = response["auth_info"]        
+                repository_ssh_key = response["auth_info"]
                 # Display the the ssh public key (deploy key) and ask the user to
                 # register it with their repository provider.
                 console.rule("SSH Key")
@@ -525,8 +547,7 @@ class CreateAppWizard:
                 console.rule()
 
                 if Confirm.ask(
-                    APP_WIZARD_MESSAGES["create_deploy_key"], 
-                    default=True
+                    APP_WIZARD_MESSAGES["create_deploy_key"], default=True
                 ):
                     while True:
                         verification_status = verify_app_repository(
@@ -539,25 +560,35 @@ class CreateAppWizard:
 
                         if verification_status == "retry":
                             continue
-                        elif verification_status == "restart":
+
+                        if verification_status == "restart":
                             restart_connection = True
                             suggested_repository_url = repository_url
                             suggested_repository_branch = repository_branch
                             break
-                        elif verification_status == "skip":
+
+                        if verification_status == "skip":
                             status_print(
-                                APP_WIZARD_MESSAGES["repository_verification_skipped"],
+                                APP_WIZARD_MESSAGES[
+                                    "repository_verification_skipped"
+                                ],
                                 status="warning",
                             )
                             return None, None, None
                         else:
-                            return repository_uuid, repository_url, repository_branch
+                            return (
+                                repository_uuid,
+                                repository_url,
+                                repository_branch,
+                            )
             else:
                 return None, None, None
-                                   
+
     def create_app(self, data):
         if self.verbose:
-            print_app_details_summary(data, self.metadata, as_json=self.as_json)
+            print_app_details_summary(
+                data, self.metadata, as_json=self.as_json
+            )
 
         if not self.interactive:
             response = self.client.application_create(data=data)

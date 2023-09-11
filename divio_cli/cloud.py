@@ -195,7 +195,9 @@ class CloudClient:
 
         return results, messages
 
-    def get_regions(self, limit_results=None, params={}):
+    def get_regions(self, limit_results=None, params=None):
+        if params is None:
+            params = {}
         results, messages = json_response_request_paginate(
             api_requests.ListRegionsRequest,
             self.session,
@@ -204,7 +206,9 @@ class CloudClient:
         )
         return results, messages
 
-    def get_application_plan_groups(self, params={}):
+    def get_application_plan_groups(self, params=None):
+        if params is None:
+            params = {}
         results, messages = json_response_request_paginate(
             api_requests.ApplicationPlanGroupsListRequest,
             self.session,
@@ -222,11 +226,10 @@ class CloudClient:
 
     def get_application(self, application_uuid):
         try:
-            response = api_requests.ApplicationRequest(
+            return api_requests.ApplicationRequest(
                 self.session,
                 url_kwargs={"application_uuid": application_uuid},
             )()
-            return response
 
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho(
@@ -243,7 +246,7 @@ class CloudClient:
             limit_results=limit_results,
         )
         return results, messages
-    
+
     def get_application_template(self, template_uuid):
         request = api_requests.ApplicationTemplateGetRequest(
             self.session,
@@ -253,11 +256,10 @@ class CloudClient:
 
     def application_create(self, data):
         try:
-            response = api_requests.CreateApplicationRequest(
+            return api_requests.CreateApplicationRequest(
                 self.session,
                 data=data,
             )()
-            return response
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho(
                 "Error establishing connection.",
@@ -266,7 +268,6 @@ class CloudClient:
             )
             sys.exit(1)
 
-    
     def get_organisation(self, organisation_uuid):
         request = api_requests.OrganisationDetailRequest(
             self.session,
@@ -383,7 +384,9 @@ class CloudClient:
         except (KeyError, json.decoder.JSONDecodeError):
             raise DivioException("Error establishing connection.")
 
-    def get_environments(self, params={}):
+    def get_environments(self, params=None):
+        if params is None:
+            params = {}
         try:
             return api_requests.EnvironmentsListRequest(
                 self.session, params=params
@@ -940,7 +943,7 @@ class CloudClient:
 
     def create_repository(self, organisation, url, key_type):
         try:
-            response = api_requests.CreateRepositoryRequest(
+            return api_requests.CreateRepositoryRequest(
                 self.session,
                 data={
                     "organisation": organisation,
@@ -948,7 +951,6 @@ class CloudClient:
                     "key_type": key_type,
                 },
             )()
-            return response
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho(
                 "Error establishing connection while creating repository.",
@@ -959,7 +961,7 @@ class CloudClient:
 
     def check_repository(self, repository_uuid, branch, migrate="true"):
         try:
-            response = api_requests.CheckRepositoryRequest(
+            return api_requests.CheckRepositoryRequest(
                 self.session,
                 url_kwargs={"repository_uuid": repository_uuid},
                 data={
@@ -967,7 +969,6 @@ class CloudClient:
                     "migrate": migrate,
                 },
             )()
-            return response
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho(
                 "Error establishing connection while authenticating repository.",
@@ -1169,14 +1170,13 @@ class CloudClient:
 
     def validate_application_field(self, field, value):
         try:
-            response = api_requests.CreateApplicationRequest(
+            return api_requests.CreateApplicationRequest(
                 self.session,
                 data={
                     field: value,
                 },
                 proceed_on_4xx=True,
             )()
-            return response
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho(
                 (
@@ -1190,14 +1190,13 @@ class CloudClient:
 
     def validate_repository_field(self, field, value):
         try:
-            response = api_requests.CreateRepositoryRequest(
+            return api_requests.CreateRepositoryRequest(
                 self.session,
                 data={
                     field: value,
                 },
                 proceed_on_4xx=True,
             )()
-            return response
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho(
                 (
@@ -1208,6 +1207,7 @@ class CloudClient:
                 err=True,
             )
             sys.exit(1)
+
 
 class WritableNetRC(netrc):
     def __init__(self, *args, **kwargs):

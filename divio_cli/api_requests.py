@@ -100,7 +100,6 @@ class APIRequest:
         self.params = params or {}
         self.data = data or {}
         self.files = files or {}
-        assert isinstance(proceed_on_4xx, bool)
         self.proceed_on_4xx = proceed_on_4xx
 
     def __call__(self, *args, **kwargs):
@@ -436,7 +435,7 @@ class DeployEnvironmentRequest(JsonResponse, APIV3Request):
     Deploys a particular environment by providing the environment's
     uuid (environment_uuid) in the request body.
     """
-    
+
     url = "/apps/v3/deployments/"
     method = "POST"
 
@@ -470,9 +469,11 @@ class CreateApplicationRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/"
     method = "POST"
 
+
 class ApplicationTemplateListRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/app-templates/"
     method = "GET"
+
 
 class ApplicationTemplateGetRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/app-templates/{template_uuid}/"
@@ -502,4 +503,3 @@ class ListRegionsRequest(JsonResponse, APIV3Request):
 class ListOrganisationsRequest(JsonResponse, APIV3Request):
     url = "/iam/v3/organisations/"
     method = "GET"
-

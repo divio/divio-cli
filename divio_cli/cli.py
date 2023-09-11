@@ -14,7 +14,6 @@ import divio_cli
 from . import localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
-from .wizards import CreateAppWizard
 from .excepthook import DivioExcepthookIntegration, divio_shutdown
 from .exceptions import (
     DivioException,
@@ -38,6 +37,7 @@ from .utils import (
 )
 from .validators.addon import validate_addon
 from .validators.boilerplate import validate_boilerplate
+from .wizards import CreateAppWizard
 
 
 try:
@@ -358,11 +358,15 @@ def application_create(
     name = wizard.get_name(name)
     slug = wizard.get_slug(slug, name)
     organisation, organisation_name = wizard.get_organisation(organisation)
-    plan_group, plan_group_name = wizard.get_plan_group(plan_group, organisation)
+    plan_group, plan_group_name = wizard.get_plan_group(
+        plan_group, organisation
+    )
     region, region_name = wizard.get_region(region, plan_group)
     template, template_release_commands = wizard.get_template(template)
     release_commands = wizard.get_release_commands(template_release_commands)
-    repository, repository_url, branch = wizard.get_git_repository(organisation)
+    repository, repository_url, branch = wizard.get_git_repository(
+        organisation
+    )
 
     data = {
         "name": name,
@@ -376,13 +380,15 @@ def application_create(
         "branch": branch or "main",
     }
 
-    obj.metadata.update({
-        "organisation_name": organisation_name,
-        "plan_group_name": plan_group_name,
-        "region_name": region_name,
-        "repository_url": repository_url,
-        "deploy": deploy,
-    })
+    obj.metadata.update(
+        {
+            "organisation_name": organisation_name,
+            "plan_group_name": plan_group_name,
+            "region_name": region_name,
+            "repository_url": repository_url,
+            "deploy": deploy,
+        }
+    )
 
     wizard.create_app(data)
 
@@ -1026,9 +1032,7 @@ def list_service_instances(
         ]
     except KeyError:
         click.secho(
-            "Environment with the name '{}' does not exist.".format(
-                environment
-            ),
+            f"Environment with the name '{environment}' does not exist.",
             fg="red",
             err=True,
         )

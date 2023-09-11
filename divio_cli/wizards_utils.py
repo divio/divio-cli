@@ -1,13 +1,16 @@
-from rich import box
-from rich.table import Table
-from rich.console import Console, Group
-from rich.panel import Panel
-from rich.json import JSON
-from .utils import status_print, slugify
-import inquirer
-import time
 import json
 import secrets
+import time
+
+import inquirer
+from rich import box
+from rich.console import Console, Group
+from rich.json import JSON
+from rich.panel import Panel
+from rich.table import Table
+
+from .utils import slugify, status_print
+
 
 console = Console()
 
@@ -81,6 +84,7 @@ AVAILABLE_REPOSITORY_SSH_KEY_TYPES = [
     "RSA",
 ]
 
+
 def create_app_release_commands_summary(release_commands, as_json=False):
     """Return a rich table of release commands."""
 
@@ -96,8 +100,7 @@ def create_app_release_commands_summary(release_commands, as_json=False):
         table.add_column("Label", style="magenta")
         table.add_column("Command", style="cyan")
         for rc in release_commands:
-            table.add_row(rc['label'], rc["command"])
-
+            table.add_row(rc["label"], rc["command"])
 
         return table
 
@@ -126,7 +129,9 @@ def print_app_details_summary(data, metadata, as_json=False):
             "repository": {
                 "url": metadata["repository_url"],
                 "branch": data["branch"],
-            } if data.get("repository") else {},
+            }
+            if data.get("repository")
+            else {},
             "deploy": metadata["deploy"],
         }
 
@@ -134,51 +139,54 @@ def print_app_details_summary(data, metadata, as_json=False):
         console.print(JSON(json.dumps(app_details)))
         console.rule()
     else:
-        release_commands_summary = create_app_release_commands_summary(
-            data["release_commands"]
-        ) or "—"
+        release_commands_summary = (
+            create_app_release_commands_summary(data["release_commands"])
+            or "—"
+        )
 
         app_details_group = Group(
             Panel(data["name"], title="Name"),
             Panel(data["slug"], title="Slug"),
             Panel(
                 f"name: {metadata['organisation_name']}\nuuid: {data['organisation']}",
-                title="Organisation"
+                title="Organisation",
             ),
             Panel(
                 f"name: {metadata['plan_group_name']}\nuuid: {data['plan_group']}",
-                title="Plan group"
+                title="Plan group",
             ),
             Panel(
                 f"name: {metadata['region_name']}\nuuid: {data['region']}",
-                title="Region"
+                title="Region",
             ),
             Panel(data["app_template"] or "—", title="Template"),
             Panel(release_commands_summary, title="Release commands"),
             Panel(
                 f"url: {metadata['repository_url']}\nbranch: {data['branch']}\nuuid: {data['repository']}"
-                if data.get("repository") else "—",
-                title="Repository"
+                if data.get("repository")
+                else "—",
+                title="Repository",
             ),
             Panel(
                 "Activated" if metadata["deploy"] else "Deactivated",
-                title="Deploy (test environment)"
+                title="Deploy (test environment)",
             ),
         )
-        
+
         for panel in app_details_group.renderables:
             panel.title_align = "left"
             panel.border_style = "green"
 
         app_details = Panel(
             app_details_group,
-            box = box.MINIMAL,
-            expand = False,
-            padding = 0,
-            width = 80,
+            box=box.MINIMAL,
+            expand=False,
+            padding=0,
+            width=80,
         )
 
         console.print(app_details)
+
 
 def build_app_url(client, app_uuid):
     host = client.session.host
@@ -186,46 +194,40 @@ def build_app_url(client, app_uuid):
     org = app["organisation"]
     uuid = app["uuid"]
 
-    app_url = "/".join([host, "o", org, "app", uuid])
+    return f"{host}/o/{org}/app/{uuid}"
 
-    return app_url
 
 def suggest_app_slug(client, name):
     slugified_name = slugify(name)
     suggested_slug = slugified_name
     response = client.validate_application_field("slug", suggested_slug)
-    
+
     # For the slug to be present in the response, it means that
     # it failed validation and we need to suggest a new one.
     if response.get("slug"):
         while True:
             suggested_slug = f"{slugified_name}-{secrets.token_hex()[:5]}"
-            response = client.validate_application_field("slug", suggested_slug)
+            response = client.validate_application_field(
+                "slug", suggested_slug
+            )
             if not response.get("slug"):
                 break
 
     return suggested_slug
 
 
-
 def verify_app_repository(client, verbose, uuid, branch, url):
     c = 0
-    response = client.check_repository(
-        uuid, branch
-    )
+    response = client.check_repository(uuid, branch)
     with console.status("Verifying repository..."):
         while response["code"] == "waiting" and c < 5:
             time.sleep(5)
-            response = client.check_repository(
-                uuid, branch
-            )
+            response = client.check_repository(uuid, branch)
             c += 1
 
     if response["code"] == "waiting":
         status_print(
-            APP_WIZARD_MESSAGES[
-                "repository_verification_timeout"
-            ],
+            APP_WIZARD_MESSAGES["repository_verification_timeout"],
             status="error",
         )
         # TODO: Delete the repository before exiting.
@@ -243,16 +245,16 @@ def verify_app_repository(client, verbose, uuid, branch, url):
             )
 
     if response["code"] != "success":
-        choices=[
+        choices = [
             ("Retry repository verification", "retry"),
             ("Restart repository connection", "restart"),
             ("Skip this step (no repository)", "skip"),
         ]
         options = [
             inquirer.List(
-            "choice",
-            message="How would you like to proceed?",
-            choices=choices,
+                "choice",
+                message="How would you like to proceed?",
+                choices=choices,
             )
         ]
         verification_status = inquirer.prompt(options)["choice"]
@@ -260,5 +262,3 @@ def verify_app_repository(client, verbose, uuid, branch, url):
         verification_status = "success"
 
     return verification_status
-
-    
