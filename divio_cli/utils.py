@@ -19,6 +19,8 @@ import requests
 from packaging import version
 from tabulate import tabulate
 
+from divio_cli.exceptions import DivioException, EnvironmentDoesNotExist
+
 from . import __version__
 
 
@@ -163,8 +165,7 @@ def execute(func, *popenargs, **kwargs):
             fg="red",
             err=True,
         )
-        click.secho(os.linesep.join(output), fg="red", err=True)
-        sys.exit(1)
+        raise DivioException(os.linesep.join(output))
 
 
 def check_call(*popenargs, **kwargs):
@@ -176,29 +177,26 @@ def check_output(*popenargs, **kwargs):
 
 
 def open_application_cloud_site(client, application_id, environment):
-    project_data = client.get_project(application_id)
     try:
-        url = project_data["{}_status".format(environment)]["site_url"]
-    except KeyError:
-        click.secho(
-            "Environment with the name '{}' does not exist.".format(
-                environment
-            ),
-            fg="red",
-            err=True,
+        env = client.get_environment_by_application(
+            application_id, environment
         )
-        sys.exit(1)
+        url = env[f"{environment}_status"]["site_url"]
+    except KeyError:
+        raise EnvironmentDoesNotExist(environment)
     if url:
         launch_url(url)
     else:
-        click.secho(
-            "No {} environment deployed yet.".format(environment), fg="yellow"
-        )
+        click.secho(f"No {environment} environment deployed yet.", fg="yellow")
 
 
-def get_cp_url(client, application_id, section="dashboard"):
+def get_cp_url(client, application_id, zone, section="dashboard"):
     project_data = client.get_project(application_id)
-    url = project_data["dashboard_url"]
+
+    organisation = project_data["organisation"]
+    application = project_data["uuid"]
+
+    url = f"https://control.{zone}/o/{organisation}/app/{application}/"
 
     if section != "dashboard":
         url = urljoin(url, section)
@@ -228,6 +226,7 @@ def pretty_size(num):
         return "0 bytes"
     elif num == 1:
         return "1 byte"
+    return None
 
 
 def get_size(start_path):
@@ -244,7 +243,7 @@ def get_size(start_path):
         return os.path.getsize(start_path)
 
     total_size = 0
-    for dirpath, dirnames, filenames in os.walk(start_path):
+    for dirpath, _dirnames, filenames in os.walk(start_path):
         for filename in filenames:
             fp = os.path.join(dirpath, filename)
             total_size += os.path.getsize(fp)
@@ -285,6 +284,7 @@ def get_git_commit():
             )
         except Exception:
             return None
+    return None
 
 
 def get_git_checked_branch():
@@ -304,23 +304,24 @@ def get_git_checked_branch():
 def get_user_agent():
     revision = get_git_commit()
     if revision:
-        client = "divio-cli/{}-{}".format(__version__, revision)
+        client = f"divio-cli/{__version__}-{revision}"
     else:
-        client = "divio-cli/{}".format(__version__)
+        client = f"divio-cli/{__version__}"
 
-    os_identifier = "{}/{}".format(platform.system(), platform.release())
-    python = "{}/{}".format(
-        platform.python_implementation(), platform.python_version()
-    )
-    return "{} ({}; {})".format(client, os_identifier, python)
+    os_identifier = f"{platform.system()}/{platform.release()}"
+    python = f"{platform.python_implementation()}/{platform.python_version()}"
+    return f"{client} ({os_identifier}; {python})"
 
 
 def download_file(url, directory=None, filename=None):
     response = requests.get(url, stream=True)
+    if not filename:
+        if response.headers.get("Content-Encoding") == "gzip":
+            filename = "data.tar.gz"
+        else:
+            filename = "data.dump"
 
-    dump_path = os.path.join(
-        directory or create_temp_dir(), filename or "data.tar.gz"
-    )
+    dump_path = os.path.join(directory or create_temp_dir(), filename)
 
     with open(dump_path, "wb") as f:
         for chunk in response.iter_content(chunk_size=1024):
@@ -342,7 +343,7 @@ class Map(dict):
     """
 
     def __init__(self, *args, **kwargs):
-        super(Map, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         for arg in args:
             if isinstance(arg, dict):
                 for k, v in arg.iteritems():
@@ -359,14 +360,14 @@ class Map(dict):
         self.__setitem__(key, value)
 
     def __setitem__(self, key, value):
-        super(Map, self).__setitem__(key, value)
+        super().__setitem__(key, value)
         self.__dict__.update({key: value})
 
     def __delattr__(self, item):
         self.__delitem__(item)
 
     def __delitem__(self, key):
-        super(Map, self).__delitem__(key)
+        super().__delitem__(key)
         del self.__dict__[key]
 
 
@@ -374,7 +375,7 @@ def split(delimiters, string, maxsplit=0):
     import re
 
     regexPattern = "|".join(map(re.escape, delimiters))
-    return re.split(regexPattern, string, maxsplit)
+    return re.split(regexPattern, string, maxsplit=maxsplit)
 
 
 def get_local_git_remotes():
@@ -403,18 +404,17 @@ def echo_large_content(content, ctx):
 
 
 def json_response_request_paginate(
-    request, session, limit_results, params={}, url_kwargs={}
+    request, session, limit_results, params=None, url_kwargs=None
 ):
+    if url_kwargs is None:
+        url_kwargs = {}
+    if params is None:
+        params = {}
     if limit_results is not None and limit_results < 1:
-        click.secho(
-            (
-                "The maximum number of results cannot be lower than 1. "
-                "Please adjust the --limit option accordingly."
-            ),
-            fg="red",
-            err=True,
+        raise DivioException(
+            "The maximum number of results cannot be lower than 1. "
+            "Please adjust the --limit option accordingly."
         )
-        sys.exit(1)
 
     params.update({"page_size": limit_results})
     try:
@@ -434,11 +434,9 @@ def json_response_request_paginate(
             ):
                 if limit_results < count_total_results:
                     messages.append(
-                        (
-                            f"There were {count_total_results} results available, "
-                            f"but the limit is currently set at {limit_results}. "
-                            "Adjust the --limit option for more."
-                        )
+                        f"There were {count_total_results} results available, "
+                        f"but the limit is currently set at {limit_results}. "
+                        "Adjust the --limit option for more."
                     )
                 break
             response = request(
@@ -446,8 +444,7 @@ def json_response_request_paginate(
                 url=next_page,
             )()
     except (KeyError, json.decoder.JSONDecodeError):
-        click.secho("Error establishing connection.", fg="red", err=True)
-        sys.exit(1)
+        raise DivioException("Error establishing connection.")
 
     return results, messages
 

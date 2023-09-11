@@ -5,6 +5,8 @@ import time
 
 import click
 
+from divio_cli.exceptions import DivioException
+
 from .. import messages, settings
 from ..utils import create_temp_dir, silence_stderr
 from .common import load_config, validate_package_config
@@ -26,7 +28,7 @@ def validate_aldryn_config_py(path):
                     # not found while handling absolute import
 
                     # randomizing source name
-                    source = "aldryn_config.config_{}".format(int(time.time()))
+                    source = f"aldryn_config.config_{int(time.time())}"
                     module = imp.load_source(source, temp_path)
 
                 # checking basic functionality of the Form
@@ -43,7 +45,7 @@ def validate_aldryn_config_py(path):
                     fg="red",
                     err=True,
                 )
-                raise click.ClickException(traceback.format_exc())
+                raise DivioException(traceback.format_exc())
         finally:
             shutil.rmtree(temp_dir)
 
@@ -51,9 +53,7 @@ def validate_aldryn_config_py(path):
 def validate_addon(path=None):
     setup_py_path = os.path.join(path or ".", "setup.py")
     if not os.path.exists(setup_py_path):
-        raise click.ClickException(
-            messages.FILE_NOT_FOUND.format(setup_py_path)
-        )
+        raise DivioException(messages.FILE_NOT_FOUND.format(setup_py_path))
 
     config = load_config(settings.ADDON_CONFIG_FILENAME, path)
     validate_aldryn_config_py(path)

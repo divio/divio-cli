@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import json
 import os
 import re
 import sys
+from datetime import datetime
 from itertools import groupby
 from netrc import netrc
 from operator import itemgetter
@@ -9,7 +12,15 @@ from time import sleep
 from urllib.parse import urlparse
 
 import click
+import requests
 from dateutil.parser import isoparse
+
+from divio_cli.exceptions import (
+    ConfigurationNotFound,
+    DivioException,
+    DivioWarning,
+    EnvironmentDoesNotExist,
+)
 
 from . import api_requests, messages, settings
 from .config import Config
@@ -26,8 +37,7 @@ def get_divio_zone():
         application_specific_zone = get_project_settings(
             get_application_home()
         ).get("zone", None)
-    except click.ClickException:
-        # Happens when there is no configuration file
+    except ConfigurationNotFound:
         pass
     else:
         if application_specific_zone:
@@ -44,7 +54,7 @@ def get_endpoint(zone=None):
         endpoint = ENDPOINT.format(zone=zone)
 
     if zone != DEFAULT_ZONE:
-        click.secho("Using zone: {}\n".format(endpoint), fg="green")
+        click.secho(f"Using zone: {endpoint}\n", fg="green")
     return endpoint
 
 
@@ -61,7 +71,7 @@ def get_service_color(service):
         return "yellow"
 
 
-class CloudClient(object):
+class CloudClient:
     def __init__(self, endpoint, debug=False, sudo=False):
         self.debug = debug
         self.sudo = sudo
@@ -76,7 +86,7 @@ class CloudClient(object):
         data = self.netrc.hosts.get(host)
         headers = {}
         if data:
-            headers["Authorization"] = "Token {}".format(data[2])
+            headers["Authorization"] = f"Token {data[2]}"
         if self.sudo:
             headers["X-Sudo"] = "make me a sandwich"
         return headers
@@ -96,7 +106,7 @@ class CloudClient(object):
         )
 
     def authenticate(self, token):
-        self.session.headers["Authorization"] = "Token {}".format(token)
+        self.session.headers["Authorization"] = f"Token {token}"
 
     def login(self, token):
         request = api_requests.LoginRequest(
@@ -111,9 +121,9 @@ class CloudClient(object):
         email = user_data.get("email")
 
         if first_name and last_name:
-            greeting = "{} {} ({})".format(first_name, last_name, email)
+            greeting = f"{first_name} {last_name} ({email})"
         elif first_name:
-            greeting = "{} ({})".format(first_name, email)
+            greeting = f"{first_name} ({email})"
         else:
             greeting = email
 
@@ -121,6 +131,36 @@ class CloudClient(object):
         self.netrc.write()
 
         return messages.LOGIN_SUCCESSFUL.format(greeting=greeting)
+
+    def logout(self, interactive=True):
+        def secho(*args, **kwargs):
+            if not interactive:
+                return None
+
+            return click.secho(*args, **kwargs)
+
+        def confirm(*args, **kwargs):
+            if not interactive:
+                return True
+
+            return click.confirm(*args, **kwargs)
+
+        host = urlparse(self.endpoint).hostname
+
+        if host not in self.netrc.hosts:
+            secho(messages.LOGOUT_ERROR.format(host), fg="red")
+
+            return 1
+
+        if not confirm(messages.LOGOUT_CONFIRMATION.format(host)):
+            return 1
+
+        self.netrc.remove(host)
+        self.netrc.write()
+
+        secho(messages.LOGOUT_SUCCESS.format(host))
+
+        return 0
 
     def check_login_status(self):
         request = api_requests.LoginStatusRequest(self.session)
@@ -226,6 +266,14 @@ class CloudClient(object):
             )
             sys.exit(1)
 
+    
+    def get_organisation(self, organisation_uuid):
+        request = api_requests.OrganisationDetailRequest(
+            self.session,
+            url_kwargs={"organisation_uuid": organisation_uuid},
+        )
+        return request()
+
     def get_services(
         self, region_uuid=None, application_uuid=None, limit_results=None
     ):
@@ -271,24 +319,21 @@ class CloudClient(object):
         )
         return request()
 
-    def ssh(self, website_id, environment):
-        project_data = self.get_project(website_id)
+    def ssh(self, application_uuid, environment):
+        self.get_project(application_uuid)
         try:
-            status = project_data["{}_status".format(environment)]
-        except KeyError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
+            env = self.get_environment_by_application(
+                application_uuid, environment
             )
-            sys.exit(1)
-        if status["deployed_before"]:
+
+        except KeyError:
+            raise EnvironmentDoesNotExist(environment)
+
+        if env["last_finished_deployment"]:
             try:
                 response = api_requests.EnvironmentRequest(
                     self.session,
-                    url_kwargs={"environment_uuid": status["uuid"]},
+                    url_kwargs={"environment_uuid": env["uuid"]},
                 )()
                 ssh_command = [
                     "ssh",
@@ -303,65 +348,50 @@ class CloudClient(object):
                 os.execvp("ssh", ssh_command)
 
             except (KeyError, json.decoder.JSONDecodeError):
-                click.secho(
-                    "Error establishing ssh connection.", fg="red", err=True
-                )
-                sys.exit(1)
+                raise DivioException("Error establishing ssh connection.")
 
         else:
-            click.secho(
-                "SSH connection not available: environment '{}' not deployed yet.".format(
-                    environment
-                ),
+            raise DivioException(
+                f"SSH connection not available: environment '{environment}' not deployed yet.",
                 fg="yellow",
-                err=True,
             )
-            sys.exit(1)
 
-    def get_environment(self, website_id, environment):
-        project_data = self.get_project(website_id)
+    def get_environment_by_application(self, application_uuid, environment):
+        response = api_requests.EnvironmentsListRequest(
+            self.session,
+            params={
+                "application_uuid": application_uuid,
+                "slug": environment,
+            },
+        )()
+        return response["results"][0]
+
+    def get_environment(self, application_uuid, environment):
         try:
-            status = project_data["{}_status".format(environment)]
-        except KeyError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
+            env = self.get_environment_by_application(
+                application_uuid, environment
             )
-            sys.exit(1)
+        except KeyError:
+            raise EnvironmentDoesNotExist(environment)
+
         try:
-            response = api_requests.EnvironmentRequest(
+            return api_requests.EnvironmentRequest(
                 self.session,
-                url_kwargs={"environment_uuid": status["uuid"]},
+                url_kwargs={"environment_uuid": env["uuid"]},
             )()
-            return response
 
         except (KeyError, json.decoder.JSONDecodeError):
-            click.secho(
-                "Error establishing connection.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Error establishing connection.")
 
     def get_environments(self, params={}):
         try:
-            response = api_requests.EnvironmentsListRequest(
+            return api_requests.EnvironmentsListRequest(
                 self.session, params=params
             )()
-            return response
-
         except (KeyError, json.decoder.JSONDecodeError):
-            click.secho(
-                "Error establishing connection.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Error establishing connection.")
 
-    def show_log(self, website_id, environment, tail=False, utc=True):
+    def show_log(self, application_uuid, environment, tail=False, utc=True):
         def print_log_data(data):
             for entry in data:
                 dt = isoparse(entry["timestamp"])
@@ -382,24 +412,19 @@ class CloudClient(object):
                     )
                 )
 
-        project_data = self.get_project(website_id)
         try:
-            status = project_data["{}_status".format(environment)]
-        except KeyError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
+            env = self.get_environment_by_application(
+                application_uuid, environment
             )
-            sys.exit(1)
-        if status["deployed_before"]:
+        except KeyError:
+            raise EnvironmentDoesNotExist(environment)
+
+        if env["last_finished_deployment"]:
             try:
                 # Make the initial log request
                 response = api_requests.LogRequest(
                     self.session,
-                    url_kwargs={"environment_uuid": status["uuid"]},
+                    url_kwargs={"environment_uuid": env["uuid"]},
                 )()
 
                 print_log_data(response["results"])
@@ -417,28 +442,22 @@ class CloudClient(object):
                             if not response["results"]:
                                 sleep(1)
                     except (KeyboardInterrupt, SystemExit):
-                        click.secho("Exiting...")
-                        sys.exit(1)
+                        raise DivioException("Exiting...", fg=None)
             except (
                 KeyError,
                 json.decoder.JSONDecodeError,
                 api_requests.APIRequestError,
             ):
-                click.secho("Error retrieving logs.", fg="red", err=True)
-                sys.exit(1)
+                raise DivioException("Error retrieving logs.")
 
         else:
-            click.secho(
-                "Logs not available: environment '{}' not deployed yet.".format(
-                    environment
-                ),
+            raise DivioException(
+                f"Logs not available: environment '{environment}' not deployed yet.",
                 fg="yellow",
-                err=True,
             )
-            sys.exit(1)
 
-    def get_deploy_log(self, website_id, env_name):
-        environment = self.get_environment(website_id, env_name)
+    def get_deploy_log(self, application_uuid, env_name):
+        environment = self.get_environment(application_uuid, env_name)
         if environment:
             last_deployment_uuid = None
             try:
@@ -457,23 +476,21 @@ class CloudClient(object):
                         self.session,
                         url_kwargs={"deployment_uuid": last_deployment_uuid},
                     )()
-                    output = f"Deployment ID: {deploy_log['uuid']}\n\n{deploy_log['logs']}"
-                    return output
+                    return f"Deployment ID: {deploy_log['uuid']}\n\n{deploy_log['logs']}"
 
                 except json.decoder.JSONDecodeError:
-                    click.secho(
-                        "Error in fetching deployment logs.",
-                        fg="red",
-                        err=True,
-                    )
-                    sys.exit(1)
+                    raise DivioException("Error in fetching deployment logs.")
+            return None
         else:
             click.secho(
                 f"Environment with name {env_name} does not exist.",
                 fg="yellow",
             )
+            return None
 
-    def deploy_application_or_get_progress(self, website_id, environment):
+    def deploy_application_or_get_progress(
+        self, application_uuid, environment
+    ):
         def fmt_progress(data):
             if not data:
                 return "Connecting to remote"
@@ -484,20 +501,32 @@ class CloudClient(object):
                 )
             return data
 
-        response = self.deploy_project_progress(website_id, environment)
-        if response["is_deploying"]:
+        try:
+            env = self.get_environment_by_application(
+                application_uuid, environment
+            )
+        except KeyError:
+            raise EnvironmentDoesNotExist(environment)
+
+        try:
+            response = self.get_deployment_by_application(
+                application_uuid, env["uuid"]
+            )
+            response = self.get_deployment_by_uuid(response["uuid"])
+        except IndexError:
+            response = None
+
+        if response and response["ended_at"] is None:
             click.secho(
                 "Already deploying {} environment, attaching to running "
                 "deployment".format(environment),
                 fg="yellow",
             )
         else:
-            click.secho(
-                "Deploying {} environment".format(environment), fg="green"
-            )
-            self.deploy_project(website_id, environment)
+            click.secho(f"Deploying {environment} environment", fg="green")
+            deployment = self.deploy_project(env["uuid"])
             sleep(1)
-            response = self.deploy_project_progress(website_id, environment)
+            response = self.get_deployment_by_uuid(deployment["uuid"])
         try:
             with click.progressbar(
                 length=100,
@@ -506,60 +535,37 @@ class CloudClient(object):
                 item_show_func=fmt_progress,
             ) as bar:
                 progress_percent = 0
-                while response["is_deploying"]:
-                    response = self.deploy_project_progress(
-                        website_id, environment
-                    )
-                    bar.current_item = progress = response["deploy_progress"]
-                    if (
-                        "main_percent" in progress
-                        and "extra_percent" in progress
-                    ):
-                        # update the difference of the current percentage
-                        # to the new percentage
-                        progress_percent = (
-                            progress["main_percent"]
-                            + progress["extra_percent"]
-                            - bar.pos
-                        )
-                        bar.update(progress_percent)
+                while response["ended_at"] is None:
+                    progress_percent = response["percent"]
+                    response = self.get_deployment_by_uuid(response["uuid"])
+                    bar.current_item = response["status"]
+                    bar.update(progress_percent - bar.pos)
                     sleep(3)
-                if response["last_deployment"]["status"] == "failure":
+                if response["status"] == "failure":
                     bar.current_item = "error"
                     bar.update(progress_percent)
 
-                    raise click.ClickException(
-                        "\nDeployment failed. Please run 'divio app deploy-log {}' "
-                        "to get more information".format(environment)
+                    raise DivioException(
+                        "\nDeployment failed. Please run "
+                        f"'divio app deploy-log {environment}' "
+                        "to get more information"
                     )
-                else:
-                    bar.current_item = "Done"
-                    bar.update(100)
+
+                bar.current_item = "Done"
+                bar.update(100)
 
         except KeyboardInterrupt:
             click.secho("Disconnected")
 
-    def deploy_project_progress(self, website_id, environment):
-        request = api_requests.DeployProjectProgressRequest(
-            self.session, url_kwargs={"website_id": website_id}
-        )
-        data = request()
-        try:
-            return data[environment]
-        except KeyError:
-            click.secho(
-                "Environment with the name '{}' does not exist.".format(
-                    environment
-                ),
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
-
-    def deploy_project(self, website_id, environment):
-        data = {"stage": environment}
-        request = api_requests.DeployProjectRequest(
-            self.session, url_kwargs={"website_id": website_id}, data=data
+    def get_deployment_by_application(
+        self, application_uuid, environment_uuid
+    ):
+        request = api_requests.DeploymentByApplicationRequest(
+            self.session,
+            url_kwargs={
+                "application_uuid": application_uuid,
+                "environment_uuid": environment_uuid,
+            },
         )
         return request()
 
@@ -569,9 +575,23 @@ class CloudClient(object):
         )
         return request()
 
-    def get_project(self, website_id):
+    def get_deployment_by_uuid(self, deployment_uuid):
+        request = api_requests.DeploymentRequest(
+            self.session,
+            url_kwargs={
+                "deployment_uuid": deployment_uuid,
+            },
+        )
+        return request()
+
+    def deploy_project(self, environment_uuid):
+        data = {"environment": environment_uuid}
+        request = api_requests.DeployProjectRequest(self.session, data=data)
+        return request()
+
+    def get_project(self, application_uuid):
         request = api_requests.ProjectDetailRequest(
-            self.session, url_kwargs={"website_id": website_id}
+            self.session, url_kwargs={"application_uuid": application_uuid}
         )
         return request()
 
@@ -600,6 +620,12 @@ class CloudClient(object):
 
     def get_website_id_for_slug(self, slug):
         request = api_requests.SlugToIDRequest(
+            self.session, url_kwargs={"website_slug": slug}
+        )
+        return request()
+
+    def get_application_uuid_for_slug(self, slug):
+        request = api_requests.SlugToAppUUIDRequest(
             self.session, url_kwargs={"website_slug": slug}
         )
         return request()
@@ -671,36 +697,51 @@ class CloudClient(object):
 
     def get_deployments(
         self,
-        website_id,
+        application_uuid,
         environment,
         all_environments,
         limit_results,
     ):
-        project_data = self.get_project(website_id)
+        environment_response = api_requests.EnvironmentsListRequest(
+            self.session,
+            params={
+                "application_uuid": application_uuid,
+                "slug": "",
+            },
+        )()["results"]
 
         # Map environments uuids with their corresponding slugs.
         envs_uuid_slug_mapping = {
-            project_data[key]["uuid"]: project_data[key]["stage"]
-            for key in project_data.keys()
-            if key.endswith("_status")
+            env["uuid"]: env["slug"] for env in environment_response
         }
 
         # Limit results to application deployments by default
         # and allow to filter by environment.
-        params = {"application": project_data["uuid"]}
+        params = {"application": application_uuid}
 
         # Retrieve environment data if environment is provided.
         if not all_environments:
-            try:
-                env = project_data[f"{environment}_status"]
-                params.update({"environment": env["uuid"]})
-            except KeyError:
+            env_found = False
+            for retrieved_env in environment_response:
+                if retrieved_env["slug"] == environment:
+                    params.update({"environment": retrieved_env["uuid"]})
+                    env_found = True
+                    break
+
+            if not env_found:
                 click.secho(
                     f"Environment with the name {environment!r} does not exist.",
                     fg="red",
                     err=True,
                 )
-                sys.exit(1)
+            try:
+                env = self.get_environment_by_application(
+                    application_uuid, environment
+                )
+
+                params.update({"environment": env["uuid"]})
+            except KeyError:
+                raise EnvironmentDoesNotExist(environment)
 
         try:
             results, messages = json_response_request_paginate(
@@ -730,33 +771,28 @@ class CloudClient(object):
                     if all_environments
                     else f"No deployments found for {environment!r} environment."
                 )
-                click.secho(
-                    no_deployments_found_msg,
-                    fg="yellow",
-                )
-                sys.exit(0)
+                raise DivioWarning(no_deployments_found_msg)
         except json.decoder.JSONDecodeError:
-            click.secho(
-                "Error in fetching deployments.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Error in fetching deployments.")
 
         return results_grouped_by_environment, messages
 
     def get_deployment(
         self,
-        website_id,
+        application_uuid,
         deployment_uuid,
     ):
-        project_data = self.get_project(website_id)
+        environment_response = api_requests.EnvironmentsListRequest(
+            self.session,
+            params={
+                "application_uuid": application_uuid,
+                "slug": "",
+            },
+        )()["results"]
 
         # Map environments uuids with their corresponding slugs.
         envs_uuid_slug_mapping = {
-            project_data[key]["uuid"]: project_data[key]["stage"]
-            for key in project_data.keys()
-            if key.endswith("_status")
+            env["uuid"]: env["slug"] for env in environment_response
         }
 
         try:
@@ -772,12 +808,7 @@ class CloudClient(object):
             environment_slug = envs_uuid_slug_mapping[environment_uuid]
             deployment.pop("environment")
         except (json.decoder.JSONDecodeError, KeyError):
-            click.secho(
-                "Error in fetching deployment.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Error in fetching deployment.")
 
         return {
             "environment": environment_slug,
@@ -787,17 +818,21 @@ class CloudClient(object):
 
     def get_deployment_with_environment_variables(
         self,
-        website_id,
+        application_uuid,
         deployment_uuid,
         variable_name,
     ):
-        project_data = self.get_project(website_id)
+        environment_response = api_requests.EnvironmentsListRequest(
+            self.session,
+            params={
+                "application_uuid": application_uuid,
+                "slug": "",
+            },
+        )()["results"]
 
         # Map environments uuids with their corresponding slugs.
         envs_uuid_slug_mapping = {
-            project_data[key]["uuid"]: project_data[key]["stage"]
-            for key in project_data.keys()
-            if key.endswith("_status")
+            env["uuid"]: env["slug"] for env in environment_response
         }
 
         try:
@@ -815,18 +850,11 @@ class CloudClient(object):
 
             value = deployment["environment_variables"].get(variable_name)
             if value is None:
-                click.secho(
+                raise DivioWarning(
                     f"There is no environment variable named {variable_name!r} for this deployment.",
-                    fg="yellow",
                 )
-                sys.exit(0)
         except (json.decoder.JSONDecodeError, KeyError):
-            click.secho(
-                "Error in fetching deployment.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+            raise DivioException("Error in fetching deployment.")
 
         return {
             "environment": environment_slug,
@@ -836,39 +864,40 @@ class CloudClient(object):
 
     def get_environment_variables(
         self,
-        website_id,
+        application_uuid,
         environment,
         all_environments,
         limit_results,
         variable_name=None,
     ):
-        project_data = self.get_project(website_id)
+        environment_response = api_requests.EnvironmentsListRequest(
+            self.session,
+            params={
+                "application_uuid": application_uuid,
+                "slug": "",
+            },
+        )()["results"]
 
         # Map environments uuids with their corresponding slugs.
         envs_uuid_slug_mapping = {
-            project_data[key]["uuid"]: project_data[key]["stage"]
-            for key in project_data.keys()
-            if key.endswith("_status")
+            env["uuid"]: env["slug"] for env in environment_response
         }
 
         # The environment variables V3 endpoint requires either
         # an application or an environment or both to be present
         # as query parameters. Multiple environments can be provided as well.
         if all_environments:
-            params = {"application": project_data["uuid"]}
+            params = {"application": application_uuid}
         else:
-            environment_key = f"{environment}_status"
-            if environment_key in project_data.keys():
-                params = {"environment": project_data[environment_key]["uuid"]}
-            else:
-                click.secho(
-                    "Environment with the name '{}' does not exist.".format(
-                        environment
-                    ),
-                    fg="red",
-                    err=True,
-                )
-                sys.exit(1)
+            params = {}
+            env_found = False
+            for retrieved_env in environment_response:
+                if retrieved_env["slug"] == environment:
+                    params.update({"environment": retrieved_env["uuid"]})
+                    env_found = True
+                    break
+            if not env_found:
+                raise EnvironmentDoesNotExist(environment)
 
         if variable_name:
             params.update({"name": variable_name})
@@ -905,11 +934,7 @@ class CloudClient(object):
                     if all_environments
                     else f"No environment variables found for {environment!r} environment."
                 )
-            click.secho(
-                no_environment_variables_found_msg,
-                fg="yellow",
-            )
-            sys.exit(0)
+            raise DivioWarning(no_environment_variables_found_msg)
 
         return results_grouped_by_environment, messages
 
@@ -951,24 +976,196 @@ class CloudClient(object):
             )
             sys.exit(1)
 
-    def get_repository_dsn(self, website_id):
+    def get_repository_dsn(self, application_uuid):
         """
-        Try to return the DSN of a remote repository for a given website_id.
+        Try to return the DSN of a remote repository for a given application_uuid.
         """
+        response = self.get_project(application_uuid)
+        repository_uuid = response.get("repository")
+
+        # if the repository uuid is None it means that the repository is
+        # hosted by divio and its dsn is well known
+        if repository_uuid is None:
+            return f"git@git.{get_divio_zone()}:{response['slug']}.git"
+
         try:
             request = api_requests.RepositoryRequest(
-                self.session, url_kwargs={"website_id": website_id}
+                self.session, url_kwargs={"repository_uuid": repository_uuid}
             )
             response = request()
-            return response["results"][0]["backend_config"]["repository_dsn"]
+            return response["dsn"]
 
         except IndexError:
             # happens when there is no remote repository configured
             return None
 
-        raise click.ClickException(
-            "Could not get remote repository information."
-        )
+        raise DivioException("Could not get remote repository information.")
+
+    def get_service_instance(
+        self, instance_type, environment_uuid, prefix=None, limit_results=10
+    ):
+        if instance_type not in ["STORAGE", "DATABASE"]:
+            raise ValueError(f"invalid type: {instance_type}")
+
+        prefix = prefix or "DEFAULT"
+        try:
+            results, _ = json_response_request_paginate(
+                api_requests.ListServiceInstancesRequest,
+                self.session,
+                url_kwargs={"environment_uuid": environment_uuid},
+                limit_results=limit_results,
+            )
+
+            matches = [
+                r
+                for r in (results or {})
+                if r["type"] == instance_type and r["prefix"] == prefix
+            ]
+
+            if len(matches) == 0:
+                raise DivioException(
+                    f"No service of type {instance_type} with prefix {prefix} "
+                    f"found for environment {environment_uuid}."
+                )
+
+            if len(matches) == 1:
+                return matches[0]
+
+            raise DivioException(
+                f"Multiple services instances found for type {instance_type} (prefix={prefix})",
+            )
+
+        except json.decoder.JSONDecodeError:
+            raise DivioException(
+                "Could not fetch service instances.",
+            )
+
+    def create_backup(
+        self,
+        environment_uuid: str,
+        service_instance_uuid: str,
+        notes: str | None = None,
+        delete_at: datetime | None = None,
+    ):
+        data = {
+            "environment": environment_uuid,
+            "services": [service_instance_uuid],
+            "trigger": "MANUAL",
+        }
+
+        if delete_at is not None:
+            data["scheduled_for_deletion_at"] = delete_at.isoformat().replace(
+                "+00:00", "Z"  # match django rest framework's formatting
+            )
+        if notes is not None:
+            data["notes"] = notes
+
+        return api_requests.CreateBackupRequest(self.session, data=data)()
+
+    def get_backup(self, backup_uuid):
+        return api_requests.GetBackupRequest(
+            self.session,
+            url_kwargs={"backup_uuid": backup_uuid},
+        )()
+
+    def get_service_instance_backup(self, backup_si_uuid):
+        return api_requests.GetServiceInstanceBackupRequest(
+            self.session,
+            url_kwargs={"backup_si_uuid": backup_si_uuid},
+        )()
+
+    def create_backup_download(
+        self, backup_uuid, backup_service_instance_uuid
+    ):
+        response = api_requests.CreateBackupDownloadRequest(
+            self.session,
+            data={
+                "backup": backup_uuid,
+                "service_instance_backups": [backup_service_instance_uuid],
+                "trigger": "MANUAL",
+            },
+        )()
+
+        backup_download_uuid = response.get("uuid")
+        if not backup_download_uuid:
+            raise DivioException("Could not create backup download.")
+
+        try:
+            results, _ = json_response_request_paginate(
+                api_requests.ListBackupDownloadServiceInstancesRequest,
+                self.session,
+                params={"backup": backup_download_uuid},
+                limit_results=10,
+            )
+            if results:
+                backup_download_service_instance = results[0]
+                return (
+                    backup_download_uuid,
+                    backup_download_service_instance["uuid"],
+                )
+            else:
+                raise DivioException(
+                    "Could not find service instance backup download "
+                    f"for backup download {backup_download_uuid}."
+                )
+
+        except json.decoder.JSONDecodeError:
+            raise DivioException(
+                "Error while fetching service instance backups."
+            )
+
+    def get_backup_download_service_instance(
+        self, backup_download_service_instance_uuid
+    ):
+        return api_requests.GetBackupDownloadServiceInstanceRequest(
+            self.session,
+            url_kwargs={
+                "backup_download_si_uuid": backup_download_service_instance_uuid
+            },
+        )()
+
+    def backup_upload_request(
+        self,
+        environment: str,
+        service_intance_uuids: list[str],
+        notes: str | None = None,
+        delete_at: datetime | None = None,
+    ):
+        data = {
+            "environment": environment,
+            "services": service_intance_uuids,
+        }
+
+        if delete_at is not None:
+            data["scheduled_for_deletion_at"] = delete_at.isoformat()
+        if notes is not None:
+            data["notes"] = notes
+
+        return api_requests.CreateBackupUploadRequest(
+            self.session, data=data
+        )()
+
+    def finish_backup_upload(self, finish_url):
+        return requests.post(url=finish_url)
+
+    def create_backup_restore(self, backup_uuid: str, si_backup_uuid: str):
+        return api_requests.CreateBackupRestoreRequest(
+            self.session,
+            data={
+                "backup": backup_uuid,
+                "service_instance_restores": [
+                    {"service_instance_backup": si_backup_uuid},
+                ],
+            },
+        )()
+
+    def get_backup_restore(self, backup_restore_uuid: str):
+        return api_requests.GetBackupRestoreRequest(
+            self.session,
+            url_kwargs={
+                "backup_restore_uuid": backup_restore_uuid,
+            },
+        )()
 
     def validate_application_field(self, field, value):
         try:
@@ -1021,17 +1218,25 @@ class WritableNetRC(netrc):
         kwargs["file"] = netrc_path
         try:
             netrc.__init__(self, *args, **kwargs)
-        except IOError:
-            raise click.ClickException(
-                "Please make sure your netrc config file ('{}') can be read "
-                "and written by the current user.".format(netrc_path)
+        except OSError:
+            raise DivioException(
+                f"Please make sure your netrc config file ('{netrc_path}') "
+                "can be read and written by the current user."
             )
 
+    @classmethod
     def get_netrc_path(self):
         """
         netrc uses os.environ['HOME'] for path detection which is
-        not defined on Windows. Detecting the correct path ourselves
+        not defined on Windows. Detecting the correct path ourselves.
+
+        This method also checks if the environment variable "NETRC_PATH" is set
+        and returns it if so.
         """
+
+        if "NETRC_PATH" in os.environ:
+            return os.environ["NETRC_PATH"]
+
         home = os.path.expanduser("~")
         return os.path.join(home, ".netrc")
 
@@ -1049,13 +1254,13 @@ class WritableNetRC(netrc):
         out = []
         for machine, data in self.hosts.items():
             login, account, password = data
-            out.append("machine {}".format(machine))
+            out.append(f"machine {machine}")
             if login:
-                out.append("\tlogin {}".format(login))
+                out.append(f"\tlogin {login}")
             if account:
-                out.append("\taccount {}".format(account))
+                out.append(f"\taccount {account}")
             if password:
-                out.append("\tpassword {}".format(password))
+                out.append(f"\tpassword {password}")
 
         with open(path, "w") as f:
             f.write(os.linesep.join(out))

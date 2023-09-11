@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
 import errno
 import os
 import subprocess
-import sys
 from collections import OrderedDict
 
 import click
+
+from divio_cli.exceptions import DivioException
 
 from . import cloud, utils
 from .settings import DOCKER_TEST_IMAGE
@@ -15,7 +15,7 @@ ERROR = 1
 WARNING = 0
 
 
-class Check(object):
+class Check:
     name = None
     command = None
     error_level = ERROR
@@ -26,15 +26,13 @@ class Check(object):
             utils.check_call(self.command, catch=False, silent=True)
         except OSError as exc:
             if exc.errno == errno.ENOENT:
-                errors.append(
-                    "Executable {} not found".format(self.command[0])
-                )
+                errors.append(f"Executable {self.command[0]} not found")
             else:
                 msg = "Command '{}' returned non-zero exit status {}".format(
                     self.fmt_command(), exc.errno
                 )
                 if hasattr(exc, "strerror"):
-                    msg += ": {}".format(exc.strerror)
+                    msg += f": {exc.strerror}"
 
                 if msg.endswith("."):
                     msg += "."
@@ -67,6 +65,7 @@ class LoginCheck(Check):
         success, msg = client.check_login_status()
         if not success:
             return [msg]
+        return None
 
 
 class GitCheck(Check):
@@ -106,7 +105,7 @@ class DockerComposeCheck(Check):
                 self.fmt_command(), exc.errno
             )
             if hasattr(exc, "strerror"):
-                msg += ": {}".format(exc.strerror)
+                msg += f": {exc.strerror}"
 
             if msg.endswith("."):
                 msg += "."
@@ -124,7 +123,7 @@ def get_engine_down_error():
 
 class DockerEngineBaseCheck(Check):
     def fmt_exception(self, exc):
-        errors = super(DockerEngineBaseCheck, self).fmt_exception(exc)
+        errors = super().fmt_exception(exc)
         if exc.returncode == 125:
             errors.append(get_engine_down_error())
         return errors
@@ -135,10 +134,10 @@ class DockerEngineCheck(DockerEngineBaseCheck):
     command = ("docker", "run", "--rm", DOCKER_TEST_IMAGE, "true")
 
     def fmt_exception(self, exc):
-        errors = super(DockerEngineCheck, self).fmt_exception(exc)
+        errors = super().fmt_exception(exc)
         if not utils.is_windows():
             default_host_path = "/var/run/docker.sock"
-            default_host_url = "unix://{}".format(default_host_path)
+            default_host_url = f"unix://{default_host_path}"
             current_host_url = os.environ.get("DOCKER_HOST")
             current_host_is_default = current_host_url == default_host_url
 
@@ -187,7 +186,7 @@ class DockerEnginePingCheck(DockerEngineBaseCheck):
     )
 
     def fmt_exception(self, exc):
-        errors = super(DockerEnginePingCheck, self).fmt_exception(exc)
+        errors = super().fmt_exception(exc)
         errors.append(
             "The 'ping' command inside docker is not able to ping "
             "8.8.8.8. This might be due to missing internet connectivity, "
@@ -209,7 +208,7 @@ class DockerEngineDNSCheck(DockerEngineBaseCheck):
     )
 
     def fmt_exception(self, exc):
-        errors = super(DockerEngineDNSCheck, self).fmt_exception(exc)
+        errors = super().fmt_exception(exc)
         errors.append(
             "The DNS resolution inside docker is not able to resolve "
             "control.divio.com. This might be due to missing internet "
@@ -242,10 +241,7 @@ def check_requirements(config=None, checks=None):
             continue
         check = ALL_CHECKS.get(check_key)
         if not check:
-            click.secho(
-                "Invalid check {}".format(check_key), fg="red", err=True
-            )
-            sys.exit(1)
+            raise DivioException(f"Invalid check {check_key}")
         errors = check().run_check()
         yield check_key, check.name, errors
 
@@ -280,10 +276,10 @@ def check_requirements_human(config, checks=None, silent=False):
 
     if not silent:
         click.secho("\nThe following errors occurred:", fg="red", err=True)
-        for check, check_name, msgs in errors:
-            click.secho("\n {}:".format(check_name))
+        for _check, check_name, msgs in errors:
+            click.secho(f"\n {check_name}:")
             for msg in msgs:
-                click.secho(" > {}".format(msg))
+                click.secho(f" > {msg}")
 
     max_error_level = max([ALL_CHECKS[e[0]].error_level for e in errors])
     return True if max_error_level == 0 else False
