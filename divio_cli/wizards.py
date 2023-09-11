@@ -406,7 +406,11 @@ class CreateAppWizard:
         return template, template_release_commands
 
     def get_release_commands(self, template_release_commands):
-        release_commands = template_release_commands.copy() or []
+        release_commands = (
+            template_release_commands.copy()
+            if template_release_commands
+            else []
+        )
 
         if not self.interactive:
             return release_commands
