@@ -603,11 +603,9 @@ def application_update(obj, strict):
     help="Choose whether to display content in json format.",
 )
 @click.pass_obj
-@allow_remote_id_override
-def deployments(obj, remote_id, pager, as_json):
+def deployments(obj, pager, as_json):
     """Retrieve deployments."""
 
-    obj.remote_id = remote_id
     obj.pager = pager
     obj.as_json = as_json
 
@@ -658,7 +656,6 @@ def list_deployments(
     Retrieve deployments from an environment or
     deployments across all environments of an application.
     """
-
     results, messages = obj.client.get_deployments(
         application_uuid=remote_id,
         environment=environment,
@@ -775,11 +772,9 @@ def get_deployment_environment_variable(obj, deployment_uuid, variable_name):
     help="Choose whether to display content in a simple txt-like format (names and values only).",
 )
 @click.pass_obj
-@allow_remote_id_override
-def environment_variables(obj, remote_id, pager, as_json, as_txt):
+def environment_variables(obj, pager, as_json, as_txt):
     """Retrieve environment variables."""
 
-    obj.remote_id = remote_id
     obj.pager = pager
     obj.as_json = as_json
     obj.as_txt = as_txt
@@ -894,8 +889,9 @@ def list_environment_variables(
 )
 @click.argument("variable_name")
 @click.pass_obj
+@allow_remote_id_override
 def get_environment_variable(
-    obj, variable_name, environment, all_environments, limit_results
+    obj, remote_id, variable_name, environment, all_environments, limit_results
 ):
     """
     Retrieve an environment variable (by name) from an environment
@@ -903,7 +899,7 @@ def get_environment_variable(
     """
 
     results, messages = obj.client.get_environment_variables(
-        application_uuid=obj.remote_id,
+        application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
