@@ -361,7 +361,7 @@ class CloudClient:
         response = api_requests.EnvironmentsListRequest(
             self.session,
             params={
-                "application_uuid": application_uuid,
+                "application": application_uuid,
                 "slug": environment,
             },
         )()
@@ -708,8 +708,7 @@ class CloudClient:
         environment_response = api_requests.EnvironmentsListRequest(
             self.session,
             params={
-                "application_uuid": application_uuid,
-                "slug": "",
+                "application": application_uuid,
             },
         )()["results"]
 
@@ -788,8 +787,7 @@ class CloudClient:
         environment_response = api_requests.EnvironmentsListRequest(
             self.session,
             params={
-                "application_uuid": application_uuid,
-                "slug": "",
+                "application": application_uuid,
             },
         )()["results"]
 
@@ -828,8 +826,7 @@ class CloudClient:
         environment_response = api_requests.EnvironmentsListRequest(
             self.session,
             params={
-                "application_uuid": application_uuid,
-                "slug": "",
+                "application": application_uuid,
             },
         )()["results"]
 
@@ -876,8 +873,7 @@ class CloudClient:
         environment_response = api_requests.EnvironmentsListRequest(
             self.session,
             params={
-                "application_uuid": application_uuid,
-                "slug": "",
+                "application": application_uuid,
             },
         )()["results"]
 
