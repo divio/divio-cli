@@ -1,4 +1,4 @@
-import itertools
+import functools
 import json
 import os
 import sys
@@ -11,11 +11,16 @@ from sentry_sdk.integrations.atexit import AtexitIntegration
 
 import divio_cli
 
-from . import exceptions, localdev, messages, settings
+from . import localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_endpoint
 from .excepthook import DivioExcepthookIntegration, divio_shutdown
-from .localdev.utils import allow_remote_id_override
+from .exceptions import (
+    DivioException,
+    EnvironmentDoesNotExist,
+    ExitCode,
+)
+from .localdev.utils import allow_remote_id_override, get_project_settings
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
@@ -35,9 +40,9 @@ from .validators.boilerplate import validate_boilerplate
 
 
 try:
-    import ipdb as pdb
+    import ipdb as pdb  # noqa: T100
 except ImportError:
-    import pdb
+    import pdb  # noqa: T100
 
 # Display the default value for options globally.
 click.option = partial(click.option, show_default=True)
@@ -71,6 +76,9 @@ click.option = partial(click.option, show_default=True)
 def cli(ctx, debug, zone, sudo):
     if sudo:
         click.secho("Running as sudo", fg="yellow")
+
+    if zone:
+        os.environ["DIVIO_ZONE"] = zone
 
     ctx.obj = Map()
     ctx.obj.client = CloudClient(
@@ -137,7 +145,7 @@ def cli(ctx, debug, zone, sudo):
 def login_token_helper(ctx, value):
     if not value:
         url = ctx.obj.client.get_access_token_url()
-        click.secho("Your browser has been opened to visit: {}".format(url))
+        click.secho(f"Your browser has been opened to visit: {url}")
         launch_url(url)
         value = click.prompt(
             "Please copy the access token and paste it here. (your input is not displayed)",
@@ -174,7 +182,65 @@ def login(ctx, token, check):
         msg = ctx.obj.client.login(token)
 
     click.echo(msg)
-    sys.exit(0 if success else 1)
+    sys.exit(ExitCode.SUCCESS if success else ExitCode.GENERIC_ERROR)
+
+
+@cli.command()
+@click.option(
+    "--non-interactive",
+    is_flag=True,
+    default=False,
+    help="Skip confirmation",
+)
+@click.pass_context
+def logout(ctx, non_interactive):
+    """Log off from Divio Control Panel"""
+    sys.exit(ctx.obj["client"].logout(interactive=not non_interactive))
+
+
+@cli.group(name="services")
+def services():
+    """Pull db or files from the Divio cloud environment."""
+
+
+@services.command(name="list")
+@click.option(
+    "-r",
+    "--region",
+    required=True,
+)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
+@click.pass_obj
+def list_services(obj, region, as_json):
+    """List all available services for a regions."""
+    api_response = obj.client.get_services(region_uuid=region)
+
+    if as_json:
+        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+    if not api_response["results"]:
+        click.echo("No services found.")
+        return
+
+    headers = ["UUID", "Name", "Type", "Description"]
+    data = [
+        [
+            entry["uuid"],
+            entry["name"],
+            entry["type"],
+            entry["description"],
+        ]
+        for entry in api_response["results"]
+    ]
+    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
+
+    echo_large_content(output, ctx=obj)
 
 
 @cli.group(cls=ClickAliasedGroup)
@@ -236,7 +302,13 @@ def app():
     is_flag=True,
     help="Choose whether to display content via pager.",
 )
-@click.option("--json", "as_json", is_flag=True, default=False)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
 @click.pass_obj
 def application_list(obj, grouped, pager, as_json):
     """List all your applications."""
@@ -247,36 +319,18 @@ def application_list(obj, grouped, pager, as_json):
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
         return
 
-    header = ("ID", "Slug", "Name", "Organisation")
+    header = ["ID", "Slug", "Name", "Organisation"]
 
-    # get all users + organisations
-    groups = {
-        "users": {
-            account["id"]: {"name": "Personal", "applications": []}
-            for account in api_response["accounts"]
-            if account["type"] == "user"
-        },
-        "organisations": {
-            account["id"]: {"name": account["name"], "applications": []}
-            for account in api_response["accounts"]
-            if account["type"] == "organisation"
-        },
-    }
-
-    # sort websites into groups
-    for website in api_response["websites"]:
-        organisation_id = website["organisation_id"]
-        if organisation_id:
-            owner = groups["organisations"][website["organisation_id"]]
-        else:
-            owner = groups["users"][website["owner_id"]]
-        owner["applications"].append(
-            (str(website["id"]), website["domain"], website["name"])
+    data = {}
+    for application in api_response["results"]:
+        org_name = obj.client.get_organisation(application["organisation"])[
+            "name"
+        ]
+        if not data.get(org_name):
+            data[org_name] = []
+        data[org_name].append(
+            (application["uuid"], application["slug"], application["name"])
         )
-
-    accounts = itertools.chain(
-        groups["users"].items(), groups["organisations"].items()
-    )
 
     def sort_applications(items):
         return sorted(items, key=lambda x: x[0].lower())
@@ -284,25 +338,23 @@ def application_list(obj, grouped, pager, as_json):
     # print via pager
     if grouped:
         output_items = []
-        for group, data in accounts:
-            applications = data["applications"]
-            if applications:
-                output_items.append(
-                    "{title}\n{line}\n\n{table}\n\n".format(
-                        title=data["name"],
-                        line="=" * len(data["name"]),
-                        table=table(
-                            sort_applications(applications), header[:3]
-                        ),
-                    )
+        for organisation in data:
+            output_items.append(
+                "{title}\n{line}\n\n{table}\n\n".format(
+                    title=organisation,
+                    line="=" * len(organisation),
+                    table=table(
+                        sort_applications(data[organisation]), header[:3]
+                    ),
                 )
+            )
         output = os.linesep.join(output_items).rstrip(os.linesep)
     else:
-        # add account name to all applications
+        # add org name to all applications
         applications = [
-            each + (data["name"],)
-            for group, data in accounts
-            for each in data["applications"]
+            (*each, organisation)
+            for organisation in data
+            for each in data[organisation]
         ]
         output = table(sort_applications(applications), header)
 
@@ -370,7 +422,12 @@ def configure(obj):
 @allow_remote_id_override
 def application_dashboard(obj, remote_id):
     """Open the application dashboard on the Divio Control Panel."""
-    launch_url(get_cp_url(client=obj.client, application_id=remote_id))
+    zone = get_project_settings(silent=True)["zone"]
+    launch_url(
+        get_cp_url(
+            client=obj.client, application_id=remote_id, zone=obj.zone or zone
+        )
+    )
 
 
 @app.command(name="up", aliases=["start"])
@@ -487,14 +544,17 @@ def deployments(obj, remote_id, pager, as_json):
     help="The maximum number of results that can be retrieved.",
 )
 @click.pass_obj
-def list_deployments(obj, environment, all_environments, limit_results):
+@allow_remote_id_override
+def list_deployments(
+    obj, remote_id, environment, all_environments, limit_results
+):
     """
     Retrieve deployments from an environment or
     deployments across all environments of an application.
     """
 
     results, messages = obj.client.list_deployments(
-        website_id=obj.remote_id,
+        application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
@@ -540,7 +600,7 @@ def get_deployment(obj, deployment_uuid):
             deployment["environment_variables"]
         )
         # Flipped table.
-        columns = obj.table_format_columns + ["environment_variables"]
+        columns = [*obj.table_format_columns, "environment_variables"]
         rows = [[key, deployment[key] or ""] for key in columns]
         content_table = table(
             rows, headers=(), tablefmt="grid", maxcolwidths=50
@@ -650,8 +710,9 @@ def environment_variables(obj, remote_id, pager, as_json, as_txt):
     help="The maximum number of results that can be retrieved.",
 )
 @click.pass_obj
+@allow_remote_id_override
 def list_environment_variables(
-    obj, environment, all_environments, limit_results
+    obj, remote_id, environment, all_environments, limit_results
 ):
     """
     Retrieve environment variables from an environment
@@ -659,7 +720,7 @@ def list_environment_variables(
     """
 
     results, messages = obj.client.list_environment_variables(
-        website_id=obj.remote_id,
+        application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
@@ -736,7 +797,7 @@ def get_environment_variable(
     """
 
     results, messages = obj.client.list_environment_variables(
-        website_id=obj.remote_id,
+        application_uuid=obj.remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,
@@ -821,16 +882,111 @@ def application_setup(obj, slug, environment, path, overwrite, skip_doctor):
     if not skip_doctor and not check_requirements_human(
         config=obj.client.config, silent=True
     ):
-        click.secho(
+        raise DivioException(
             "There was a problem while checking your system. Please run "
-            "'divio doctor'.",
-            fg="red",
-            err=True,
+            "'divio doctor'."
         )
-        sys.exit(1)
 
     localdev.create_workspace(
         obj.client, slug, environment, path, overwrite, obj.zone
+    )
+
+
+@app.group(name="service-instances")
+def service_instances():
+    """Commands for service instances like a database or storage."""
+
+
+@service_instances.command(name="list")
+@click.argument("environment", default="test")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
+@click.pass_obj
+@allow_remote_id_override
+def list_service_instances(obj, remote_id, environment, as_json):
+    """List the services instances of an application"""
+    try:
+        environment_uuid = obj.client.get_environment(remote_id, environment)[
+            "uuid"
+        ]
+
+    except KeyError:
+        raise EnvironmentDoesNotExist(environment)
+
+    api_response = obj.client.get_service_instances(
+        environment_uuid=environment_uuid,
+    )
+
+    if as_json:
+        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+    if not api_response["results"]:
+        click.echo("No service instances found.")
+        return
+
+    headers = [
+        "UUID",
+        "Prefix",
+        "Type",
+        "Service  Status",
+        "Region",
+        "Service",
+    ]
+    data = [
+        [
+            entry["uuid"],
+            entry["prefix"],
+            entry["type"],
+            entry["service_status"],
+            entry["region"],
+            entry["service"],
+        ]
+        for entry in api_response["results"]
+    ]
+    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
+
+    echo_large_content(output, ctx=obj)
+
+
+@service_instances.command(name="add")
+@click.argument("environment", default="test")
+@click.option(
+    "-p",
+    "--prefix",
+    required=True,
+)
+@click.option(
+    "-r",
+    "--region",
+    required=True,
+)
+@click.option(
+    "-s",
+    "--service",
+    required=True,
+)
+@click.pass_obj
+@allow_remote_id_override
+def add_service_instances(
+    obj, remote_id, environment, prefix, region, service
+):
+    """Adding a new service instance like a database to an application."""
+    project_data = obj.client.get_project(remote_id)
+    try:
+        status = project_data[f"{environment}_status"]
+    except KeyError:
+        raise EnvironmentDoesNotExist(environment)
+
+    obj.client.add_service_instances(
+        environment_uuid=status["uuid"],
+        prefix=prefix,
+        region_uuid=region,
+        service_uuid=service,
     )
 
 
@@ -839,18 +995,39 @@ def application_pull():
     """Pull db or files from the Divio cloud environment."""
 
 
+def common_pull_options(f):
+    @click.option(
+        "--keep-tempfile",
+        is_flag=True,
+        default=False,
+        help="Keep the temporary file with the data.",
+    )
+    @click.option(
+        "--service-instance-backup",
+        "backup_si_uuid",
+        type=str,
+        default=None,
+        help="The UUID of a service instance backup to restore.",
+    )
+    @click.argument("environment", default="test")
+    @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
+    @click.pass_obj
+    @allow_remote_id_override
+    @functools.wraps(f)
+    def wrapper_common_options(*args, **kwargs):
+        if "prefix" in kwargs:
+            # prefixes are always in capital letters
+            kwargs["prefix"] = kwargs["prefix"].upper()
+        return f(*args, **kwargs)
+
+    return wrapper_common_options
+
+
 @application_pull.command(name="db")
-@click.option(
-    "--keep-tempfile",
-    is_flag=True,
-    default=False,
-    help="Keep the temporary file with the data.",
-)
-@click.argument("environment", default="test")
-@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
-@click.pass_obj
-@allow_remote_id_override
-def pull_db(obj, remote_id, environment, prefix, keep_tempfile):
+@common_pull_options
+def pull_db(
+    obj, remote_id, environment, prefix, keep_tempfile, backup_si_uuid
+):
     """
     Pull database the Divio cloud environment.
     """
@@ -867,20 +1044,26 @@ def pull_db(obj, remote_id, environment, prefix, keep_tempfile):
         remote_id=remote_id,
         db_type=db_type,
         dump_path=dump_path,
+        backup_si_uuid=backup_si_uuid,
         keep_tempfile=keep_tempfile,
     )()
 
 
 @application_pull.command(name="media")
-@click.argument("environment", default="test")
-@click.pass_obj
-@allow_remote_id_override
-def pull_media(obj, remote_id, environment):
+@common_pull_options
+def pull_media(
+    obj, remote_id, environment, prefix, keep_tempfile, backup_si_uuid
+):
     """
     Pull media files from the Divio cloud environment.
     """
     localdev.pull_media(
-        obj.client, environment=environment, remote_id=remote_id
+        obj.client,
+        environment=environment,
+        prefix=prefix,
+        remote_id=remote_id,
+        keep_tempfile=keep_tempfile,
+        backup_si_uuid=backup_si_uuid,
     )
 
 
@@ -889,8 +1072,35 @@ def application_push():
     """Push db or media files to the Divio cloud environment."""
 
 
+def common_push_options(f):
+    @click.argument("environment", default="test")
+    @click.option(
+        "--noinput",
+        is_flag=True,
+        default=False,
+        help="Don't ask for confirmation.",
+    )
+    @click.option(
+        "--keep-tempfile",
+        is_flag=True,
+        default=False,
+        help="Keep the temporary file with the data.",
+    )
+    @click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
+    @click.pass_obj
+    @allow_remote_id_override
+    @functools.wraps(f)
+    def wrapper_common_options(*args, **kwargs):
+        if "prefix" in kwargs:
+            # prefixes are always in capital letters
+            kwargs["prefix"] = kwargs["prefix"].upper()
+        return f(*args, **kwargs)
+
+    return wrapper_common_options
+
+
 @application_push.command(name="db")
-@click.argument("environment", default="test")
+@common_push_options
 @click.option(
     "-d",
     "--dumpfile",
@@ -898,69 +1108,35 @@ def application_push():
     type=click.Path(exists=True),
     help="Specify a dumped database file to upload.",
 )
-@click.option(
-    "--noinput",
-    is_flag=True,
-    default=False,
-    help="Don't ask for confirmation.",
-)
-@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
-@click.pass_obj
-@allow_remote_id_override
-def push_db(obj, remote_id, prefix, environment, dumpfile, noinput):
+def push_db(
+    obj, remote_id, prefix, environment, dumpfile, noinput, keep_tempfile
+):
     """
-    Push database to the Divio cloud environment..
+    Push database to the Divio cloud environment.
     """
-    from .localdev import utils
+    if not noinput:
+        click.secho(
+            messages.PUSH_DB_WARNING.format(environment=environment),
+            fg="red",
+        )
+        if not click.confirm("\nAre you sure you want to continue?"):
+            return
 
-    application_home = utils.get_application_home()
-    db_type = utils.get_db_type(prefix, path=application_home)
-    if not dumpfile:
-        if not noinput:
-            click.secho(
-                messages.PUSH_DB_WARNING.format(environment=environment),
-                fg="red",
-            )
-            if not click.confirm("\nAre you sure you want to continue?"):
-                return
-        localdev.push_db(
-            client=obj.client,
-            environment=environment,
-            remote_id=remote_id,
-            prefix=prefix,
-            db_type=db_type,
-        )
-    else:
-        if not noinput:
-            click.secho(
-                messages.PUSH_DB_WARNING.format(environment=environment),
-                fg="red",
-            )
-            if not click.confirm("\nAre you sure you want to continue?"):
-                return
-        localdev.push_local_db(
-            obj.client,
-            environment=environment,
-            dump_filename=dumpfile,
-            website_id=remote_id,
-            prefix=prefix,
-        )
+    localdev.push_db(
+        client=obj.client,
+        environment=environment,
+        remote_id=remote_id,
+        prefix=prefix,
+        local_file=dumpfile,
+        keep_tempfile=keep_tempfile,
+    )
 
 
 @application_push.command(name="media")
-@click.argument("environment", default="test")
-@click.option(
-    "--noinput",
-    is_flag=True,
-    default=False,
-    help="Don't ask for confirmation.",
-)
-@click.argument("prefix", default=localdev.DEFAULT_SERVICE_PREFIX)
-@click.pass_obj
-@allow_remote_id_override
-def push_media(obj, remote_id, prefix, environment, noinput):
+@common_push_options
+def push_media(obj, remote_id, prefix, environment, noinput, keep_tempfile):
     """
-    Push database to the Divio cloud environment..
+    Push media storage to the Divio cloud environment.
     """
 
     if not noinput:
@@ -970,8 +1146,13 @@ def push_media(obj, remote_id, prefix, environment, noinput):
         )
         if not click.confirm("\nAre you sure you want to continue?"):
             return
+
     localdev.push_media(
-        obj.client, environment=environment, remote_id=remote_id, prefix=prefix
+        client=obj.client,
+        environment=environment,
+        remote_id=remote_id,
+        prefix=prefix,
+        keep_tempfile=keep_tempfile,
     )
 
 
@@ -1042,10 +1223,7 @@ def addon(obj, path):
 @click.pass_context
 def addon_validate(ctx):
     """Validate addon configuration."""
-    try:
-        validate_addon(ctx.parent.params["path"])
-    except exceptions.DivioException as exc:
-        raise click.ClickException(*exc.args)
+    validate_addon(ctx.parent.params["path"])
     click.echo("Addon is valid!")
 
 
@@ -1053,11 +1231,7 @@ def addon_validate(ctx):
 @click.pass_context
 def addon_upload(ctx):
     """Upload addon to the Divio Control Panel."""
-    try:
-        ret = upload_addon(ctx.obj.client, ctx.parent.params["path"])
-    except exceptions.DivioException as exc:
-        raise click.ClickException(*exc.args)
-    click.echo(ret)
+    click.echo(upload_addon(ctx.obj.client, ctx.parent.params["path"]))
 
 
 @addon.command(name="register")
@@ -1092,10 +1266,7 @@ def boilerplate(obj, path):
 @click.pass_context
 def boilerplate_validate(ctx):
     """Validate boilerplate configuration."""
-    try:
-        validate_boilerplate(ctx.parent.params["path"])
-    except exceptions.DivioException as exc:
-        raise click.ClickException(*exc.args)
+    validate_boilerplate(ctx.parent.params["path"])
     click.echo("Boilerplate is valid.")
 
 
@@ -1109,13 +1280,9 @@ def boilerplate_validate(ctx):
 @click.pass_context
 def boilerplate_upload(ctx, noinput):
     """Upload boilerplate to the Divio Control Panel."""
-    try:
-        ret = upload_boilerplate(
-            ctx.obj.client, ctx.parent.params["path"], noinput
-        )
-    except exceptions.DivioException as exc:
-        raise click.ClickException(*exc.args)
-    click.echo(ret)
+    click.echo(
+        upload_boilerplate(ctx.obj.client, ctx.parent.params["path"], noinput)
+    )
 
 
 @cli.command()
@@ -1177,10 +1344,12 @@ def version(obj, skip_check, machine_readable):
 @click.option("-c", "--checks", default=None)
 @click.pass_obj
 def doctor(obj, machine_readable, checks):
-    """Check that your system meets the development requirements.
+    """
+    Check that your system meets the development requirements.
 
     To disable checks selectively in case of false positives, see
-    https://docs.divio.com/en/latest/reference/divio-cli/#using-skip-doctor-checks"""
+    https://docs.divio.com/en/latest/reference/divio-cli/#using-skip-doctor-checks
+    """
 
     if checks:
         checks = checks.split(",")
@@ -1197,7 +1366,85 @@ def doctor(obj, machine_readable, checks):
     else:
         click.echo("Verifying your system setup...")
         exitcode = (
-            0 if check_requirements_human(obj.client.config, checks) else 1
+            ExitCode.SUCCESS
+            if check_requirements_human(obj.client.config, checks)
+            else ExitCode.GENERIC_ERROR
         )
 
     sys.exit(exitcode)
+
+
+@cli.group(cls=ClickAliasedGroup)
+def organisations():
+    "Manage your organisations"
+
+
+@organisations.command(name="list")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
+@click.pass_obj
+def list_organisations(obj, as_json):
+    "List your organisations"
+    api_response = obj.client.get_organisations()
+    if as_json:
+        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+
+    headers = [
+        "UUID",
+        "Name",
+        "Created at",
+    ]
+    data = [
+        [
+            entry["uuid"],
+            entry["name"],
+            entry["created_at"],
+        ]
+        for entry in api_response["results"]
+    ]
+    output = table(data, headers, tablefmt="grid", maxcolwidths=50)
+
+    echo_large_content(output, ctx=obj)
+
+
+@cli.group(cls=ClickAliasedGroup)
+def regions():
+    """Manage regions"""
+
+
+@regions.command(name="list")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
+@click.pass_obj
+def list_regions(obj, as_json):
+    """List all available regions"""
+    api_response = obj.client.get_regions()
+    if as_json:
+        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        return
+
+    headers = [
+        "UUID",
+        "Name",
+    ]
+    data = [
+        [
+            entry["uuid"],
+            entry["name"],
+        ]
+        for entry in api_response["results"]
+    ]
+    output = table(data, headers, tablefmt="grid", maxcolwidths=50)
+
+    echo_large_content(output, ctx=obj)
