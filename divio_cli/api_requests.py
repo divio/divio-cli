@@ -280,13 +280,6 @@ class UploadBoilerplateRequest(TextResponse, APIRequest):
     method = "POST"
 
 
-class SlugToIDRequest(APIRequest):
-    url = "/api/v1/slug-to-id/{website_slug}/"
-
-    def process(self, response):
-        return response.json().get("id")
-
-
 class SlugToAppUUIDRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/?slug={website_slug}"
 

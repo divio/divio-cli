@@ -516,12 +516,6 @@ class CloudClient:
         )
         return request()
 
-    def get_website_id_for_slug(self, slug):
-        request = api_requests.SlugToIDRequest(
-            self.session, url_kwargs={"website_slug": slug}
-        )
-        return request()
-
     def get_application_uuid_for_slug(self, slug):
         request = api_requests.SlugToAppUUIDRequest(
             self.session, url_kwargs={"website_slug": slug}
