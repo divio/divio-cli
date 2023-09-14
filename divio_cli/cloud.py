@@ -108,9 +108,13 @@ class CloudClient:
         self.session.headers["Authorization"] = f"Token {token}"
 
     def login(self, token):
-        request = api_requests.LoginRequest(
-            self.session, data={"token": token}
+        request = api_requests.GetCurrentUserRequest(
+            self.session,
+            headers={
+                "Authorization": f"Token {token}",
+            },
         )
+
         user_data = request()
 
         self.authenticate(token)
