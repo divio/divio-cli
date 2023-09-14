@@ -66,7 +66,6 @@ class APIRequest:
     method = "GET"
     url = None
     default_headers = {"User-Agent": get_user_agent()}
-    headers = {}
 
     def __init__(
         self,
@@ -76,9 +75,11 @@ class APIRequest:
         params=None,
         data=None,
         files=None,
+        headers=None,
         *args,
         **kwargs,
     ):
+
         self.session = session
         if url:
             self.url = url
@@ -86,6 +87,11 @@ class APIRequest:
         self.params = params or {}
         self.data = data or {}
         self.files = files or {}
+
+        self.headers = {
+            **self.default_headers,
+            **(headers or {}),
+        }
 
     def __call__(self, *args, **kwargs):
 
@@ -115,11 +121,6 @@ class APIRequest:
 
         return self.response_code_error_map
 
-    def get_headers(self):
-        headers = self.default_headers.copy()
-        headers.update(self.headers)
-        return headers
-
     def request(self, *args, **kwargs):
         try:
             response = self.session.request(
@@ -128,7 +129,7 @@ class APIRequest:
                 *args,
                 data=self.data,
                 files=self.files,
-                headers=self.get_headers(),
+                headers=self.headers,
                 params=self.params,
                 **kwargs,
             )
