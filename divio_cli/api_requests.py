@@ -252,6 +252,10 @@ class OrganisationDetailRequest(JsonResponse, APIV3Request):
     url = "/iam/v3/organisations/{organisation_uuid}/"
 
 
+class GetCurrentUserRequest(JsonResponse, APIV3Request):
+    url = "/iam/v3/me/"
+
+
 class DeploymentByApplicationRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/deployments/?application={application_uuid}&environment={environment_uuid}"
 
