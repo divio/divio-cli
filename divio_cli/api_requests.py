@@ -230,12 +230,6 @@ class FileResponse:
         return super().request(*args, **kwargs)
 
 
-class LoginRequest(APIRequest):
-    default_error_message = messages.AUTH_SERVER_ERROR
-    url = "/api/v1/login-with-token/"
-    method = "POST"
-
-
 class ProjectListRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/"
 
