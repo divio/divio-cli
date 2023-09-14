@@ -162,10 +162,10 @@ class CloudClient:
         return 0
 
     def check_login_status(self):
-        request = api_requests.LoginStatusRequest(self.session)
+        request = api_requests.GetCurrentUserRequest(self.session)
         response = request()
 
-        user_id = response.get("user_id")
+        user_id = response.get("uuid")
 
         if user_id:
             return True, messages.LOGIN_CHECK_SUCCESSFUL
