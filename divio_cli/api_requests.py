@@ -235,11 +235,6 @@ class LoginRequest(APIRequest):
     method = "POST"
 
 
-class LoginStatusRequest(APIRequest):
-    url = "/track/"
-    method = "GET"
-
-
 class ProjectListRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/"
 
