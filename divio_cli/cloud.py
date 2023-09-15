@@ -528,6 +528,56 @@ class CloudClient:
         )
         return request()
 
+    def get_application_uuid_for_remote_id(self, remote_id):
+        """
+        Translate remote id to application UUID
+        """
+
+        response = api_requests.LegacyListApplicationsRequest(
+            session=self.session, url_kwargs={"id": remote_id}
+        )()
+
+        if "results" not in response or len(response["results"]) != 1:
+            raise DivioException(
+                f"Unable to retrieve an application UUID for remote id '{remote_id}'"
+            )
+
+        return response["results"][0]["uuid"]
+
+    def get_application_uuid(self, application_uuid_or_remote_id=None):
+        """
+        Takes an application uuid, remote id or no input, and trys to find
+        the applications uuid, either from the given input or the project
+        settings.
+        """
+
+        if application_uuid_or_remote_id:
+
+            # legacy remote-id
+            if application_uuid_or_remote_id.isdigit():
+                return self.get_application_uuid_for_remote_id(
+                    remote_id=application_uuid_or_remote_id,
+                )
+
+        # retrieve application UUID or project id from project settings
+        else:
+            project_settings = get_project_settings(silent=True)
+
+            if "application_uuid" in project_settings:
+                return project_settings["application_uuid"]
+
+            if "id" in project_settings:
+                return self.get_application_uuid(
+                    application_uuid_or_remote_id=str(project_settings["id"]),
+                )
+
+            raise DivioException(
+                f"Unable to retrieve an application UUID from '{application_uuid_or_remote_id}'",
+            )
+
+        # application UUID
+        return application_uuid_or_remote_id
+
     def download_backup(self, website_slug, filename=None, directory=None):
         request = api_requests.DownloadBackupRequest(
             self.session,

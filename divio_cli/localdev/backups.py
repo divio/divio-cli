@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -194,14 +195,12 @@ def _wait_for_backup_to_complete(
     if success != "SUCCESS":
         message += f": success={success}"
         if si_backups:
-            try:
+            with contextlib.suppress(Exception):
                 # Try to get more information about the error
                 si_backup = client.get_service_instance_backup(si_backups[0])
                 errors = si_backup.get("errors", None)
                 if errors:
                     message += f", {errors}"
-            except:
-                pass
         raise DivioException(message)
 
     if not si_backups:

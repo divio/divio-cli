@@ -442,3 +442,11 @@ class ListRegionsRequest(JsonResponse, APIV3Request):
 class ListOrganisationsRequest(JsonResponse, APIV3Request):
     url = "/iam/v3/organisations/"
     method = "GET"
+
+
+# Legacy
+
+
+class LegacyListApplicationsRequest(JsonResponse, APIV3Request):
+    url = "/legacy/v3/applications/?id={id}"
+    method = "GET"
