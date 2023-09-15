@@ -458,11 +458,9 @@ def application_update(obj, strict):
     help="Choose whether to display content in json format.",
 )
 @click.pass_obj
-@allow_remote_id_override
-def deployments(obj, remote_id, pager, as_json):
+def deployments(obj, pager, as_json):
     """Retrieve deployments."""
 
-    obj.remote_id = remote_id
     obj.pager = pager
     obj.as_json = as_json
 
@@ -545,12 +543,13 @@ def list_deployments(
 @deployments.command(name="get")
 @click.argument("deployment_uuid")
 @click.pass_obj
-def get_deployment(obj, deployment_uuid):
+@allow_remote_id_override
+def get_deployment(obj, remote_id, deployment_uuid):
     """
     Retrieve a deployment (by uuid).
     """
 
-    response = obj.client.get_deployment(obj.remote_id, deployment_uuid)
+    response = obj.client.get_deployment(remote_id, deployment_uuid)
     deployment = response["deployment"]
     if obj.as_json:
         json_content = json.dumps([response], indent=2)
@@ -574,13 +573,16 @@ def get_deployment(obj, deployment_uuid):
 @click.argument("deployment_uuid")
 @click.argument("variable_name")
 @click.pass_obj
-def get_deployment_environment_variable(obj, deployment_uuid, variable_name):
+@allow_remote_id_override
+def get_deployment_environment_variable(
+    obj, remote_id, deployment_uuid, variable_name
+):
     """
     Retrieve an environment variable (by name) from a deployment (by uuid).
     """
 
     response = obj.client.get_deployment_with_environment_variables(
-        obj.remote_id,
+        remote_id,
         deployment_uuid,
         variable_name,
     )
@@ -630,11 +632,9 @@ def get_deployment_environment_variable(obj, deployment_uuid, variable_name):
     help="Choose whether to display content in a simple txt-like format (names and values only).",
 )
 @click.pass_obj
-@allow_remote_id_override
-def environment_variables(obj, remote_id, pager, as_json, as_txt):
+def environment_variables(obj, pager, as_json, as_txt):
     """Retrieve environment variables."""
 
-    obj.remote_id = remote_id
     obj.pager = pager
     obj.as_json = as_json
     obj.as_txt = as_txt
@@ -749,8 +749,9 @@ def list_environment_variables(
 )
 @click.argument("variable_name")
 @click.pass_obj
+@allow_remote_id_override
 def get_environment_variable(
-    obj, variable_name, environment, all_environments, limit_results
+    obj, remote_id, variable_name, environment, all_environments, limit_results
 ):
     """
     Retrieve an environment variable (by name) from an environment
@@ -758,7 +759,7 @@ def get_environment_variable(
     """
 
     results, messages = obj.client.list_environment_variables(
-        application_uuid=obj.remote_id,
+        application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
         limit_results=limit_results,

@@ -11,8 +11,8 @@ TEST_PROJECT_UUID = os.getenv("TEST_PROJECT_UUID", None)
 ENVIRONMENT_VARIABLES_COMMANDS = [
     "app environment-variables",
     "app env-vars list",
-    f"app env-vars --remote-id {TEST_PROJECT_ID} list",
-    f"app env-vars --remote-id {TEST_PROJECT_UUID} list",
+    f"app env-vars list --remote-id {TEST_PROJECT_ID}",
+    f"app env-vars list --remote-id {TEST_PROJECT_UUID}",
     "app env-vars list -e live",
     "app env-vars list --all-envs",
     "app env-vars -p list",
