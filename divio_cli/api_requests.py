@@ -287,17 +287,6 @@ class SlugToAppUUIDRequest(JsonResponse, APIV3Request):
         return response.json()["results"][0].get("uuid")
 
 
-class DownloadBackupRequest(FileResponse, APIRequest):
-    url = "/api/v1/workspace/{website_slug}/download/backup/"
-    headers = {"accept": "application/x-tar-gz"}
-
-    def verify(self, response):
-        if response.status_code == requests.codes.not_found:
-            # no backups yet, ignore
-            return None
-        return super().verify(response)
-
-
 class CreateBackupRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/backups/"
     method = "POST"

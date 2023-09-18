@@ -572,15 +572,6 @@ class CloudClient:
         # application UUID
         return application_uuid_or_remote_id
 
-    def download_backup(self, website_slug, filename=None, directory=None):
-        request = api_requests.DownloadBackupRequest(
-            self.session,
-            url_kwargs={"website_slug": website_slug},
-            filename=filename,
-            directory=directory,
-        )
-        return request()
-
     def download_db_request(self, website_id, environment, prefix):
         request = api_requests.DownloadDBRequestRequest(
             self.session,
