@@ -20,7 +20,11 @@ from .exceptions import (
     EnvironmentDoesNotExist,
     ExitCode,
 )
-from .localdev.utils import allow_remote_id_override, get_project_settings
+from .localdev.utils import (
+    allow_remote_id_override,
+    get_project_settings,
+    migrate_project_settings,
+)
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
@@ -126,6 +130,9 @@ def cli(ctx, debug, zone, sudo):
         is_version_command = sys.argv[1] == "version"
     except IndexError:
         is_version_command = False
+
+    # migrate project_settings if needed
+    migrate_project_settings(client=ctx.obj.client)
 
     # skip if 'divio version' is run
     if not is_version_command:

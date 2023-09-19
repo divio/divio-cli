@@ -1,3 +1,4 @@
+import contextlib
 import functools
 import json
 import os
@@ -18,32 +19,85 @@ from ..exceptions import (
 from ..utils import check_call, check_output, is_windows
 
 
-def get_project_settings(path=None, silent=False):
+def get_project_settings_path(path=None, silent=False):
     project_home = get_application_home(path, silent=silent)
+
+    if not project_home and silent:
+        return ""
+
+    aldryn_dot_file_path = os.path.join(project_home, settings.ALDRYN_DOT_FILE)
+    divio_dot_file_path = os.path.join(project_home, settings.DIVIO_DOT_FILE)
+    aldryn_dot_file_exists = os.path.exists(aldryn_dot_file_path)
+    divio_dot_file_exists = os.path.exists(divio_dot_file_path)
+
+    if aldryn_dot_file_exists:
+        path = aldryn_dot_file_path
+
+    if divio_dot_file_exists:
+        path = divio_dot_file_path
+
+    if aldryn_dot_file_exists and divio_dot_file_exists and not silent:
+        click.secho(
+            "Warning: Old ({}) and new ({}) divio configuration files found at the same time. The new one will be used.".format(
+                settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
+            ),
+            fg="yellow",
+        )
+
+    if not path:
+        raise ConfigurationNotFound
+
+    return path
+
+
+def get_project_settings(path=None, silent=False):
+    path = get_project_settings_path(path=path, silent=silent)
+
+    if not path and silent:
+        return {}
+
     try:
-        old_file_found = False
-        if os.path.exists(
-            os.path.join(project_home, settings.ALDRYN_DOT_FILE)
-        ):
-            path = os.path.join(project_home, settings.ALDRYN_DOT_FILE)
-            old_file_found = True
-
-        if os.path.exists(os.path.join(project_home, settings.DIVIO_DOT_FILE)):
-            path = os.path.join(project_home, settings.DIVIO_DOT_FILE)
-            if old_file_found:
-                click.secho(
-                    "Warning: Old ({}) and new ({}) divio configuration files found at the same time. The new one will be used.".format(
-                        settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
-                    ),
-                    fg="yellow",
-                )
-
         with open(path) as fh:
             return json.load(fh)
-    except (TypeError, OSError):
-        raise ConfigurationNotFound
+
     except json.decoder.JSONDecodeError:
         raise DivioException(f"Unexpected value in {path}")
+
+
+def migrate_project_settings(client):
+    try:
+        path = get_project_settings_path(silent=True)
+        settings = get_project_settings(path=path, silent=True)
+
+    except Exception:
+        # no valid settings file was found. nothing to migrate
+
+        return
+
+    settings_updated = False
+
+    # legacy project id
+    if "id" in settings:
+
+        # there is already an application UUID. Nothing to do.
+        if "application_uuid" in settings:
+            settings.pop("id")
+            settings_updated = True
+
+        else:
+
+            # convert legacy project id to application UUID
+            with contextlib.suppress(Exception):
+                settings["application_uuid"] = client.get_application_uuid(
+                    application_uuid_or_remote_id=settings["id"],
+                )
+
+                settings.pop("id")
+                settings_updated = True
+
+    if settings_updated:
+        with open(path, "w") as fh:
+            json.dump(settings, fh, indent=4)
 
 
 def get_application_home(path=None, silent=False):
