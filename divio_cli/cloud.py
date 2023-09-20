@@ -15,6 +15,7 @@ import requests
 from dateutil.parser import isoparse
 
 from divio_cli.exceptions import (
+    ApplicationUUIDNotFoundException,
     ConfigurationNotFound,
     DivioException,
     DivioWarning,
@@ -569,7 +570,7 @@ class CloudClient:
                     application_uuid_or_remote_id=str(project_settings["id"]),
                 )
 
-            raise DivioException(
+            raise ApplicationUUIDNotFoundException(
                 f"Unable to retrieve an application UUID from '{application_uuid_or_remote_id}'",
             )
 

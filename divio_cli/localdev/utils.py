@@ -9,6 +9,7 @@ import yaml
 
 from .. import config, settings
 from ..exceptions import (
+    ApplicationUUIDNotFoundException,
     ConfigurationNotFound,
     DivioException,
     DivioWarning,
@@ -256,9 +257,17 @@ def allow_remote_id_override(func):
 
     @functools.wraps(func)
     def read_remote_id(obj, remote_id, *args, **kwargs):
-        application_uuid = obj.client.get_application_uuid(
-            application_uuid_or_remote_id=remote_id,
-        )
+        try:
+            application_uuid = obj.client.get_application_uuid(
+                application_uuid_or_remote_id=remote_id,
+            )
+
+        except ApplicationUUIDNotFoundException as exception:
+            raise DivioException(
+                "This command requires a Divio Cloud application UUID. Please "
+                "provide one with the --remote-id option or call the "
+                "command from an application directory."
+            ) from exception
 
         return func(obj, application_uuid, *args, **kwargs)
 
