@@ -309,7 +309,9 @@ class DatabaseImportBase:
 
         self.path = kwargs.pop("path", None) or utils.get_application_home()
         self.dump_path = kwargs.pop("dump_path", None) or self.path
-        self.website_id = utils.get_project_settings(self.path)["id"]
+        self.application_uuid = utils.get_project_settings(self.path)[
+            "application_uuid"
+        ]
         self.website_slug = utils.get_project_settings(self.path)["slug"]
         try:
             self.docker_compose = utils.get_docker_compose_cmd(self.path)
@@ -628,15 +630,11 @@ class ImportRemoteDatabase(DatabaseImportBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.environment = kwargs.pop("environment", None)
-        self.remote_id = kwargs.pop("remote_id", None) or self.website_id
+        self.application_uuid = kwargs.pop("application_uuid", None)
         self.keep_tempfile = kwargs.pop("keep_tempfile", None)
         self.backup_si_uuid = kwargs.pop("backup_si_uuid", None)
+        remote_project_name = f"Project {self.application_uuid}"
 
-        remote_project_name = (
-            self.website_slug
-            if self.remote_id == self.website_id
-            else f"Project {self.remote_id}"
-        )
         click.secho(
             " ===> Pulling database from {} {} environment".format(
                 remote_project_name, self.environment
@@ -653,7 +651,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
             with utils.TimedStep("Creating backup"):
                 backup_uuid, self.backup_si_uuid = backups.create_backup(
                     self.client,
-                    self.remote_id,
+                    self.application_uuid,
                     self.environment,
                     backups.Type.DB,
                     self.prefix,
@@ -704,18 +702,16 @@ def pull_media(
     client,
     environment,
     prefix=None,
-    remote_id=None,
+    application_uuid=None,
     path=None,
     backup_si_uuid=None,
     keep_tempfile=False,
 ):
     project_home = utils.get_application_home(path)
-    website_id = utils.get_project_settings(project_home)["id"]
-    website_slug = utils.get_project_settings(project_home)["slug"]
-    remote_id = remote_id or website_id
-    remote_project_name = (
-        website_slug if remote_id == website_id else f"Project {remote_id}"
-    )
+    application_uuid = utils.get_project_settings(project_home)[
+        "application_uuid"
+    ]
+    remote_project_name = f"Project {application_uuid}"
     docker_compose = utils.get_docker_compose_cmd(project_home)
     docker_compose_config = utils.DockerComposeConfig(docker_compose)
 
@@ -737,7 +733,11 @@ def pull_media(
     else:
         with utils.TimedStep("Creating backup"):
             backup_uuid, backup_si_uuid = backups.create_backup(
-                client, remote_id, environment, backups.Type.MEDIA, prefix
+                client,
+                application_uuid,
+                environment,
+                backups.Type.MEDIA,
+                prefix,
             )
 
     with utils.TimedStep("Preparing download"):
@@ -810,12 +810,17 @@ def export_db(prefix):
 
 
 def push_db(
-    client, environment, remote_id, prefix, local_file=None, keep_tempfile=True
+    client,
+    environment,
+    application_uuid,
+    prefix,
+    local_file=None,
+    keep_tempfile=True,
 ):
     pusher = PushDb.create(
         client=client,
         environment=environment,
-        remote_id=remote_id,
+        application_uuid=application_uuid,
         prefix=prefix,
     )
     # do not cleanup after if the file was provided by the user or
@@ -825,11 +830,13 @@ def push_db(
     )
 
 
-def push_media(client, environment, remote_id, prefix, keep_tempfile=True):
+def push_media(
+    client, environment, application_uuid, prefix, keep_tempfile=True
+):
     pusher = PushMedia.create(
         client=client,
         environment=environment,
-        remote_id=remote_id,
+        application_uuid=application_uuid,
         prefix=prefix,
     )
     pusher.run(cleanup=not keep_tempfile)
