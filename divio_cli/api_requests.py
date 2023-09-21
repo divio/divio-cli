@@ -290,9 +290,6 @@ class SlugToIDRequest(APIRequest):
 class SlugToAppUUIDRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/?slug={website_slug}"
 
-    def process(self, response):
-        return response.json()["results"][0].get("uuid")
-
 
 class DownloadBackupRequest(FileResponse, APIRequest):
     url = "/api/v1/workspace/{website_slug}/download/backup/"
