@@ -277,9 +277,6 @@ class UploadBoilerplateRequest(TextResponse, APIRequest):
 class SlugToAppUUIDRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/?slug={website_slug}"
 
-    def process(self, response):
-        return response.json()["results"][0].get("uuid")
-
 
 class CreateBackupRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/backups/"
