@@ -523,10 +523,16 @@ class CloudClient:
         return request()
 
     def get_application_uuid_for_slug(self, slug):
-        request = api_requests.SlugToAppUUIDRequest(
+        response = api_requests.SlugToAppUUIDRequest(
             self.session, url_kwargs={"website_slug": slug}
-        )
-        return request()
+        )()
+
+        if "results" not in response or len(response["results"]) != 1:
+            raise DivioException(
+                f"Unable to retrieve an application UUID for slug '{slug}'"
+            )
+
+        return response["results"][0]["uuid"]
 
     def get_application_uuid_for_remote_id(self, remote_id):
         """
