@@ -553,7 +553,13 @@ class CloudClient:
         if application_uuid_or_remote_id:
 
             # legacy remote-id
-            if application_uuid_or_remote_id.isdigit():
+            # remote-ids in .divio/config.json are stored as int
+            # remote-ids issued via `--remote-id` come in as str
+            if (
+                isinstance(application_uuid_or_remote_id, int)
+                or application_uuid_or_remote_id.isdigit()
+            ):
+
                 return self.get_application_uuid_for_remote_id(
                     remote_id=application_uuid_or_remote_id,
                 )
