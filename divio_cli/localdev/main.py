@@ -142,7 +142,7 @@ def configure_project(website_slug, path, client, zone=None):
 
 
 def setup_website_containers(
-    client, environment, path, prefix=DEFAULT_SERVICE_PREFIX
+    client, application_uuid, environment, path, prefix=DEFAULT_SERVICE_PREFIX
 ):
     try:
         docker_compose = utils.get_docker_compose_cmd(path)
@@ -183,6 +183,7 @@ def setup_website_containers(
 
         ImportRemoteDatabase(
             client=client,
+            application_uuid=application_uuid,
             environment=environment,
             path=path,
             prefix=prefix,
@@ -263,7 +264,10 @@ def create_workspace(
     # setup docker website containers (if docker-compose.yml exists)
     try:
         setup_website_containers(
-            client=client, environment=environment, path=path
+            client=client,
+            application_uuid=application_uuid,
+            environment=environment,
+            path=path,
         )
         pull_media(client=client, environment=environment, path=path)
     except DockerComposeDoesNotExist:
