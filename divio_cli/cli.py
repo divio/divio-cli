@@ -74,6 +74,17 @@ click.option = partial(click.option, show_default=True)
 )
 @click.pass_context
 def cli(ctx, debug, zone, sudo):
+    if sys.version_info < settings.MINIMAL_PYTHON_VERSION:
+        current_version_string = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        minimal_version_string = ".".join(
+            str(i) for i in settings.MINIMAL_PYTHON_VERSION
+        )
+
+        click.secho(
+            f"deprecation warning: Python {minimal_version_string} is required (Python {current_version_string} is running)",
+            fg="yellow",
+        )
+
     if sudo:
         click.secho("Running as sudo", fg="yellow")
 
