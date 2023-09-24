@@ -9,6 +9,14 @@ variables:
   CRYPTOGRAPHY_DONT_BUILD_RUST: 1
 
 
+linting:
+  image: divio/lint:0.8
+  stage: qa
+  needs: []
+  script:
+    - /bin/lint --check
+
+
 Unit Tests:
     stage: qa
     image: divio/multi-python

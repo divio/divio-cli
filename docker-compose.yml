@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  lint:
+    image: divio/lint:0.8
+
+    volumes:
+      - ./:/app
+
+    environment:
+      - LINT_FOLDER_PYTHON=divio_cli
+
+    user: 1000:1000
+    working_dir: "/app"
+    command: "/bin/lint"

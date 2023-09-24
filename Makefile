@@ -38,4 +38,4 @@ test_integration: | $(ENV_FILE) $(PYTHON_VENV)
 
 # lint
 lint:
-	docker run --rm -e LINT_FOLDER_PYTHON=divio_cli -v $(CURDIR):/app divio/lint /bin/lint ${ARGS}
+	docker compose run --remove-orphans lint

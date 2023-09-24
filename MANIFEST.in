@@ -4,3 +4,4 @@ include CHANGELOG.rst
 include requirements.txt
 recursive-exclude * *.pyc
 exclude .env-example
+exclude docker-compose.yml
