@@ -15,6 +15,8 @@ linting:
   needs: []
   script:
     - /bin/lint --check
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
 
 
 Unit Tests:
@@ -26,6 +28,8 @@ Unit Tests:
         - ${CI_PROJECT_DIR}/artifacts/.coverage.*
       reports:
         junit: junit-testreport-*.xml
+    rules:
+      - if: '$CI_PIPELINE_SOURCE != "schedule"'
 
 
 Integration Tests:
@@ -71,6 +75,8 @@ Integration Tests:
       - ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
     reports:
       junit: junit-testreport-integration.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
 
 
 Check Manifest:
@@ -80,6 +86,8 @@ Check Manifest:
       - apk add git
       - pip install check-manifest
       - check-manifest
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
 
 
 Combine Coverage:
@@ -100,6 +108,8 @@ Combine Coverage:
       coverage_report:
         coverage_format: cobertura
         path: artifacts/coverage.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
 
 
 
@@ -123,7 +133,7 @@ Release Tag:
 
 .dependabot:
   image:
-    name: docker.io/andrcuns/dependabot-gitlab:0.11.0
+    name: docker.io/andrcuns/dependabot-gitlab:3.3.0-alpha.1
     entrypoint: [""]
   variables:
     GIT_STRATEGY: none
