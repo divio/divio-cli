@@ -1210,7 +1210,7 @@ def addon_upload(ctx):
     "-o",
     "--organisation",
     help="Register an addon for an organisation.",
-    type=int,
+    type=str,
 )
 @click.pass_context
 def addon_register(ctx, package_name, verbose_name, organisation):

@@ -258,8 +258,8 @@ class DeployProjectRequest(JsonResponse, APIV3Request):
     method = "POST"
 
 
-class RegisterAddonRequest(DjangoFormMixin, JsonResponse, APIRequest):
-    url = "/api/v1/addon/register/"
+class RegisterAddonRequest(DjangoFormMixin, JsonResponse, APIV3Request):
+    url = "/legacy/v3/addons/"
     method = "POST"
     success_message = "Addon successfully registered"
 
