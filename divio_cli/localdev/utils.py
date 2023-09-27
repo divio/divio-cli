@@ -65,6 +65,16 @@ def get_project_settings(path=None, silent=False):
 
 
 def migrate_project_settings(client):
+    """
+    Migrates old versions of `.divio/config.json` to the current format.
+
+    Migrations:
+        - legacy project-id (`id`) to application UUID (`application_uuid`)
+
+    This function is the main entry-point for settings forward migrations.
+    Place any additional migrations here.
+    """
+
     try:
         path = get_project_settings_path(silent=True)
         settings = get_project_settings(path=path, silent=True)
