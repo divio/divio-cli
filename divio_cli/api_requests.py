@@ -264,14 +264,18 @@ class RegisterAddonRequest(DjangoFormMixin, JsonResponse, APIV3Request):
     success_message = "Addon successfully registered"
 
 
-class UploadAddonRequest(TextResponse, APIRequest):
-    url = "/api/v1/apps/"
+class UploadAddonRequest(TextResponse, APIV3Request):
+    url = "/legacy/v3/addons/{addon_uuid}/upload/"
     method = "POST"
 
 
 class UploadBoilerplateRequest(TextResponse, APIRequest):
     url = "/api/v1/boilerplates/"
     method = "POST"
+
+
+class AddonPackageNameToUUIDRequest(JsonResponse, APIV3Request):
+    url = "/legacy/v3/addons/?package_name={package_name}"
 
 
 class SlugToAppUUIDRequest(JsonResponse, APIV3Request):

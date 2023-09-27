@@ -498,6 +498,21 @@ class CloudClient:
         )
         return request()
 
+    def get_addon_uuid_for_package_name(self, package_name):
+        response = api_requests.AddonPackageNameToUUIDRequest(
+            session=self.session,
+            url_kwargs={
+                "package_name": package_name,
+            },
+        )()
+
+        if "results" not in response or len(response["results"]) != 1:
+            raise DivioException(
+                f"Unable to retrieve an addon UUID for package name '{package_name}'"
+            )
+
+        return response["results"][0]["uuid"]
+
     def register_addon(self, package_name, verbose_name, organisation_id=None):
         request = api_requests.RegisterAddonRequest(
             self.session,
@@ -509,10 +524,15 @@ class CloudClient:
         )
         return request()
 
-    def upload_addon(self, archive_obj):
+    def upload_addon(self, package_name, archive_obj):
+        addon_uuid = self.get_addon_uuid_for_package_name(package_name)
+
         request = api_requests.UploadAddonRequest(
-            self.session, files={"app": archive_obj}
+            self.session,
+            url_kwargs={"addon_uuid": addon_uuid},
+            files={"app": archive_obj},
         )
+
         return request()
 
     def upload_boilerplate(self, archive_obj):
