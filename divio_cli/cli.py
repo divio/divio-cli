@@ -20,7 +20,11 @@ from .exceptions import (
     EnvironmentDoesNotExist,
     ExitCode,
 )
-from .localdev.utils import allow_remote_id_override, get_project_settings
+from .localdev.utils import (
+    allow_remote_id_override,
+    get_project_settings,
+    migrate_project_settings,
+)
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
@@ -137,6 +141,9 @@ def cli(ctx, debug, zone, sudo):
         is_version_command = sys.argv[1] == "version"
     except IndexError:
         is_version_command = False
+
+    # migrate project_settings if needed
+    migrate_project_settings(client=ctx.obj.client)
 
     # skip if 'divio version' is run
     if not is_version_command:
@@ -1014,7 +1021,7 @@ def pull_db(
         client=obj.client,
         environment=environment,
         prefix=prefix,
-        remote_id=remote_id,
+        application_uuid=remote_id,
         db_type=db_type,
         dump_path=dump_path,
         backup_si_uuid=backup_si_uuid,
@@ -1034,7 +1041,7 @@ def pull_media(
         obj.client,
         environment=environment,
         prefix=prefix,
-        remote_id=remote_id,
+        application_uuid=remote_id,
         keep_tempfile=keep_tempfile,
         backup_si_uuid=backup_si_uuid,
     )
@@ -1098,7 +1105,7 @@ def push_db(
     localdev.push_db(
         client=obj.client,
         environment=environment,
-        remote_id=remote_id,
+        application_uuid=remote_id,
         prefix=prefix,
         local_file=dumpfile,
         keep_tempfile=keep_tempfile,
@@ -1123,7 +1130,7 @@ def push_media(obj, remote_id, prefix, environment, noinput, keep_tempfile):
     localdev.push_media(
         client=obj.client,
         environment=environment,
-        remote_id=remote_id,
+        application_uuid=remote_id,
         prefix=prefix,
         keep_tempfile=keep_tempfile,
     )

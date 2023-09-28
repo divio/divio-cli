@@ -21,11 +21,10 @@ class PushBase:
 
     client: CloudClient
     environment: str
-    remote_id: str
+    application_uuid: str
     prefix: str
 
     project_home: str
-    website_id: str
     env_uuid: str
     remote_project_name: str
     si_uuid: str
@@ -34,31 +33,27 @@ class PushBase:
 
     @classmethod
     def create(
-        cls, client: CloudClient, environment: str, remote_id: str, prefix: str
+        cls,
+        client: CloudClient,
+        environment: str,
+        application_uuid: str,
+        prefix: str,
     ):
         project_home = utils.get_application_home()
-        settings = utils.get_project_settings(project_home)
-        website_id = settings["id"]
 
         # Find the matching service instance for the given service type
-        env = client.get_environment(remote_id, environment)
+        env = client.get_environment(application_uuid, environment)
         env_uuid = env["uuid"]
         si = client.get_service_instance(cls.backup_type, env_uuid, prefix)
         si_uuid = si["uuid"]
-
-        remote_project_name = (
-            settings["slug"]
-            if website_id == remote_id
-            else f"project {remote_id}"
-        )
+        remote_project_name = f"project {application_uuid}"
 
         return cls(
             client=client,
             environment=environment,
-            remote_id=remote_id,
+            application_uuid=application_uuid,
             prefix=prefix,
             project_home=project_home,
-            website_id=website_id,
             env_uuid=env_uuid,
             remote_project_name=remote_project_name,
             si_uuid=si_uuid,

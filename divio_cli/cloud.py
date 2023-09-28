@@ -15,6 +15,7 @@ import requests
 from dateutil.parser import isoparse
 
 from divio_cli.exceptions import (
+    ApplicationUUIDNotFoundException,
     ConfigurationNotFound,
     DivioException,
     DivioWarning,
@@ -108,9 +109,13 @@ class CloudClient:
         self.session.headers["Authorization"] = f"Token {token}"
 
     def login(self, token):
-        request = api_requests.LoginRequest(
-            self.session, data={"token": token}
+        request = api_requests.GetCurrentUserRequest(
+            self.session,
+            headers={
+                "Authorization": f"Token {token}",
+            },
         )
+
         user_data = request()
 
         self.authenticate(token)
@@ -162,10 +167,10 @@ class CloudClient:
         return 0
 
     def check_login_status(self):
-        request = api_requests.LoginStatusRequest(self.session)
+        request = api_requests.GetCurrentUserRequest(self.session)
         response = request()
 
-        user_id = response.get("user_id")
+        user_id = response.get("uuid")
 
         if user_id:
             return True, messages.LOGIN_CHECK_SUCCESSFUL
@@ -516,12 +521,6 @@ class CloudClient:
         )
         return request()
 
-    def get_website_id_for_slug(self, slug):
-        request = api_requests.SlugToIDRequest(
-            self.session, url_kwargs={"website_slug": slug}
-        )
-        return request()
-
     def get_application_uuid_for_slug(self, slug):
         response = api_requests.SlugToAppUUIDRequest(
             self.session, url_kwargs={"website_slug": slug}
@@ -560,7 +559,13 @@ class CloudClient:
         if application_uuid_or_remote_id:
 
             # legacy remote-id
-            if application_uuid_or_remote_id.isdigit():
+            # remote-ids in .divio/config.json are stored as int
+            # remote-ids issued via `--remote-id` come in as str
+            if (
+                isinstance(application_uuid_or_remote_id, int)
+                or application_uuid_or_remote_id.isdigit()
+            ):
+
                 return self.get_application_uuid_for_remote_id(
                     remote_id=application_uuid_or_remote_id,
                 )
@@ -577,21 +582,12 @@ class CloudClient:
                     application_uuid_or_remote_id=str(project_settings["id"]),
                 )
 
-            raise DivioException(
+            raise ApplicationUUIDNotFoundException(
                 f"Unable to retrieve an application UUID from '{application_uuid_or_remote_id}'",
             )
 
         # application UUID
         return application_uuid_or_remote_id
-
-    def download_backup(self, website_slug, filename=None, directory=None):
-        request = api_requests.DownloadBackupRequest(
-            self.session,
-            url_kwargs={"website_slug": website_slug},
-            filename=filename,
-            directory=directory,
-        )
-        return request()
 
     def download_db_request(self, website_id, environment, prefix):
         request = api_requests.DownloadDBRequestRequest(
