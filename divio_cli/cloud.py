@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from datetime import datetime
@@ -30,6 +31,8 @@ from .utils import json_response_request_paginate
 ENDPOINT = "https://control.{zone}"
 DEFAULT_ZONE = "divio.com"
 
+logger = logging.getLogger("divio.client")
+
 
 def get_divio_zone():
     try:
@@ -53,7 +56,7 @@ def get_endpoint(zone=None):
         endpoint = ENDPOINT.format(zone=zone)
 
     if zone != DEFAULT_ZONE:
-        click.secho(f"Using zone: {endpoint}\n", fg="green")
+        logger.debug("using zone: %s", endpoint)
     return endpoint
 
 
