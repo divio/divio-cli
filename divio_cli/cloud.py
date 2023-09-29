@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from datetime import datetime
@@ -54,7 +55,7 @@ def get_endpoint(zone=None):
         endpoint = ENDPOINT.format(zone=zone)
 
     if zone != DEFAULT_ZONE:
-        click.secho(f"Using zone: {endpoint}\n", fg="green")
+        logging.debug("using zone: %s", endpoint)
     return endpoint
 
 
