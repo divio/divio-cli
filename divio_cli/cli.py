@@ -6,6 +6,7 @@ from functools import partial
 
 import click
 import sentry_sdk
+import simple_logging_setup
 from click_aliases import ClickAliasedGroup
 from sentry_sdk.integrations.atexit import AtexitIntegration
 
@@ -76,8 +77,48 @@ click.option = partial(click.option, show_default=True)
     help="Run as sudo?",
     hidden=True,
 )
+@click.option(
+    "-v",
+    "--verbose",
+    count=True,
+    help="Verbosity level",
+)
 @click.pass_context
-def cli(ctx, debug, zone, sudo):
+def cli(ctx, debug, zone, sudo, verbose):
+
+    # setup logging
+    log_level = "info"
+    loggers = []
+
+    if verbose > 0:
+        log_level = "debug"
+
+        loggers.extend(
+            [
+                "+root",
+                "+divio.client",
+                "+divio.client.http.request",
+                "+divio.client.http.response",
+            ]
+        )
+
+    if verbose > 1:
+        loggers.extend(
+            [
+                "+divio.client.http.response-body",
+            ]
+        )
+
+    if verbose > 2:
+        loggers.clear()
+
+    simple_logging_setup.setup(
+        preset="cli",
+        level=log_level,
+        loggers=loggers,
+    )
+
+    # check version
     if sys.version_info < settings.MINIMAL_PYTHON_VERSION:
         current_version_string = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
         minimal_version_string = ".".join(
