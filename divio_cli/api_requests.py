@@ -1,4 +1,9 @@
+import contextlib
+import json
+import logging
 import os
+import textwrap
+from pprint import pformat
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -7,6 +12,11 @@ from divio_cli.exceptions import DivioException
 
 from . import messages
 from .utils import create_temp_dir, get_user_agent
+
+
+request_logger = logging.getLogger("http-request")
+response_logger = logging.getLogger("http-response")
+response_body_logger = logging.getLogger("http-response-body")
 
 
 class SingleHostSession(requests.Session):
@@ -42,7 +52,38 @@ class SingleHostSession(requests.Session):
             # All v3 endpoints support JSON, and some use nested data structures
             # that do not work with url-encoded body
             kwargs["json"] = kwargs.pop("data", {})
-        return super().request(method, url, *args, **kwargs)
+
+        request_logger.debug(
+            "%s %s",
+            method,
+            url,
+        )
+
+        response = super().request(method, url, *args, **kwargs)
+
+        response_logger.debug(
+            "url=%s, status-code=%s, content-type=%s, content-length=%s",
+            response.url,
+            response.status_code,
+            response.headers.get("content-type", "[NOTSET]"),
+            response.headers.get("content-length", "[NOTSET]"),
+        )
+
+        content = response.content.decode()
+
+        with contextlib.suppress(json.JSONDecodeError):
+            content = response.json()
+
+        response_body_logger.debug(
+            "url=%s \n%s",
+            response.url,
+            textwrap.indent(
+                text=pformat(content),
+                prefix="    ",
+            ),
+        )
+
+        return response
 
 
 class APIRequestError(DivioException):

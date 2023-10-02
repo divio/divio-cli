@@ -96,13 +96,14 @@ def cli(ctx, debug, zone, sudo, verbose):
             [
                 "+root",
                 "+http-request",
+                "+http-response",
             ]
         )
 
     if verbose > 1:
         loggers.extend(
             [
-                "+http-response",
+                "+http-response-body",
             ]
         )
 
