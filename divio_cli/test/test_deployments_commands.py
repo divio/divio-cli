@@ -12,8 +12,8 @@ TEST_PROJECT_DEPLOYMENT_UUID = os.getenv("TEST_PROJECT_DEPLOYMENT_UUID", None)
 DEPLOYMENTS_COMMANDS = [
     "app deployments",
     "app deployments list",
-    f"app deployments --remote-id {TEST_PROJECT_ID} list",
-    f"app deployments --remote-id {TEST_PROJECT_UUID} list",
+    f"app deployments list --remote-id {TEST_PROJECT_ID}",
+    f"app deployments list --remote-id {TEST_PROJECT_UUID}",
     "app deployments list -e live",
     "app deployments list --all-envs",
     "app deployments -p list",

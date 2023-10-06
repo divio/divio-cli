@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -30,7 +31,7 @@ def get_backup_delete_at() -> datetime:
 
 def create_backup(
     client: CloudClient,
-    website_id: str,
+    application_uuid: str,
     environment: str,
     type: Type,
     prefix: str | None = None,
@@ -38,7 +39,7 @@ def create_backup(
     """
     Trigger a backup for the service instance matching `type` and `prefix`.
 
-    The service instance UUID is found using the website_id, environment,
+    The service instance UUID is found using the application_uuid, environment,
     type and prefix parameters. If none (or more than one) is found,
     an error is thrown. The function only returns once the backup is ready.
 
@@ -46,7 +47,7 @@ def create_backup(
     valid for an hour.
     """
     # Find the matching service instance for the given service type
-    env_uuid = client.get_environment(website_id, environment)["uuid"]
+    env_uuid = client.get_environment(application_uuid, environment)["uuid"]
     si_uuid = client.get_service_instance(type, env_uuid, prefix)["uuid"]
 
     # Create a backup
@@ -194,14 +195,12 @@ def _wait_for_backup_to_complete(
     if success != "SUCCESS":
         message += f": success={success}"
         if si_backups:
-            try:
+            with contextlib.suppress(Exception):
                 # Try to get more information about the error
                 si_backup = client.get_service_instance_backup(si_backups[0])
                 errors = si_backup.get("errors", None)
                 if errors:
                     message += f", {errors}"
-            except:
-                pass
         raise DivioException(message)
 
     if not si_backups:

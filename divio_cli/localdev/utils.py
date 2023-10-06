@@ -1,3 +1,4 @@
+import contextlib
 import functools
 import json
 import os
@@ -9,6 +10,7 @@ import yaml
 
 from .. import config, settings
 from ..exceptions import (
+    ApplicationUUIDNotFoundException,
     ConfigurationNotFound,
     DivioException,
     DivioWarning,
@@ -17,32 +19,95 @@ from ..exceptions import (
 from ..utils import check_call, check_output, is_windows
 
 
-def get_project_settings(path=None, silent=False):
+def get_project_settings_path(path=None, silent=False):
     project_home = get_application_home(path, silent=silent)
+
+    if not project_home and silent:
+        return ""
+
+    aldryn_dot_file_path = os.path.join(project_home, settings.ALDRYN_DOT_FILE)
+    divio_dot_file_path = os.path.join(project_home, settings.DIVIO_DOT_FILE)
+    aldryn_dot_file_exists = os.path.exists(aldryn_dot_file_path)
+    divio_dot_file_exists = os.path.exists(divio_dot_file_path)
+
+    if aldryn_dot_file_exists:
+        path = aldryn_dot_file_path
+
+    if divio_dot_file_exists:
+        path = divio_dot_file_path
+
+    if aldryn_dot_file_exists and divio_dot_file_exists and not silent:
+        click.secho(
+            "Warning: Old ({}) and new ({}) divio configuration files found at the same time. The new one will be used.".format(
+                settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
+            ),
+            fg="yellow",
+        )
+
+    if not path:
+        raise ConfigurationNotFound
+
+    return path
+
+
+def get_project_settings(path=None, silent=False):
+    path = get_project_settings_path(path=path, silent=silent)
+
+    if not path and silent:
+        return {}
+
     try:
-        old_file_found = False
-        if os.path.exists(
-            os.path.join(project_home, settings.ALDRYN_DOT_FILE)
-        ):
-            path = os.path.join(project_home, settings.ALDRYN_DOT_FILE)
-            old_file_found = True
-
-        if os.path.exists(os.path.join(project_home, settings.DIVIO_DOT_FILE)):
-            path = os.path.join(project_home, settings.DIVIO_DOT_FILE)
-            if old_file_found:
-                click.secho(
-                    "Warning: Old ({}) and new ({}) divio configuration files found at the same time. The new one will be used.".format(
-                        settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
-                    ),
-                    fg="yellow",
-                )
-
         with open(path) as fh:
             return json.load(fh)
-    except (TypeError, OSError):
-        raise ConfigurationNotFound
+
     except json.decoder.JSONDecodeError:
         raise DivioException(f"Unexpected value in {path}")
+
+
+def migrate_project_settings(client):
+    """
+    Migrates old versions of `.divio/config.json` to the current format.
+
+    Migrations:
+        - legacy project-id (`id`) to application UUID (`application_uuid`)
+
+    This function is the main entry-point for settings forward migrations.
+    Place any additional migrations here.
+    """
+
+    try:
+        path = get_project_settings_path(silent=True)
+        settings = get_project_settings(path=path, silent=True)
+
+    except Exception:
+        # no valid settings file was found. nothing to migrate
+
+        return
+
+    settings_updated = False
+
+    # legacy project id
+    if "id" in settings:
+
+        # there is already an application UUID. Nothing to do.
+        if "application_uuid" in settings:
+            settings.pop("id")
+            settings_updated = True
+
+        else:
+
+            # convert legacy project id to application UUID
+            with contextlib.suppress(Exception):
+                settings["application_uuid"] = client.get_application_uuid(
+                    application_uuid_or_remote_id=settings["id"],
+                )
+
+                settings.pop("id")
+                settings_updated = True
+
+    if settings_updated:
+        with open(path, "w") as fh:
+            json.dump(settings, fh, indent=4)
 
 
 def get_application_home(path=None, silent=False):
@@ -256,43 +321,19 @@ def allow_remote_id_override(func):
 
     @functools.wraps(func)
     def read_remote_id(obj, remote_id, *args, **kwargs):
-        ERROR_MSG = (
-            "This command requires a Divio Cloud application UUID. Please "
-            "provide one with the --remote-id option or call the "
-            "command from an application directory."
-        )
+        try:
+            application_uuid = obj.client.get_application_uuid(
+                application_uuid_or_remote_id=remote_id,
+            )
 
-        if remote_id and not remote_id.isdigit():
-            # If it's not a digit, its probably a UUID. Try to retrieve a ID from the UUID.
+        except ApplicationUUIDNotFoundException as exception:
+            raise DivioException(
+                "This command requires a Divio Cloud application UUID. Please "
+                "provide one with the --remote-id option or call the "
+                "command from an application directory."
+            ) from exception
 
-            # We are not exposing the ID at all in v3. Also not in legacy.
-            # So, we have to
-            # * get the slug in v3
-            # * use the slug to get the ID in v1.
-
-            try:
-                slug = obj.client.get_application(application_uuid=remote_id)[
-                    "slug"
-                ]
-                remote_id = obj.client.get_website_id_for_slug(slug=slug)
-            except Exception:
-                raise DivioException(
-                    "Unable to retrieve application via UUID."
-                )
-
-        if not remote_id:
-            try:
-                # TODO: this needs to check uuid AND id
-                # rewrite the ID to the uuid in the file
-                remote_id = get_project_settings(silent=True)[
-                    "application_uuid"
-                ]
-            except KeyError:
-                raise DivioException(ERROR_MSG)
-            else:
-                if not remote_id:
-                    raise DivioException(ERROR_MSG)
-        return func(obj, remote_id, *args, **kwargs)
+        return func(obj, application_uuid, *args, **kwargs)
 
     return click.option(
         "--remote-id",

@@ -20,7 +20,11 @@ from .exceptions import (
     EnvironmentDoesNotExist,
     ExitCode,
 )
-from .localdev.utils import allow_remote_id_override, get_project_settings
+from .localdev.utils import (
+    allow_remote_id_override,
+    get_project_settings,
+    migrate_project_settings,
+)
 from .upload.addon import upload_addon
 from .upload.boilerplate import upload_boilerplate
 from .utils import (
@@ -76,6 +80,17 @@ click.option = partial(click.option, show_default=True)
 )
 @click.pass_context
 def cli(ctx, debug, zone, sudo):
+    if sys.version_info < settings.MINIMAL_PYTHON_VERSION:
+        current_version_string = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        minimal_version_string = ".".join(
+            str(i) for i in settings.MINIMAL_PYTHON_VERSION
+        )
+
+        click.secho(
+            f"deprecation warning: Python {minimal_version_string} is required (Python {current_version_string} is running)",
+            fg="yellow",
+        )
+
     if sudo:
         click.secho("Running as sudo", fg="yellow")
 
@@ -128,6 +143,9 @@ def cli(ctx, debug, zone, sudo):
         is_version_command = sys.argv[1] == "version"
     except IndexError:
         is_version_command = False
+
+    # migrate project_settings if needed
+    migrate_project_settings(client=ctx.obj.client)
 
     # skip if 'divio version' is run
     if not is_version_command:
@@ -687,12 +705,13 @@ def list_deployments(
 @deployments.command(name="get")
 @click.argument("deployment_uuid")
 @click.pass_obj
-def get_deployment(obj, deployment_uuid):
+@allow_remote_id_override
+def get_deployment(obj, remote_id, deployment_uuid):
     """
     Retrieve a deployment (by uuid).
     """
 
-    response = obj.client.get_deployment(obj.remote_id, deployment_uuid)
+    response = obj.client.get_deployment(remote_id, deployment_uuid)
     deployment = response["deployment"]
     if obj.as_json:
         json_content = json.dumps([response], indent=2)
@@ -716,13 +735,16 @@ def get_deployment(obj, deployment_uuid):
 @click.argument("deployment_uuid")
 @click.argument("variable_name")
 @click.pass_obj
-def get_deployment_environment_variable(obj, deployment_uuid, variable_name):
+@allow_remote_id_override
+def get_deployment_environment_variable(
+    obj, remote_id, deployment_uuid, variable_name
+):
     """
     Retrieve an environment variable (by name) from a deployment (by uuid).
     """
 
     response = obj.client.get_deployment_with_environment_variables(
-        obj.remote_id,
+        remote_id,
         deployment_uuid,
         variable_name,
     )
@@ -1165,7 +1187,7 @@ def pull_db(
         client=obj.client,
         environment=environment,
         prefix=prefix,
-        remote_id=remote_id,
+        application_uuid=remote_id,
         db_type=db_type,
         dump_path=dump_path,
         backup_si_uuid=backup_si_uuid,
@@ -1185,7 +1207,7 @@ def pull_media(
         obj.client,
         environment=environment,
         prefix=prefix,
-        remote_id=remote_id,
+        application_uuid=remote_id,
         keep_tempfile=keep_tempfile,
         backup_si_uuid=backup_si_uuid,
     )
@@ -1249,7 +1271,7 @@ def push_db(
     localdev.push_db(
         client=obj.client,
         environment=environment,
-        remote_id=remote_id,
+        application_uuid=remote_id,
         prefix=prefix,
         local_file=dumpfile,
         keep_tempfile=keep_tempfile,
@@ -1274,7 +1296,7 @@ def push_media(obj, remote_id, prefix, environment, noinput, keep_tempfile):
     localdev.push_media(
         client=obj.client,
         environment=environment,
-        remote_id=remote_id,
+        application_uuid=remote_id,
         prefix=prefix,
         keep_tempfile=keep_tempfile,
     )
@@ -1365,7 +1387,7 @@ def addon_upload(ctx):
     "-o",
     "--organisation",
     help="Register an addon for an organisation.",
-    type=int,
+    type=str,
 )
 @click.pass_context
 def addon_register(ctx, package_name, verbose_name, organisation):

@@ -70,3 +70,8 @@ class DockerComposeDoesNotExist(DivioException):
         if message:
             message = f"{message}: "
         super().__init__(f"{message}docker-compose.yml does not exist.")
+
+
+class ApplicationUUIDNotFoundException(DivioException):
+    def __init__(self, message="No Application UUID or Project ID was found"):
+        super().__init__(message)

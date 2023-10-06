@@ -79,7 +79,6 @@ class APIRequest:
     method = "GET"
     url = None
     default_headers = {"User-Agent": get_user_agent()}
-    headers = {}
 
     def __init__(
         self,
@@ -90,9 +89,11 @@ class APIRequest:
         data=None,
         files=None,
         proceed_on_4xx=False,
+        headers=None,
         *args,
         **kwargs,
     ):
+
         self.session = session
         if url:
             self.url = url
@@ -101,6 +102,11 @@ class APIRequest:
         self.data = data or {}
         self.files = files or {}
         self.proceed_on_4xx = proceed_on_4xx
+
+        self.headers = {
+            **self.default_headers,
+            **(headers or {}),
+        }
 
     def __call__(self, *args, **kwargs):
 
@@ -130,11 +136,6 @@ class APIRequest:
 
         return self.response_code_error_map
 
-    def get_headers(self):
-        headers = self.default_headers.copy()
-        headers.update(self.headers)
-        return headers
-
     def request(self, *args, **kwargs):
         try:
             response = self.session.request(
@@ -143,7 +144,7 @@ class APIRequest:
                 *args,
                 data=self.data,
                 files=self.files,
-                headers=self.get_headers(),
+                headers=self.headers,
                 params=self.params,
                 **kwargs,
             )
@@ -244,17 +245,6 @@ class FileResponse:
         return super().request(*args, **kwargs)
 
 
-class LoginRequest(APIRequest):
-    default_error_message = messages.AUTH_SERVER_ERROR
-    url = "/api/v1/login-with-token/"
-    method = "POST"
-
-
-class LoginStatusRequest(APIRequest):
-    url = "/track/"
-    method = "GET"
-
-
 class ProjectListRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/"
 
@@ -279,6 +269,10 @@ class OrganisationDetailRequest(JsonResponse, APIV3Request):
     url = "/iam/v3/organisations/{organisation_uuid}/"
 
 
+class GetCurrentUserRequest(JsonResponse, APIV3Request):
+    url = "/iam/v3/me/"
+
+
 class DeploymentByApplicationRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/deployments/?application={application_uuid}&environment={environment_uuid}"
 
@@ -291,14 +285,14 @@ class DeployProjectRequest(JsonResponse, APIV3Request):
     method = "POST"
 
 
-class RegisterAddonRequest(DjangoFormMixin, JsonResponse, APIRequest):
-    url = "/api/v1/addon/register/"
+class RegisterAddonRequest(DjangoFormMixin, JsonResponse, APIV3Request):
+    url = "/legacy/v3/addons/"
     method = "POST"
     success_message = "Addon successfully registered"
 
 
-class UploadAddonRequest(TextResponse, APIRequest):
-    url = "/api/v1/apps/"
+class UploadAddonRequest(TextResponse, APIV3Request):
+    url = "/legacy/v3/addons/{addon_uuid}/upload/"
     method = "POST"
 
 
@@ -307,29 +301,12 @@ class UploadBoilerplateRequest(TextResponse, APIRequest):
     method = "POST"
 
 
-class SlugToIDRequest(APIRequest):
-    url = "/api/v1/slug-to-id/{website_slug}/"
-
-    def process(self, response):
-        return response.json().get("id")
+class AddonPackageNameToUUIDRequest(JsonResponse, APIV3Request):
+    url = "/legacy/v3/addons/?package_name={package_name}"
 
 
 class SlugToAppUUIDRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/?slug={website_slug}"
-
-    def process(self, response):
-        return response.json()["results"][0].get("uuid")
-
-
-class DownloadBackupRequest(FileResponse, APIRequest):
-    url = "/api/v1/workspace/{website_slug}/download/backup/"
-    headers = {"accept": "application/x-tar-gz"}
-
-    def verify(self, response):
-        if response.status_code == requests.codes.not_found:
-            # no backups yet, ignore
-            return None
-        return super().verify(response)
 
 
 class CreateBackupRequest(JsonResponse, APIV3Request):
@@ -502,4 +479,12 @@ class ListRegionsRequest(JsonResponse, APIV3Request):
 
 class ListOrganisationsRequest(JsonResponse, APIV3Request):
     url = "/iam/v3/organisations/"
+    method = "GET"
+
+
+# Legacy
+
+
+class LegacyListApplicationsRequest(JsonResponse, APIV3Request):
+    url = "/legacy/v3/applications/?id={id}"
     method = "GET"
