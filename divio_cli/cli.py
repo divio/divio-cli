@@ -353,44 +353,44 @@ def application_create(
     obj.as_json = as_json
     obj.metadata = {}
 
-    wizard = CreateAppWizard(obj)
+    wiz = CreateAppWizard(obj)
 
-    name = wizard.get_name(name)
-    slug = wizard.get_slug(slug, name)
-    organisation, organisation_name = wizard.get_organisation(organisation)
-    plan_group, plan_group_name = wizard.get_plan_group(
-        plan_group, organisation
+    name = wiz.get_name(name)
+    slug = wiz.get_slug(slug, name)
+    org, org_name = wiz.get_org(organisation)
+    plan_group, plan_group_name = wiz.get_plan_group(plan_group, org)
+    region, region_name = wiz.get_region(region, plan_group)
+    template, template_uuid, template_release_commands = wiz.get_template(
+        template
     )
-    region, region_name = wizard.get_region(region, plan_group)
-    template, template_release_commands = wizard.get_template(template)
-    release_commands = wizard.get_release_commands(template_release_commands)
-    repository, repository_url, branch = wizard.get_git_repository(
-        organisation
-    )
+    release_commands = wiz.get_release_commands(template_release_commands)
+    repo, repo_url, branch = wiz.get_git_repo(org)
 
     data = {
         "name": name,
         "slug": slug,
-        "organisation": organisation,
+        "organisation": org,
         "plan_group": plan_group,
         "region": region,
         "app_template": template,
         "release_commands": release_commands,
-        "repository": repository,
+        "repository": repo,
         "branch": branch or "main",
     }
 
     obj.metadata.update(
         {
-            "organisation_name": organisation_name,
+            "org_name": org_name,
             "plan_group_name": plan_group_name,
             "region_name": region_name,
-            "repository_url": repository_url,
+            "repo_url": repo_url,
             "deploy": deploy,
+            "template_release_commands": template_release_commands,
+            "template_uuid": template_uuid,
         }
     )
 
-    wizard.create_app(data)
+    wiz.create_app(data)
 
 
 @app.command(name="list")
