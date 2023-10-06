@@ -65,8 +65,24 @@ def create_addon_archive(path):
     return data
 
 
-def upload_addon(client, path=None):
-    path = path or "."
+def get_addon_package_name(path="."):
+    return (
+        subprocess.check_output(
+            ["python", "setup.py", "--name"],
+            cwd=path,
+            env=get_subprocess_env(),
+        )
+        .decode()
+        .strip()
+    )
+
+
+def upload_addon(client, path="."):
     validate_addon(path)
     archive_obj = create_addon_archive(path)
-    return client.upload_addon(archive_obj)
+    package_name = get_addon_package_name(path=path)
+
+    return client.upload_addon(
+        package_name=package_name,
+        archive_obj=archive_obj,
+    )
