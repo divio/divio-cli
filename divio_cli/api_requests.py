@@ -38,7 +38,7 @@ class SingleHostSession(requests.Session):
         if "control.local.aldryn.net" in self.host:
             # TODO: Remove when local host namespaces are uniformed
             # with development and production.
-            namespaces = ["iam", "services", "billing", "admin"]
+            namespaces = ["iam", "services", "billing", "admin", "legacy"]
             for ns in namespaces:
                 if url.strip("/").startswith(ns):
                     url = urljoin(self.host, url)
