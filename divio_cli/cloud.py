@@ -535,12 +535,6 @@ class CloudClient:
 
         return request()
 
-    def upload_boilerplate(self, archive_obj):
-        request = api_requests.UploadBoilerplateRequest(
-            self.session, files={"boilerplate": archive_obj}
-        )
-        return request()
-
     def get_application_uuid_for_slug(self, slug):
         response = api_requests.SlugToAppUUIDRequest(
             self.session, url_kwargs={"website_slug": slug}

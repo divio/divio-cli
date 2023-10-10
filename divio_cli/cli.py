@@ -26,7 +26,6 @@ from .localdev.utils import (
     migrate_project_settings,
 )
 from .upload.addon import upload_addon
-from .upload.boilerplate import upload_boilerplate
 from .utils import (
     Map,
     clean_table_cell,
@@ -40,7 +39,6 @@ from .utils import (
     table,
 )
 from .validators.addon import validate_addon
-from .validators.boilerplate import validate_boilerplate
 
 
 try:
@@ -1233,36 +1231,6 @@ def addon_register(ctx, package_name, verbose_name, organisation):
         package_name, verbose_name, organisation
     )
     click.echo(ret)
-
-
-@cli.group()
-@click.option("-p", "--path", default=".", help="Boilerplate directory")
-@click.pass_obj
-def boilerplate(obj, path):
-    """Validate and upload boilerplate packages to the Divio cloud."""
-
-
-@boilerplate.command(name="validate")
-@click.pass_context
-def boilerplate_validate(ctx):
-    """Validate boilerplate configuration."""
-    validate_boilerplate(ctx.parent.params["path"])
-    click.echo("Boilerplate is valid.")
-
-
-@boilerplate.command(name="upload")
-@click.option(
-    "--noinput",
-    is_flag=True,
-    default=False,
-    help="Don't ask for confirmation.",
-)
-@click.pass_context
-def boilerplate_upload(ctx, noinput):
-    """Upload boilerplate to the Divio Control Panel."""
-    click.echo(
-        upload_boilerplate(ctx.obj.client, ctx.parent.params["path"], noinput)
-    )
 
 
 @cli.command()
