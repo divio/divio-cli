@@ -269,11 +269,6 @@ class UploadAddonRequest(TextResponse, APIV3Request):
     method = "POST"
 
 
-class UploadBoilerplateRequest(TextResponse, APIRequest):
-    url = "/api/v1/boilerplates/"
-    method = "POST"
-
-
 class AddonPackageNameToUUIDRequest(JsonResponse, APIV3Request):
     url = "/legacy/v3/addons/?package_name={package_name}"
 

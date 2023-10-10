@@ -15,6 +15,7 @@ x.x.x (x-x-x)
 * Added the option to keep temporary files for app push and pull.
 * Added logout command.
 * Ported addon commands over to v3 APIs.
+* Removed boilerplate support.
 
 3.17.2 (2023-03-16)
 -------------------
