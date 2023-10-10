@@ -28,6 +28,7 @@ APP_WIZARD_MESSAGES = {
         "Missing option '-s' / '--slug'. Required in non-interactive mode."
     ),
     # Organisation
+    "orgs_not_found": "No organisations found. Please create an organisation first.",
     "org_select": "Select an organisation for your application",
     "org_missing": (
         "Missing option '-o' / '--organisation'. "
@@ -136,12 +137,12 @@ def app_details_summary(data, metadata, as_json=False):
             },
             "template": {
                 "url": data["app_template"],
-                "uuid": metadata["template_uuid"] or None,
+                "uuid": metadata["template_uuid"],
             },
             "repository": {
-                "url": metadata["repo_url"] or None,
+                "url": metadata["repo_url"],
                 "branch": repo_branch,
-                "uuid": data["repository"] or None,
+                "uuid": data["repository"],
             },
             "deploy": metadata["deploy"],
             "release_commands": data["release_commands"],
@@ -151,26 +152,21 @@ def app_details_summary(data, metadata, as_json=False):
             data["release_commands"],
             metadata["template_release_commands"],
         )
-        template_uuid_display = (
-            f"({metadata['template_uuid']})"
-            if metadata["template_uuid"]
-            else ""
-        )
         repo_branch = data["branch"] if data["repository"] else "—"
 
         app_details = Group(
             f"Name: {data['name']}",
             f"Slug: {data['slug']}",
-            f"Organisation: {metadata['org_name']} ({data['organisation']})",
-            f"Plan group: {metadata['plan_group_name']} ({data['plan_group']})",
-            f"Region: {metadata['region_name']} ({data['region']})",
-            f"Template: {data['app_template']} {template_uuid_display}"
+            f"Organisation:\n  Name: {metadata['org_name']}\n  UUID: {data['organisation']}",
+            f"Plan group:\n  Name: {metadata['plan_group_name']}\n  UUID: {data['plan_group']}",
+            f"Region:\n  Name: {metadata['region_name']}\n  UUID: {data['region']}",
+            f"Template:\n  URL: {data['app_template']}\n  UUID: {metadata['template_uuid'] or '—'}"
             if data["app_template"]
             else "Template: —",
-            f"Repository: {metadata['repo_url']} ({data['repository']})\nBranch: {repo_branch}"
+            f"Repository:\n  URL: {metadata['repo_url']}\n  Branch: {repo_branch}\n  UUID: {data['repository']}"
             if data["repository"]
             else "Repository: —",
-            f"Deploy (test environment): {'Yes' if metadata['deploy'] else '—'}",
+            f"Deploy (test environment): {'Yes' if metadata['deploy'] else 'No'}",
             relese_commands_table
             if data["release_commands"]
             else "Release commands: —",

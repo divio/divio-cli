@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import sys
 
@@ -32,7 +34,19 @@ class CreateAppWizard:
         if self.verbose and self.interactive:
             console.print(APP_WIZARD_MESSAGES["welcome_message"])
 
-    def get_name(self, name):
+    def get_name(self, name: str) -> str:
+        """
+        Retrieves and validates the application name provided by the user.
+
+        Parameters:
+        - name (str): The application name provided by the user.
+
+        Returns:
+        - name (str): The application name, if valid. Otherwise, exits in
+        non-interactive mode or prompts the user continuously until a valid
+        name is provided in interactive mode.
+        """
+
         if not self.interactive:
             if not name:
                 status_print(
@@ -63,7 +77,22 @@ class CreateAppWizard:
 
         return name
 
-    def get_slug(self, slug, name):
+    def get_slug(self, slug: str, name: str) -> str:
+        """
+        Retrieves and validates the application slug provided by the user.
+        Also, retrieves the previously validated application name which is
+        used to generate a suggested slug.
+
+        Parameters:
+        - slug (str): The application slug provided by the user.
+        - name (str): The validated application name.
+
+        Returns:
+        - slug (str): The application slug, if valid. Otherwise, exits in
+        non-interactive mode or prompts the user continuously until a valid
+        slug is provided in interactive mode.
+        """
+
         if not self.interactive:
             if not slug:
                 status_print(
@@ -98,8 +127,29 @@ class CreateAppWizard:
 
         return slug
 
-    def get_org(self, org):
+    def get_org(self, org: str) -> tuple[str, str]:
+        """
+        Retrieves the organisation UUID from the user and validates it.
+
+        Parameters:
+        - org (str): The organisation UUID provided by the user.
+
+        Returns:
+        - org (str): The organisation UUID, if valid. Otherwise, exits in
+        non-interactive mode or prompts the user continuously until a valid
+        organisation UUID is provided in interactive mode.
+        - org_name (str): The organisation name related to the validated
+        organisation UUID.
+        """
+
         user_orgs, _ = self.client.get_organisations()
+        if not user_orgs:
+            status_print(
+                APP_WIZARD_MESSAGES["orgs_not_found"],
+                status="error",
+            )
+            sys.exit(1)
+
         orgs_uuid_name_mapping = {
             org["uuid"]: org["name"] for org in user_orgs
         }
@@ -147,7 +197,24 @@ class CreateAppWizard:
 
         return org, orgs_uuid_name_mapping[org]
 
-    def get_plan_group(self, plan_group, org):
+    def get_plan_group(self, plan_group: str, org: str) -> tuple[str, str]:
+        """
+        Retrieves the plan group UUID from the user and validates it. Also
+        retrieves the previously validated organisation UUID which is used to
+        filter the available plan groups.
+
+        Parameters:
+        - plan_group (str): The plan group UUID provided by the user.
+        - org (str): The validated organisation UUID.
+
+        Returns:
+        - plan_group (str): The plan group UUID, if valid. Otherwise, exits in
+        non-interactive mode or prompts the user continuously until a valid
+        plan group UUID is provided in interactive mode.
+        - plan_group_name (str): The plan group name related to the validated
+        plan group UUID.
+        """
+
         user_plan_groups, _ = self.client.get_application_plan_groups(
             params={"organisation": org}
         )
@@ -198,7 +265,24 @@ class CreateAppWizard:
 
         return plan_group, plan_groups_uuid_name_mapping[plan_group]
 
-    def get_region(self, region, plan_group):
+    def get_region(self, region: str, plan_group: str) -> tuple[str, str]:
+        """
+        Retrieves the region UUID from the user and validates it. Also
+        retrieves the previously validated plan group UUID which is used to
+        filter the available regions.
+
+        Parameters:
+        - region (str): The region UUID provided by the user.
+        - plan_group (str): The validated plan group UUID.
+
+        Returns:
+        - region (str): The region UUID, if valid. Otherwise, exits in
+        non-interactive mode or prompts the user continuously until a valid
+        region UUID is provided in interactive mode.
+        - region_name (str): The region name related to the validated
+        region UUID.
+        """
+
         user_regions_uuids = self.client.get_application_plan_group(
             plan_group
         )["regions"]
@@ -251,10 +335,24 @@ class CreateAppWizard:
 
         return region, regions_uuid_name_mapping[region]
 
-    def get_template(self, template):
-        template_uuid = None
-        template_release_commands = None
+    def get_template(self, template: str) -> tuple[str | None, str | None]:
+        """
+        Retrieves the template URL from the user and validates it.
 
+        Parameters:
+        - template (str | None): The template URL provided by the user.
+
+        Returns:
+        - template (str | None): The template URL, if valid. Otherwise,
+        exits in non-interactive mode or prompts the user continuously until a
+        valid template URL is provided in interactive mode. If the user skips
+        this step, returns None.
+        - template_uuid (str | None): The template UUID related to the
+        validated template URL. If the user skips this step or the template
+        URL is custom (not a Divio template), returns None.
+        """
+
+        template_uuid = None
         divio_templates, _ = self.client.get_application_templates()
         divio_templates = {
             t["uuid"]: {
@@ -264,10 +362,9 @@ class CreateAppWizard:
             for t in divio_templates
         }
 
-        # Non-interactive mode
         if not self.interactive:
             if not template:
-                return None, None, None
+                return None, None
 
             response = self.client.validate_application_field(
                 "app_template", template
@@ -282,15 +379,11 @@ class CreateAppWizard:
                     status_print(e, status="error")
                 sys.exit(1)
 
-            for t in divio_templates:
-                if divio_templates[t]["url"] == template:
-                    template_uuid = t
-                    template_release_commands = (
-                        self.client.get_application_template(t)[
-                            "release_commands"
-                        ]
-                    )
-        # Interactive mode.
+            for uuid in divio_templates:
+                if divio_templates[uuid]["url"] == template:
+                    template_uuid = uuid
+                    break
+        # Interactive mode
         else:
             options = [
                 inquirer.List(
@@ -315,7 +408,7 @@ class CreateAppWizard:
 
             # No template
             if create_template == "skip":
-                return None, None, None
+                return None, None
             # Divio template
             elif create_template == "select":
                 divio_template_options = [
@@ -323,8 +416,8 @@ class CreateAppWizard:
                         "uuid",
                         message=APP_WIZARD_MESSAGES["template_select"],
                         choices=[
-                            (f"{divio_templates[t]['name']} ({t})", t)
-                            for t in divio_templates
+                            (f"{divio_templates[uuid]['name']} ({uuid})", uuid)
+                            for uuid in divio_templates
                         ],
                         carousel=True,
                     )
@@ -333,12 +426,6 @@ class CreateAppWizard:
                     divio_template_options, raise_keyboard_interrupt=True
                 )["uuid"]
                 template = divio_templates[template_uuid]["url"]
-
-                template_release_commands = (
-                    self.client.get_application_template(template_uuid)[
-                        "release_commands"
-                    ]
-                )
             # Custom template
             else:
                 while True:
@@ -359,20 +446,81 @@ class CreateAppWizard:
                     else:
                         # There is a chance that the user entered a Divio template URL.
                         # If so, we need to fetch the release commands for that template.
-                        for t in divio_templates:
-                            if divio_templates[t]["url"] == template:
-                                template_uuid = t
-                                template_release_commands = (
-                                    self.client.get_application_template(t)[
-                                        "release_commands"
-                                    ]
-                                )
+                        for uuid in divio_templates:
+                            if divio_templates[uuid]["url"] == template:
+                                template_uuid = uuid
                                 break
                         break
 
-        return template, template_uuid, template_release_commands
+        return template, template_uuid
 
-    def get_release_commands(self, template_release_commands):
+    def get_template_release_commands(
+        self, template_uuid: str | None
+    ) -> list[dict] | None:
+        """
+        Retrieves the previously validated template UUID and uses it to
+        retrieve the release commands related to that template.
+
+        Parameters:
+        - template_uuid (str | None): The application template UUID.
+
+        Returns:
+        - template_release_commands (list[dict] | None): The template release
+        commands related to the application template UUID. In case of a custom
+        or no template, returns None.
+        """
+
+        if template_uuid is None:
+            return None
+
+        return self.client.get_application_template(template_uuid)[
+            "release_commands"
+        ]
+
+    def get_template_services(
+        self, template_uuid: str | None
+    ) -> list[dict] | None:
+        """
+        Retrieves the validated template UUID and proceeds on retrieving the
+        services related to that template, if any.
+
+        Parameters:
+        - template_uuid (str | None): The template UUID.
+
+        Returns:
+        - services (list[dict]): The services related to that template. If a
+        custom template (not a Divio template) or no template was selected or
+        the template did not include any services, returns None.
+        """
+
+        if template_uuid is None:
+            return None
+
+        template_services = self.client.get_application_template(
+            template_uuid
+        )["services"]
+
+        return template_services or None
+
+    def get_release_commands(
+        self, template_release_commands: list[dict] | None
+    ) -> list[dict] | None:
+        """
+        Retrieves the release commands from the user one by one and validates
+        them. Also, retrieves any potential release commands included in the
+        selected template and injects them into the release commands list.
+
+        Parameters:
+        - template_release_commands (list[dict] | None): The template release
+        commands related to the validated template URL.
+
+        Returns:
+        - release_commands (list[dict]): The release commands provided by the
+        user, including the ones injected by the template, if any. If the user
+        skips this step or no template was selected or the template did not
+        include any release commands, returns None.
+        """
+
         release_commands = (
             template_release_commands.copy()
             if template_release_commands
@@ -423,9 +571,34 @@ class CreateAppWizard:
                     APP_WIZARD_MESSAGES["add_another_release_command"],
                 )
 
-        return release_commands
+        return release_commands or None
 
-    def get_git_repo(self, org):
+    def get_git_repo(
+        self, org: str
+    ) -> tuple[str | None, str | None, str | None]:
+        """
+        Retrieves the validated organisation UUID and proceeds on creating a
+        repository related to that organisation. The created repository will
+        be subjected to a verification process.
+
+        If the verification process fails, the user will be prompted to
+        restart, retry or skip the verification process. In any case, only a
+        successful verification will allow this repository to be later
+        connected to the application by providing all the required information
+        (repository UUID and branch) during the application creation process.
+
+        Parameters:
+        - org (str): The validated organisation UUID.
+
+        Returns:
+        - repo_uuid (str | None): The repository UUID, if the verification
+        process was successful. Otherwise, returns None.
+        - repo_url (str | None): The repository URL, if the verification
+        process was successful. Otherwise, returns None.
+        - repo_branch (str | None): The repository branch, if the verification
+        process was successful. Otherwise, returns None.
+        """
+
         if not self.interactive:
             return None, None, None
 
@@ -531,29 +704,33 @@ class CreateAppWizard:
             else:
                 return None, None, None
 
-    def get_services(self, template_uuid=None):
-        if not template_uuid:
-            return None
-
-        return self.client.get_application_template(template_uuid)["services"]
-
-    def create_app(self, data):
+    def create_app(self, data: dict):
         """
-        Responsible for:
-        - Creating the application based on the user provided data.
-        - Triggering the deployment of the test environment, if requested.
-        - Displaying the application details depending on the verbosity level.
+        Creates an application using the provided data while takind care of
+        displaying the application details in multiple formats depending on
+        the verbosity level and the interactivity mode.
+
+        Triggers the deployment of the application's test environment if the
+        user requested such an action.
+
+        Displays a warning message if services are detected to be required
+        depending on the selected template.
+
+        Parameters:
+        - data (dict): The application data.
         """
 
+        # Application creation and details display.
         if not self.interactive:
             response = self.client.application_create(data=data)
-            app_url = build_app_url(self.client, response["uuid"])
-            app_details = app_details_summary(
-                data, self.metadata, as_json=self.as_json
-            )
-            app_details["app_url"] = app_url
             if self.verbose:
+                app_details = app_details_summary(
+                    data, self.metadata, as_json=self.as_json
+                )
+                app_url = build_app_url(self.client, response["uuid"])
+
                 if self.as_json:
+                    app_details["app_url"] = app_url
                     console.print(
                         JSON(
                             json.dumps(app_details), indent=4, highlight=False
@@ -563,6 +740,10 @@ class CreateAppWizard:
                     console.rule("Application Details")
                     console.print(app_details)
                     console.rule()
+                    status_print(
+                        f"Application created! Visit here: {app_url}",
+                        status="success",
+                    )
         else:
             if self.verbose:
                 app_details = app_details_summary(
@@ -582,16 +763,17 @@ class CreateAppWizard:
             ):
                 response = self.client.application_create(data=data)
             else:
-                console.print("Aborted.", style="red")
+                console.print("Aborted!")
                 sys.exit(0)
 
-            if self.verbose and self.interactive:
+            if self.verbose:
                 app_url = build_app_url(self.client, response["uuid"])
                 status_print(
                     f"Application created! Visit here: {app_url}",
                     status="success",
                 )
 
+        # Deployment
         if self.metadata["deploy"]:
             app_envs = self.client.get_environments(
                 params={"application": response["uuid"], "slug": "test"},
@@ -603,11 +785,12 @@ class CreateAppWizard:
                     status="success",
                 )
 
-        template_uuid = self.metadata["template_uuid"]
-        if template_uuid:
-            template_services = self.get_services(template_uuid)
-            if template_services and self.verbose and self.interactive:
-                status_print(
-                    APP_WIZARD_MESSAGES["services_not_supported"],
-                    status="warning",
-                )
+        # Services
+        template_services = self.get_template_services(
+            self.metadata["template_uuid"]
+        )
+        if template_services and self.verbose and self.interactive:
+            status_print(
+                APP_WIZARD_MESSAGES["services_not_supported"],
+                status="warning",
+            )

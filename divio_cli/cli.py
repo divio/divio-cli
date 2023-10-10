@@ -376,23 +376,12 @@ def application_create(
     org, org_name = wiz.get_org(organisation)
     plan_group, plan_group_name = wiz.get_plan_group(plan_group, org)
     region, region_name = wiz.get_region(region, plan_group)
-    template, template_uuid, template_release_commands = wiz.get_template(
-        template
+    template, template_uuid = wiz.get_template(template)
+    template_release_commands = wiz.get_template_release_commands(
+        template_uuid
     )
     release_commands = wiz.get_release_commands(template_release_commands)
     repo, repo_url, branch = wiz.get_git_repo(org)
-
-    data = {
-        "name": name,
-        "slug": slug,
-        "organisation": org,
-        "plan_group": plan_group,
-        "region": region,
-        "app_template": template,
-        "release_commands": release_commands,
-        "repository": repo,
-        "branch": branch or "main",
-    }
 
     obj.metadata.update(
         {
@@ -406,7 +395,23 @@ def application_create(
         }
     )
 
-    wiz.create_app(data)
+    wiz.create_app(
+        # CAUTION: The naming of the keys is important as they must conform
+        # to the API's schema for application creation.
+        data={
+            "name": name,
+            "slug": slug,
+            "organisation": org,
+            "plan_group": plan_group,
+            "region": region,
+            "app_template": template,
+            "release_commands": release_commands,
+            "repository": repo,
+            # Branch still needs a default even if an external repo is not used.
+            # In that case, it will be required for the Divio hosted git repo.
+            "branch": branch or "main",
+        }
+    )
 
 
 @app.command(name="list")
