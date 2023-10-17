@@ -1,13 +1,10 @@
+from __future__ import annotations
+
 import time
 
 import inquirer
-from rich.console import Console, Group
-from rich.table import Table
 
 from .utils import slugify, status_print
-
-
-console = Console()
 
 
 APP_WIZARD_MESSAGES = {
@@ -87,39 +84,83 @@ AVAILABLE_REPOSITORY_SSH_KEY_TYPES = [
 ]
 
 
-def app_release_commands_table_summary(
-    release_commands, template_release_commands
-):
-    """Return a rich table of release commands."""
+def get_release_commands_display(
+    release_commands: list[dict],
+    template_release_commands: list[dict],
+    as_json: bool = False,
+) -> str | list[dict]:
+    """
+    Return a human readable version of all release commands
+    (custom and template release commands, if any).
+
+    Parameters:
+    - release_commands (list[dict]): List of release commands provided by the
+    user.
+    - template_release_commands (list[dict]): List of release commands provided
+    by the template, if any.
+    """
+
+    if not (release_commands or template_release_commands):
+        return None if as_json else "Release commands: —"
+
     template_release_commands_labels = (
         [rc["label"] for rc in template_release_commands]
         if template_release_commands
         else []
     )
 
-    if not release_commands:
-        return None
+    if as_json:
+        return [
+            {
+                "label": rc["label"],
+                "command": rc["command"],
+                "from_template": rc["label"]
+                in template_release_commands_labels
+                or False,
+            }
+            for rc in release_commands
+        ]
 
-    table = Table(title="Release commands:", title_justify="left")
-    table.add_column("Label")
-    table.add_column("Command")
-    table.add_column("From template")
-    table.show_lines = True
+    release_commands_display = ""
     for rc in release_commands:
-        table.add_row(
-            rc["label"],
-            rc["command"],
-            "Yes" if rc["label"] in template_release_commands_labels else "No",
+        from_template = (
+            "Yes" if rc["label"] in template_release_commands_labels else "No"
+        )
+        release_commands_display += (
+            f"  {rc['label']}:\n    "
+            f"Command: {rc['command']}\n    "
+            f"From Template: {from_template}\n"
         )
 
-    return table
+    return f"Release commands:\n{release_commands_display}".strip()
 
 
-def app_details_summary(data, metadata, as_json=False):
-    """Return a table of application details."""
+def app_details_summary(
+    data: dict, metadata: dict, deploy: bool = False, as_json: bool = False
+) -> str | dict:
+    """
+    Creates either a human readable summary or a JSON representation of the
+    application details.
+
+    Parameters:
+    - data (dict): Application data.
+    - metadata (dict): Application metadata.
+    - deploy (bool): Trigger deployment of the 'test' environment.
+    - as_json (bool): Return a JSON representation of the application details.
+
+    Returns:
+    - app_details (str | dict): Human readable summary or JSON representation
+    of the application details.
+    """
+
+    release_commands_display = get_release_commands_display(
+        data["release_commands"],
+        metadata["template_release_commands"],
+        as_json=as_json,
+    )
 
     if as_json:
-        repo_branch = data["branch"] if data["repository"] else None
+        repo_branch_display = data["branch"] if data["repository"] else None
         app_details = {
             "name": data["name"],
             "slug": data["slug"],
@@ -141,36 +182,51 @@ def app_details_summary(data, metadata, as_json=False):
             },
             "repository": {
                 "url": metadata["repo_url"],
-                "branch": repo_branch,
+                "branch": repo_branch_display,
                 "uuid": data["repository"],
             },
-            "deploy": metadata["deploy"],
-            "release_commands": data["release_commands"],
+            "deploy": deploy,
+            "release_commands": release_commands_display,
         }
     else:
-        relese_commands_table = app_release_commands_table_summary(
-            data["release_commands"],
-            metadata["template_release_commands"],
-        )
-        repo_branch = data["branch"] if data["repository"] else "—"
-
-        app_details = Group(
+        repo_branch_display = data["branch"] if data["repository"] else "—"
+        app_details = [
             f"Name: {data['name']}",
             f"Slug: {data['slug']}",
-            f"Organisation:\n  Name: {metadata['org_name']}\n  UUID: {data['organisation']}",
-            f"Plan group:\n  Name: {metadata['plan_group_name']}\n  UUID: {data['plan_group']}",
-            f"Region:\n  Name: {metadata['region_name']}\n  UUID: {data['region']}",
-            f"Template:\n  URL: {data['app_template']}\n  UUID: {metadata['template_uuid'] or '—'}"
+            (
+                "Organisation: \n  "
+                f"Name: {metadata['org_name']}\n  "
+                f"UUID: {data['organisation']}"
+            ),
+            (
+                "Plan Group: \n  "
+                f"Name: {metadata['plan_group_name']}\n  "
+                f"UUID: {data['plan_group']}"
+            ),
+            (
+                "Region: \n  "
+                f"Name: {metadata['region_name']}\n  "
+                f"UUID: {data['region']}"
+            ),
+            (
+                "Template: \n  "
+                f"URL: {data['app_template']}\n  "
+                f"UUID: {metadata['template_uuid'] or '—'}"
+            )
             if data["app_template"]
             else "Template: —",
-            f"Repository:\n  URL: {metadata['repo_url']}\n  Branch: {repo_branch}\n  UUID: {data['repository']}"
+            (
+                "Repository: \n  "
+                f"URL: {metadata['repo_url']}\n  "
+                f"Branch: {repo_branch_display}\n  "
+                f"UUID: {data['repository']}"
+            )
             if data["repository"]
             else "Repository: —",
-            f"Deploy (test environment): {'Yes' if metadata['deploy'] else 'No'}",
-            relese_commands_table
-            if data["release_commands"]
-            else "Release commands: —",
-        )
+            f"Deploy (test environment): {'Yes' if deploy else 'No'}",
+            release_commands_display,
+        ]
+        app_details = "\n".join(app_details)
 
     return app_details
 
@@ -193,14 +249,13 @@ def suggest_app_slug(client, app_name):
     return slug
 
 
-def verify_app_repo(client, verbose, uuid, branch, url):
+def verify_app_repo(client, uuid, branch):
     c = 0
     response = client.check_repository(uuid, branch)
-    with console.status("Verifying repository..."):
-        while response["code"] == "waiting" and c < 5:
-            time.sleep(5)
-            response = client.check_repository(uuid, branch)
-            c += 1
+    while response["code"] == "waiting" and c < 5:
+        time.sleep(5)
+        response = client.check_repository(uuid, branch)
+        c += 1
 
     if response["code"] == "waiting":
         # TODO: Delete the repository before exiting.

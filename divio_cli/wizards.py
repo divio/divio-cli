@@ -4,10 +4,7 @@ import json
 import sys
 
 import inquirer
-from click import confirm
-from rich.console import Console
-from rich.json import JSON
-from rich.prompt import Prompt
+from click import Abort, confirm, echo, prompt
 
 from .utils import status_print
 from .wizards_utils import (
@@ -20,9 +17,6 @@ from .wizards_utils import (
 )
 
 
-console = Console()
-
-
 class CreateAppWizard:
     def __init__(self, obj):
         self.client = obj.client
@@ -32,7 +26,7 @@ class CreateAppWizard:
         self.metadata = obj.metadata
 
         if self.verbose and self.interactive:
-            console.print(APP_WIZARD_MESSAGES["welcome_message"])
+            echo(APP_WIZARD_MESSAGES["welcome_message"])
 
     def get_name(self, name: str) -> str:
         """
@@ -64,7 +58,7 @@ class CreateAppWizard:
         else:
             while True:
                 if not name:
-                    name = Prompt.ask(APP_WIZARD_MESSAGES["name_enter"])
+                    name = prompt(APP_WIZARD_MESSAGES["name_enter"])
 
                 response = self.client.validate_application_field("name", name)
                 errors = response.get("name")
@@ -111,7 +105,7 @@ class CreateAppWizard:
             suggested_slug = suggest_app_slug(self.client, name)
             while True:
                 if not slug:
-                    slug = Prompt.ask(
+                    slug = prompt(
                         APP_WIZARD_MESSAGES["slug_enter"],
                         default=suggested_slug,
                     )
@@ -430,7 +424,7 @@ class CreateAppWizard:
             else:
                 while True:
                     if not template:
-                        template = Prompt.ask(
+                        template = prompt(
                             APP_WIZARD_MESSAGES["template_enter_url"]
                         )
                     response = self.client.validate_application_field(
@@ -538,7 +532,7 @@ class CreateAppWizard:
 
                 # Retrieve and validate the release command label.
                 while True:
-                    release_command_label = Prompt.ask(
+                    release_command_label = prompt(
                         APP_WIZARD_MESSAGES["enter_release_command_label"]
                     )
                     if release_command_label in [
@@ -556,7 +550,7 @@ class CreateAppWizard:
                         break
 
                 # Release command value.
-                release_command_value = Prompt.ask(
+                release_command_value = prompt(
                     APP_WIZARD_MESSAGES["enter_release_command"]
                 )
 
@@ -614,7 +608,7 @@ class CreateAppWizard:
                 repo_url = None
                 while True:
                     if not repo_url:
-                        repo_url = Prompt.ask(
+                        repo_url = prompt(
                             APP_WIZARD_MESSAGES["repo_url_enter"],
                             default=suggested_repo_url,
                         )
@@ -631,7 +625,7 @@ class CreateAppWizard:
                         break
 
                 # Repository branch
-                repo_branch = Prompt.ask(
+                repo_branch = prompt(
                     APP_WIZARD_MESSAGES["repo_branch_enter"],
                     default=suggested_repo_branch,
                 )
@@ -661,9 +655,7 @@ class CreateAppWizard:
                 repository_ssh_key = response["auth_info"]
                 # Display the the ssh public key (deploy key) and ask the user to
                 # register it with their repository provider.
-                console.rule("SSH Key")
-                console.print(repository_ssh_key)
-                console.rule()
+                echo(f"\nSSH Key:\n{repository_ssh_key}\n")
 
                 if confirm(
                     APP_WIZARD_MESSAGES["create_deploy_key"], default=True
@@ -671,10 +663,8 @@ class CreateAppWizard:
                     while True:
                         verification_status = verify_app_repo(
                             self.client,
-                            self.verbose,
                             repo_uuid,
                             repo_branch,
-                            repo_url,
                         )
 
                         if verification_status == "retry":
@@ -704,7 +694,7 @@ class CreateAppWizard:
             else:
                 return None, None, None
 
-    def create_app(self, data: dict):
+    def create_app(self, data: dict, deploy: bool = False):
         """
         Creates an application using the provided data while takind care of
         displaying the application details in multiple formats depending on
@@ -725,21 +715,18 @@ class CreateAppWizard:
             response = self.client.application_create(data=data)
             if self.verbose:
                 app_details = app_details_summary(
-                    data, self.metadata, as_json=self.as_json
+                    data,
+                    metadata=self.metadata,
+                    deploy=deploy,
+                    as_json=self.as_json,
                 )
                 app_url = build_app_url(self.client, response["uuid"])
 
                 if self.as_json:
                     app_details["app_url"] = app_url
-                    console.print(
-                        JSON(
-                            json.dumps(app_details), indent=4, highlight=False
-                        )
-                    )
+                    echo(json.dumps(app_details, indent=4))
                 else:
-                    console.rule("Application Details")
-                    console.print(app_details)
-                    console.rule()
+                    echo(f"Application Details\n{app_details}")
                     status_print(
                         f"Application created! Visit here: {app_url}",
                         status="success",
@@ -747,15 +734,19 @@ class CreateAppWizard:
         else:
             if self.verbose:
                 app_details = app_details_summary(
-                    data, self.metadata, as_json=self.as_json
+                    data,
+                    metadata=self.metadata,
+                    deploy=deploy,
+                    as_json=self.as_json,
                 )
-                console.rule("Application Details")
-                console.print(
-                    JSON(json.dumps(app_details), indent=4)
+
+                echo("\nApplication Details")
+                echo(
+                    json.dumps(app_details, indent=4)
                     if self.as_json
                     else app_details
                 )
-                console.rule()
+                echo()
 
             if confirm(
                 APP_WIZARD_MESSAGES["confirm_app_creation"],
@@ -763,8 +754,7 @@ class CreateAppWizard:
             ):
                 response = self.client.application_create(data=data)
             else:
-                console.print("Aborted!")
-                sys.exit(0)
+                raise Abort
 
             if self.verbose:
                 app_url = build_app_url(self.client, response["uuid"])
@@ -774,7 +764,7 @@ class CreateAppWizard:
                 )
 
         # Deployment
-        if self.metadata["deploy"]:
+        if deploy:
             app_envs = self.client.get_environments(
                 params={"application": response["uuid"], "slug": "test"},
             )

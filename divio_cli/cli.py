@@ -389,7 +389,6 @@ def application_create(
             "plan_group_name": plan_group_name,
             "region_name": region_name,
             "repo_url": repo_url,
-            "deploy": deploy,
             "template_release_commands": template_release_commands,
             "template_uuid": template_uuid,
         }
@@ -410,7 +409,8 @@ def application_create(
             # Branch still needs a default even if an external repo is not used.
             # In that case, it will be required for the Divio hosted git repo.
             "branch": branch or "main",
-        }
+        },
+        deploy=deploy,
     )
 
 

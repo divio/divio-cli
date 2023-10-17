@@ -25,11 +25,6 @@ from . import __version__
 
 ALDRYN_DEFAULT_BRANCH_NAME = "develop"
 
-from rich.console import Console
-
-
-console = Console()
-
 
 def status_print(message, status="default", **kwargs):
     status_colors = {
@@ -43,8 +38,8 @@ def status_print(message, status="default", **kwargs):
 
     if status in status_colors:
         color = status_colors[status]
-        status_text = f"[{color}][{status.upper()}][{color}/]"
-        console.print(status_text, message, **kwargs)
+        status_text = f"[{status.upper()}]"
+        click.secho(f"{status_text} {message}", fg=color, **kwargs)
     else:
         raise ValueError(
             f"Unknown status {status!r}. "

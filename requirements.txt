@@ -9,7 +9,6 @@ packaging
 pyaml
 python-dateutil
 requests
-rich
 sentry-sdk
 tabulate >= 0.8.10
 urllib3
