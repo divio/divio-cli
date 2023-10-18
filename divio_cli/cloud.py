@@ -5,7 +5,6 @@ import os
 import re
 from datetime import datetime
 from itertools import groupby
-from netrc import netrc
 from operator import itemgetter
 from time import sleep
 from urllib.parse import urlparse
@@ -23,7 +22,7 @@ from divio_cli.exceptions import (
 )
 
 from . import api_requests, messages, settings
-from .config import Config
+from .config import Config, WritableNetRC
 from .localdev.utils import get_application_home, get_project_settings
 from .utils import json_response_request_paginate
 
@@ -1100,60 +1099,3 @@ class CloudClient:
     def get_organisations(self):
         request = api_requests.ListOrganisationsRequest(self.session)
         return request()
-
-
-class WritableNetRC(netrc):
-    def __init__(self, *args, **kwargs):
-        netrc_path = self.get_netrc_path()
-        if not os.path.exists(netrc_path):
-            open(netrc_path, "a").close()
-            os.chmod(netrc_path, 0o600)
-        kwargs["file"] = netrc_path
-        try:
-            netrc.__init__(self, *args, **kwargs)
-        except OSError:
-            raise DivioException(
-                f"Please make sure your netrc config file ('{netrc_path}') "
-                "can be read and written by the current user."
-            )
-
-    @classmethod
-    def get_netrc_path(self):
-        """
-        netrc uses os.environ['HOME'] for path detection which is
-        not defined on Windows. Detecting the correct path ourselves.
-
-        This method also checks if the environment variable "NETRC_PATH" is set
-        and returns it if so.
-        """
-
-        if "NETRC_PATH" in os.environ:
-            return os.environ["NETRC_PATH"]
-
-        home = os.path.expanduser("~")
-        return os.path.join(home, ".netrc")
-
-    def add(self, host, login, account, password):
-        self.hosts[host] = (login, account, password)
-
-    def remove(self, host):
-        if host in self.hosts:
-            del self.hosts[host]
-
-    def write(self, path=None):
-        if path is None:
-            path = self.get_netrc_path()
-
-        out = []
-        for machine, data in self.hosts.items():
-            login, account, password = data
-            out.append(f"machine {machine}")
-            if login:
-                out.append(f"\tlogin {login}")
-            if account:
-                out.append(f"\taccount {account}")
-            if password:
-                out.append(f"\tpassword {password}")
-
-        with open(path, "w") as f:
-            f.write(os.linesep.join(out))

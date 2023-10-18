@@ -2,8 +2,11 @@ import errno
 import json
 import os
 import time
+from netrc import netrc
 
 from packaging import version
+
+from divio_cli.exceptions import DivioException
 
 from . import __version__, settings, utils
 
@@ -106,3 +109,60 @@ class Config:
 
     def get_sentry_dsn(self):
         return self.config.get("sentry-dsn", settings.DEFAULT_SENTRY_DSN)
+
+
+class WritableNetRC(netrc):
+    def __init__(self, *args, **kwargs):
+        netrc_path = self.get_netrc_path()
+        if not os.path.exists(netrc_path):
+            open(netrc_path, "a").close()
+            os.chmod(netrc_path, 0o600)
+        kwargs["file"] = netrc_path
+        try:
+            netrc.__init__(self, *args, **kwargs)
+        except OSError:
+            raise DivioException(
+                f"Please make sure your netrc config file ('{netrc_path}') "
+                "can be read and written by the current user."
+            )
+
+    @classmethod
+    def get_netrc_path(self):
+        """
+        netrc uses os.environ['HOME'] for path detection which is
+        not defined on Windows. Detecting the correct path ourselves.
+
+        This method also checks if the environment variable "NETRC_PATH" is set
+        and returns it if so.
+        """
+
+        if "NETRC_PATH" in os.environ:
+            return os.environ["NETRC_PATH"]
+
+        home = os.path.expanduser("~")
+        return os.path.join(home, ".netrc")
+
+    def add(self, host, login, account, password):
+        self.hosts[host] = (login, account, password)
+
+    def remove(self, host):
+        if host in self.hosts:
+            del self.hosts[host]
+
+    def write(self, path=None):
+        if path is None:
+            path = self.get_netrc_path()
+
+        out = []
+        for machine, data in self.hosts.items():
+            login, account, password = data
+            out.append(f"machine {machine}")
+            if login:
+                out.append(f"\tlogin {login}")
+            if account:
+                out.append(f"\taccount {account}")
+            if password:
+                out.append(f"\tpassword {password}")
+
+        with open(path, "w") as f:
+            f.write(os.linesep.join(out))
