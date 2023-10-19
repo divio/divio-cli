@@ -35,20 +35,7 @@ class SingleHostSession(requests.Session):
             setattr(self, key, value)
 
     def request(self, method, url, v3_compatibilty=False, *args, **kwargs):
-        if "control.local.aldryn.net" in self.host:
-            # TODO: Remove when local host namespaces are uniformed
-            # with development and production.
-            namespaces = ["iam", "services", "billing", "admin", "legacy"]
-            for ns in namespaces:
-                if url.strip("/").startswith(ns):
-                    url = urljoin(self.host, url)
-                    url = url.replace("control", ns, 1)
-                    break
-            else:
-                url = urljoin(self.host, url)
-        else:
-            url = urljoin(self.host, url)
-
+        url = urljoin(self.host, url)
         if v3_compatibilty:
             # V3 compatibility hack
             url = url.replace("control", "api", 1)
