@@ -84,62 +84,11 @@ AVAILABLE_REPOSITORY_SSH_KEY_TYPES = [
 ]
 
 
-def get_release_commands_display(
-    release_commands: list[dict],
-    template_release_commands: list[dict],
-    as_json: bool = False,
-) -> str | list[dict]:
-    """
-    Return a human readable version of all release commands
-    (custom and template release commands, if any).
-
-    Parameters:
-    - release_commands (list[dict]): List of release commands provided by the
-    user.
-    - template_release_commands (list[dict]): List of release commands provided
-    by the template, if any.
-    """
-
-    if not (release_commands or template_release_commands):
-        return None if as_json else "Release commands: —"
-
-    template_release_commands_labels = (
-        [rc["label"] for rc in template_release_commands]
-        if template_release_commands
-        else []
-    )
-
-    if as_json:
-        return [
-            {
-                "label": rc["label"],
-                "command": rc["command"],
-                "from_template": rc["label"]
-                in template_release_commands_labels
-                or False,
-            }
-            for rc in release_commands
-        ]
-
-    release_commands_display = ""
-    for rc in release_commands:
-        from_template = (
-            "Yes" if rc["label"] in template_release_commands_labels else "No"
-        )
-        release_commands_display += (
-            f"  {rc['label']}:\n    "
-            f"Command: {rc['command']}\n    "
-            f"From Template: {from_template}\n"
-        )
-
-    return f"Release commands:\n{release_commands_display}".strip()
-
-
 def app_details_summary(
     data: dict, metadata: dict, deploy: bool = False, as_json: bool = False
 ) -> str | dict:
     """
-    Creates either a human readable summary or a JSON representation of the
+    Creates either a human readable or a JSON representation of the
     application details.
 
     Parameters:
@@ -149,18 +98,11 @@ def app_details_summary(
     - as_json (bool): Return a JSON representation of the application details.
 
     Returns:
-    - app_details (str | dict): Human readable summary or JSON representation
-    of the application details.
+    - app_details (str | dict): A Human readable or a JSON representation of
+    the application details.
     """
 
-    release_commands_display = get_release_commands_display(
-        data["release_commands"],
-        metadata["template_release_commands"],
-        as_json=as_json,
-    )
-
     if as_json:
-        repo_branch_display = data["branch"] if data["repository"] else None
         app_details = {
             "name": data["name"],
             "slug": data["slug"],
@@ -182,49 +124,55 @@ def app_details_summary(
             },
             "repository": {
                 "url": metadata["repo_url"],
-                "branch": repo_branch_display,
+                "branch": data["branch"] if data["repository"] else None,
                 "uuid": data["repository"],
             },
+            "release_commands": data["release_commands"],
             "deploy": deploy,
-            "release_commands": release_commands_display,
         }
     else:
-        repo_branch_display = data["branch"] if data["repository"] else "—"
+        template_display = (
+            (
+                f"Template: {data['app_template']} ({metadata['template_uuid']})"
+                if metadata["template_uuid"]
+                else f"Template: {data['app_template']}"
+            )
+            if data["app_template"]
+            else "Template: —"
+        )
+
+        repository_display = (
+            (
+                f"Repository: ({data['repository']})\n  "
+                f"URL: {metadata['repo_url']}\n  "
+                f"Branch: {data['branch']}"
+            )
+            if data["repository"]
+            else "Repository: —"
+        )
+
+        release_commands_display = (
+            "Release commands:"
+            + "".join(
+                [
+                    f"\n  {rc['label']}: {rc['command']}"
+                    for rc in data["release_commands"]
+                ]
+            )
+            if data["release_commands"]
+            else "Release commands: —"
+        )
+
         app_details = [
             f"Name: {data['name']}",
             f"Slug: {data['slug']}",
-            (
-                "Organisation: \n  "
-                f"Name: {metadata['org_name']}\n  "
-                f"UUID: {data['organisation']}"
-            ),
-            (
-                "Plan Group: \n  "
-                f"Name: {metadata['plan_group_name']}\n  "
-                f"UUID: {data['plan_group']}"
-            ),
-            (
-                "Region: \n  "
-                f"Name: {metadata['region_name']}\n  "
-                f"UUID: {data['region']}"
-            ),
-            (
-                "Template: \n  "
-                f"URL: {data['app_template']}\n  "
-                f"UUID: {metadata['template_uuid'] or '—'}"
-            )
-            if data["app_template"]
-            else "Template: —",
-            (
-                "Repository: \n  "
-                f"URL: {metadata['repo_url']}\n  "
-                f"Branch: {repo_branch_display}\n  "
-                f"UUID: {data['repository']}"
-            )
-            if data["repository"]
-            else "Repository: —",
-            f"Deploy (test environment): {'Yes' if deploy else 'No'}",
+            f"Organisation: {metadata['org_name']} ({data['organisation']})",
+            f"Plan Group: {metadata['plan_group_name']} ({data['plan_group']})",
+            f"Region: {metadata['region_name']} ({data['region']})",
+            template_display,
+            repository_display,
             release_commands_display,
+            f"Deploy (test environment): {'Yes' if deploy else 'No'}",
         ]
         app_details = "\n".join(app_details)
 

@@ -377,10 +377,7 @@ def application_create(
     plan_group, plan_group_name = wiz.get_plan_group(plan_group, org)
     region, region_name = wiz.get_region(region, plan_group)
     template, template_uuid = wiz.get_template(template)
-    template_release_commands = wiz.get_template_release_commands(
-        template_uuid
-    )
-    release_commands = wiz.get_release_commands(template_release_commands)
+    release_commands = wiz.get_release_commands(template_uuid)
     repo, repo_url, branch = wiz.get_git_repo(org)
 
     obj.metadata.update(
@@ -389,7 +386,6 @@ def application_create(
             "plan_group_name": plan_group_name,
             "region_name": region_name,
             "repo_url": repo_url,
-            "template_release_commands": template_release_commands,
             "template_uuid": template_uuid,
         }
     )

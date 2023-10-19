@@ -4,7 +4,7 @@ import json
 import sys
 
 import inquirer
-from click import Abort, confirm, echo, prompt
+from click import Abort, confirm, echo, prompt, secho
 
 from .utils import status_print
 from .wizards_utils import (
@@ -497,7 +497,7 @@ class CreateAppWizard:
         return template_services or None
 
     def get_release_commands(
-        self, template_release_commands: list[dict] | None
+        self, template_uuid: str | None
     ) -> list[dict] | None:
         """
         Retrieves the release commands from the user one by one and validates
@@ -505,21 +505,20 @@ class CreateAppWizard:
         selected template and injects them into the release commands list.
 
         Parameters:
-        - template_release_commands (list[dict] | None): The template release
-        commands related to the validated template URL.
+        - template_uuid (str | None): The template UUID from which to retrieve
+        any potential release commands.
 
         Returns:
         - release_commands (list[dict]): The release commands provided by the
-        user, including the ones injected by the template, if any. If the user
-        skips this step or no template was selected or the template did not
-        include any release commands, returns None.
+        user, including the ones that are potentially imported by a template.
+        If no release commands are present, both by the user and the template,
+        returns None.
         """
 
-        release_commands = (
-            template_release_commands.copy()
-            if template_release_commands
-            else []
+        template_release_commands = self.get_template_release_commands(
+            template_uuid
         )
+        release_commands = template_release_commands or []
 
         if not self.interactive:
             return release_commands
@@ -655,7 +654,8 @@ class CreateAppWizard:
                 repository_ssh_key = response["auth_info"]
                 # Display the the ssh public key (deploy key) and ask the user to
                 # register it with their repository provider.
-                echo(f"\nSSH Key:\n{repository_ssh_key}\n")
+                echo("SSH Key:")
+                secho(f"{repository_ssh_key}\n", fg="green")
 
                 if confirm(
                     APP_WIZARD_MESSAGES["create_deploy_key"], default=True
