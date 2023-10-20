@@ -51,6 +51,10 @@ APP_WIZARD_MESSAGES = {
     "template_select": "Select a template for your application",
     "template_enter_url": "Enter the URL of your template",
     # Release commands
+    "detected_template_release_commands": (
+        "The template you selected includes the following release commands:"
+    ),
+    "include_template_release_commands": "Do you want to include them?",
     "create_release_commands": "Want to create custom release commands for your application?",
     "enter_release_command_label": "Enter the label of your release command",
     "enter_release_command": "Enter your release command",

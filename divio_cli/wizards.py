@@ -518,7 +518,31 @@ class CreateAppWizard:
         template_release_commands = self.get_template_release_commands(
             template_uuid
         )
-        release_commands = template_release_commands or []
+
+        include_template_release_commands = False
+        if template_release_commands:
+            echo(APP_WIZARD_MESSAGES["detected_template_release_commands"])
+
+            echo(
+                "\nTemplate release commands:\n"
+                + "".join(
+                    [
+                        f"  {rc['label']}: {rc['command']}\n"
+                        for rc in template_release_commands
+                    ]
+                )
+            )
+
+            include_template_release_commands = confirm(
+                APP_WIZARD_MESSAGES["include_template_release_commands"],
+                default=True,
+            )
+
+        release_commands = (
+            template_release_commands
+            if include_template_release_commands
+            else []
+        )
 
         if not self.interactive:
             return release_commands
