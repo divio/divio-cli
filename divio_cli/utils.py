@@ -2,11 +2,13 @@ import io
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import unicodedata
 from contextlib import contextmanager
 from math import log
 from urllib.parse import urljoin
@@ -22,6 +24,27 @@ from . import __version__
 
 
 ALDRYN_DEFAULT_BRANCH_NAME = "develop"
+
+
+def status_print(message, status="default", **kwargs):
+    status_colors = {
+        "default": "white",
+        "success": "green",
+        "info": "blue",
+        "warning": "yellow",
+        "error": "red",
+        # Add more statuses and their corresponding colors here.
+    }
+
+    if status in status_colors:
+        color = status_colors[status]
+        status_text = f"[{status.upper()}]"
+        click.secho(f"{status_text} {message}", fg=color, **kwargs)
+    else:
+        raise ValueError(
+            f"Unknown status {status!r}. "
+            f"Choices are: {', '.join(status_colors)}."
+        )
 
 
 def hr(char="-", width=None, **kwargs):
@@ -484,3 +507,23 @@ def echo_environment_variables_as_txt(
         "\nSensitive environment variables are not included in this view.",
         fg="yellow",
     )
+
+
+def slugify(value, allow_unicode=False):
+    """
+    Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
+    dashes to single dashes. Remove characters that aren't alphanumerics,
+    or hyphens. Convert to lowercase. Also strip leading and trailing
+    whitespace, dashes, and underscores.
+    """
+    value = str(value)
+    if allow_unicode:
+        value = unicodedata.normalize("NFKC", value)
+    else:
+        value = (
+            unicodedata.normalize("NFKD", value)
+            .encode("ascii", "ignore")
+            .decode("ascii")
+        )
+    value = re.sub(r"[^\w\s-]", "", value.lower())
+    return re.sub(r"[-\s_]+", "-", value).strip("-_")

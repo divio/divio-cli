@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from datetime import datetime
 from itertools import groupby
 from netrc import netrc
@@ -177,9 +178,100 @@ class CloudClient:
         else:
             return False, messages.LOGIN_CHECK_ERROR
 
-    def get_applications(self):
+    def get_applications_v1(self):
         request = api_requests.ProjectListRequest(self.session)
         return request()
+
+    def get_applications(self):
+        results, messages = json_response_request_paginate(
+            api_requests.ApplicationsListRequest,
+            self.session,
+            limit_results=None,
+        )
+
+        return results, messages
+
+    def get_organisations(self, limit_results=None):
+        results, messages = json_response_request_paginate(
+            api_requests.ListOrganisationsRequest,
+            self.session,
+            limit_results=limit_results,
+        )
+
+        return results, messages
+
+    def get_regions(self, limit_results=None, params=None):
+        if params is None:
+            params = {}
+        results, messages = json_response_request_paginate(
+            api_requests.ListRegionsRequest,
+            self.session,
+            params=params,
+            limit_results=limit_results,
+        )
+        return results, messages
+
+    def get_application_plan_groups(self, params=None):
+        if params is None:
+            params = {}
+        results, messages = json_response_request_paginate(
+            api_requests.ApplicationPlanGroupsListRequest,
+            self.session,
+            params=params,
+            limit_results=None,
+        )
+        return results, messages
+
+    def get_application_plan_group(self, plan_group_uuid):
+        request = api_requests.ApplicationPlanGroupGetRequest(
+            self.session,
+            url_kwargs={"plan_group_uuid": plan_group_uuid},
+        )
+        return request()
+
+    def get_application(self, application_uuid):
+        try:
+            return api_requests.ApplicationRequest(
+                self.session,
+                url_kwargs={"application_uuid": application_uuid},
+            )()
+
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+    def get_application_templates(self, limit_results=None):
+        results, messages = json_response_request_paginate(
+            api_requests.ApplicationTemplateListRequest,
+            self.session,
+            limit_results=limit_results,
+        )
+        return results, messages
+
+    def get_application_template(self, template_uuid):
+        request = api_requests.ApplicationTemplateGetRequest(
+            self.session,
+            url_kwargs={"template_uuid": template_uuid},
+        )
+        return request()
+
+    def application_create(self, data):
+        try:
+            return api_requests.CreateApplicationRequest(
+                self.session,
+                data=data,
+            )()
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
 
     def get_organisation(self, organisation_uuid):
         request = api_requests.OrganisationDetailRequest(
@@ -188,7 +280,9 @@ class CloudClient:
         )
         return request()
 
-    def get_services(self, region_uuid=None, application_uuid=None):
+    def get_services(
+        self, region_uuid=None, application_uuid=None, limit_results=None
+    ):
         kwargs = {}
 
         # TODO this smells like a security issue
@@ -199,18 +293,23 @@ class CloudClient:
         kwargs["filter_website"] = (
             f"website={application_uuid}" if application_uuid else ""
         )
-        request = api_requests.ListServicesRequest(
+
+        results, messages = json_response_request_paginate(
+            api_requests.ListServicesRequest,
             self.session,
             url_kwargs=kwargs,
+            limit_results=limit_results,
         )
-        return request()
+        return results, messages
 
-    def get_service_instances(self, environment_uuid):
-        request = api_requests.ListServiceInstancesRequest(
+    def get_service_instances(self, environment_uuid, limit_results=None):
+        results, messages = json_response_request_paginate(
+            api_requests.ListServiceInstancesRequest,
             self.session,
             url_kwargs={"environment_uuid": environment_uuid},
+            limit_results=limit_results,
         )
-        return request()
+        return results, messages
 
     def add_service_instances(
         self, environment_uuid, prefix, region_uuid, service_uuid
@@ -264,10 +363,10 @@ class CloudClient:
             )
 
     def get_environment_by_application(self, application_uuid, environment):
-        response = api_requests.EnvironmentListRequest(
+        response = api_requests.EnvironmentsListRequest(
             self.session,
-            url_kwargs={
-                "application_uuid": application_uuid,
+            params={
+                "application": application_uuid,
                 "slug": environment,
             },
         )()
@@ -290,13 +389,13 @@ class CloudClient:
         except (KeyError, json.decoder.JSONDecodeError):
             raise DivioException("Error establishing connection.")
 
-    def get_application(self, application_uuid):
+    def get_environments(self, params=None):
+        if params is None:
+            params = {}
         try:
-            return api_requests.ApplicationRequest(
-                self.session,
-                url_kwargs={"application_uuid": application_uuid},
+            return api_requests.EnvironmentsListRequest(
+                self.session, params=params
             )()
-
         except (KeyError, json.decoder.JSONDecodeError):
             raise DivioException("Error establishing connection.")
 
@@ -475,6 +574,12 @@ class CloudClient:
                 "application_uuid": application_uuid,
                 "environment_uuid": environment_uuid,
             },
+        )
+        return request()
+
+    def deploy_environment(self, environment_uuid):
+        request = api_requests.DeployEnvironmentRequest(
+            self.session, data={"environment": environment_uuid}
         )
         return request()
 
@@ -659,18 +764,17 @@ class CloudClient:
         )
         return request()
 
-    def list_deployments(
+    def get_deployments(
         self,
         application_uuid,
         environment,
         all_environments,
         limit_results,
     ):
-        environment_response = api_requests.EnvironmentListRequest(
+        environment_response = api_requests.EnvironmentsListRequest(
             self.session,
-            url_kwargs={
-                "application_uuid": application_uuid,
-                "slug": "",
+            params={
+                "application": application_uuid,
             },
         )()["results"]
 
@@ -746,11 +850,10 @@ class CloudClient:
         application_uuid,
         deployment_uuid,
     ):
-        environment_response = api_requests.EnvironmentListRequest(
+        environment_response = api_requests.EnvironmentsListRequest(
             self.session,
-            url_kwargs={
-                "application_uuid": application_uuid,
-                "slug": "",
+            params={
+                "application": application_uuid,
             },
         )()["results"]
 
@@ -786,11 +889,10 @@ class CloudClient:
         deployment_uuid,
         variable_name,
     ):
-        environment_response = api_requests.EnvironmentListRequest(
+        environment_response = api_requests.EnvironmentsListRequest(
             self.session,
-            url_kwargs={
-                "application_uuid": application_uuid,
-                "slug": "",
+            params={
+                "application": application_uuid,
             },
         )()["results"]
 
@@ -826,7 +928,7 @@ class CloudClient:
             "deployment": deployment,
         }
 
-    def list_environment_variables(
+    def get_environment_variables(
         self,
         application_uuid,
         environment,
@@ -834,11 +936,10 @@ class CloudClient:
         limit_results,
         variable_name=None,
     ):
-        environment_response = api_requests.EnvironmentListRequest(
+        environment_response = api_requests.EnvironmentsListRequest(
             self.session,
-            url_kwargs={
-                "application_uuid": application_uuid,
-                "slug": "",
+            params={
+                "application": application_uuid,
             },
         )()["results"]
 
@@ -901,6 +1002,42 @@ class CloudClient:
             raise DivioWarning(no_environment_variables_found_msg)
 
         return results_grouped_by_environment, messages
+
+    def create_repository(self, organisation, url, key_type):
+        try:
+            return api_requests.CreateRepositoryRequest(
+                self.session,
+                data={
+                    "organisation": organisation,
+                    "url": url,
+                    "key_type": key_type,
+                },
+            )()
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection while creating repository.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+    def check_repository(self, repository_uuid, branch, migrate="true"):
+        try:
+            return api_requests.CheckRepositoryRequest(
+                self.session,
+                url_kwargs={"repository_uuid": repository_uuid},
+                data={
+                    "branch": branch,
+                    "migrate": migrate,
+                },
+            )()
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection while authenticating repository.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
 
     def get_repository_dsn(self, application_uuid):
         """
@@ -1093,13 +1230,45 @@ class CloudClient:
             },
         )()
 
-    def get_regions(self):
-        request = api_requests.ListRegionsRequest(self.session)
-        return request()
+    def validate_application_field(self, field, value):
+        try:
+            return api_requests.CreateApplicationRequest(
+                self.session,
+                data={
+                    field: value,
+                },
+                proceed_on_4xx=True,
+            )()
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                (
+                    "Error establishing connection while "
+                    f"validating application field {field!r}."
+                ),
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
 
-    def get_organisations(self):
-        request = api_requests.ListOrganisationsRequest(self.session)
-        return request()
+    def validate_repository_field(self, field, value):
+        try:
+            return api_requests.CreateRepositoryRequest(
+                self.session,
+                data={
+                    field: value,
+                },
+                proceed_on_4xx=True,
+            )()
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                (
+                    "Error establishing connection while "
+                    f"validating repository field {field!r}."
+                ),
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
 
 
 class WritableNetRC(netrc):
