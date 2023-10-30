@@ -5,36 +5,6 @@ class AppTemplate:
     LIST_APP_TEMPLATES_URL_PATH = "/apps/v3/app-templates/"
     GET_APP_TEMPLATE_URL_PATH = "/apps/v3/app-templates/{uuid}"
 
-    def __init__(self, client, uuid, data=None, refresh=True):
-        self.client = client
-        self.uuid = uuid
-        self.data = data or {}
-
-        if refresh:
-            self.refresh()
-
-    def __repr__(self):
-        module_name = self.__class__.__module__
-        class_name = self.__class__.__name__
-
-        return f"<{module_name}.{class_name}(client={self.client!r}, uuid={self.uuid!r})>"
-
-    def refresh(self):
-
-        try:
-            app_template_data = self.client.get_json(
-                path=self.GET_APP_TEMPLATE_URL_PATH.format(uuid=self.uuid),
-                method="GET",
-            )
-
-            self.data.update(app_template_data)
-
-        except DivioException as original_exception:
-            raise self.DoesNotExistError(
-                f"No app temlate with UUID {self.uuid} found",
-            ) from original_exception
-
-    # class API ###############################################################
     class DoesNotExistError(DivioException):
         pass
 
@@ -83,4 +53,32 @@ class AppTemplate:
         except DivioException as original_exception:
             raise cls.DoesNotExistError(
                 f"No app temlate with UUID {uuid} found",
+            ) from original_exception
+
+    def __init__(self, client, uuid, data=None, refresh=True):
+        self.client = client
+        self.uuid = uuid
+        self.data = data or {}
+
+        if refresh:
+            self.refresh()
+
+    def __repr__(self):
+        module_name = self.__class__.__module__
+        class_name = self.__class__.__name__
+
+        return f"<{module_name}.{class_name}(client={self.client!r}, uuid={self.uuid!r})>"
+
+    def refresh(self):
+        try:
+            app_template_data = self.client.get_json(
+                path=self.GET_APP_TEMPLATE_URL_PATH.format(uuid=self.uuid),
+                method="GET",
+            )
+
+            self.data.update(app_template_data)
+
+        except DivioException as original_exception:
+            raise self.DoesNotExistError(
+                f"No app temlate with UUID {self.uuid} found",
             ) from original_exception
