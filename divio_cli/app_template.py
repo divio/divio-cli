@@ -1,8 +1,8 @@
 from divio_cli.exceptions import DivioException
 
 
-LIST_APP_TEMPLATES_PATH = "/apps/v3/app-templates/"
-GET_APP_TEMPLATE_PATH = "/apps/v3/app-templates/{uuid}"
+LIST_APP_TEMPLATES_URL_PATH = "/apps/v3/app-templates/"
+GET_APP_TEMPLATE_URL_PATH = "/apps/v3/app-templates/{uuid}"
 
 
 class AppTemplate:
@@ -23,7 +23,7 @@ class AppTemplate:
 
         try:
             app_template_data = self.client.get_json(
-                path=GET_APP_TEMPLATE_PATH.format(uuid=self.uuid),
+                path=GET_APP_TEMPLATE_URL_PATH.format(uuid=self.uuid),
                 method="GET",
             )
 
@@ -50,7 +50,7 @@ class AppTemplate:
             params["page"] = page
 
         app_templates_data = client.get_json(
-            path=LIST_APP_TEMPLATES_PATH,
+            path=LIST_APP_TEMPLATES_URL_PATH,
             method="GET",
             params=params,
         )
@@ -74,7 +74,7 @@ class AppTemplate:
                 client=client,
                 uuid=uuid,
                 data=client.get_json(
-                    path=GET_APP_TEMPLATE_PATH.format(uuid=uuid),
+                    path=GET_APP_TEMPLATE_URL_PATH.format(uuid=uuid),
                     method="GET",
                 ),
                 refresh=False,
