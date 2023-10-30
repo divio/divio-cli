@@ -6,10 +6,13 @@ GET_APP_TEMPLATE_PATH = "/apps/v3/app-templates/{uuid}"
 
 
 class AppTemplate:
-    def __init__(self, client, uuid, data=None):
+    def __init__(self, client, uuid, data=None, refresh=True):
         self.client = client
         self.uuid = uuid
         self.data = data or {}
+
+        if refresh:
+            self.refresh()
 
     def __repr__(self):
         return (
@@ -58,6 +61,7 @@ class AppTemplate:
                     client=client,
                     uuid=result["uuid"],
                     data=result,
+                    refresh=False,
                 ),
             )
 
@@ -73,6 +77,7 @@ class AppTemplate:
                     path=GET_APP_TEMPLATE_PATH.format(uuid=uuid),
                     method="GET",
                 ),
+                refresh=False,
             )
 
         except DivioException as original_exception:
