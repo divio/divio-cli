@@ -1,5 +1,7 @@
 import click
 
+from divio_cli.domain_models.app_template import AppTemplate  # NOQA
+
 
 try:
     from .version import version as __version__
