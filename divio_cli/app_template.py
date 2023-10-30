@@ -38,7 +38,7 @@ class AppTemplate:
         return app_templates
 
     @classmethod
-    def get(cls, client, uuid):
+    def retrieve(cls, client, uuid):
         try:
             return AppTemplate(
                 client=client,
