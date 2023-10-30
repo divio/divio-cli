@@ -12,8 +12,8 @@ from sentry_sdk.integrations.atexit import AtexitIntegration
 
 import divio_cli
 from divio_cli import widgets
-from divio_cli.app_template import AppTemplate
 from divio_cli.client import Client
+from divio_cli.domain_models.app_template import AppTemplate
 
 from . import localdev, messages, settings
 from .check_system import check_requirements, check_requirements_human
