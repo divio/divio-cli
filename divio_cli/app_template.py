@@ -14,9 +14,10 @@ class AppTemplate:
             self.refresh()
 
     def __repr__(self):
-        return (
-            f"<divio.AppTemplate(client={self.client!r}, uuid={self.uuid!r})>"
-        )
+        module_name = self.__class__.__module__
+        class_name = self.__class__.__name__
+
+        return f"<{module_name}.{class_name}(client={self.client!r}, uuid={self.uuid!r})>"
 
     def refresh(self):
 
