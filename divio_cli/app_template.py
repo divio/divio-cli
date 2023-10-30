@@ -16,7 +16,7 @@ class AppTemplate:
             f"<divio.AppTemplate(client={self.client!r}, uuid={self.uuid!r})>"
         )
 
-    def pull_data(self):
+    def refresh(self):
 
         try:
             app_template_data = self.client.get_json(
