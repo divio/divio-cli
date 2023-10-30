@@ -1,4 +1,3 @@
-import contextlib
 import json
 import logging
 import os
@@ -87,10 +86,11 @@ class Client:
             response.headers.get("content-length", "[NOTSET]"),
         )
 
-        text = response.text
-
-        with contextlib.suppress(json.JSONDecodeError):
+        try:
             text = response.json()
+
+        except json.JSONDecodeError:
+            text = response.text
 
         http_response_body_logger.debug(
             "url=%s \n%s",
