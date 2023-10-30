@@ -232,7 +232,7 @@ def get_user_input(prompt="", default="", password=False, validate=None):
         KeyboardInterrupt,
         EOFError,
     ):
-        print("Abort")
+        print_error("Abort")
 
         raise SystemExit
 
@@ -306,17 +306,16 @@ def select_option(
         longest_label_length = max([len(label) for label in labels])
 
         for index, label in enumerate(labels):
-            print(
-                f" {label.rjust(longest_label_length)} - {help_texts[index]}",
-                end="",
+            line = (
+                f" {label.rjust(longest_label_length)} - {help_texts[index]}"
             )
 
             if label in default_options:
-                print(" (default)", end="")
+                line = f"{line} (default)"
 
-            print()
+            print_info(line)
 
-        print()
+        print_info("")
 
     # choice helper
     def get_choice_index(choice):
