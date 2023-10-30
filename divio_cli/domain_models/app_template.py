@@ -52,7 +52,7 @@ class AppTemplate:
 
         except DivioException as original_exception:
             raise cls.DoesNotExistError(
-                f"No app temlate with UUID {uuid} found",
+                f"No app template with UUID {uuid} found",
             ) from original_exception
 
     def __init__(self, client, uuid, data=None, refresh=True):
@@ -81,5 +81,5 @@ class AppTemplate:
 
         except DivioException as original_exception:
             raise self.DoesNotExistError(
-                f"No app temlate with UUID {self.uuid} found",
+                f"No app template with UUID {self.uuid} found",
             ) from original_exception
