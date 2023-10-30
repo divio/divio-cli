@@ -1481,7 +1481,7 @@ def app_template_list(obj, as_json):
     client = obj.client2
     client.authenticate()
 
-    app_templates = AppTemplate.filter(client=client)
+    app_templates = AppTemplate.list(client=client)
 
     # json view
     if as_json:

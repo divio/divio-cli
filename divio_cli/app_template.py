@@ -38,7 +38,7 @@ class AppTemplate:
         pass
 
     @classmethod
-    def filter(cls, client, page_size=None, page=None):
+    def list(cls, client, page_size=None, page=None):
         app_templates = []
         params = {}
 
