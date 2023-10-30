@@ -76,6 +76,7 @@ class AppTemplate:
                 method="GET",
             )
 
+            self.data.clear()
             self.data.update(app_template_data)
 
         except DivioException as original_exception:
