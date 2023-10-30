@@ -91,6 +91,8 @@ def cli(ctx, debug, zone, sudo, verbose):
     log_level = "info"
     loggers = []
 
+    # -v / -vv / -vvv
+    # enable debug logging for root and some high-level loggers
     if verbose > 0:
         log_level = "debug"
 
@@ -103,6 +105,8 @@ def cli(ctx, debug, zone, sudo, verbose):
             ]
         )
 
+    # -vv / -vvv
+    # enable debug logging for whole http response bodies
     if verbose > 1:
         loggers.extend(
             [
@@ -110,6 +114,8 @@ def cli(ctx, debug, zone, sudo, verbose):
             ]
         )
 
+    # -vvv
+    # enable all debug logging available
     if verbose > 2:
         loggers.clear()
 
