@@ -126,8 +126,8 @@ class Client:
 
         return session
 
-    def pull_user_info(self):
-        logger.debug("pulling user information")
+    def retrieve_user_info(self):
+        logger.debug("retrieving user information")
 
         self.user_info.clear()
 
@@ -171,7 +171,7 @@ class Client:
         self.headers["Authorization"] = f"Token {self.token}"
 
         # check auth token
-        authenticated = self.pull_user_info()
+        authenticated = self.retrieve_user_info()
 
         if authenticated:
             logger.debug("authenticated as %s", self.user_info["email"])
