@@ -54,6 +54,11 @@ except ImportError:
 click.option = partial(click.option, show_default=True)
 
 
+def set_cli_non_interactive(ctx, non_interactive, value):
+    if value:
+        widgets.set_non_interactive()
+
+
 @click.group(
     cls=ClickAliasedGroup,
     context_settings={"help_option_names": ["--help", "-h"]},
@@ -260,15 +265,12 @@ def login(ctx, token, check):
 @click.option(
     "--non-interactive",
     is_flag=True,
-    default=False,
     help="Skip confirmation",
+    callback=set_cli_non_interactive,
 )
 @click.pass_context
 def logout(ctx, non_interactive):
     """Log off from Divio Control Panel"""
-
-    if non_interactive:
-        widgets.set_non_interactive()
 
     success = widgets.logout(
         client=ctx.obj.client2,
