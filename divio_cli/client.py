@@ -3,6 +3,7 @@ import logging
 import os
 import pprint
 import textwrap
+from urllib.parse import urljoin
 
 from requests import Session
 
@@ -54,16 +55,10 @@ class Client:
         return f"control.{self.zone}"
 
     def get_api_url(self, path):
-        if path.startswith("/"):
-            path = path[1:]
-
-        return f"https://{self.get_api_host()}/{path}"
+        return urljoin(f"https://{self.get_api_host()}", path)
 
     def get_control_panel_url(self, path, **query):
-        if path.startswith("/"):
-            path = path[1:]
-
-        return f"https://{self.get_control_panel_host()}/{path}"
+        return urljoin(f"https://{self.get_control_panel_host()}", path)
 
     def request(self, method, path, *args, **kwargs):
         url = self.get_api_url(path=path)
