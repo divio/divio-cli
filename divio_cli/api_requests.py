@@ -75,6 +75,7 @@ class APIRequest:
         params=None,
         data=None,
         files=None,
+        proceed_on_4xx=False,
         headers=None,
         *args,
         **kwargs,
@@ -87,6 +88,7 @@ class APIRequest:
         self.params = params or {}
         self.data = data or {}
         self.files = files or {}
+        self.proceed_on_4xx = proceed_on_4xx
 
         self.headers = {
             **self.default_headers,
@@ -142,7 +144,7 @@ class APIRequest:
         return self.verify(response)
 
     def verify(self, response):
-        if not response.ok:
+        if not response.ok and not self.proceed_on_4xx:
             error_msg = self.get_error_code_map(self.get_login()).get(
                 response.status_code, self.default_error_message
             )
@@ -232,6 +234,18 @@ class FileResponse:
 
 class ProjectListRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/"
+
+
+class ApplicationsListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/"
+
+
+class ApplicationPlanGroupsListRequest(JsonResponse, APIV3Request):
+    url = "/billing/v3/application-plan-groups/"
+
+
+class ApplicationPlanGroupGetRequest(JsonResponse, APIV3Request):
+    url = "/billing/v3/application-plan-groups/{plan_group_uuid}/"
 
 
 class ProjectDetailRequest(JsonResponse, APIV3Request):
@@ -346,6 +360,16 @@ class GetEnvironmentVariablesRequest(JsonResponse, APIV3Request):
 # Repository
 
 
+class CreateRepositoryRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/repositories/"
+    method = "POST"
+
+
+class CheckRepositoryRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/repositories/{repository_uuid}/check/"
+    method = "POST"
+
+
 class RepositoryRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/repositories/{repository_uuid}/"
     method = "GET"
@@ -356,14 +380,23 @@ class LogRequest(JsonResponse, APIV3Request):
     method = "GET"
 
 
-class EnvironmentListRequest(JsonResponse, APIV3Request):
-    url = "/apps/v3/environments/?application={application_uuid}&slug={slug}"
-    method = "GET"
+class EnvironmentsListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/environments/"
 
 
 class EnvironmentRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/environments/{environment_uuid}/"
     method = "GET"
+
+
+class DeployEnvironmentRequest(JsonResponse, APIV3Request):
+    """
+    Deploys a particular environment by providing the environment's
+    uuid (environment_uuid) in the request body.
+    """
+
+    url = "/apps/v3/deployments/"
+    method = "POST"
 
 
 class DeployLogRequest(JsonResponse, APIV3Request):
@@ -388,6 +421,21 @@ class DeploymentEnvironmentVariablesRequest(JsonResponse, APIV3Request):
 
 class ApplicationRequest(JsonResponse, APIV3Request):
     url = "/apps/v3/applications/{application_uuid}/"
+    method = "GET"
+
+
+class CreateApplicationRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/applications/"
+    method = "POST"
+
+
+class ApplicationTemplateListRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/app-templates/"
+    method = "GET"
+
+
+class ApplicationTemplateGetRequest(JsonResponse, APIV3Request):
+    url = "/apps/v3/app-templates/{template_uuid}/"
     method = "GET"
 
 

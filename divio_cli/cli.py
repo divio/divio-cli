@@ -43,12 +43,14 @@ from .utils import (
     table,
 )
 from .validators.addon import validate_addon
+from .wizards import CreateAppWizard
 
 
 try:
     import ipdb as pdb  # noqa: T100
 except ImportError:
     import pdb  # noqa: T100
+
 
 # Display the default value for options globally.
 click.option = partial(click.option, show_default=True)
@@ -281,7 +283,7 @@ def logout(ctx, non_interactive):
 
 @cli.group(name="services")
 def services():
-    """Pull db or files from the Divio cloud environment."""
+    """Manage services."""
 
 
 @services.command(name="list")
@@ -289,6 +291,7 @@ def services():
     "-r",
     "--region",
     required=True,
+    help="The UUID of the region to list services for.",
 )
 @click.option(
     "--json",
@@ -297,16 +300,32 @@ def services():
     default=False,
     help="Choose whether to display content in json format.",
 )
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    help="The maximum number of results that can be retrieved.",
+)
 @click.pass_obj
-def list_services(obj, region, as_json):
-    """List all available services for a regions."""
-    api_response = obj.client.get_services(region_uuid=region)
+def list_services(obj, region, as_json, limit_results):
+    """List all available services for a region."""
+
+    results, messages = obj.client.get_services(
+        region_uuid=region, limit_results=limit_results
+    )
+
+    if not results:
+        click.secho("No services found.", fg="yellow")
+        return
+
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
 
     if as_json:
-        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
-        return
-    if not api_response["results"]:
-        click.echo("No services found.")
+        click.echo(json.dumps(results, indent=2, sort_keys=True))
         return
 
     headers = ["UUID", "Name", "Type", "Description"]
@@ -317,7 +336,7 @@ def list_services(obj, region, as_json):
             entry["type"],
             entry["description"],
         ]
-        for entry in api_response["results"]
+        for entry in results
     ]
     output = table(data, headers, tablefmt="grid", maxcolwidths=30)
 
@@ -327,6 +346,133 @@ def list_services(obj, region, as_json):
 @cli.group(cls=ClickAliasedGroup, aliases=["project"])
 def app():
     """Manage your application"""
+
+
+@app.command(name="create")
+@click.option(
+    "-n",
+    "--name",
+    default=None,
+    help="Application name.",
+)
+@click.option(
+    "-s",
+    "--slug",
+    default=None,
+    help="Application slug.",
+)
+@click.option(
+    "-o",
+    "--organisation",
+    default=None,
+    help="Organisation uuid.",
+)
+@click.option(
+    "-p",
+    "--plan-group",
+    default=None,
+    help="Plan group uuid.",
+)
+@click.option(
+    "-r",
+    "--region",
+    default=None,
+    help="Region uuid.",
+)
+@click.option(
+    "-t",
+    "--template",
+    default=None,
+    help="Template url.",
+)
+@click.option(
+    "-i/-I",
+    "--interactive/--non-interactive",
+    is_flag=True,
+    default=True,
+    help="Choose whether to run in interactive mode.",
+)
+@click.option(
+    "-v/-V",
+    "--verbose/--non-verbose",
+    is_flag=True,
+    default=True,
+    help="Choose whether to display verbose output.",
+)
+@click.option(
+    "-d",
+    "--deploy",
+    is_flag=True,
+    default=False,
+    help="Deploy the application after creation. (test environment)",
+)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Choose whether to display content in json format.",
+)
+@click.pass_obj
+def application_create(
+    obj,
+    name,
+    slug,
+    organisation,
+    plan_group,
+    region,
+    template,
+    interactive,
+    verbose,
+    deploy,
+    as_json,
+):
+    """Create a new application."""
+
+    obj.interactive = interactive
+    obj.verbose = verbose
+    obj.as_json = as_json
+    obj.metadata = {}
+
+    wiz = CreateAppWizard(obj)
+
+    name = wiz.get_name(name)
+    slug = wiz.get_slug(slug, name)
+    org, org_name = wiz.get_org(organisation)
+    plan_group, plan_group_name = wiz.get_plan_group(plan_group, org)
+    region, region_name = wiz.get_region(region, plan_group)
+    template, template_uuid = wiz.get_template(template)
+    release_commands = wiz.get_release_commands(template_uuid)
+    repo, repo_url, branch = wiz.get_git_repo(org)
+
+    obj.metadata.update(
+        {
+            "org_name": org_name,
+            "plan_group_name": plan_group_name,
+            "region_name": region_name,
+            "repo_url": repo_url,
+            "template_uuid": template_uuid,
+        }
+    )
+
+    wiz.create_app(
+        # CAUTION: The naming of the keys is important as they must conform
+        # to the API's schema for application creation.
+        data={
+            "name": name,
+            "slug": slug,
+            "organisation": org,
+            "plan_group": plan_group,
+            "region": region,
+            "app_template": template,
+            "release_commands": release_commands,
+            "repository": repo,
+            # Branch still needs a default even if an external repo is not used.
+            # In that case, it will be required for the Divio hosted git repo.
+            "branch": branch or "main",
+        },
+        deploy=deploy,
+    )
 
 
 @app.command(name="list")
@@ -355,7 +501,7 @@ def app():
 def application_list(obj, grouped, pager, as_json):
     """List all your applications."""
     obj.pager = pager
-    api_response = obj.client.get_applications()
+    api_response = obj.client.get_applications_v1()
 
     if as_json:
         click.echo(json.dumps(api_response, indent=2, sort_keys=True))
@@ -592,8 +738,7 @@ def list_deployments(
     Retrieve deployments from an environment or
     deployments across all environments of an application.
     """
-
-    results, messages = obj.client.list_deployments(
+    results, messages = obj.client.get_deployments(
         application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
@@ -761,7 +906,7 @@ def list_environment_variables(
     or environment variables across all environments of an application.
     """
 
-    results, messages = obj.client.list_environment_variables(
+    results, messages = obj.client.get_environment_variables(
         application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
@@ -839,7 +984,7 @@ def get_environment_variable(
     or any occurrence of it across all environments of an application.
     """
 
-    results, messages = obj.client.list_environment_variables(
+    results, messages = obj.client.get_environment_variables(
         application_uuid=remote_id,
         environment=environment,
         all_environments=all_environments,
@@ -949,34 +1094,56 @@ def service_instances():
     default=False,
     help="Choose whether to display content in json format.",
 )
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    help="The maximum number of results that can be retrieved.",
+)
 @click.pass_obj
 @allow_remote_id_override
-def list_service_instances(obj, remote_id, environment, as_json):
-    """List the services instances of an application"""
+def list_service_instances(
+    obj, remote_id, environment, as_json, limit_results
+):
+    """List the services instances of an application."""
+
     try:
         environment_uuid = obj.client.get_environment(remote_id, environment)[
             "uuid"
         ]
-
     except KeyError:
-        raise EnvironmentDoesNotExist(environment)
+        click.secho(
+            f"Environment with the name '{environment}' does not exist.",
+            fg="red",
+            err=True,
+        )
+        sys.exit(1)
 
-    api_response = obj.client.get_service_instances(
-        environment_uuid=environment_uuid,
+    results, messages = obj.client.get_service_instances(
+        environment_uuid=environment_uuid, limit_results=limit_results
     )
 
-    if as_json:
-        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+    if not results:
+        click.echo(
+            f"No service instances found for {environment!r} environment."
+        )
         return
-    if not api_response["results"]:
-        click.echo("No service instances found.")
+
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
+
+    if as_json:
+        click.echo(json.dumps(results, indent=2, sort_keys=True))
         return
 
     headers = [
         "UUID",
         "Prefix",
         "Type",
-        "Service  Status",
+        "Service Status",
         "Region",
         "Service",
     ]
@@ -989,10 +1156,10 @@ def list_service_instances(obj, remote_id, environment, as_json):
             entry["region"],
             entry["service"],
         ]
-        for entry in api_response["results"]
+        for entry in results
     ]
-    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
 
+    output = table(data, headers, tablefmt="grid", maxcolwidths=30)
     echo_large_content(output, ctx=obj)
 
 
@@ -1389,7 +1556,7 @@ def doctor(obj, machine_readable, checks):
 
 @cli.group(cls=ClickAliasedGroup)
 def organisations():
-    "Manage your organisations"
+    """Manage your organisations."""
 
 
 @organisations.command(name="list")
@@ -1400,12 +1567,30 @@ def organisations():
     default=False,
     help="Choose whether to display content in json format.",
 )
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    help="The maximum number of results that can be retrieved.",
+)
 @click.pass_obj
-def list_organisations(obj, as_json):
+def list_organisations(obj, as_json, limit_results):
     "List your organisations"
-    api_response = obj.client.get_organisations()
+
+    results, messages = obj.client.get_organisations(limit_results)
+
+    if not results:
+        click.secho("No organisations found.", fg="yellow")
+        return
+
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
+
     if as_json:
-        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        click.echo(json.dumps(results, indent=2, sort_keys=True))
         return
 
     headers = [
@@ -1419,7 +1604,7 @@ def list_organisations(obj, as_json):
             entry["name"],
             entry["created_at"],
         ]
-        for entry in api_response["results"]
+        for entry in results
     ]
     output = table(data, headers, tablefmt="grid", maxcolwidths=50)
 
@@ -1428,7 +1613,7 @@ def list_organisations(obj, as_json):
 
 @cli.group(cls=ClickAliasedGroup)
 def regions():
-    """Manage regions"""
+    """Manage regions."""
 
 
 @regions.command(name="list")
@@ -1439,12 +1624,30 @@ def regions():
     default=False,
     help="Choose whether to display content in json format.",
 )
+@click.option(
+    "--limit",
+    "--limit-results",
+    "limit_results",
+    type=int,
+    help="The maximum number of results that can be retrieved.",
+)
 @click.pass_obj
-def list_regions(obj, as_json):
+def list_regions(obj, as_json, limit_results):
     """List all available regions"""
-    api_response = obj.client.get_regions()
+
+    results, messages = obj.client.get_regions(limit_results)
+
+    if not results:
+        click.secho("No regions found.", fg="yellow")
+        return
+
+    if messages:
+        click.echo()
+        for msg in messages:
+            click.secho(msg, fg="yellow")
+
     if as_json:
-        click.echo(json.dumps(api_response, indent=2, sort_keys=True))
+        click.echo(json.dumps(results, indent=2, sort_keys=True))
         return
 
     headers = [
@@ -1456,7 +1659,7 @@ def list_regions(obj, as_json):
             entry["uuid"],
             entry["name"],
         ]
-        for entry in api_response["results"]
+        for entry in results
     ]
     output = table(data, headers, tablefmt="grid", maxcolwidths=50)
 
