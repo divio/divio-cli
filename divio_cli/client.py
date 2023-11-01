@@ -12,8 +12,8 @@ from divio_cli.exceptions import DivioException
 
 DEFAULT_ZONE = "divio.com"
 
-ACCESS_TOKEN_PATH = "/account/desktop-app/access-token/"
-GET_CURRENT_USER_PATH = "/iam/v3/me/"
+ACCESS_TOKEN_URL_PATH = "/account/desktop-app/access-token/"
+GET_CURRENT_USER_URL_PATH = "/iam/v3/me/"
 
 logger = logging.getLogger("divio.client")
 http_request_logger = logging.getLogger("divio.client.http.request")
@@ -116,7 +116,7 @@ class Client:
             raise RuntimeError("invalid response") from exception
 
     def get_access_token_url(self):
-        return self.get_control_panel_url(path=ACCESS_TOKEN_PATH)
+        return self.get_control_panel_url(path=ACCESS_TOKEN_URL_PATH)
 
     # session management
     def get_session(self):
@@ -138,7 +138,7 @@ class Client:
 
         response = self.request(
             method="GET",
-            path=GET_CURRENT_USER_PATH,
+            path=GET_CURRENT_USER_URL_PATH,
         )
 
         if response.status_code == 200:
