@@ -39,21 +39,7 @@ class AppTemplate:
 
     @classmethod
     def retrieve(cls, client, uuid):
-        try:
-            return AppTemplate(
-                client=client,
-                uuid=uuid,
-                data=client.get_json(
-                    path=cls.GET_APP_TEMPLATE_URL_PATH.format(uuid=uuid),
-                    method="GET",
-                ),
-                refresh=False,
-            )
-
-        except DivioException as original_exception:
-            raise cls.DoesNotExistError(
-                f"No app template with UUID {uuid} found",
-            ) from original_exception
+        return AppTemplate(client=client, uuid=uuid)
 
     def __init__(self, client, uuid, data=None, refresh=True):
         self.client = client
