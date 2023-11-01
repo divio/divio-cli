@@ -186,6 +186,9 @@ class Client:
 
     # user helper
     def get_user_email(self):
+        if not self.is_authenticated():
+            raise RuntimeError("client is not authenticated")
+
         return self.user_info["email"]
 
     def get_user_name(self):
