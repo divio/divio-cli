@@ -11,4 +11,5 @@ python-dateutil
 requests
 sentry-sdk
 tabulate >= 0.8.10
+simple-logging-setup
 urllib3
