@@ -1003,19 +1003,49 @@ class CloudClient:
 
         return results_grouped_by_environment, messages
 
-    def create_repository(self, organisation, url, key_type):
+    def create_repository(
+        self,
+        organisation,
+        url,
+        auth_type="ssh",
+        ssh_key_type=None,
+        host_username=None,
+        host_password=None,
+    ):
         try:
+            data = {
+                "organisation": organisation,
+                "url": url,
+            }
+            if auth_type != "ssh":
+                data["username"] = host_username
+                data["password"] = host_password
+
+            else:
+                data["key_type"] = ssh_key_type
+
             return api_requests.CreateRepositoryRequest(
                 self.session,
-                data={
-                    "organisation": organisation,
-                    "url": url,
-                    "key_type": key_type,
-                },
+                data=data,
+                proceed_on_4xx=True,
             )()
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho(
                 "Error establishing connection while creating repository.",
+                fg="red",
+                err=True,
+            )
+            sys.exit(1)
+
+    def get_repository(self, repository_uuid):
+        try:
+            return api_requests.RepositoryRequest(
+                self.session,
+                url_kwargs={"repository_uuid": repository_uuid},
+            )()
+        except (KeyError, json.decoder.JSONDecodeError):
+            click.secho(
+                "Error establishing connection while fetching repository.",
                 fg="red",
                 err=True,
             )

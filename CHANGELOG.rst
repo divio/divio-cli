@@ -19,6 +19,7 @@ x.x.x (x-x-x)
 * Removed boilerplate support.
 * Removed template release commands confirm prompt in non-interactive mode.
 * Migrated from `setup.py`` to `pyproject.toml` for packaging.
+* Added support for username/password authentication on external repositories during app creation.
 
 3.17.2 (2023-03-16)
 -------------------

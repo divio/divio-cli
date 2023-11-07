@@ -59,16 +59,19 @@ APP_WIZARD_MESSAGES = {
     "enter_release_command_label": "Enter the label of your release command",
     "enter_release_command": "Enter your release command",
     "add_another_release_command": "Want to add another release command?",
-    # Custom repository
+    # External repository
     "repo_connect": "Want to connect an external repository to your application?",
-    "repo_url_enter": "Enter the URL of your custom repository",
+    "repo_url_enter": "Enter the URL of your external repository",
     "repo_branch_enter": "Enter the name of your target branch",
     "repo_ssh_key_type_select": "Select the type of your deploy key",
+    "repo_host_username_enter": "Enter the username of your repository host",
+    "repo_host_password_enter": "Enter the password of your repository host (your input is not displayed)",
     "create_deploy_key": (
         "Please register this ssh key with your repository provider. Ready to continue?"
     ),
     "repository_verification_skipped": "Repository verification skipped. No repository connected.",
     "repo_verification_timeout": "Repository verification timeout.",
+    "repo_verification_failed": "Repository verification failed.",
     "confirm_app_creation": "Confirm application creation to proceed.",
     # Deploy
     "deployment_triggered": "Deployment of 'test' environment triggered.",
@@ -202,27 +205,26 @@ def suggest_app_slug(client, app_name):
 
 
 def verify_app_repo(client, uuid, branch):
+    client.check_repository(uuid, branch)
+
     c = 0
-    response = client.check_repository(uuid, branch)
-    while response["code"] == "waiting" and c < 5:
-        time.sleep(5)
-        response = client.check_repository(uuid, branch)
+    while True:
+        repo_state = client.get_repository(uuid)["state"]
+        if repo_state in ["INVALID", "CLONED"] or c > 14:
+            break
         c += 1
+        time.sleep(2)
 
-    if response["code"] == "waiting":
-        # TODO: Delete the repository before exiting.
-        status_print(
-            APP_WIZARD_MESSAGES["repo_verification_timeout"],
-            status="error",
-        )
-    elif response["code"] != "success":
-        # TODO: Delete the repository before exiting.
-        status_print(
-            f"{response['non_field_errors'][0]}",
-            status="error",
-        )
+    if repo_state != "CLONED":
+        if repo_state == "CLONING":
+            status_print(
+                APP_WIZARD_MESSAGES["repo_verification_timeout"], "error"
+            )
+        else:
+            status_print(
+                APP_WIZARD_MESSAGES["repo_verification_failed"], "error"
+            )
 
-    if response["code"] != "success":
         choices = [
             ("Retry repository verification", "retry"),
             ("Restart repository connection", "restart"),
