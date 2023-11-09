@@ -11,7 +11,6 @@ from divio_cli.localdev import utils
 
 
 def test_get_application_home(tmp_path):
-
     # Should fail to get the aldryn file
     with pytest.raises(ConfigurationNotFound):
         home = utils.get_application_home(str(tmp_path))

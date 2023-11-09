@@ -93,7 +93,6 @@ def set_cli_non_interactive(ctx, non_interactive, value):
 )
 @click.pass_context
 def cli(ctx, debug, zone, sudo, verbose):
-
     # setup logging
     log_level = "info"
     loggers = []
@@ -236,7 +235,6 @@ def login(ctx, token, check):
     success = True
 
     try:
-
         # check login
         if check:
             client.authenticate(token="__netrc__")

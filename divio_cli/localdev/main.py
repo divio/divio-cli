@@ -956,9 +956,7 @@ def develop_package(package, no_rebuild=False):
             raise DockerComposeDoesNotExist("Cannot rebuild project") from e
 
     click.secho(
-        "The package {} has been added to your local development project!".format(
-            package
-        )
+        f"The package {package} has been added to your local development project!"
     )
 
 

@@ -80,7 +80,6 @@ class APIRequest:
         *args,
         **kwargs,
     ):
-
         self.session = session
         if url:
             self.url = url
@@ -96,7 +95,6 @@ class APIRequest:
         }
 
     def __call__(self, *args, **kwargs):
-
         return self.request(*args, **kwargs)
 
     def get_url(self):

@@ -678,7 +678,6 @@ class CloudClient:
         """
 
         if application_uuid_or_remote_id:
-
             # legacy remote-id
             # remote-ids in .divio/config.json are stored as int
             # remote-ids issued via `--remote-id` come in as str
@@ -686,7 +685,6 @@ class CloudClient:
                 isinstance(application_uuid_or_remote_id, int)
                 or application_uuid_or_remote_id.isdigit()
             ):
-
                 return self.get_application_uuid_for_remote_id(
                     remote_id=application_uuid_or_remote_id,
                 )
@@ -1120,7 +1118,8 @@ class CloudClient:
 
         if delete_at is not None:
             data["scheduled_for_deletion_at"] = delete_at.isoformat().replace(
-                "+00:00", "Z"  # match django rest framework's formatting
+                "+00:00",
+                "Z",  # match django rest framework's formatting
             )
         if notes is not None:
             data["notes"] = notes
