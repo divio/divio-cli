@@ -30,7 +30,6 @@ def _divio_project(request, pytestconfig, tmpdir_factory):  # noqa: PT005
 
     # setup divio project
     try:
-
         # disable stdout capturing
         capturemanager.suspend_global_capture(in_=True)
 
@@ -46,7 +45,6 @@ def _divio_project(request, pytestconfig, tmpdir_factory):  # noqa: PT005
 
         # Locally, we may run the tests multiple times
         if os.path.exists(test_project_directory):
-
             # Reuse the existing project
             if os.getenv("TEST_KEEP_PROJECT", "0") == "1":
                 print("TEST_KEEP_PROJECT is set. skipping setup")  # noqa: T201

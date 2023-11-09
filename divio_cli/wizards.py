@@ -552,7 +552,6 @@ class CreateAppWizard:
         ):
             add_another = True
             while add_another:
-
                 # Retrieve and validate the release command label.
                 while True:
                     release_command_label = prompt(

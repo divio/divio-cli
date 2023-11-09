@@ -88,14 +88,12 @@ def migrate_project_settings(client):
 
     # legacy project id
     if "id" in settings:
-
         # there is already an application UUID. Nothing to do.
         if "application_uuid" in settings:
             settings.pop("id")
             settings_updated = True
 
         else:
-
             # convert legacy project id to application UUID
             with contextlib.suppress(Exception):
                 settings["application_uuid"] = client.get_application_uuid(

@@ -244,7 +244,6 @@ def get_user_input(prompt="", default="", password=False, validate=None):
 
 
 def open_browser(url):
-
     # this is necessary to work in WSL
     # https://github.com/pallets/click/issues/2154
     wait = False
@@ -263,7 +262,6 @@ def select_option(
     show_help=True,
     enable_help_option=True,
 ):
-
     """
     choice = select_option(
         prompt="Select an option",
@@ -490,7 +488,6 @@ def logout(client):
         if not confirm(
             prompt=f"Are you sure you want to logout from {client.zone}?",
         ):
-
             return False
 
     logged_out = False

@@ -143,7 +143,6 @@ class DockerEngineCheck(DockerEngineBaseCheck):
 
             # run additional checks if it user is running default config
             if not current_host_url or current_host_is_default:
-
                 # check if docker socket exists
                 if not os.path.exists(default_host_path):
                     errors.append(
