@@ -520,7 +520,7 @@ class CreateAppWizard:
         )
 
         include_template_release_commands = False
-        if template_release_commands:
+        if template_release_commands and self.interactive:
             echo(APP_WIZARD_MESSAGES["detected_template_release_commands"])
 
             echo(
@@ -540,7 +540,7 @@ class CreateAppWizard:
 
         release_commands = (
             template_release_commands
-            if include_template_release_commands
+            if include_template_release_commands or not self.interactive
             else []
         )
 
