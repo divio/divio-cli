@@ -17,6 +17,7 @@ x.x.x (x-x-x)
 * Added logout command.
 * Ported addon commands over to v3 APIs.
 * Removed boilerplate support.
+* Removed template release commands confirm prompt in non-interactive mode.
 
 3.17.2 (2023-03-16)
 -------------------
