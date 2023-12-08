@@ -15,9 +15,9 @@ Unit Tests:
     script: tox -x tox.skip_missing_interpreters=false -- -m "not integration"
     artifacts:
       paths:
-        - ${CI_PROJECT_DIR}/artifacts/.coverage.*
+        - .artifacts/.coverage.*
       reports:
-        junit: junit-testreport-*.xml
+        junit: .artifacts/junit-testreport-*.xml
 
 
 Integration Tests:
@@ -50,15 +50,16 @@ Integration Tests:
       - pip install -e .[test]
       - divio doctor
       - mkdir -p ${CI_PROJECT_DIR}/test_data
-      - pytest -v -s -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml
+      - export COVERAGE_FILE=.coverage # do not override existing files in .artifacts
+      - pytest -v -s -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=.artifacts/junit-testreport-integration.xml
   after_script:
-      - mkdir -p ${CI_PROJECT_DIR}/artifacts
-      - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
+      - mkdir -p ${CI_PROJECT_DIR}/.artifacts
+      - cp ${CI_PROJECT_DIR}/.coverage ${CI_PROJECT_DIR}/.artifacts/.coverage.integrationtest
   artifacts:
     paths:
-      - ${CI_PROJECT_DIR}/artifacts/.coverage.integrationtest
+      - .artifacts/.coverage.integrationtest
     reports:
-      junit: junit-testreport-integration.xml
+      junit: .artifacts/junit-testreport-integration.xml
 
 
 Check Manifest:
@@ -75,7 +76,7 @@ Combine Coverage:
   image: python:3-alpine
   script:
       - pip install pytest-cov
-      - cd artifacts 
+      - cd .artifacts 
       - ls -la
       - coverage combine
       - coverage html -i
@@ -83,11 +84,11 @@ Combine Coverage:
       - coverage xml -i
   artifacts:
     paths:
-      - ${CI_PROJECT_DIR}/artifacts/
+      - ${CI_PROJECT_DIR}/.artifacts/
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: artifacts/coverage.xml
+        path: .artifacts/coverage.xml
 
 
 

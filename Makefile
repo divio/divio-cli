@@ -23,6 +23,7 @@ clean:
 	rm -rf $(PYTHON_VENV)
 	rm -rf test_data
 	rm -rf .tox
+	rm -rf .artifacts
 
 # tests
 test: | $(ENV_FILE) $(PYTHON_VENV)
