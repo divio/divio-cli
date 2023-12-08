@@ -1,6 +1,8 @@
 include LICENSE.txt
 include README.md
+include DESCRIPTION.md
 include CHANGELOG.rst
 include requirements.txt
 recursive-exclude * *.pyc
 exclude .env-example
+recursive-exclude test_data *

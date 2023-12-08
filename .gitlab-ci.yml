@@ -47,11 +47,7 @@ Integration Tests:
   script: 
       - python3 -m ensurepip --default-pip
       - python3 -m pip install --upgrade pip
-      - pip install -r requirements.txt
-      # For PyYAML issue, see https://github.com/docker/compose/issues/10836
-      #- pip install "PyYAML<5.4" docker-compose pytest pytest-cov
-      - pip install pytest pytest-cov
-      - python3 setup.py develop
+      - pip install -e .[test]
       - divio doctor
       - mkdir -p ${CI_PROJECT_DIR}/test_data
       - pytest -v -s -m integration --cov=divio_cli --cov-report= --cov-branch --junitxml=junit-testreport-integration.xml

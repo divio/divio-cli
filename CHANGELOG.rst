@@ -18,6 +18,7 @@ x.x.x (x-x-x)
 * Ported addon commands over to v3 APIs.
 * Removed boilerplate support.
 * Removed template release commands confirm prompt in non-interactive mode.
+* Migrated from `setup.py`` to `pyproject.toml` for packaging.
 
 3.17.2 (2023-03-16)
 -------------------
