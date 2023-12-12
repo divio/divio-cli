@@ -17,13 +17,13 @@ $(PYTHON_VENV):
 	rm -rf $(PYTHON_VENV) && \
 	$(PYTHON) -m venv $(PYTHON_VENV) && \
 	. $(PYTHON_VENV)/bin/activate && \
-	pip install --upgrade pip tox && \
-	pip install -e .
+	pip install -e .[dev]
 
 clean:
 	rm -rf $(PYTHON_VENV)
 	rm -rf test_data
 	rm -rf .tox
+	rm -rf .artifacts
 
 # tests
 test: | $(ENV_FILE) $(PYTHON_VENV)

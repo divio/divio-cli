@@ -17,5 +17,5 @@ binary/
 divio_cli/test/data
 divio_cli/version.py
 
-junit-testreport-py*.xml
+.artifacts/
 test_data
