@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 
 import inquirer
+from click import prompt
 
 from .utils import slugify, status_print
 
@@ -204,7 +205,28 @@ def suggest_app_slug(client, app_name):
     return slug
 
 
+def get_repo_url(client, suggested_url=None):
+    repo_url = None
+    while True:
+        if not repo_url:
+            repo_url = prompt(
+                APP_WIZARD_MESSAGES["repo_url_enter"],
+                default=suggested_url,
+            )
+        response = client.validate_repository_field("url", repo_url)
+        errors = response.get("url")
+        if errors:
+            for e in errors:
+                status_print(e, status="error")
+            repo_url = None
+        else:
+            break
+
+    return repo_url
+
+
 def verify_app_repo(client, uuid, branch):
+    # Initiating the celery task to verify the repository.
     client.check_repository(uuid, branch)
 
     c = 0

@@ -13,6 +13,7 @@ from .wizards_utils import (
     AVAILABLE_REPOSITORY_SSH_KEY_TYPES,
     app_details_summary,
     build_app_url,
+    get_repo_url,
     suggest_app_slug,
     verify_app_repo,
 )
@@ -631,23 +632,7 @@ class CreateAppWizard:
                 return None, None, None
             else:
                 # URL
-                repo_url = None
-                while True:
-                    if not repo_url:
-                        repo_url = prompt(
-                            APP_WIZARD_MESSAGES["repo_url_enter"],
-                            default=suggested_repo_url,
-                        )
-                    response = self.client.validate_repository_field(
-                        "url", repo_url
-                    )
-                    errors = response.get("url")
-                    if errors:
-                        for e in errors:
-                            status_print(e, status="error")
-                        repo_url = None
-                    else:
-                        break
+                repo_url = get_repo_url(self.client, suggested_repo_url)
 
                 # Branch
                 repo_branch = prompt(
