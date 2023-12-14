@@ -1007,49 +1007,32 @@ class CloudClient:
         self,
         organisation,
         url,
-        auth_type="ssh",
+        auth_type,
         ssh_key_type=None,
         host_username=None,
         host_password=None,
     ):
-        try:
-            data = {
-                "organisation": organisation,
-                "url": url,
-            }
-            if auth_type != "ssh":
-                data["username"] = host_username
-                data["password"] = host_password
+        data = {
+            "organisation": organisation,
+            "url": url,
+        }
 
-            else:
-                data["key_type"] = ssh_key_type
+        if auth_type == "ssh":
+            data["key_type"] = ssh_key_type
+        else:
+            data["username"] = host_username
+            data["password"] = host_password
 
-            return api_requests.CreateRepositoryRequest(
-                self.session,
-                data=data,
-                proceed_on_4xx=True,
-            )()
-        except (KeyError, json.decoder.JSONDecodeError):
-            click.secho(
-                "Error establishing connection while creating repository.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+        return api_requests.CreateRepositoryRequest(
+            self.session,
+            data=data,
+        )()
 
     def get_repository(self, repository_uuid):
-        try:
-            return api_requests.RepositoryRequest(
-                self.session,
-                url_kwargs={"repository_uuid": repository_uuid},
-            )()
-        except (KeyError, json.decoder.JSONDecodeError):
-            click.secho(
-                "Error establishing connection while fetching repository.",
-                fg="red",
-                err=True,
-            )
-            sys.exit(1)
+        return api_requests.RepositoryRequest(
+            self.session,
+            url_kwargs={"repository_uuid": repository_uuid},
+        )()
 
     def check_repository(self, repository_uuid, branch, migrate="true"):
         try:
