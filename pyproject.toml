@@ -39,6 +39,7 @@ dependencies = [
   "click >= 7.0",
   "click_aliases",
   "colorama; sys_platform == 'win32'",
+  "giturl",
   "inquirer",
   "packaging",
   "pyaml",

@@ -5,6 +5,7 @@ import sys
 
 import inquirer
 from click import Abort, confirm, echo, prompt, secho
+from giturl import parse
 
 from .utils import status_print
 from .wizards_utils import (
@@ -12,6 +13,7 @@ from .wizards_utils import (
     AVAILABLE_REPOSITORY_SSH_KEY_TYPES,
     app_details_summary,
     build_app_url,
+    get_repo_url,
     suggest_app_slug,
     verify_app_repo,
 )
@@ -623,82 +625,113 @@ class CreateAppWizard:
         suggested_repo_branch = "main"
 
         while True:
-            if restart_connection or confirm(
-                APP_WIZARD_MESSAGES["repo_connect"],
+            if not (
+                restart_connection
+                or confirm(APP_WIZARD_MESSAGES["repo_connect"])
             ):
-                # Repository URL
-                repo_url = None
-                while True:
-                    if not repo_url:
-                        repo_url = prompt(
-                            APP_WIZARD_MESSAGES["repo_url_enter"],
-                            default=suggested_repo_url,
-                        )
+                return None, None, None
+            else:
+                # URL
+                repo_url = get_repo_url(self.client, suggested_repo_url)
 
-                    response = self.client.validate_repository_field(
-                        "url", repo_url
-                    )
-                    errors = response.get("url")
-                    if errors:
-                        for e in errors:
-                            status_print(e, status="error")
-                        repo_url = None
-                    else:
-                        break
-
-                # Repository branch
+                # Branch
                 repo_branch = prompt(
                     APP_WIZARD_MESSAGES["repo_branch_enter"],
                     default=suggested_repo_branch,
                 )
 
-                # Repository SSH key type
-                # TODO: Create a way to retrieve available repository
-                # types dynamically, not like a hardcoded list.
-                ssh_key_type_options = [
-                    inquirer.List(
-                        "key",
-                        message=APP_WIZARD_MESSAGES[
-                            "repo_ssh_key_type_select"
-                        ],
-                        choices=AVAILABLE_REPOSITORY_SSH_KEY_TYPES,
-                        carousel=True,
+                # URL scheme
+                repo_url_parsed = parse(repo_url)
+                auth_type = repo_url_parsed.scheme
+
+                # SSH authentication
+                if auth_type == "ssh":
+                    # TODO: Retrieve available repository SSH key types
+                    # dynamically, not as a hardcoded list.
+                    ssh_key_type_options = [
+                        inquirer.List(
+                            "key",
+                            message=APP_WIZARD_MESSAGES[
+                                "repo_ssh_key_type_select"
+                            ],
+                            choices=AVAILABLE_REPOSITORY_SSH_KEY_TYPES,
+                            carousel=True,
+                        )
+                    ]
+                    repo_ssh_key_type = inquirer.prompt(
+                        ssh_key_type_options, raise_keyboard_interrupt=True
+                    )["key"]
+
+                    response = self.client.create_repository(
+                        org,
+                        repo_url,
+                        auth_type=auth_type,
+                        ssh_key_type=repo_ssh_key_type,
                     )
-                ]
-                repo_ssh_key_type = inquirer.prompt(
-                    ssh_key_type_options, raise_keyboard_interrupt=True
-                )["key"]
+                    repo_uuid = response["uuid"]
 
-                # Create the repository.
-                response = self.client.create_repository(
-                    org, repo_url, repo_ssh_key_type
-                )
-                repo_uuid = response["uuid"]
-                repository_ssh_key = response["auth_info"]
-                # Display the the ssh public key (deploy key) and ask the user to
-                # register it with their repository provider.
-                echo("SSH Key:")
-                secho(f"{repository_ssh_key}\n", fg="green")
+                    echo("SSH Key:")
+                    secho(f"{response['auth_info']}\n", fg="green")
+                    if confirm(
+                        APP_WIZARD_MESSAGES["create_deploy_key"], default=True
+                    ):
+                        while True:
+                            echo("Repository verification in progress...")
+                            verification_status = verify_app_repo(
+                                self.client,
+                                repo_uuid,
+                                repo_branch,
+                            )
+                            if verification_status == "retry":
+                                continue
+                            if verification_status == "restart":
+                                restart_connection = True
+                                suggested_repo_url = repo_url
+                                suggested_repo_branch = repo_branch
+                                break
+                            if verification_status == "skip":
+                                status_print(
+                                    APP_WIZARD_MESSAGES[
+                                        "repository_verification_skipped"
+                                    ],
+                                    status="warning",
+                                )
+                                return None, None, None
 
-                if confirm(
-                    APP_WIZARD_MESSAGES["create_deploy_key"], default=True
-                ):
+                            return repo_uuid, repo_url, repo_branch
+                # Username/password authentication
+                else:
+                    host_username = prompt(
+                        APP_WIZARD_MESSAGES["repo_host_username_enter"]
+                    )
+                    host_password = prompt(
+                        APP_WIZARD_MESSAGES["repo_host_password_enter"],
+                        hide_input=True,
+                    )
+
+                    response = self.client.create_repository(
+                        org,
+                        repo_url,
+                        auth_type=auth_type,
+                        host_username=host_username,
+                        host_password=host_password,
+                    )
+                    repo_uuid = response["uuid"]
+
                     while True:
+                        echo("Repository verification in progress...")
                         verification_status = verify_app_repo(
                             self.client,
                             repo_uuid,
                             repo_branch,
                         )
-
                         if verification_status == "retry":
                             continue
-
                         if verification_status == "restart":
                             restart_connection = True
                             suggested_repo_url = repo_url
                             suggested_repo_branch = repo_branch
                             break
-
                         if verification_status == "skip":
                             status_print(
                                 APP_WIZARD_MESSAGES[
@@ -707,15 +740,8 @@ class CreateAppWizard:
                                 status="warning",
                             )
                             return None, None, None
-                        # Success
-                        else:
-                            return (
-                                repo_uuid,
-                                repo_url,
-                                repo_branch,
-                            )
-            else:
-                return None, None, None
+
+                        return repo_uuid, repo_url, repo_branch
 
     def create_app(self, data: dict, deploy: bool = False):
         """
