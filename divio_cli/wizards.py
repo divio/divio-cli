@@ -622,10 +622,14 @@ class CreateAppWizard:
         restart_connection = False
         suggested_repo_url = None
         suggested_repo_branch = "main"
+
         while True:
-            if restart_connection or confirm(
-                APP_WIZARD_MESSAGES["repo_connect"]
+            if not (
+                restart_connection
+                or confirm(APP_WIZARD_MESSAGES["repo_connect"])
             ):
+                return None, None, None
+            else:
                 # URL
                 repo_url = None
                 while True:
@@ -676,6 +680,7 @@ class CreateAppWizard:
                     response = self.client.create_repository(
                         org,
                         repo_url,
+                        auth_type=auth_type,
                         ssh_key_type=repo_ssh_key_type,
                     )
                     repo_uuid = response["uuid"]
