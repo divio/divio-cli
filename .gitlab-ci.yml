@@ -1,30 +1,26 @@
 include:
   - project: divio/infra/gitlab-pipelines
-    ref: master
-    file: python-cli/.gitlab-ci.yml
-
+    file: python-package/.gitlab-ci.yml
 
 variables:
   LINT_FOLDER_PYTHON: divio_cli
   CRYPTOGRAPHY_DONT_BUILD_RUST: 1
 
+check-newsfragment:
+  rules: [when: never]
 
-Unit Tests:
-    stage: qa
-    image: divio/multi-python
-    script: tox -x tox.skip_missing_interpreters=false -- -m "not integration"
-    artifacts:
-      paths:
-        - .artifacts/.coverage.*
-      reports:
-        junit: .artifacts/junit-testreport-*.xml
+check-changelog:
+  rules: [when: never]
 
+unit-tests:
+  # Do not run integration tests (done in another job)
+  script: tox -x tox.skip_missing_interpreters=false -- -m "not integration"
 
-Integration Tests:
+integration-tests:
   stage: qa
   image: docker:latest
   before_script:
-    - apk --update add openssh-client git python3 python3-dev build-base libffi-dev openssl-dev docker-cli-compose
+    - apk --update add openssh-client git python3 python3-dev py-pip build-base libffi-dev openssl-dev
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - eval $(ssh-agent -s)
     ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
@@ -42,11 +38,7 @@ Integration Tests:
 
     # prepare netrc as login
     - echo "$CI_TEST_NETRC" > ~/.netrc
-    # Install docker-compose
-    - apk add --no-cache docker-compose
   script: 
-      - python3 -m ensurepip --default-pip
-      - python3 -m pip install --upgrade pip
       - pip install -e .[test]
       - divio doctor
       - mkdir -p ${CI_PROJECT_DIR}/test_data
@@ -62,49 +54,11 @@ Integration Tests:
       junit: .artifacts/junit-testreport-integration.xml
 
 
-Check Manifest:
-  stage: qa
-  image: python:3-alpine
+release:
+  stage: release
+  extends: .prepare-release
   script:
-      - apk add git
-      - pip install check-manifest
-      - check-manifest
-
-
-Combine Coverage:
-  stage: statistic
-  image: python:3-alpine
-  script:
-      - pip install pytest-cov
-      - cd .artifacts 
-      - ls -la
-      - coverage combine
-      - coverage html -i
-      - coverage report -i
-      - coverage xml -i
-  artifacts:
-    paths:
-      - ${CI_PROJECT_DIR}/.artifacts/
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: .artifacts/coverage.xml
-
-
-
-Release Tag:
-    stage: release
-    image: python:3-alpine
-    script:
-        - apk add python3-dev build-base libffi-dev openssl-dev git
-        - pip install twine setuptools_scm "cryptography<3.4"
-        # Install the package in develop mode so setuptools_scm can retrieve 
-        # the new version.
-        - python setup.py sdist bdist_wheel
-        - twine check dist/*
-        - twine upload -u $PYPI_USERNAME -p $PYPI_PASSWORD dist/*
-
-    only:
-      - /^(\d+\.)?(\d+\.)?(\d+)$/
-    except:
-      - branches
+    - !reference [.prepare-release, script]
+    - !reference [.release, pypi] # requires PYPI_USERNAME and PYPI_PASSWORD
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^(\d+\.)?(\d+\.)?(\d+)$/
