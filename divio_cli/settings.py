@@ -15,4 +15,4 @@ DIVIO_GLOBAL_CONFIG_FILE = os.path.join(
 DEFAULT_SENTRY_DSN = (
     "https://c81d7d22230841d7ae752bac26c84dcf@o1163.ingest.sentry.io/6001539"
 )
-DEFAULT_DOCKER_COMPOSE_CMD = ["docker-compose"]
+DEFAULT_DOCKER_COMPOSE_CMD = ["docker", "compose"]

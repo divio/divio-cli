@@ -23,6 +23,7 @@ x.x.x (x-x-x)
 * Removed usage of `imp` module to better support python 3.12.
 * Added support for template services during app creation.
 * Fixed `divio app push` for projects hosted on Exoscale.
+* Switch to docker compose v2 command invocation.
 
 3.17.2 (2023-03-16)
 -------------------
