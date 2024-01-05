@@ -309,6 +309,8 @@ def get_user_agent():
 
 def download_file(url, directory=None, filename=None):
     response = requests.get(url, stream=True)
+    response.raise_for_status()
+
     if not filename:
         if response.headers.get("Content-Encoding") == "gzip":
             filename = "data.tar.gz"
