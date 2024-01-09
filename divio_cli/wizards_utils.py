@@ -53,9 +53,19 @@ APP_WIZARD_MESSAGES = {
     "template_enter_url": "Enter the URL of your template",
     # Release commands
     "detected_template_release_commands": (
-        "The template you selected includes the following release commands:"
+        "Your chosen template requires the following release commands:"
     ),
-    "include_template_release_commands": "Do you want to include them?",
+    "include_template_release_commands": (
+        "Do you want to include them? Your application will not be able to "
+        "deploy successfully without them."
+    ),
+    "detected_template_services": (
+        "Your chosen template requires the following services:"
+    ),
+    "include_template_services": (
+        "Do you want to include them? Your application will not be able to "
+        "deploy successfully without them."
+    ),
     "create_release_commands": "Want to create custom release commands for your application?",
     "enter_release_command_label": "Enter the label of your release command",
     "enter_release_command": "Enter your release command",
@@ -93,7 +103,11 @@ AVAILABLE_REPOSITORY_SSH_KEY_TYPES = [
 
 
 def app_details_summary(
-    data: dict, metadata: dict, deploy: bool = False, as_json: bool = False
+    data: dict,
+    metadata: dict,
+    services: [dict] | None = None,
+    deploy: bool = False,
+    as_json: bool = False,
 ) -> str | dict:
     """
     Creates either a human readable or a JSON representation of the
@@ -136,6 +150,7 @@ def app_details_summary(
                 "uuid": data["repository"],
             },
             "release_commands": data["release_commands"],
+            "services": services,
             "deploy": deploy,
         }
     else:
@@ -157,6 +172,13 @@ def app_details_summary(
             )
             if data["repository"]
             else "Repository: —"
+        )
+
+        services_display = (
+            "Services:"
+            + "".join([f"\n  {s['name']} ({s['uuid']})" for s in services])
+            if services
+            else "Services: —"
         )
 
         release_commands_display = (
@@ -181,6 +203,7 @@ def app_details_summary(
             repository_display,
             release_commands_display,
             f"Deploy (test environment): {'Yes' if deploy else 'No'}",
+            services_display,
         ]
         app_details = "\n".join(app_details)
 
