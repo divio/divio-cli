@@ -1159,7 +1159,7 @@ class CloudClient:
             data={
                 "backup": backup_uuid,
                 "service_instance_backups": [backup_service_instance_uuid],
-                "trigger": "MANUAL",
+                "trigger": "PULL",
             },
         )()
 
