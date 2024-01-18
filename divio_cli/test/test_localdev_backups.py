@@ -120,12 +120,26 @@ AZURE_PARAMS = {
     },
 }
 
+EXOSCALE_PARAMS = {
+    "handler": "exo-presigned-v1",
+    "finish_url": "https://example.com/exoscale/finish",
+    "upload_parameters": {
+        "url": (
+            "https://sos-ch-dk-2.exo.io/some-bucket/folder/file.dump?"
+            "AWSAccessKeyId=EXOxxx&Signature=xxxxExpires=1705589266"
+        ),
+        "http_method": "PUT",
+        "max_file_size": 5 * 1024**3,
+    },
+}
+
 
 @pytest.mark.parametrize(
     ("return_params", "func"),
     [
         (AWS_PARAMS, "_upload_backup_aws"),
         (AZURE_PARAMS, "_upload_backup_azure"),
+        (EXOSCALE_PARAMS, "_upload_backup_exoscale"),
     ],
 )
 def test_upload_backup(monkeypatch, return_params, func):
@@ -197,6 +211,41 @@ def test__upload_backup_azure(monkeypatch):
     BlobClient.from_blob_url.return_value.upload_blob.assert_called_with(
         mock_file.return_value, overwrite=True, max_concurrency=10
     )
+
+
+@pytest.mark.parametrize(
+    ("file_size", "max_size", "ok"),
+    [
+        (1234, 5000, True),
+        (5000, 5000, True),
+        (5100, 5000, False),
+    ],
+)
+def test__upload_backup_exoscale(monkeypatch, file_size, max_size, ok):
+    requests = MagicMock()
+    os = MagicMock()
+    monkeypatch.setattr("divio_cli.localdev.backups.requests", requests)
+    monkeypatch.setattr("divio_cli.localdev.backups.os", os)
+    os.stat().st_size = file_size
+
+    upload_params = EXOSCALE_PARAMS["upload_parameters"].copy()
+    upload_params["max_file_size"] = max_size
+
+    if ok:
+        with patch("builtins.open", mock_open()) as mock_file:
+            backups._upload_backup_exoscale(upload_params, "file")
+
+        mock_file.assert_called_with("file", "rb")
+        requests.put.assert_called_once_with(
+            upload_params["url"], data=mock_file()
+        )
+    else:
+        with pytest.raises(
+            DivioException,
+            match=r"file is \d+ .B, which is above the upload size limit of \d .B.",
+        ):
+            with patch("builtins.open", mock_open()) as mock_file:
+                backups._upload_backup_exoscale(upload_params, "file")
 
 
 @pytest.mark.parametrize(
