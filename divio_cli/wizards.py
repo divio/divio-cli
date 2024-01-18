@@ -473,30 +473,88 @@ class CreateAppWizard:
             "release_commands"
         ]
 
-    def get_template_services(
-        self, template_uuid: str | None
+    def get_services(
+        self, template_uuid: str | None, region: str
     ) -> list[dict] | None:
         """
-        Retrieves the validated template UUID and proceeds on retrieving the
-        services related to that template, if any.
+        Retrieves the validated template UUID as well as the selected region
+        and proceeds on retrieving the services related to that template, if
+        any.
+
+        NOTE: This method will be used in the future to attach user selected
+        services as well.
 
         Parameters:
         - template_uuid (str | None): The template UUID.
+        - region (str): The selected region UUID.
 
         Returns:
-        - services (list[dict]): The services related to that template. If a
-        custom template (not a Divio template) or no template was selected or
-        the template did not include any services, returns None.
+        - services (list[dict]): The services related to the selected template
+        converted to the form retrieved from the corresponding services API
+        listing endpoint, with the addition of the selected prefixes for each
+        one. Those prefixes can be used later on to attach those services to
+        any specific environment. If a custom template (not a Divio template)
+        or no template was selected or the template did not include any
+        services, returns None.
         """
 
         if template_uuid is None:
+            # Will not apply when user selected services are implemented.
             return None
 
-        template_services = self.client.get_application_template(
+        template_services_config = self.client.get_application_template(
             template_uuid
         )["services"]
 
-        return template_services or None
+        # App templates include information about their required services in
+        # the form of a list of dictionaries containing each service's
+        # identifier and prefix. We need map these objects to the ones
+        # retrieved from the actual services API endpoint and use the latter.
+        # In addition, we need to inject the prefixes that will be used later
+        # on to attach services to the application.
+        template_services = []
+        if template_services_config:
+            region_services, _ = self.client.get_services(region_uuid=region)
+            template_services_config_id_prefix_mapping = {
+                s["id"]: s["prefix"] for s in template_services_config
+            }
+
+            for region_service in region_services:
+                if (
+                    region_service["identifier"]
+                    in template_services_config_id_prefix_mapping
+                ):
+                    region_service[
+                        "prefix"
+                    ] = template_services_config_id_prefix_mapping[
+                        region_service["identifier"]
+                    ]
+                    template_services.append(region_service)
+
+        include_template_services = False
+        if template_services and self.interactive:
+            echo(APP_WIZARD_MESSAGES["detected_template_services"])
+
+            echo(
+                "\nTemplate services:\n"
+                + "".join(
+                    [
+                        f"  {s['name']} ({s['uuid']})\n"
+                        for s in template_services
+                    ]
+                )
+            )
+
+            include_template_services = confirm(
+                APP_WIZARD_MESSAGES["include_template_services"],
+                default=True,
+            )
+
+        return (
+            template_services
+            if include_template_services or not self.interactive
+            else None
+        )
 
     def get_release_commands(
         self, template_uuid: str | None
@@ -743,20 +801,29 @@ class CreateAppWizard:
 
                         return repo_uuid, repo_url, repo_branch
 
-    def create_app(self, data: dict, deploy: bool = False):
+    def create_app(
+        self,
+        data: dict,
+        services: list[dict] | None = None,
+        deploy: bool = False,
+    ) -> None:
         """
         Creates an application using the provided data while takind care of
         displaying the application details in multiple formats depending on
         the verbosity level and the interactivity mode.
 
+        Creates services to the application's test environment if the user
+        requested such an action.
+
         Triggers the deployment of the application's test environment if the
         user requested such an action.
 
-        Displays a warning message if services are detected to be required
-        depending on the selected template.
-
         Parameters:
         - data (dict): The application data.
+        - services (list[dict] | None): The services to be attached to the
+        application's test environment.
+        - deploy (bool): Whether or not to trigger the deployment of the
+        application's test environment.
         """
 
         # Application creation and details display.
@@ -767,6 +834,7 @@ class CreateAppWizard:
                     data,
                     metadata=self.metadata,
                     deploy=deploy,
+                    services=services,
                     as_json=self.as_json,
                 )
                 app_url = build_app_url(self.client, response["uuid"])
@@ -786,6 +854,7 @@ class CreateAppWizard:
                     data,
                     metadata=self.metadata,
                     deploy=deploy,
+                    services=services,
                     as_json=self.as_json,
                 )
 
@@ -812,24 +881,32 @@ class CreateAppWizard:
                     status="success",
                 )
 
-        # Deployment
-        if deploy:
+        if services or deploy:
+            # The test environment UUID will only be needed later on in case
+            # of a deploy request or the attachment of services. Not necessary
+            # if neither of the two applies.
             app_envs = self.client.get_environments(
                 params={"application": response["uuid"], "slug": "test"},
             )
-            self.client.deploy_environment(app_envs["results"][0]["uuid"])
+            test_env_uuid = app_envs["results"][0]["uuid"]
+
+        # Services
+        if services:
+            for service in services:
+                self.client.add_service_instances(
+                    environment_uuid=test_env_uuid,
+                    prefix=service["prefix"].upper(),
+                    region_uuid=data["region"],
+                    service_uuid=service["uuid"],
+                )
+
+        # Deployment
+        if deploy:
+            # An automatic deployment request during app creation refers only
+            # to the test environment for now.
+            self.client.deploy_environment(test_env_uuid)
             if self.verbose and self.interactive:
                 status_print(
                     APP_WIZARD_MESSAGES["deployment_triggered"],
                     status="success",
                 )
-
-        # Services
-        template_services = self.get_template_services(
-            self.metadata["template_uuid"]
-        )
-        if template_services and self.verbose and self.interactive:
-            status_print(
-                APP_WIZARD_MESSAGES["services_not_supported"],
-                status="warning",
-            )

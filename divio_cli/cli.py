@@ -441,6 +441,7 @@ def application_create(
     region, region_name = wiz.get_region(region, plan_group)
     template, template_uuid = wiz.get_template(template)
     release_commands = wiz.get_release_commands(template_uuid)
+    services = wiz.get_services(template_uuid, region)
     repo, repo_url, branch = wiz.get_git_repo(org)
 
     obj.metadata.update(
@@ -470,6 +471,7 @@ def application_create(
             "branch": branch or "main",
         },
         deploy=deploy,
+        services=services,
     )
 
 
