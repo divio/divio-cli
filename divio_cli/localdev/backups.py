@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -9,7 +10,10 @@ import boto3
 
 from azure.storage.blob import BlobClient
 
+import requests
+
 from divio_cli.exceptions import DivioException
+from divio_cli.utils import pretty_size
 
 from ..cloud import CloudClient
 
@@ -117,6 +121,8 @@ def upload_backup(
         _upload_backup_aws(upload_params, local_file)
     elif params["handler"] == "az-sas-v1":
         _upload_backup_azure(upload_params, local_file)
+    elif params["handler"] == "exo-presigned-v1":
+        _upload_backup_exoscale(upload_params, local_file)
     else:
         raise DivioException(f"Unsupported backend: {params['handler']}")
 
@@ -144,6 +150,18 @@ def _upload_backup_azure(upload_params, local_file):
         BlobClient.from_blob_url(blob_url=upload_params["url"]).upload_blob(
             fh, overwrite=True, max_concurrency=10
         )
+
+
+def _upload_backup_exoscale(upload_params, local_file):
+    max_size = upload_params["max_file_size"]
+    size = os.stat(local_file).st_size
+    if size > max_size:
+        raise DivioException(
+            f"{local_file.split('/')[-1]} is {pretty_size(size)}, "
+            f"which is above the upload size limit of {pretty_size(max_size)}."
+        )
+    with open(local_file, "rb") as fh:
+        requests.put(upload_params["url"], data=fh).raise_for_status()
 
 
 def create_backup_download_url(

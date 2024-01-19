@@ -22,6 +22,7 @@ x.x.x (x-x-x)
 * Added support for username/password authentication on external repositories during app creation.
 * Removed usage of `imp` module to better support python 3.12.
 * Added support for template services during app creation.
+* Fixed `divio app push` for projects hosted on Exoscale.
 
 3.17.2 (2023-03-16)
 -------------------
