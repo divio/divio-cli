@@ -551,11 +551,18 @@ def application_list(obj, grouped, pager, as_json):
 
 @app.command(name="deploy")
 @click.argument("environment", default="test")
+@click.option(
+    "--build-mode",
+    type=click.Choice(["AUTO", "ADOPT", "FORCE"], case_sensitive=False),
+    default="AUTO",
+)
 @click.pass_obj
 @allow_remote_id_override
-def application_deploy(obj, remote_id, environment):
+def application_deploy(obj, remote_id, environment, build_mode):
     """Deploy application."""
-    obj.client.deploy_application_or_get_progress(remote_id, environment)
+    obj.client.deploy_application_or_get_progress(
+        remote_id, environment, build_mode
+    )
 
 
 @app.command(name="deploy-log")

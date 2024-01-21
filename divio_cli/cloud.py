@@ -499,7 +499,7 @@ class CloudClient:
             return None
 
     def deploy_application_or_get_progress(
-        self, application_uuid, environment
+        self, application_uuid, environment, build_mode
     ):
         def fmt_progress(data):
             if not data:
@@ -534,7 +534,7 @@ class CloudClient:
             )
         else:
             click.secho(f"Deploying {environment} environment", fg="green")
-            deployment = self.deploy_project(env["uuid"])
+            deployment = self.deploy_project(env["uuid"], build_mode)
             sleep(1)
             response = self.get_deployment_by_uuid(deployment["uuid"])
         try:
@@ -594,8 +594,8 @@ class CloudClient:
         )
         return request()
 
-    def deploy_project(self, environment_uuid):
-        data = {"environment": environment_uuid}
+    def deploy_project(self, environment_uuid, build_mode):
+        data = {"environment": environment_uuid, "build_mode": build_mode}
         request = api_requests.DeployProjectRequest(self.session, data=data)
         return request()
 
