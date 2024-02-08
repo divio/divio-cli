@@ -1,5 +1,6 @@
 import functools
 import json
+import logging
 import os
 import sys
 from functools import partial
@@ -130,6 +131,15 @@ def cli(ctx, debug, zone, sudo, verbose):
         level=log_level,
         loggers=loggers,
     )
+
+    # azure logging
+    if verbose < 2:
+        # azure-storage-blob comes with its own logging handlers which don't
+        # respect the logging base config. This silences them when the cli
+        # is not running in debug mode.
+
+        logger = logging.getLogger("azure")
+        logger.setLevel(logging.ERROR)
 
     # check version
     if sys.version_info < settings.MINIMAL_PYTHON_VERSION:
