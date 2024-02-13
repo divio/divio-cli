@@ -1,7 +1,7 @@
 Changelog
 =========
 
-x.x.x (x-x-x)
+4.0.0 (2024-02-13)
 -------------------
 
 * Added tests for environment variables and deployments commands.
@@ -20,7 +20,7 @@ x.x.x (x-x-x)
 * Removed template release commands confirm prompt in non-interactive mode.
 * Migrated from `setup.py`` to `pyproject.toml` for packaging.
 * Added support for username/password authentication on external repositories during app creation.
-* Removed usage of `imp` module to better support python 3.12.
+* Removed usage of `imp` module to better support Python 3.12.
 * Added support for template services during app creation.
 * Fixed `divio app push` for projects hosted on Exoscale.
 * Switch to docker compose v2 command invocation.
