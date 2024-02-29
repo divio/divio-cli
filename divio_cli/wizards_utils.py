@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 
+import giturl
 import inquirer
 from click import prompt
 
@@ -237,7 +238,23 @@ def get_repo_url(client, suggested_url=None):
                 default=suggested_url,
             )
         response = client.validate_repository_field("url", repo_url)
-        errors = response.get("url")
+        errors = response.get("url") or []
+
+        if not errors:
+            normalized_url = giturl.GitURL.parse(repo_url.lower())
+            if normalized_url.scheme in [
+                "http",
+                "https",
+            ] and normalized_url.host in [
+                "github.com",
+                "gitlab.com",
+                "bitbucket.org",
+            ]:
+                errors.append(
+                    "We don't allow HTTP/HTTPS URLs for Github, Gitlab or Bitbucket. "
+                    "Please choose SSH."
+                )
+
         if errors:
             for e in errors:
                 status_print(e, status="error")

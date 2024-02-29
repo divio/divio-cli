@@ -1,6 +1,12 @@
 Changelog
 =========
 
+
+x.x.x (x-x-x)
+-------------------
+
+* Fixed git URL validation for external repositories on app creation.
+
 4.0.0 (2024-02-13)
 -------------------
 
