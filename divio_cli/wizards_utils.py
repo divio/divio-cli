@@ -74,11 +74,15 @@ APP_WIZARD_MESSAGES = {
     "repo_connect": "Want to connect an external repository to your application?",
     "repo_url_enter": "Enter the URL of your external repository",
     "repo_branch_enter": "Enter the name of your target branch",
-    "repo_ssh_key_type_select": "Select the type of your deploy key",
+    "repo_ssh_key_type_select": (
+        "SSH verification requires a specific key type. Please select one"
+    ),
     "repo_host_username_enter": "Enter the username of your repository host",
     "repo_host_password_enter": "Enter the password of your repository host (your input is not displayed)",
     "create_deploy_key": (
-        "Please register this ssh key with your repository provider. Ready to continue?"
+        "Please register this ssh key with your repository provider. See "
+        "https://docs.divio.com/how-to/resources-configure-git/#add-your-application-s-public-key-to-the-git-host "
+        "for more information. Ready to continue?"
     ),
     "repository_verification_skipped": "Repository verification skipped. No repository connected.",
     "repo_verification_timeout": "Repository verification timeout.",
@@ -249,6 +253,20 @@ def get_repo_url(client, suggested_url=None):
 
 
 def verify_app_repo(client, uuid, branch):
+    choices = [
+        ("Retry repository verification", "retry"),
+        ("Restart repository connection", "restart"),
+        ("Skip this step (no repository)", "skip"),
+    ]
+    options = [
+        inquirer.List(
+            "choice",
+            message="How would you like to proceed?",
+            choices=choices,
+            carousel=True,
+        )
+    ]
+
     # Initiating the celery task to verify the repository.
     client.check_repository(uuid, branch)
 
@@ -269,24 +287,21 @@ def verify_app_repo(client, uuid, branch):
             status_print(
                 APP_WIZARD_MESSAGES["repo_verification_failed"], "error"
             )
-
-        choices = [
-            ("Retry repository verification", "retry"),
-            ("Restart repository connection", "restart"),
-            ("Skip this step (no repository)", "skip"),
-        ]
-        options = [
-            inquirer.List(
-                "choice",
-                message="How would you like to proceed?",
-                choices=choices,
-                carousel=True,
-            )
-        ]
         verification_status = inquirer.prompt(
             options, raise_keyboard_interrupt=True
         )["choice"]
     else:
-        verification_status = "success"
+        # Cloned repository successfully, pull access confirmed.
+        # A second check is required to also verify push access.
+        response = client.check_repository(uuid, branch)
+        if response.get("code") == "success":
+            verification_status = "success"
+        else:
+            status_print(
+                APP_WIZARD_MESSAGES["repo_verification_failed"], "error"
+            )
+            verification_status = inquirer.prompt(
+                options, raise_keyboard_interrupt=True
+            )["choice"]
 
     return verification_status
