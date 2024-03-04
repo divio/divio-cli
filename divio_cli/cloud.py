@@ -1043,6 +1043,7 @@ class CloudClient:
                     "branch": branch,
                     "migrate": migrate,
                 },
+                proceed_on_4xx=True,
             )()
         except (KeyError, json.decoder.JSONDecodeError):
             click.secho(

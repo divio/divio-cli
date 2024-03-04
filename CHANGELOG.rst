@@ -1,6 +1,11 @@
 Changelog
 =========
 
+x.x.x (x-x-x)
+-------------------
+
+* Fixed SSH verification for external repositories during app creation.
+
 4.0.0 (2024-02-13)
 -------------------
 
