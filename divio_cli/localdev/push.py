@@ -199,7 +199,7 @@ def is_db_dump(local_file: str, db_type: str):
     """Test if a file looks like a database dump"""
     start_bytes = open(local_file, "rb").read(1024)
     if db_type == "fsm-postgres":
-        if start_bytes.startswith(b"\x50\x47\x44\x42"):
+        if start_bytes.startswith(b"\x50\x47\x44\x4d"):
             return True  # postgres binary dump
     if start_bytes.startswith(b"--") and b"dump" in start_bytes.lower():
         return True  # plaintext dump

@@ -5,6 +5,7 @@ x.x.x (x-x-x)
 -------------------
 
 * Fixed SSH verification for external repositories during app creation.
+* Fixed `divio app push db` validation for local postgres binary files.
 
 4.0.0 (2024-02-13)
 -------------------
