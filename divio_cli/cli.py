@@ -291,7 +291,7 @@ def logout(ctx, non_interactive):
 
 @cli.group(name="services")
 def services():
-    """Manage services."""
+    """Available services."""
 
 
 @services.command(name="list")
@@ -1573,7 +1573,7 @@ def doctor(obj, machine_readable, checks):
 
 @cli.group(cls=ClickAliasedGroup)
 def organisations():
-    """Manage your organisations."""
+    """Your organisations."""
 
 
 @organisations.command(name="list")
@@ -1630,7 +1630,7 @@ def list_organisations(obj, as_json, limit_results):
 
 @cli.group(cls=ClickAliasedGroup)
 def regions():
-    """Manage regions."""
+    """Available regions."""
 
 
 @regions.command(name="list")

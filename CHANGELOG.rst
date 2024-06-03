@@ -1,6 +1,10 @@
 Changelog
 =========
 
+unreleased
+----------
+* Updated a couple of help texts to avoid confusion.
+
 4.0.1 (2024-05-15)
 -------------------
 
