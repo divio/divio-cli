@@ -524,11 +524,11 @@ class CreateAppWizard:
                     region_service["identifier"]
                     in template_services_config_id_prefix_mapping
                 ):
-                    region_service[
-                        "prefix"
-                    ] = template_services_config_id_prefix_mapping[
-                        region_service["identifier"]
-                    ]
+                    region_service["prefix"] = (
+                        template_services_config_id_prefix_mapping[
+                            region_service["identifier"]
+                        ]
+                    )
                     template_services.append(region_service)
 
         include_template_services = False

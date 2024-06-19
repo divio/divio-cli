@@ -38,9 +38,7 @@ def get_project_settings_path(path=None, silent=False):
 
     if aldryn_dot_file_exists and divio_dot_file_exists and not silent:
         click.secho(
-            "Warning: Old ({}) and new ({}) divio configuration files found at the same time. The new one will be used.".format(
-                settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
-            ),
+            f"Warning: Old ({settings.ALDRYN_DOT_FILE}) and new ({settings.DIVIO_DOT_FILE}) divio configuration files found at the same time. The new one will be used.",
             fg="yellow",
         )
 

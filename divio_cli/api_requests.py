@@ -115,9 +115,9 @@ class APIRequest:
     def get_error_code_map(self, login=None):
         # if a login is provided, change the errormessages accordingly
         if login:
-            self.response_code_error_map[
-                requests.codes.not_found
-            ] = messages.RESOURCE_NOT_FOUND.format(login=login)
+            self.response_code_error_map[requests.codes.not_found] = (
+                messages.RESOURCE_NOT_FOUND.format(login=login)
+            )
 
         return self.response_code_error_map
 
