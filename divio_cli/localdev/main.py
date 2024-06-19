@@ -346,9 +346,7 @@ class DatabaseImportBase:
             if not isinstance(project_settings["db_extensions"], list):
                 raise DivioException(
                     'Divio configuration file contains invalid "db_extensions" value. '
-                    "It should contain a list of extensions, for instance: {}".format(
-                        default_db_extensions
-                    )
+                    f"It should contain a list of extensions, for instance: {default_db_extensions}"
                 )
             return project_settings["db_extensions"]
         else:
@@ -598,9 +596,7 @@ class ImportLocalDatabase(DatabaseImportBase):
 
     def setup(self):
         click.secho(
-            " ===> Loading database dump {} into local {} database".format(
-                self.custom_dump_path, self.prefix
-            )
+            f" ===> Loading database dump {self.custom_dump_path} into local {self.prefix} database"
         )
         db_container_id = utils.get_db_container_id(
             self.path, prefix=self.prefix
@@ -640,9 +636,7 @@ class ImportRemoteDatabase(DatabaseImportBase):
         remote_project_name = f"Project {self.application_uuid}"
 
         click.secho(
-            " ===> Pulling database from {} {} environment".format(
-                remote_project_name, self.environment
-            )
+            f" ===> Pulling database from {remote_project_name} {self.environment} environment"
         )
 
     def setup(self):

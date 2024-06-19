@@ -528,8 +528,8 @@ class CloudClient:
 
         if response and response["ended_at"] is None:
             click.secho(
-                "Already deploying {} environment, attaching to running "
-                "deployment".format(environment),
+                f"Already deploying {environment} environment, attaching to running "
+                "deployment",
                 fg="yellow",
             )
         else:

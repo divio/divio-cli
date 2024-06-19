@@ -10,13 +10,11 @@ from divio_cli import settings
 
 
 DOT_DIVIO_FILE_NOT_FOUND = (
-    "Divio Cloud configuration file '{}' or '{}' could not be found!\n"
+    f"Divio Cloud configuration file '{settings.ALDRYN_DOT_FILE}' or '{settings.DIVIO_DOT_FILE}' could not be found!\n"
     "Please make sure you're in a Divio Cloud project folder and the "
     "file exists.\n\n"
     "You can create a new configuration file for an existing project "
-    "with the `divio app configure` command.".format(
-        settings.ALDRYN_DOT_FILE, settings.DIVIO_DOT_FILE
-    )
+    "with the `divio app configure` command."
 )
 
 

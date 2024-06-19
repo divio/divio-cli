@@ -28,9 +28,7 @@ class Check:
             if exc.errno == errno.ENOENT:
                 errors.append(f"Executable {self.command[0]} not found")
             else:
-                msg = "Command '{}' returned non-zero exit status {}".format(
-                    self.fmt_command(), exc.errno
-                )
+                msg = f"Command '{self.fmt_command()}' returned non-zero exit status {exc.errno}"
                 if hasattr(exc, "strerror"):
                     msg += f": {exc.strerror}"
 
@@ -50,9 +48,7 @@ class Check:
         if command_output:
             message = command_output
         else:
-            message = "Command '{}' returned non-zero exit status {}".format(
-                self.fmt_command(), exc.returncode
-            )
+            message = f"Command '{self.fmt_command()}' returned non-zero exit status {exc.returncode}"
 
         return [message]
 
@@ -101,9 +97,7 @@ class DockerComposeCheck(Check):
                 errors.append(
                     "Neither `docker compose` nor `docker-compose` found."
                 )
-            msg = "Command '{}' returned non-zero exit status {}".format(
-                self.fmt_command(), exc.errno
-            )
+            msg = f"Command '{self.fmt_command()}' returned non-zero exit status {exc.errno}"
             if hasattr(exc, "strerror"):
                 msg += f": {exc.strerror}"
 
@@ -146,24 +140,20 @@ class DockerEngineCheck(DockerEngineBaseCheck):
                 # check if docker socket exists
                 if not os.path.exists(default_host_path):
                     errors.append(
-                        "Could not find docker engine socket at {}. Please "
+                        f"Could not find docker engine socket at {default_host_path}. Please "
                         "make sure your docker engine is setup correctly and "
                         "check the docker installation guide: "
-                        "https://docs.docker.com/engine/installation/".format(
-                            default_host_path
-                        )
+                        "https://docs.docker.com/engine/installation/"
                     )
 
                 elif not os.access(default_host_path, os.R_OK):
                     # check if docker socket is readable
                     errors.append(
-                        "No read permissions on {}. Please make sure the unix "
+                        f"No read permissions on {default_host_path}. Please make sure the unix "
                         "socket can be accessed without root permissions. "
                         "More information can be found in the docker "
                         "installation guide: https://docs.docker.com/engine/"
-                        "installation/linux/ubuntulinux/#create-a-docker-group".format(
-                            default_host_path
-                        )
+                        "installation/linux/ubuntulinux/#create-a-docker-group"
                     )
 
         return errors
