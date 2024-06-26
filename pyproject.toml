@@ -48,6 +48,7 @@ dependencies = [
   "tabulate >= 0.8.10",
   "simple-logging-setup",
   "urllib3",
+  "pyreadline3; platform_system=='Windows'",
 ]
 
 requires-python = ">=3.7"
