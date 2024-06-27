@@ -1,6 +1,12 @@
 Changelog
 =========
 
+4.0.2 (2024-06-27)
+-------------------
+
+* Added basic support for Python 3.12
+* Fixed GNU readline issues on Windows
+
 4.0.1 (2024-05-15)
 -------------------
 
