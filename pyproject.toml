@@ -9,7 +9,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "divio-cli"
-dynamic = ["version"]                                       # see setuptools_scm
+# version set with setuptools_scm
+dynamic = ["version", "dependencies"]
 license = { file = "LICENSE.txt" }
 authors = [{ name = "Divio AG", email = "info@divio.com" }]
 description = "The command-line client for the Divio Cloud"
@@ -31,27 +32,13 @@ classifiers = [
   "Topic :: Software Development",
 ]
 
-dependencies = [
-  "attrs",
-  "azure-storage-blob",
-  "boto3",
-  "click >= 7.0",
-  "click_aliases",
-  "colorama; sys_platform == 'win32'",
-  "giturl",
-  "inquirer",
-  "packaging",
-  "pyaml",
-  "python-dateutil",
-  "requests",
-  "sentry-sdk",
-  "tabulate >= 0.8.10",
-  "simple-logging-setup",
-  "urllib3",
-  "pyreadline3; platform_system=='Windows'",
-]
-
 requires-python = ">=3.7"
+
+[tool.setuptools.dynamic]
+# requirements.txt is necessary until gitlab supports pyproject.toml
+# in the gemnasium python dependency scanner.
+# see https://gitlab.com/gitlab-org/gitlab/-/issues/416566
+dependencies = {file = ["requirements.txt"]}
 
 [project.urls]
 homepage = "https://docs.divio.com/en/latest/how-to/local-cli/"
