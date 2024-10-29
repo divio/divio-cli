@@ -4,6 +4,7 @@ Changelog
 unreleased
 ----------
 * Updated a couple of help texts to avoid confusion.
+* Added a note to backup restores initiated from the CLI.
 
 4.0.2 (2024-06-27)
 -------------------
