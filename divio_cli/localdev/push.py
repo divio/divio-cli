@@ -59,7 +59,7 @@ class PushBase:
             si_uuid=si_uuid,
         )
 
-    def run(self, local_file=None, cleanup=True):
+    def run(self, local_file=None, cleanup=True, **options):
         main_step = utils.MainStep(
             f"pushing local {self.__class__.backup_type.lower()} to "
             f"{self.remote_project_name}'s {self.environment} environment"
@@ -69,7 +69,7 @@ class PushBase:
             self.verify_step(local_file)
             self.local_file = local_file
         else:
-            self.local_file = self.export_step()
+            self.local_file = self.export_step(**options)
 
         self.upload_step()
         self.restore_step()
@@ -86,7 +86,7 @@ class PushBase:
         if not os.path.exists(local_file):
             raise DivioException(f"File {local_file} does not exist.")
 
-    def export_step(self) -> str:
+    def export_step(self, **options) -> str:
         """Export dump/media and return the local file path"""
         raise NotImplementedError
 
@@ -134,7 +134,7 @@ class PushMedia(PushBase):
         if not tarfile.is_tarfile(local_file):
             raise DivioException(f"Given file {local_file} is not a tarball.")
 
-    def export_step(self):
+    def export_step(self, **options):
         compress_step = utils.TimedStep("Compressing local media folder")
         archive_path = os.path.join(
             self.project_home, DIVIO_DUMP_FOLDER, "local_media.tar.gz"
@@ -182,7 +182,7 @@ class PushDb(PushBase):
                 f"File {local_file} doesn't look like a database dump"
             )
 
-    def export_step(self):
+    def export_step(self, **options):
         local_file = os.path.join(DIVIO_DUMP_FOLDER, "local_db.sql")
         db_type = utils.get_db_type(self.prefix, path=self.project_home)
 
@@ -190,6 +190,7 @@ class PushDb(PushBase):
             dump_filename=local_file,
             db_type=db_type,
             prefix=self.prefix,
+            binary=options.get("binary", False),
         )  # FIXME: what if empty or no docker?
 
         return os.path.join(self.project_home, local_file)
@@ -211,6 +212,7 @@ def dump_database(
     db_type: str,
     prefix: str,
     archive_filename: str | None = None,
+    binary: bool = False,  # only support on postgres
 ):
     """
     Dump a database running in docker.
@@ -232,12 +234,15 @@ def dump_database(
 
     # TODO: database
     if db_type == "fsm-postgres":
+        compression = ["--format", "c", "--compress", "8"] if binary else []
+
         return_code = subprocess.call(
             (
                 "docker",
                 "exec",
                 db_container_id,
                 "pg_dump",
+                *compression,
                 "-U",
                 "postgres",
                 "-d",
