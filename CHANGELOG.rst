@@ -1,10 +1,11 @@
 Changelog
 =========
 
-unreleased
+4.0.3 (2024-11-12)
 ----------
 * Updated a couple of help texts to avoid confusion.
 * Added a note to backup restores initiated from the CLI.
+* Added --binary option when pushing a PostgreSQL database dump.
 
 4.0.2 (2024-06-27)
 -------------------
