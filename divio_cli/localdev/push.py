@@ -110,6 +110,7 @@ class PushBase:
             res = self.client.create_backup_restore(
                 backup_uuid=self.backup_uuid,
                 si_backup_uuid=self.si_backup_uuid,
+                notes=backups.UPLOAD_BACKUP_NOTE,
             )
             restore_uuid = res["uuid"]
 

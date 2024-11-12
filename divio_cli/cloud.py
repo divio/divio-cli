@@ -1226,15 +1226,21 @@ class CloudClient:
     def finish_backup_upload(self, finish_url):
         return requests.post(url=finish_url)
 
-    def create_backup_restore(self, backup_uuid: str, si_backup_uuid: str):
+    def create_backup_restore(
+        self, backup_uuid: str, si_backup_uuid: str, notes: str | None = None
+    ):
+        data = {
+            "backup": backup_uuid,
+            "service_instance_restores": [
+                {"service_instance_backup": si_backup_uuid},
+            ],
+        }
+
+        if notes is not None:
+            data["notes"] = notes
+
         return api_requests.CreateBackupRestoreRequest(
-            self.session,
-            data={
-                "backup": backup_uuid,
-                "service_instance_restores": [
-                    {"service_instance_backup": si_backup_uuid},
-                ],
-            },
+            self.session, data=data
         )()
 
     def get_backup_restore(self, backup_restore_uuid: str):

@@ -72,6 +72,7 @@ def test_pushbase_restore_step(statuses, ok):
         pusher.client.create_backup_restore.assert_called_with(
             backup_uuid="<backup_uuid>",
             si_backup_uuid="<si_backup_uuid>",
+            notes="Divio CLI push",
         )
         pusher.client.get_backup_restore.assert_called_with("<uuid>")
 
