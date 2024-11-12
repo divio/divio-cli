@@ -814,6 +814,7 @@ def push_db(
     prefix,
     local_file=None,
     keep_tempfile=True,
+    binary=False,
 ):
     pusher = PushDb.create(
         client=client,
@@ -824,7 +825,9 @@ def push_db(
     # do not cleanup after if the file was provided by the user or
     # he explicitly asked not to
     pusher.run(
-        local_file=local_file, cleanup=not (local_file or keep_tempfile)
+        local_file=local_file,
+        cleanup=not (local_file or keep_tempfile),
+        binary=binary,
     )
 
 

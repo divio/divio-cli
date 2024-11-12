@@ -1335,8 +1335,21 @@ def common_push_options(f):
     type=click.Path(exists=True),
     help="Specify a dumped database file to upload.",
 )
+@click.option(
+    "--binary",
+    is_flag=True,
+    default=False,
+    help="Use a binary or plain text dump. Only supported with PostgreSQL",
+)
 def push_db(
-    obj, remote_id, prefix, environment, dumpfile, noinput, keep_tempfile
+    obj,
+    remote_id,
+    prefix,
+    environment,
+    dumpfile,
+    binary,
+    noinput,
+    keep_tempfile,
 ):
     """
     Push database to the Divio cloud environment.
@@ -1356,6 +1369,7 @@ def push_db(
         prefix=prefix,
         local_file=dumpfile,
         keep_tempfile=keep_tempfile,
+        binary=binary,
     )
 
 
