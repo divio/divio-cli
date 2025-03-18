@@ -367,8 +367,9 @@ def get_db_type(prefix, path=None):
     Utility function to wrap `get_service_type` to search for databases so we
     can properly fall back to PostgreSQL in case of old structures.
     """
+    db_service_name = f"database_{prefix.lower()}"
     try:
-        db_type = get_service_type(f"database_{prefix.lower()}", path=path)
+        db_type = get_service_type(db_service_name, path=path)
     except RuntimeError:
         # legacy section. we try to look for the db, if it does not exist, fail
         docker_compose = get_docker_compose_cmd(path)
@@ -376,7 +377,7 @@ def get_db_type(prefix, path=None):
         if not docker_compose_config.has_service("db"):
             raise DivioException(
                 "The local database container must be called "
-                "`database_default`, must define the `SERVICE_MANAGER` "
+                f"`{db_service_name}`, must define the `SERVICE_MANAGER` "
                 "environment variable and must mount the project directory "
                 "from the host to the /app directory of the container."
                 "\n\nSee https://docs.divio.com/en/latest/reference/docker-docker-compose/#database-default",
