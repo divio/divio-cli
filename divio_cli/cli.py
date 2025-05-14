@@ -712,7 +712,6 @@ def deployments(obj, pager, as_json):
     # json format. Here are the desired columns to be displayed.
     obj.table_format_columns = [
         "uuid",
-        "author",
         "started_at",
         "ended_at",
         "status",

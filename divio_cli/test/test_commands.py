@@ -15,39 +15,45 @@ NOI = "--noinput"
 DBFILE = ".divio/local_db.sql"
 
 TEST_COMMANDS_CLICK = [
-    "doctor",
-    "doctor -m",
-    "doctor -c login",
-    "login --check",
-    "app",
-    "app dashboard",
-    "app deploy test",
-    "app deploy-log",
-    "app list",
-    "app pull db",
-    "app push db --noinput",
-    "app export db",
-    "app push db --noinput --dumpfile local_db.sql",
-    "app pull media",
-    "app push media --noinput",
-    "app logs test",
-    "app status",
-    "app update",
-    "app service-instances list",
-    "version",
-    "version -s",
-    "version -m",
-    "regions list",
-    "organisations list",
+    (0, "doctor"),
+    (0, "doctor -m"),
+    (0, "doctor -c login"),
+    (0, "login --check"),
+    (2, "app"),
+    (0, "app dashboard"),
+    (0, "app deploy test"),
+    (0, "app deploy-log"),
+    (0, "app list"),
+    (0, "app pull db"),
+    (0, "app push db --noinput"),
+    (0, "app export db"),
+    (0, "app push db --noinput --dumpfile local_db.sql"),
+    (0, "app pull media"),
+    (0, "app push media --noinput"),
+    (0, "app logs test"),
+    (0, "app status"),
+    (0, "app update"),
+    (0, "app service-instances list"),
+    (0, "version"),
+    (0, "version -s"),
+    (0, "version -m"),
+    (0, "regions list"),
+    (0, "organisations list"),
 ]
 
 
 @pytest.mark.integration()
 @pytest.mark.parametrize("command", TEST_COMMANDS_CLICK)
 def test_call_click_commands(divio_project, command):
-    exitcode = subprocess.check_call(["divio", *shlex.split(command)])
+    expected_exitcode, command = command
 
-    assert exitcode == 0
+    if expected_exitcode == 2:
+        with pytest.raises(subprocess.CalledProcessError):
+            subprocess.check_call(["divio", *shlex.split(command)])
+
+    else:
+        exitcode = subprocess.check_call(["divio", *shlex.split(command)])
+        assert exitcode == expected_exitcode
 
 
 @pytest.mark.integration()
