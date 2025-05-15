@@ -1,6 +1,11 @@
 Changelog
 =========
 
+4.0.4 (2025-05-15)
+------------------
+* Fixed potentially wrong prefixes in database error messages
+* Fixed error in `app deployments list`
+
 4.0.3 (2024-11-12)
 ----------
 * Updated a couple of help texts to avoid confusion.
