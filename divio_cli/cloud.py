@@ -551,7 +551,7 @@ class CloudClient:
                     bar.current_item = response["status"]
                     bar.update(progress_percent - bar.pos)
                     sleep(3)
-                if response["status"] == "failure":
+                if not response["success"]:
                     bar.current_item = "error"
                     bar.update(progress_percent)
 
