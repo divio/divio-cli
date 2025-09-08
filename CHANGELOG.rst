@@ -1,6 +1,10 @@
 Changelog
 =========
 
+4.0.4 (2025-08-09)
+------------------
+* Fixed exit code in `divio app deploy`
+
 4.0.4 (2025-05-15)
 ------------------
 * Fixed potentially wrong prefixes in database error messages
