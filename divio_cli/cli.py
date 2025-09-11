@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+import time
 from functools import partial
 
 import click
@@ -1419,15 +1420,58 @@ def push_db(
         if not click.confirm("\nAre you sure you want to continue?"):
             return
 
-    localdev.push_db(
-        client=obj.client,
-        environment=environment,
+    try:
+        localdev.push_db(
+            client=obj.client,
+            environment=environment,
+            application_uuid=remote_id,
+            prefix=prefix,
+            local_file=dumpfile,
+            keep_tempfile=keep_tempfile,
+            binary=binary,
+        )
+
+        return
+
+    except ConfigurationNotFound:
+        if not remote_id or not dumpfile:
+            raise
+
+    environment_data = obj.client.get_environment(
         application_uuid=remote_id,
-        prefix=prefix,
-        local_file=dumpfile,
-        keep_tempfile=keep_tempfile,
-        binary=binary,
+        environment=environment,
     )
+
+    service_instance = obj.client.get_service_instance(
+        instance_type=backups.Type.DB,
+        environment_uuid=environment_data["uuid"],
+        prefix=prefix,
+    )
+
+    with utils.TimedStep(f"Uploading {dumpfile}"):
+        backup_uuid, si_backup_uuid = backups.upload_backup(
+            client=obj.client,
+            environment_uuid=environment_data["uuid"],
+            si_uuid=service_instance["uuid"],
+            local_file=dumpfile,
+        )
+
+    with utils.TimedStep("Restoring"):
+        response = obj.client.create_backup_restore(
+            backup_uuid=backup_uuid,
+            si_backup_uuid=si_backup_uuid,
+            notes=backups.UPLOAD_BACKUP_NOTE,
+        )
+
+        restore_uuid = response["uuid"]
+        restore = {}
+
+        while not restore.get("finished", False):
+            time.sleep(2)
+            restore = obj.client.get_backup_restore(restore_uuid)
+
+        if restore.get("success") != "SUCCESS":
+            raise DivioException("Backup restore failed.")
 
 
 @application_push.command(name="media")
