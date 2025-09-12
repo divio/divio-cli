@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+import time
 from functools import partial
 
 import click
@@ -21,10 +22,12 @@ from .check_system import check_requirements, check_requirements_human
 from .cloud import CloudClient, get_divio_zone, get_endpoint
 from .excepthook import DivioExcepthookIntegration, divio_shutdown
 from .exceptions import (
+    ConfigurationNotFound,
     DivioException,
     EnvironmentDoesNotExist,
     ExitCode,
 )
+from .localdev import backups, utils
 from .localdev.utils import (
     allow_remote_id_override,
     get_project_settings,
@@ -34,6 +37,7 @@ from .upload.addon import upload_addon
 from .utils import (
     Map,
     clean_table_cell,
+    download_file,
     echo_environment_variables_as_txt,
     echo_large_content,
     get_cp_url,
@@ -1250,29 +1254,84 @@ def common_pull_options(f):
 
 
 @application_pull.command(name="db")
+@click.option(
+    "-d",
+    "--dumpfile",
+    default=None,
+    type=click.Path(exists=False),
+    help="Specify path to output the dumped database.",
+)
 @common_pull_options
 def pull_db(
-    obj, remote_id, environment, prefix, keep_tempfile, backup_si_uuid
+    obj,
+    remote_id,
+    environment,
+    prefix,
+    keep_tempfile,
+    backup_si_uuid,
+    dumpfile,
 ):
     """
-    Pull database the Divio cloud environment.
+    Pull database from the Divio cloud environment.
     """
-    from .localdev import utils
 
-    application_home = utils.get_application_home()
-    db_type = utils.get_db_type(prefix, path=application_home)
-    dump_path = os.path.join(application_home, settings.DIVIO_DUMP_FOLDER)
+    try:
+        application_home = utils.get_application_home()
+        db_type = utils.get_db_type(prefix, path=application_home)
+        dump_path = os.path.join(application_home, settings.DIVIO_DUMP_FOLDER)
 
-    localdev.ImportRemoteDatabase(
-        client=obj.client,
-        environment=environment,
-        prefix=prefix,
-        application_uuid=remote_id,
-        db_type=db_type,
-        dump_path=dump_path,
-        backup_si_uuid=backup_si_uuid,
-        keep_tempfile=keep_tempfile,
-    )()
+        localdev.ImportRemoteDatabase(
+            client=obj.client,
+            environment=environment,
+            prefix=prefix,
+            application_uuid=remote_id,
+            db_type=db_type,
+            dump_path=dump_path,
+            backup_si_uuid=backup_si_uuid,
+            keep_tempfile=keep_tempfile,
+        )()
+
+        return
+
+    except ConfigurationNotFound:
+        if not remote_id:
+            raise
+
+    if not dumpfile:
+        dumpfile = os.path.join(
+            os.getcwd(),
+            f"{environment}-database.dump",
+        )
+
+    directory, filename = os.path.split(dumpfile)
+
+    if not directory:
+        directory = os.getcwd()
+
+    if not os.path.isdir(directory):
+        raise DivioException(f"{directory} is not a directory")
+
+    with utils.TimedStep("Creating Backup"):
+        backup_uuid, backup_si_uuid = backups.create_backup(
+            obj.client,
+            remote_id,
+            environment,
+            backups.Type.DB,
+            prefix,
+        )
+
+    with utils.TimedStep("Downloading Backup"):
+        download_url = backups.create_backup_download_url(
+            obj.client, backup_uuid, backup_si_uuid
+        )
+
+        output = download_file(
+            url=download_url,
+            directory=directory,
+            filename=filename,
+        )
+
+    click.echo(f"wrote to {output}")
 
 
 @application_pull.command(name="media")
@@ -1361,15 +1420,58 @@ def push_db(
         if not click.confirm("\nAre you sure you want to continue?"):
             return
 
-    localdev.push_db(
-        client=obj.client,
-        environment=environment,
+    try:
+        localdev.push_db(
+            client=obj.client,
+            environment=environment,
+            application_uuid=remote_id,
+            prefix=prefix,
+            local_file=dumpfile,
+            keep_tempfile=keep_tempfile,
+            binary=binary,
+        )
+
+        return
+
+    except ConfigurationNotFound:
+        if not remote_id or not dumpfile:
+            raise
+
+    environment_data = obj.client.get_environment(
         application_uuid=remote_id,
-        prefix=prefix,
-        local_file=dumpfile,
-        keep_tempfile=keep_tempfile,
-        binary=binary,
+        environment=environment,
     )
+
+    service_instance = obj.client.get_service_instance(
+        instance_type=backups.Type.DB,
+        environment_uuid=environment_data["uuid"],
+        prefix=prefix,
+    )
+
+    with utils.TimedStep(f"Uploading {dumpfile}"):
+        backup_uuid, si_backup_uuid = backups.upload_backup(
+            client=obj.client,
+            environment_uuid=environment_data["uuid"],
+            si_uuid=service_instance["uuid"],
+            local_file=dumpfile,
+        )
+
+    with utils.TimedStep("Restoring"):
+        response = obj.client.create_backup_restore(
+            backup_uuid=backup_uuid,
+            si_backup_uuid=si_backup_uuid,
+            notes=backups.UPLOAD_BACKUP_NOTE,
+        )
+
+        restore_uuid = response["uuid"]
+        restore = {}
+
+        while not restore.get("finished", False):
+            time.sleep(2)
+            restore = obj.client.get_backup_restore(restore_uuid)
+
+        if restore.get("success") != "SUCCESS":
+            raise DivioException("Backup restore failed.")
 
 
 @application_push.command(name="media")
