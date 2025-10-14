@@ -729,6 +729,30 @@ def pull_media(
                 client, backup_si_uuid, backups.Type.MEDIA
             )
     else:
+        with utils.TimedStep(
+            "Searching for an Object Storage service instance"
+        ):
+            from divio_cli.localdev.backups import Type
+
+            environment_uuid = client.get_environment(
+                application_uuid,
+                environment,
+            )["uuid"]
+
+            service_instance = client.get_service_instance(
+                Type.MEDIA,
+                environment_uuid,
+                prefix=prefix,
+            )
+
+            if (
+                not service_instance
+                or service_instance["service_status"] == "NEW"
+            ):
+                click.secho("No Object Storage service instance found")
+
+                return
+
         with utils.TimedStep("Creating backup"):
             backup_uuid, backup_si_uuid = backups.create_backup(
                 client,
