@@ -9,11 +9,11 @@ from requests import Session
 
 from divio_cli.config import WritableNetRC
 from divio_cli.exceptions import DivioException
+from divio_cli.settings import ACCESS_TOKEN_URL_PATH
 
 
 DEFAULT_ZONE = "divio.com"
 
-ACCESS_TOKEN_URL_PATH = "/account/desktop-app/access-token/"
 GET_CURRENT_USER_URL_PATH = "/iam/v3/me/"
 
 logger = logging.getLogger("divio.client")
