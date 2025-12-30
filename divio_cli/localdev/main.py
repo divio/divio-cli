@@ -941,7 +941,7 @@ def develop_package(package, no_rebuild=False):
     requirements_file = os.path.join(project_home, "requirements.in")
     # open file with 'universal newline support'
     # https://docs.python.org/2/library/functions.html#open
-    with open(requirements_file, "rU") as fh:
+    with open(requirements_file, "r") as fh:
         addons = fh.readlines()
 
     replaced = False
