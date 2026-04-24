@@ -379,7 +379,7 @@ def get_local_git_remotes():
 
     ret = []
     for line in a.splitlines():
-        name, url, method = split(["\t", " "], line)
+        _name, url, _method = split(["\t", " "], line)
         ret.append(url)
     return ret
 
@@ -477,7 +477,7 @@ def echo_environment_variables_as_txt(
         if result_content:
             result_title = f"Environment: {result['environment']} ({result['environment_uuid']})"
             result_content.insert(
-                0, f"{result_title}\n{'-'*len(result_title)}\n"
+                0, f"{result_title}\n{'-' * len(result_title)}\n"
             )
             result_content.append("\n\n")
 

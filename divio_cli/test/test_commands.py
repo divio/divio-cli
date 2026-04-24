@@ -42,7 +42,7 @@ TEST_COMMANDS_CLICK = [
 ]
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 @pytest.mark.parametrize("command", TEST_COMMANDS_CLICK)
 def test_call_click_commands(divio_project, command):
     expected_exitcode, command = command
@@ -56,7 +56,7 @@ def test_call_click_commands(divio_project, command):
         assert exitcode == expected_exitcode
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_logout_command(divio_project):
     """
     The logout command has to be tested separately, and using a temporary

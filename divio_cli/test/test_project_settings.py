@@ -8,7 +8,7 @@ import pytest
 from divio_cli.settings import DIVIO_DOT_FILE
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_migrate_project_id_to_application_uuid():
     with TemporaryDirectory() as project_home:
         divio_dot_file = os.path.join(project_home, DIVIO_DOT_FILE)

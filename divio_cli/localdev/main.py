@@ -941,7 +941,7 @@ def develop_package(package, no_rebuild=False):
     requirements_file = os.path.join(project_home, "requirements.in")
     # open file with 'universal newline support'
     # https://docs.python.org/2/library/functions.html#open
-    with open(requirements_file, "rU") as fh:
+    with open(requirements_file) as fh:
         addons = fh.readlines()
 
     replaced = False
@@ -1005,7 +1005,7 @@ def open_application(open_browser=True):
     if host == "0.0.0.0":
         docker_host_url = os.environ.get("DOCKER_HOST")
         if docker_host_url:
-            proto, host_port = os.environ.get("DOCKER_HOST").split("://")
+            _, host_port = os.environ.get("DOCKER_HOST").split("://")
             host = host_port.split(":")[0]
 
     addr = f"http://{host}:{port}/"

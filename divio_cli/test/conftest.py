@@ -13,7 +13,7 @@ TEST_DATA_DIRECTORY = "test_data"
 
 
 @pytest.fixture(scope="session")
-def _divio_project(request, pytestconfig, tmpdir_factory):  # noqa: PT005
+def _divio_project(request, pytestconfig, tmpdir_factory):
     capturemanager = pytestconfig.pluginmanager.getplugin("capturemanager")
 
     # check if test project is set
@@ -86,7 +86,7 @@ def base_session():
     return session
 
 
-@pytest.fixture()
+@pytest.fixture
 def bad_request_response():
     class HttpBadResponse:
         ok = False
@@ -107,7 +107,7 @@ def remember_cwd(targetdir):
         os.chdir(curdir)
 
 
-@pytest.fixture()
+@pytest.fixture
 def divio_project(_divio_project):
     with remember_cwd(_divio_project):
         yield _divio_project
