@@ -27,7 +27,7 @@ ENVIRONMENT_VARIABLES_COMMANDS = [
 ]
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 @pytest.mark.parametrize("command", ENVIRONMENT_VARIABLES_COMMANDS)
 def test_call_click_commands(divio_project, command):
     expected_exitcode, command = command

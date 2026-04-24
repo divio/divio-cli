@@ -43,8 +43,7 @@ APP_WIZARD_MESSAGES = {
     # Region
     "region_select": "Select a region for your application",
     "region_missing": (
-        "Missing option '-r' / '--region'. "
-        "Required in non-interactive mode."
+        "Missing option '-r' / '--region'. Required in non-interactive mode."
     ),
     "region_invalid": "Invalid region.",
     # Template
